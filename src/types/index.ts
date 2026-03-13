@@ -1,0 +1,289 @@
+// ─── Generic API Wrapper ──────────────────────────────────────────────────────
+export interface ApiResponse<T> {
+  success: boolean
+  message: string
+  data: T
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+export interface LoginRequest {
+  phone: string
+  pin: string
+}
+export interface LoginResponse {
+  token: string
+  userId: number
+  tenantId: number
+  phone: string
+  name: string
+  role: string
+  companyName: string
+}
+
+// ─── Master (shared) ──────────────────────────────────────────────────────────
+export interface MasterItem {
+  id: number
+  name: string
+  isActive: boolean
+}
+export interface StateItem extends MasterItem { code: string }
+export interface CityItem  extends MasterItem { stateId: number; stateName: string }
+export interface VehicleTypeItem extends MasterItem { capacityInTons: number; tyreCount: number }
+export interface DocumentTypeItem extends MasterItem { applicableFor: 'VEHICLE' | 'DRIVER' | 'BOTH' }
+export interface TaxItem extends MasterItem { rate: number; taxType: string }
+
+// Tenant masters
+export interface TenantMasterItem extends MasterItem { tenantId: number }
+export interface DesignationItem   extends TenantMasterItem { roleType: string }
+export interface PayRateItem extends TenantMasterItem {
+  designationId: number; designationName: string
+  vehicleTypeId?: number; vehicleTypeName?: string
+  payPerDay: number; effectiveFrom: string; effectiveTo?: string
+}
+export interface RouteItem extends TenantMasterItem {
+  sourceCityId: number; sourceCityName: string
+  destinationCityId: number; destinationCityName: string
+  distanceInKm?: number; estimatedHours?: number
+}
+export interface PaymentTermsItem extends TenantMasterItem { creditDays: number }
+
+// ─── Client ───────────────────────────────────────────────────────────────────
+export interface Client {
+  id: number; tenantId: number
+  clientName: string; clientTypeId: number; clientTypeName: string
+  phone: string; email?: string; address?: string
+  cityId?: number; cityName?: string; stateId?: number; stateName?: string; pincode?: string
+  gstin?: string; panNumber?: string
+  contactPersonName?: string; contactPersonPhone?: string; contactPersonEmail?: string
+  paymentTermsId?: number; paymentTermsName?: string
+  creditLimit?: number; openingBalance?: number
+  isActive: boolean; createdAt: string; updatedAt: string
+}
+
+// ─── Vehicle ──────────────────────────────────────────────────────────────────
+export interface Vehicle {
+  id: number; tenantId: number
+  registrationNumber: string
+  brandId?: number; brandName?: string
+  vehicleTypeId?: number; vehicleTypeName?: string
+  fuelTypeId?: number; fuelTypeName?: string
+  ownershipTypeId?: number; ownershipTypeName?: string
+  currentStatusId?: number; currentStatusName?: string
+  capacityInTons?: number; manufactureYear?: number; color?: string
+  chassisNumber?: string; engineNumber?: string
+  rcNumber?: string; rcExpiryDate?: string
+  insuranceCompanyName?: string; insurancePolicyNumber?: string
+  insuranceStartDate?: string; insuranceExpiryDate?: string
+  permitNumber?: string; permitType?: string
+  permitStartDate?: string; permitExpiryDate?: string
+  fitnessCertificateNumber?: string; fitnessExpiryDate?: string
+  pucNumber?: string; pollutionExpiryDate?: string
+  roadTaxPaidDate?: string; roadTaxExpiryDate?: string
+  gpsDeviceNumber?: string; gpsDeviceImei?: string; gpsProvider?: string
+  currentOdometerReading?: number; notes?: string
+  isActive: boolean; createdAt: string; updatedAt: string
+}
+
+// ─── Order ────────────────────────────────────────────────────────────────────
+export type OrderStatus = 'PENDING'|'PARTIALLY_ASSIGNED'|'FULLY_ASSIGNED'|'IN_TRANSIT'|'PARTIALLY_DELIVERED'|'DELIVERED'|'CANCELLED'
+export type FreightRateType = 'PER_TON'|'PER_TRIP'|'PER_KM'
+export type BillingOn = 'LOADED_WEIGHT'|'DELIVERED_WEIGHT'
+
+export interface Order {
+  id: number; tenantId: number; orderNumber: string
+  orderDate: string; expectedDeliveryDate?: string
+  createdById: number; createdByName: string
+  clientId: number; clientName: string
+  materialTypeId: number; materialTypeName: string
+  totalWeight: number; totalWeightFulfilled: number
+  sourceAddress?: string; sourceCityId: number; sourceCityName: string; sourceStateId: number; sourceStateName: string
+  destinationAddress?: string; destinationCityId: number; destinationCityName: string; destinationStateId: number; destinationStateName: string
+  routeId?: number; routeName?: string
+  freightRateType: FreightRateType; freightRate: number; billingOn: BillingOn
+  totalFreightAmount?: number; orderStatus: OrderStatus
+  specialInstructions?: string; remarks?: string
+  isActive: boolean; createdAt: string; updatedAt: string
+}
+
+export interface VehicleAllocation {
+  id: number; orderId: number; vehicleId: number
+  registrationNumber: string; allocatedWeight: number
+  expectedLoadDate?: string; expectedDeliveryDate?: string
+  actualLoadDate?: string; actualDeliveryDate?: string
+  allocationStatus: string; remarks?: string
+}
+
+// ─── LR ───────────────────────────────────────────────────────────────────────
+export type LrStatus = 'CREATED'|'IN_TRANSIT'|'DELIVERED'|'CANCELLED'
+
+export interface Lr {
+  id: number; tenantId: number; lrNumber: string
+  orderId: number; orderNumber: string
+  vehicleAllocationId: number; vehicleRegistrationNumber: string
+  lrDate: string; vehicleCapacity: number; allocatedWeight: number
+  loadedWeight?: number; deliveredWeight?: number
+  overloadWeight?: number; weightVariance?: number; isOverloaded?: boolean
+  loadedAt?: string; deliveredAt?: string
+  lrStatus: LrStatus; remarks?: string
+  createdById: number; createdByName: string
+  isActive: boolean; createdAt: string; updatedAt: string
+}
+
+export interface LrCharge {
+  id: number; chargeTypeId: number; chargeTypeName: string
+  amount: number; remarks?: string; isActive: boolean
+}
+export interface LrCheckpost {
+  id: number; checkpostName: string; location?: string
+  fineAmount?: number; fineReceiptNumber?: string; finePaidAt?: string
+  remarks?: string; isActive: boolean
+}
+
+// ─── Invoice ──────────────────────────────────────────────────────────────────
+export type InvoiceStatus = 'DRAFT'|'SENT'|'PARTIALLY_PAID'|'PAID'|'OVERDUE'|'CANCELLED'
+export type PaymentMode = 'CASH'|'CHEQUE'|'NEFT'|'UPI'|'RTGS'
+
+export interface Invoice {
+  id: number; tenantId: number; invoiceNumber: string
+  clientId: number; clientName: string
+  invoiceDate: string; dueDate?: string
+  subtotal: number; taxAmount: number; totalAmount: number
+  advanceAdjusted: number; creditNoteAdjusted: number
+  amountPaid: number; balanceDue: number
+  invoiceStatus: InvoiceStatus; remarks?: string
+  createdById: number; createdByName: string
+  isActive: boolean; createdAt: string; updatedAt: string
+}
+
+export interface InvoicePayment {
+  id: number; invoiceId: number
+  paymentDate: string; amount: number; paymentMode: PaymentMode
+  referenceNumber?: string; remarks?: string
+  createdById: number; createdByName: string
+  isActive: boolean; createdAt: string
+}
+
+// ─── Staff ────────────────────────────────────────────────────────────────────
+export interface StaffProfile {
+  userId: number; tenantId: number; userName: string; userPhone: string; roleName: string
+  designationId?: number; designationName?: string
+  employmentTypeId?: number; employmentTypeName?: string
+  dateOfBirth?: string; joiningDate?: string
+  address?: string; cityId?: number; cityName?: string; stateId?: number; stateName?: string; pincode?: string
+  emergencyContactName?: string; emergencyContactPhone?: string
+  bankName?: string; accountNumber?: string; ifscCode?: string; accountHolderName?: string
+  licenseNumber?: string; licenseExpiryDate?: string
+  profilePhotoUrl?: string; isActive: boolean
+  createdAt: string; updatedAt: string
+}
+
+export interface StaffDocument {
+  id: number; userId: number; documentTypeId: number; documentTypeName: string
+  documentNumber?: string; issueDate?: string; expiryDate?: string
+  fileUrl?: string; isVerified: boolean; remarks?: string; isActive: boolean
+}
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+export interface Attendance {
+  id: number; userId: number; userName: string
+  attendanceDate: string; attendanceTypeId: number; attendanceTypeName: string
+  leaveTypeId?: number; leaveTypeName?: string; leaveReason?: string
+  markedById: number; markedByName: string; markedAt: string
+  remarks?: string; isActive: boolean
+}
+
+// ─── Payroll ──────────────────────────────────────────────────────────────────
+export type PayrollStatus = 'DRAFT'|'APPROVED'|'PAID'|'CANCELLED'
+
+export interface SalaryAdvance {
+  id: number; userId: number; userName: string
+  advanceDate: string; amount: number; reason?: string
+  totalRepaid: number; balanceAmount: number; isFullyRepaid: boolean
+  approvedById: number; approvedByName: string; approvedAt: string
+  remarks?: string; isActive: boolean; createdAt: string
+}
+
+export interface Payroll {
+  id: number; userId: number; userName: string; userPhone: string; roleName: string
+  payCycleStartDate: string; payCycleEndDate: string
+  totalDays: number; presentDays: number; absentDays: number; halfDays: number; leaveDays: number
+  overtimeHours: number; dailyRate: number
+  basicPay: number; overtimePay: number; tripBonus: number
+  grossPay: number; totalDeductions: number; netPay: number
+  deductions: PayrollDeduction[]
+  paymentDate?: string; paymentMode?: PaymentMode; referenceNumber?: string
+  payrollStatus: PayrollStatus
+  approvedById?: number; approvedByName?: string; approvedAt?: string
+  remarks?: string; isActive: boolean; createdAt: string; updatedAt: string
+}
+
+export interface PayrollDeduction {
+  id: number; deductionTypeId: number; deductionTypeName: string
+  amount: number; salaryAdvanceId?: number; remarks?: string
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+export interface DashboardResponse {
+  orders: {
+    total: number; pending: number; partiallyAssigned: number; fullyAssigned: number
+    inTransit: number; partiallyDelivered: number; delivered: number; cancelled: number
+  }
+  vehicles: { total: number; onTrip: number; available: number }
+  invoices: {
+    draft: number; sent: number; partiallyPaid: number; overdue: number; paid: number
+    totalOutstanding: number
+  }
+  todayAttendance: {
+    date: string; present: number; absent: number; halfDay: number; onLeave: number; total: number
+  }
+}
+
+export interface ExpiryAlertResponse {
+  vehicleAlerts: VehicleAlert[]
+  staffDocumentAlerts: StaffDocumentAlert[]
+  totalAlerts: number
+}
+export interface VehicleAlert {
+  vehicleId: number; registrationNumber: string
+  alertType: string; documentName?: string
+  expiryDate: string; daysLeft: number; expired: boolean
+}
+export interface StaffDocumentAlert {
+  userId: number; userName: string
+  documentType: string; documentNumber?: string
+  expiryDate: string; daysLeft: number; expired: boolean
+}
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+export interface LrRegisterRow {
+  lrId: number; lrNumber: string; lrDate: string
+  orderNumber: string; clientId: number; clientName: string
+  vehicleRegistrationNumber: string
+  fromCity: string; fromState: string; toCity: string; toState: string
+  materialType: string
+  allocatedWeight?: number; loadedWeight?: number; deliveredWeight?: number
+  weightVariance?: number; isOverloaded?: boolean
+  loadedAt?: string; deliveredAt?: string
+  freightRateType: string; freightRate: number; lrStatus: string
+}
+export interface InvoiceOutstandingRow {
+  invoiceId: number; invoiceNumber: string
+  invoiceDate: string; dueDate?: string
+  clientId: number; clientName: string
+  totalAmount: number; amountPaid: number; balanceDue: number
+  invoiceStatus: string; daysOverdue: number
+}
+export interface PayrollSummaryRow {
+  payrollId: number; userId: number; userName: string; userPhone: string; roleName: string
+  payCycleStartDate: string; payCycleEndDate: string
+  totalDays: number; presentDays: number; absentDays: number; halfDays: number; leaveDays: number
+  dailyRate: number; basicPay: number; overtimePay: number; tripBonus: number
+  grossPay: number; totalDeductions: number; netPay: number; payrollStatus: string
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+export interface User {
+  id: number; tenantId: number; name: string; phone: string
+  roles: string[]; isActive: boolean; isPinResetRequired: boolean
+  createdAt: string; updatedAt: string
+}
