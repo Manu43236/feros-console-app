@@ -2,6 +2,10 @@ import apiClient from './client'
 import type { ApiResponse, StaffProfile, StaffDocument } from '@/types'
 
 export const staffApi = {
+  createUser:     (data: unknown) => apiClient.post<ApiResponse<{ id: number; name: string; phone: string; generatedPin: string }>>('/users', data).then(r => r.data),
+  getUsers:       () => apiClient.get<ApiResponse<{ id: number; name: string; phone: string; role: string; generatedPin: string | null; isActive: boolean }[]>>('/users').then(r => r.data),
+  resetPin:       (userId: number) => apiClient.put<ApiResponse<{ userId: number; name: string; phone: string; pin: string }>>(`/users/${userId}/reset-pin`).then(r => r.data),
+  toggleStatus:   (userId: number, isActive: boolean) => apiClient.put<ApiResponse<unknown>>(`/users/${userId}/status`, { isActive }).then(r => r.data),
   getAll:         () => apiClient.get<ApiResponse<StaffProfile[]>>('/staff/profiles').then(r => r.data),
   getByUserId:    (userId: number) => apiClient.get<ApiResponse<StaffProfile>>(`/staff/profiles/${userId}`).then(r => r.data),
   upsert:         (userId: number, data: unknown) => apiClient.put<ApiResponse<StaffProfile>>(`/staff/profiles/${userId}`, data).then(r => r.data),

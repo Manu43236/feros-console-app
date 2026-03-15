@@ -31,6 +31,11 @@ export function LoginPage() {
     try {
       const res = await authApi.login(data)
       if (res.success && res.data) {
+        const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'OFFICE_STAFF', 'SUPERVISOR']
+        if (!allowedRoles.includes(res.data.role)) {
+          toast.error('Access denied. Please use the FEROS mobile app.')
+          return
+        }
         login(res.data)
         navigate('/', { replace: true })
       } else {
