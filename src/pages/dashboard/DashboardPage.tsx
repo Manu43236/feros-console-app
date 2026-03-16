@@ -3,7 +3,7 @@ import { dashboardApi } from '@/api/dashboard'
 import { format } from 'date-fns'
 import {
   ClipboardList, Truck, Receipt, UserCheck,
-  AlertTriangle, CheckCircle, Clock, TrendingUp,
+  AlertTriangle, CheckCircle, Clock,
 } from 'lucide-react'
 import type { VehicleAlert, StaffDocumentAlert } from '@/types'
 import { cn } from '@/lib/utils'

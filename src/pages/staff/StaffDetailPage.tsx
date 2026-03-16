@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { staffApi } from '@/api/staff'
@@ -119,7 +119,7 @@ function DocumentsTab({ userId }: { userId: number }) {
   })
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<DocFormData>({
-    resolver: zodResolver(docSchema),
+    resolver: zodResolver(docSchema) as Resolver<DocFormData>,
   })
 
   const addMutation = useMutation({
@@ -276,7 +276,7 @@ export function StaffDetailPage() {
   })
 
   const { register, handleSubmit, formState: { errors, isDirty }, reset, watch } = useForm<ProfileFormData>({
-    resolver: zodResolver(profileSchema),
+    resolver: zodResolver(profileSchema) as Resolver<ProfileFormData>,
   })
 
   // Seed form when profile loads
