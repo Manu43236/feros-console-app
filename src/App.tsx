@@ -10,10 +10,12 @@ import { LoginPage } from '@/pages/auth/LoginPage'
 import { DashboardPage }  from '@/pages/dashboard/DashboardPage'
 import { ClientsPage }    from '@/pages/clients/ClientsPage'
 import { VehiclesPage }   from '@/pages/vehicles/VehiclesPage'
-import { OrdersPage }     from '@/pages/orders/OrdersPage'
+import { OrdersPage }       from '@/pages/orders/OrdersPage'
+import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
 import { LrsPage }        from '@/pages/lrs/LrsPage'
 import { InvoicesPage }   from '@/pages/invoices/InvoicesPage'
-import { StaffPage }      from '@/pages/staff/StaffPage'
+import { StaffPage }       from '@/pages/staff/StaffPage'
+import { StaffDetailPage } from '@/pages/staff/StaffDetailPage'
 import { AttendancePage } from '@/pages/attendance/AttendancePage'
 import { PayrollPage }    from '@/pages/payroll/PayrollPage'
 import { ReportsPage }    from '@/pages/reports/ReportsPage'
@@ -51,10 +53,12 @@ export default function App() {
           <Route path="dashboard"  element={<DashboardPage />} />
           <Route path="clients"    element={<ClientsPage />} />
           <Route path="vehicles"   element={<VehiclesPage />} />
-          <Route path="orders"     element={<OrdersPage />} />
+          <Route path="orders"          element={<OrdersPage />} />
+          <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="lrs"        element={<LrsPage />} />
           <Route path="invoices"   element={<InvoicesPage />} />
-          <Route path="staff"      element={<StaffPage />} />
+          <Route path="staff"           element={<StaffPage />} />
+          <Route path="staff/:userId"   element={<StaffDetailPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="payroll"    element={<PayrollPage />} />
           <Route path="reports"    element={<ReportsPage />} />

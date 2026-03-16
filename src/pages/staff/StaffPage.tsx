@@ -1,21 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { staffApi } from '@/api/staff'
-import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import {
-  Plus, Search, Pencil, UserCheck, Phone, MapPin,
-  FileText, X, ChevronRight, BadgeCheck, Copy, KeyRound, Eye, EyeOff,
+  Plus, Search, UserCheck, Phone, ChevronRight, Copy, KeyRound, Eye, EyeOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import type { StaffProfile, StaffDocument } from '@/types'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 
@@ -524,7 +522,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
 interface MergedStaff {
   userId: number; userName: string; userPhone: string
   roleName: string; isActive: boolean; pin: string | null
-  designationName?: string; employmentTypeName?: string; joiningDate?: string
+  designationName?: string; completedTripsCount: number
   profile?: StaffProfile
 }
 
@@ -703,11 +701,11 @@ function StaffDetail({ staff, onClose, onEdit }: { staff: MergedStaff; onClose: 
 
 // ── main page ─────────────────────────────────────────────────────────────────
 export function StaffPage() {
-  const [search, setSearch]           = useState('')
-  const [selectedUserId, setSelectedUserId] = useState<number | undefined>()
-  const [editOpen, setEditOpen]       = useState(false)
-  const [addOpen, setAddOpen]         = useState(false)
-  const [roleFilter, setRoleFilter]   = useState('')
+  const navigate = useNavigate()
+  const [search, setSearch]             = useState('')
+  const [addOpen, setAddOpen]           = useState(false)
+  const [roleFilter, setRoleFilter]     = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   const { data: profilesRes }          = useQuery({ queryKey: ['staff'],  queryFn: staffApi.getAll })
   const { data: usersRes, isLoading }  = useQuery({ queryKey: ['users'],  queryFn: staffApi.getUsers })
@@ -717,10 +715,8 @@ export function StaffPage() {
     (profilesRes?.data ?? []).map(p => [p.userId, p])
   )
 
-  // Merge users + profiles; exclude ADMIN/SUPER_ADMIN from staff list
-  const excludedRoles = ['ADMIN', 'SUPER_ADMIN']
+  // Merge users + profiles (all roles shown, use filter to narrow down)
   const allStaff = (usersRes?.data ?? [])
-    .filter(u => !excludedRoles.includes(u.role))
     .map(u => ({
       userId:            u.id,
       userName:          u.name,
@@ -729,20 +725,17 @@ export function StaffPage() {
       isActive:          u.isActive,
       pin:               u.generatedPin,
       // profile fields (may be undefined if no profile yet)
-      designationName:   profileMap[u.id]?.designationName,
-      employmentTypeName:profileMap[u.id]?.employmentTypeName,
-      joiningDate:       profileMap[u.id]?.joiningDate,
-      profile:           profileMap[u.id],
+      designationName:    u.designationName ?? profileMap[u.id]?.designationName,
+      completedTripsCount: u.completedTripsCount ?? 0,
+      profile:            profileMap[u.id],
     }))
 
-  // Derive selected live so it always reflects latest fetched data
-  const selected = selectedUserId ? allStaff.find(s => s.userId === selectedUserId) : undefined
-
   const staff = allStaff.filter(s => {
-    const matchSearch = s.userName.toLowerCase().includes(search.toLowerCase()) ||
-                        s.userPhone.includes(search)
-    const matchRole   = !roleFilter || s.roleName === roleFilter
-    return matchSearch && matchRole
+    const matchSearch  = s.userName.toLowerCase().includes(search.toLowerCase()) ||
+                         s.userPhone.includes(search)
+    const matchRole    = !roleFilter || s.roleName === roleFilter
+    const matchStatus  = !statusFilter || (statusFilter === 'active' ? s.isActive : !s.isActive)
+    return matchSearch && matchRole && matchStatus
   })
 
   const roles = [...new Set(allStaff.map(s => s.roleName))]
@@ -774,6 +767,15 @@ export function StaffPage() {
           <option value="">All Roles</option>
           {roles.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+        >
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
       </div>
 
       {/* Table */}
@@ -795,7 +797,7 @@ export function StaffPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Designation</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">PIN</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Joined</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Trips</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                   <th className="py-3 px-4" />
                 </tr>
@@ -804,7 +806,7 @@ export function StaffPage() {
                 {staff.map(s => (
                   <tr
                     key={s.userId}
-                    onClick={() => setSelectedUserId(s.userId)}
+                    onClick={() => navigate(`/staff/${s.userId}`)}
                     className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <td className="py-3 px-4">
@@ -830,8 +832,8 @@ export function StaffPage() {
                     <td className="py-3 px-4">
                       <PinCell pin={s.pin ?? null} />
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-500">
-                      {s.joiningDate ? format(new Date(s.joiningDate), 'dd MMM yyyy') : '—'}
+                    <td className="py-3 px-4 text-sm text-gray-600 font-medium">
+                      {s.completedTripsCount}
                     </td>
                     <td className="py-3 px-4">
                       <Badge className={cn('text-xs', s.isActive ? 'bg-green-50 text-green-700 hover:bg-green-50' : 'bg-red-50 text-red-700 hover:bg-red-50')}>
@@ -848,24 +850,6 @@ export function StaffPage() {
           </div>
         )}
       </div>
-
-      {/* Detail drawer */}
-      {selected && (
-        <StaffDetail
-          staff={selected}
-          onClose={() => setSelectedUserId(undefined)}
-          onEdit={() => setEditOpen(true)}
-        />
-      )}
-
-      {/* Edit profile modal */}
-      {selected && (
-        <ProfileForm
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          staff={selected}
-        />
-      )}
 
       {/* Add staff modal */}
       <AddStaff open={addOpen} onClose={() => setAddOpen(false)} />

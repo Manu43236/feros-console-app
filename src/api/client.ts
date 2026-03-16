@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from 'sonner'
 
 const apiClient = axios.create({
   baseURL: '/api/v1',
@@ -12,14 +13,15 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 globally — auto logout
+// Handle 401 globally — show message and redirect to login
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('feros_token')
+      // Clear persisted auth state
       localStorage.removeItem('feros_user')
-      window.location.href = '/login'
+      toast.error('Your session has expired. Please sign in again.')
+      setTimeout(() => { window.location.href = '/login' }, 1500)
     }
     return Promise.reject(error)
   }

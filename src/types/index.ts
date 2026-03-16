@@ -95,13 +95,14 @@ export interface Order {
   createdById: number; createdByName: string
   clientId: number; clientName: string
   materialTypeId: number; materialTypeName: string
-  totalWeight: number; totalWeightFulfilled: number
+  totalWeight: number; totalWeightFulfilled: number; remainingWeight?: number
   sourceAddress?: string; sourceCityId: number; sourceCityName: string; sourceStateId: number; sourceStateName: string
   destinationAddress?: string; destinationCityId: number; destinationCityName: string; destinationStateId: number; destinationStateName: string
   routeId?: number; routeName?: string
   freightRateType: FreightRateType; freightRate: number; billingOn: BillingOn
   totalFreightAmount?: number; orderStatus: OrderStatus
   specialInstructions?: string; remarks?: string
+  vehicleAllocations?: VehicleAllocation[]
   isActive: boolean; createdAt: string; updatedAt: string
 }
 
