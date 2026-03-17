@@ -15,7 +15,8 @@ import { OrdersPage }       from '@/pages/orders/OrdersPage'
 import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
 import { LrsPage }        from '@/pages/lrs/LrsPage'
 import { LrDetailPage }  from '@/pages/lrs/LrDetailPage'
-import { InvoicesPage }   from '@/pages/invoices/InvoicesPage'
+import { InvoicesPage }       from '@/pages/invoices/InvoicesPage'
+import { InvoiceDetailPage } from '@/pages/invoices/InvoiceDetailPage'
 import { StaffPage }       from '@/pages/staff/StaffPage'
 import { StaffDetailPage } from '@/pages/staff/StaffDetailPage'
 import { AttendancePage } from '@/pages/attendance/AttendancePage'
@@ -60,7 +61,8 @@ export default function App() {
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="lrs"          element={<LrsPage />} />
           <Route path="lrs/:lrId"  element={<LrDetailPage />} />
-          <Route path="invoices"   element={<InvoicesPage />} />
+          <Route path="invoices"            element={<InvoicesPage />} />
+          <Route path="invoices/:invoiceId" element={<InvoiceDetailPage />} />
           <Route path="staff"           element={<StaffPage />} />
           <Route path="staff/:userId"   element={<StaffDetailPage />} />
           <Route path="attendance" element={<AttendancePage />} />

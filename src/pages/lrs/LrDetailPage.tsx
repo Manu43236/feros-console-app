@@ -7,10 +7,13 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   ArrowLeft, Truck, Package, AlertTriangle, CheckCircle2,
-  MapPin, DollarSign, Plus, Activity, Scale,
+  MapPin, DollarSign, Plus, Activity, Scale, FileText,
 } from 'lucide-react'
 import { lrsApi } from '@/api/lrs'
+import { ordersApi } from '@/api/orders'
 import { tenantMastersApi } from '@/api/masters'
+import { useAuthStore } from '@/store/authStore'
+import { openLrPdf } from './LrPdf'
 import type { LrStatus, LrCheckpost, LrCharge } from '@/types'
 
 // ─── Status helpers ────────────────────────────────────────────────────────
@@ -408,6 +411,9 @@ export function LrDetailPage() {
 
   const [tab, setTab]           = useState<'checkposts' | 'charges'>('checkposts')
   const [dialog, setDialog]     = useState<ActiveDialog>(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
+
+  const companyName = useAuthStore(s => s.companyName) ?? 'FEROS'
 
   const { data: lr, isLoading } = useQuery({
     queryKey: ['lr', id],
@@ -426,6 +432,22 @@ export function LrDetailPage() {
     queryFn: () => lrsApi.getCharges(id).then(r => r.data),
     enabled: !isNaN(id),
   })
+
+  const { data: order } = useQuery({
+    queryKey: ['order', lr?.orderId],
+    queryFn: () => ordersApi.getById(lr!.orderId).then(r => r.data),
+    enabled: !!lr?.orderId,
+  })
+
+  async function handlePdf() {
+    if (!lr) return
+    setPdfLoading(true)
+    try {
+      await openLrPdf(lr, order, checkposts, charges, companyName)
+    } finally {
+      setPdfLoading(false)
+    }
+  }
 
   if (isLoading) return <div className="p-8 text-center text-gray-500">Loading…</div>
   if (!lr) return <div className="p-8 text-center text-gray-500">LR not found.</div>
@@ -477,6 +499,17 @@ export function LrDetailPage() {
 
             {/* Primary action button */}
             <div className="flex flex-shrink-0 gap-2">
+              {/* PDF button — always visible */}
+              <button
+                onClick={handlePdf}
+                disabled={pdfLoading}
+                title="Download / View PDF"
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                <FileText className="h-4 w-4" />
+                {pdfLoading ? 'Generating…' : 'PDF'}
+              </button>
+
               {lr.lrStatus === 'CREATED' && (
                 <button
                   onClick={() => setDialog('load')}

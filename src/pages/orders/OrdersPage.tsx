@@ -79,8 +79,9 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
   const { data: materialsRes } = useQuery({ queryKey: ['material-types'], queryFn: globalMastersApi.getMaterialTypes })
   const { data: statesRes }    = useQuery({ queryKey: ['states'],         queryFn: globalMastersApi.getStates })
 
-  const [srcState, setSrcState] = useState<number | undefined>(order?.sourceStateId)
-  const [dstState, setDstState] = useState<number | undefined>(order?.destinationStateId)
+  const [srcState, setSrcState] = useState<number | undefined>(undefined)
+  const [dstState, setDstState] = useState<number | undefined>(undefined)
+  const [clientAutoFilled, setClientAutoFilled] = useState(false)
 
   const { data: srcCitiesRes } = useQuery({
     queryKey: ['cities', srcState],
@@ -95,30 +96,57 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
 
   const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: order ? {
-      clientId:             order.clientId,
-      materialTypeId:       order.materialTypeId,
-      totalWeight:          order.totalWeight,
-      orderDate:            order.orderDate?.split('T')[0] ?? '',
-      expectedDeliveryDate: order.expectedDeliveryDate?.split('T')[0] ?? '',
-      sourceAddress:        order.sourceAddress ?? '',
-      sourceStateId:        order.sourceStateId,
-      sourceCityId:         order.sourceCityId,
-      destinationAddress:   order.destinationAddress ?? '',
-      destinationStateId:   order.destinationStateId,
-      destinationCityId:    order.destinationCityId,
-      freightRateType:      order.freightRateType,
-      freightRate:          order.freightRate,
-      billingOn:            order.billingOn,
-      specialInstructions:  order.specialInstructions ?? '',
-      remarks:              order.remarks ?? '',
-    } : { freightRateType: 'PER_TON', billingOn: 'LOADED_WEIGHT' },
+    defaultValues: { freightRateType: 'PER_TON', billingOn: 'LOADED_WEIGHT' },
   })
 
-  // ── Auto-fill destination from client address ──────────────────────────────
-  const watchedClientId = watch('clientId')
-  const prevClientId    = useRef<number | undefined>(order?.clientId)
+  // ── Watches for controlled selects ────────────────────────────────────────
+  const watchedClientId    = watch('clientId')
+  const watchedMaterialId  = watch('materialTypeId')
+  const watchedSrcState    = watch('sourceStateId')
+  const watchedSrcCity     = watch('sourceCityId')
+  const watchedDstState    = watch('destinationStateId')
+  const watchedDstCity     = watch('destinationCityId')
+  const watchedFreightType = watch('freightRateType')
+  const watchedBillingOn   = watch('billingOn')
 
+  // ── Reset form whenever the dialog opens or the order changes ──────────────
+  const prevClientId = useRef<number | undefined>(undefined)
+
+  useEffect(() => {
+    if (!open) return
+    prevClientId.current = order?.clientId
+    setClientAutoFilled(false)
+
+    if (order) {
+      reset({
+        clientId:             order.clientId,
+        materialTypeId:       order.materialTypeId,
+        customMaterialName:   '',
+        totalWeight:          order.totalWeight,
+        orderDate:            order.orderDate?.split('T')[0] ?? '',
+        expectedDeliveryDate: order.expectedDeliveryDate?.split('T')[0] ?? '',
+        sourceAddress:        order.sourceAddress ?? '',
+        sourceStateId:        order.sourceStateId,
+        sourceCityId:         order.sourceCityId,
+        destinationAddress:   order.destinationAddress ?? '',
+        destinationStateId:   order.destinationStateId,
+        destinationCityId:    order.destinationCityId,
+        freightRateType:      order.freightRateType,
+        freightRate:          order.freightRate,
+        billingOn:            order.billingOn,
+        specialInstructions:  order.specialInstructions ?? '',
+        remarks:              order.remarks ?? '',
+      })
+      setSrcState(order.sourceStateId)
+      setDstState(order.destinationStateId)
+    } else {
+      reset({ freightRateType: 'PER_TON', billingOn: 'LOADED_WEIGHT' })
+      setSrcState(undefined)
+      setDstState(undefined)
+    }
+  }, [order?.id, open])
+
+  // ── Auto-fill destination from client address ──────────────────────────────
   useEffect(() => {
     const id = Number(watchedClientId)
     if (!id || !clientsRes?.data) return
@@ -135,12 +163,12 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
     }
     if (client.cityId) setValue('destinationCityId', client.cityId)
     setValue('destinationAddress', client.address ?? '')
+    setClientAutoFilled(true)
   }, [watchedClientId, clientsRes?.data])
 
   // ── Detect "Other" synthetic option ────────────────────────────────────────
-  const watchedMaterialId = watch('materialTypeId')
-  const materials         = materialsRes?.data ?? []
-  const isOtherMaterial   = Number(watchedMaterialId) === MATERIAL_OTHER_SENTINEL
+  const materials       = materialsRes?.data ?? []
+  const isOtherMaterial = Number(watchedMaterialId) === MATERIAL_OTHER_SENTINEL
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const mutation = useMutation({
@@ -178,7 +206,12 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Client *</Label>
-              <select {...register('clientId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+              <select
+                {...register('clientId')}
+                value={watchedClientId ?? ''}
+                onChange={e => setValue('clientId', Number(e.target.value))}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+              >
                 <option value="">Select client</option>
                 {clientsRes?.data?.filter(c => c.isActive).map(c => (
                   <option key={c.id} value={c.id}>{c.clientName}</option>
@@ -189,7 +222,12 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
 
             <div className="space-y-1.5">
               <Label>Material Type *</Label>
-              <select {...register('materialTypeId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+              <select
+                {...register('materialTypeId')}
+                value={watchedMaterialId ?? ''}
+                onChange={e => setValue('materialTypeId', Number(e.target.value))}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+              >
                 <option value="">Select material</option>
                 {materials.map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
@@ -232,8 +270,10 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
                 <Label>State *</Label>
                 <select
                   {...register('sourceStateId')}
+                  value={watchedSrcState ?? ''}
                   onChange={e => {
-                    setSrcState(Number(e.target.value) || undefined)
+                    const val = Number(e.target.value) || undefined
+                    setSrcState(val)
                     setValue('sourceStateId', Number(e.target.value))
                     setValue('sourceCityId', 0)
                   }}
@@ -246,7 +286,12 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               </div>
               <div className="space-y-1.5">
                 <Label>City *</Label>
-                <select {...register('sourceCityId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <select
+                  {...register('sourceCityId')}
+                  value={watchedSrcCity ?? ''}
+                  onChange={e => setValue('sourceCityId', Number(e.target.value))}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                >
                   <option value="">Select city</option>
                   {srcCitiesRes?.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -263,7 +308,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
           <div className="border-t pt-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-medium text-gray-700">Destination (To)</p>
-              {watchedClientId && Number(watchedClientId) > 0 && (
+              {clientAutoFilled && (
                 <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
                   Auto-filled from client
                 </span>
@@ -274,8 +319,10 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
                 <Label>State *</Label>
                 <select
                   {...register('destinationStateId')}
+                  value={watchedDstState ?? ''}
                   onChange={e => {
-                    setDstState(Number(e.target.value) || undefined)
+                    const val = Number(e.target.value) || undefined
+                    setDstState(val)
                     setValue('destinationStateId', Number(e.target.value))
                     setValue('destinationCityId', 0)
                   }}
@@ -288,7 +335,12 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               </div>
               <div className="space-y-1.5">
                 <Label>City *</Label>
-                <select {...register('destinationCityId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <select
+                  {...register('destinationCityId')}
+                  value={watchedDstCity ?? ''}
+                  onChange={e => setValue('destinationCityId', Number(e.target.value))}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                >
                   <option value="">Select city</option>
                   {dstCitiesRes?.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -307,7 +359,12 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>Rate Type *</Label>
-                <select {...register('freightRateType')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <select
+                  {...register('freightRateType')}
+                  value={watchedFreightType ?? 'PER_TON'}
+                  onChange={e => setValue('freightRateType', e.target.value as 'PER_TON' | 'PER_TRIP' | 'PER_KM')}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                >
                   <option value="PER_TON">Per Ton</option>
                   <option value="PER_TRIP">Per Trip</option>
                   <option value="PER_KM">Per KM</option>
@@ -321,7 +378,12 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               </div>
               <div className="space-y-1.5">
                 <Label>Bill On</Label>
-                <select {...register('billingOn')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <select
+                  {...register('billingOn')}
+                  value={watchedBillingOn ?? 'LOADED_WEIGHT'}
+                  onChange={e => setValue('billingOn', e.target.value as 'LOADED_WEIGHT' | 'DELIVERED_WEIGHT')}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                >
                   <option value="LOADED_WEIGHT">Loaded Weight</option>
                   <option value="DELIVERED_WEIGHT">Delivered Weight</option>
                 </select>

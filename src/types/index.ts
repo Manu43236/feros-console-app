@@ -170,6 +170,15 @@ export interface LrCheckpost {
 export type InvoiceStatus = 'DRAFT'|'SENT'|'PARTIALLY_PAID'|'PAID'|'OVERDUE'|'CANCELLED'
 export type PaymentMode = 'CASH'|'CHEQUE'|'NEFT'|'UPI'|'RTGS'
 
+export interface InvoiceLrItem {
+  id: number
+  lrId: number; lrNumber: string
+  orderId: number; orderNumber: string
+  vehicleRegistrationNumber: string
+  freightAmount: number; chargesAmount: number; checkpostFineAmount: number; totalAmount: number
+  remarks?: string; createdAt: string
+}
+
 export interface Invoice {
   id: number; tenantId: number; invoiceNumber: string
   clientId: number; clientName: string
@@ -178,16 +187,18 @@ export interface Invoice {
   advanceAdjusted: number; creditNoteAdjusted: number
   amountPaid: number; balanceDue: number
   invoiceStatus: InvoiceStatus; remarks?: string
+  lrItems?: InvoiceLrItem[]
+  payments?: InvoicePayment[]
   createdById: number; createdByName: string
   isActive: boolean; createdAt: string; updatedAt: string
 }
 
 export interface InvoicePayment {
-  id: number; invoiceId: number
+  id: number; invoiceId?: number
   paymentDate: string; amount: number; paymentMode: PaymentMode
   referenceNumber?: string; remarks?: string
   createdById: number; createdByName: string
-  isActive: boolean; createdAt: string
+  isActive?: boolean; createdAt: string
 }
 
 // ─── Staff ────────────────────────────────────────────────────────────────────
