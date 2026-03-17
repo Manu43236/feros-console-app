@@ -34,15 +34,14 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "dist/"
           target: /home/ubuntu/feros-web
-          strip_components: 1
-          rm: true
+          rm: false
 
-      - name: Restart nginx
+      - name: Reload nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            sudo docker restart feros_nginx
+            sudo docker exec feros_nginx nginx -s reload 2>/dev/null || true
             echo "==> Frontend deployed successfully!"
