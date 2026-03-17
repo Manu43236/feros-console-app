@@ -9,7 +9,8 @@ import { LoginPage } from '@/pages/auth/LoginPage'
 // Admin pages
 import { DashboardPage }  from '@/pages/dashboard/DashboardPage'
 import { ClientsPage }    from '@/pages/clients/ClientsPage'
-import { VehiclesPage }   from '@/pages/vehicles/VehiclesPage'
+import { VehiclesPage }        from '@/pages/vehicles/VehiclesPage'
+import { VehicleDetailPage }   from '@/pages/vehicles/VehicleDetailPage'
 import { OrdersPage }       from '@/pages/orders/OrdersPage'
 import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
 import { LrsPage }        from '@/pages/lrs/LrsPage'
@@ -52,7 +53,8 @@ export default function App() {
           {/* ADMIN */}
           <Route path="dashboard"  element={<DashboardPage />} />
           <Route path="clients"    element={<ClientsPage />} />
-          <Route path="vehicles"   element={<VehiclesPage />} />
+          <Route path="vehicles"            element={<VehiclesPage />} />
+          <Route path="vehicles/:vehicleId" element={<VehicleDetailPage />} />
           <Route path="orders"          element={<OrdersPage />} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="lrs"        element={<LrsPage />} />

@@ -71,14 +71,16 @@ export interface Vehicle {
   currentStatusId?: number; currentStatusName?: string
   capacityInTons?: number; manufactureYear?: number; color?: string
   chassisNumber?: string; engineNumber?: string
-  rcNumber?: string; rcExpiryDate?: string
+  rcNumber?: string; rcExpiryDate?: string; rcExpired?: boolean
   insuranceCompanyName?: string; insurancePolicyNumber?: string
-  insuranceStartDate?: string; insuranceExpiryDate?: string
+  insuranceStartDate?: string; insuranceExpiryDate?: string; insuranceExpired?: boolean
   permitNumber?: string; permitType?: string
-  permitStartDate?: string; permitExpiryDate?: string
-  fitnessCertificateNumber?: string; fitnessExpiryDate?: string
-  pucNumber?: string; pollutionExpiryDate?: string
-  roadTaxPaidDate?: string; roadTaxExpiryDate?: string
+  permitStartDate?: string; permitExpiryDate?: string; permitExpired?: boolean
+  fitnessCertificateNumber?: string; fitnessExpiryDate?: string; fitnessExpired?: boolean
+  pucNumber?: string; pollutionExpiryDate?: string; pollutionExpired?: boolean
+  roadTaxPaidDate?: string; roadTaxExpiryDate?: string; roadTaxExpired?: boolean
+  ownerName?: string; ownerPhone?: string; ownerPan?: string; ownerAddress?: string
+  agreementStartDate?: string; agreementEndDate?: string; agreementAmount?: number
   gpsDeviceNumber?: string; gpsDeviceImei?: string; gpsProvider?: string
   currentOdometerReading?: number; notes?: string
   isActive: boolean; createdAt: string; updatedAt: string
