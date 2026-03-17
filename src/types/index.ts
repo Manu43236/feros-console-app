@@ -86,6 +86,14 @@ export interface Vehicle {
   isActive: boolean; createdAt: string; updatedAt: string
 }
 
+export interface VehicleDocument {
+  id: number; vehicleId: number; tenantId: number
+  documentTypeId: number; documentTypeName?: string
+  documentNumber?: string; issueDate?: string; expiryDate?: string
+  fileUrl?: string; isVerified: boolean; remarks?: string
+  isActive: boolean; createdAt: string
+}
+
 // ─── Order ────────────────────────────────────────────────────────────────────
 export type OrderStatus = 'PENDING'|'PARTIALLY_ASSIGNED'|'FULLY_ASSIGNED'|'IN_TRANSIT'|'PARTIALLY_DELIVERED'|'DELIVERED'|'CANCELLED'
 export type FreightRateType = 'PER_TON'|'PER_TRIP'|'PER_KM'
@@ -108,12 +116,25 @@ export interface Order {
   isActive: boolean; createdAt: string; updatedAt: string
 }
 
+export interface StaffAllocation {
+  id: number
+  userId: number; userName: string; roleName: string
+  expectedStartDate?: string; expectedEndDate?: string
+  actualStartDate?: string; actualEndDate?: string
+  allocationStatus: string; remarks?: string
+  createdAt: string
+}
+
 export interface VehicleAllocation {
   id: number; orderId: number; vehicleId: number
-  registrationNumber: string; allocatedWeight: number
+  registrationNumber: string
+  vehicleRegistrationNumber?: string  // backend alias
+  vehicleTypeName?: string
+  allocatedWeight: number
   expectedLoadDate?: string; expectedDeliveryDate?: string
   actualLoadDate?: string; actualDeliveryDate?: string
   allocationStatus: string; remarks?: string
+  staffAllocations?: StaffAllocation[]
 }
 
 // ─── LR ───────────────────────────────────────────────────────────────────────
@@ -122,12 +143,15 @@ export type LrStatus = 'CREATED'|'IN_TRANSIT'|'DELIVERED'|'CANCELLED'
 export interface Lr {
   id: number; tenantId: number; lrNumber: string
   orderId: number; orderNumber: string
-  vehicleAllocationId: number; vehicleRegistrationNumber: string
+  vehicleAllocationId: number
+  vehicleId?: number; vehicleRegistrationNumber: string; vehicleTypeName?: string
+  clientId?: number; clientName?: string
   lrDate: string; vehicleCapacity: number; allocatedWeight: number
   loadedWeight?: number; deliveredWeight?: number
   overloadWeight?: number; weightVariance?: number; isOverloaded?: boolean
   loadedAt?: string; deliveredAt?: string
   lrStatus: LrStatus; remarks?: string
+  checkposts?: LrCheckpost[]; charges?: LrCharge[]
   createdById: number; createdByName: string
   isActive: boolean; createdAt: string; updatedAt: string
 }

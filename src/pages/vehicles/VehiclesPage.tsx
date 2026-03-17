@@ -101,7 +101,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 // ── vehicle form dialog ───────────────────────────────────────────────────────
-function VehicleForm({
+export function VehicleForm({
   open, onClose, vehicle,
 }: {
   open: boolean; onClose: () => void; vehicle?: Vehicle

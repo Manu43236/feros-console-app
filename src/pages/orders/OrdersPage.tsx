@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
 import { ordersApi } from '@/api/orders'
 import { clientsApi } from '@/api/clients'
-import { globalMastersApi, tenantMastersApi } from '@/api/masters'
+import { globalMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import { Plus, Search, Eye, X, ArrowRight, Package, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -47,9 +47,12 @@ export function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 // ── schema ────────────────────────────────────────────────────────────────────
+const MATERIAL_OTHER_SENTINEL = 0   // synthetic "Other" value
+
 const schema = z.object({
   clientId:             z.coerce.number().min(1, 'Select a client'),
-  materialTypeId:       z.coerce.number().min(1, 'Select material type'),
+  materialTypeId:       z.coerce.number().min(0, 'Select material type'),
+  customMaterialName:   z.string().optional(),
   totalWeight:          z.coerce.number().positive('Weight must be positive'),
   orderDate:            z.string().optional(),
   expectedDeliveryDate: z.string().optional(),
@@ -59,7 +62,6 @@ const schema = z.object({
   destinationAddress:   z.string().optional(),
   destinationStateId:   z.coerce.number().min(1, 'Select destination state'),
   destinationCityId:    z.coerce.number().min(1, 'Select destination city'),
-  routeId:              z.coerce.number().optional(),
   freightRateType:      z.enum(['PER_TON', 'PER_TRIP', 'PER_KM']),
   freightRate:          z.coerce.number().positive('Enter freight rate'),
   billingOn:            z.enum(['LOADED_WEIGHT', 'DELIVERED_WEIGHT']).optional(),
@@ -69,30 +71,29 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 // ── order form ────────────────────────────────────────────────────────────────
-function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => void; order?: Order }) {
-  const qc = useQueryClient()
+export function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => void; order?: Order }) {
+  const qc     = useQueryClient()
   const isEdit = !!order
 
   const { data: clientsRes }   = useQuery({ queryKey: ['clients'],        queryFn: clientsApi.getAll })
   const { data: materialsRes } = useQuery({ queryKey: ['material-types'], queryFn: globalMastersApi.getMaterialTypes })
   const { data: statesRes }    = useQuery({ queryKey: ['states'],         queryFn: globalMastersApi.getStates })
-  const { data: routesRes }    = useQuery({ queryKey: ['routes'],         queryFn: tenantMastersApi.getRoutes })
 
   const [srcState, setSrcState] = useState<number | undefined>(order?.sourceStateId)
   const [dstState, setDstState] = useState<number | undefined>(order?.destinationStateId)
 
   const { data: srcCitiesRes } = useQuery({
     queryKey: ['cities', srcState],
-    queryFn: () => globalMastersApi.getCities(srcState),
-    enabled: !!srcState,
+    queryFn:  () => globalMastersApi.getCities(srcState),
+    enabled:  !!srcState,
   })
   const { data: dstCitiesRes } = useQuery({
     queryKey: ['cities', dstState],
-    queryFn: () => globalMastersApi.getCities(dstState),
-    enabled: !!dstState,
+    queryFn:  () => globalMastersApi.getCities(dstState),
+    enabled:  !!dstState,
   })
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: order ? {
       clientId:             order.clientId,
@@ -106,7 +107,6 @@ function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => voi
       destinationAddress:   order.destinationAddress ?? '',
       destinationStateId:   order.destinationStateId,
       destinationCityId:    order.destinationCityId,
-      routeId:              order.routeId,
       freightRateType:      order.freightRateType,
       freightRate:          order.freightRate,
       billingOn:            order.billingOn,
@@ -115,9 +115,45 @@ function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => voi
     } : { freightRateType: 'PER_TON', billingOn: 'LOADED_WEIGHT' },
   })
 
+  // ── Auto-fill destination from client address ──────────────────────────────
+  const watchedClientId = watch('clientId')
+  const prevClientId    = useRef<number | undefined>(order?.clientId)
+
+  useEffect(() => {
+    const id = Number(watchedClientId)
+    if (!id || !clientsRes?.data) return
+    // In edit mode skip auto-fill if client hasn't changed
+    if (isEdit && id === prevClientId.current) return
+    prevClientId.current = id
+
+    const client = clientsRes.data.find(c => c.id === id)
+    if (!client) return
+
+    if (client.stateId) {
+      setValue('destinationStateId', client.stateId)
+      setDstState(client.stateId)
+    }
+    if (client.cityId) setValue('destinationCityId', client.cityId)
+    setValue('destinationAddress', client.address ?? '')
+  }, [watchedClientId, clientsRes?.data])
+
+  // ── Detect "Other" synthetic option ────────────────────────────────────────
+  const watchedMaterialId = watch('materialTypeId')
+  const materials         = materialsRes?.data ?? []
+  const isOtherMaterial   = Number(watchedMaterialId) === MATERIAL_OTHER_SENTINEL
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      isEdit ? ordersApi.update(order!.id, data) : ordersApi.create(data),
+    mutationFn: (data: FormData) => {
+      const payload: Record<string, unknown> = { ...data }
+      if (isOtherMaterial) {
+        // Send customMaterialName, omit materialTypeId so backend resolves it
+        delete payload.materialTypeId
+      } else {
+        delete payload.customMaterialName
+      }
+      return isEdit ? ordersApi.update(order!.id, payload) : ordersApi.create(payload)
+    },
     onSuccess: () => {
       toast.success(`Order ${isEdit ? 'updated' : 'created'} successfully`)
       qc.invalidateQueries({ queryKey: ['orders'] })
@@ -137,7 +173,8 @@ function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => voi
         </DialogHeader>
 
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
-          {/* Client, Material, Weight, Dates */}
+
+          {/* ── Client, Material, Weight, Dates ── */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Client *</Label>
@@ -154,11 +191,20 @@ function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => voi
               <Label>Material Type *</Label>
               <select {...register('materialTypeId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
                 <option value="">Select material</option>
-                {materialsRes?.data?.map(m => (
+                {materials.map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
+                <option value={MATERIAL_OTHER_SENTINEL}>Other (specify manually)</option>
               </select>
               {errors.materialTypeId && <p className="text-red-500 text-xs">{errors.materialTypeId.message}</p>}
+              {isOtherMaterial && (
+                <Input
+                  {...register('customMaterialName')}
+                  placeholder="Type material name…"
+                  className="mt-1.5"
+                  autoFocus
+                />
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -168,27 +214,17 @@ function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => voi
             </div>
 
             <div className="space-y-1.5">
-              <Label>Route (optional)</Label>
-              <select {...register('routeId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                <option value="">Select route</option>
-                {routesRes?.data?.map(r => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
               <Label>Order Date</Label>
               <Input type="date" {...register('orderDate')} />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 col-span-2 sm:col-span-1">
               <Label>Expected Delivery Date</Label>
               <Input type="date" {...register('expectedDeliveryDate')} />
             </div>
           </div>
 
-          {/* Source */}
+          {/* ── Source ── */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Source (From)</p>
             <div className="grid grid-cols-2 gap-4">
@@ -196,7 +232,11 @@ function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => voi
                 <Label>State *</Label>
                 <select
                   {...register('sourceStateId')}
-                  onChange={e => setSrcState(Number(e.target.value) || undefined)}
+                  onChange={e => {
+                    setSrcState(Number(e.target.value) || undefined)
+                    setValue('sourceStateId', Number(e.target.value))
+                    setValue('sourceCityId', 0)
+                  }}
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                 >
                   <option value="">Select state</option>
@@ -219,15 +259,26 @@ function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => voi
             </div>
           </div>
 
-          {/* Destination */}
+          {/* ── Destination ── */}
           <div className="border-t pt-4">
-            <p className="text-sm font-medium text-gray-700 mb-3">Destination (To)</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-gray-700">Destination (To)</p>
+              {watchedClientId && Number(watchedClientId) > 0 && (
+                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                  Auto-filled from client
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>State *</Label>
                 <select
                   {...register('destinationStateId')}
-                  onChange={e => setDstState(Number(e.target.value) || undefined)}
+                  onChange={e => {
+                    setDstState(Number(e.target.value) || undefined)
+                    setValue('destinationStateId', Number(e.target.value))
+                    setValue('destinationCityId', 0)
+                  }}
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                 >
                   <option value="">Select state</option>
@@ -250,7 +301,7 @@ function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => voi
             </div>
           </div>
 
-          {/* Freight */}
+          {/* ── Freight ── */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Freight</p>
             <div className="grid grid-cols-3 gap-4">
@@ -278,7 +329,7 @@ function OrderForm({ open, onClose, order }: { open: boolean; onClose: () => voi
             </div>
           </div>
 
-          {/* Remarks */}
+          {/* ── Remarks ── */}
           <div className="border-t pt-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">

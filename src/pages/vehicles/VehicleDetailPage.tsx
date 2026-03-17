@@ -1,19 +1,26 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useForm, type Resolver } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi } from '@/api/vehicles'
-import { globalMastersApi, tenantMastersApi } from '@/api/masters'
+import { tenantMastersApi, globalMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
-  ClipboardList, Route,
+  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import type { Vehicle } from '@/types'
+import type { Vehicle, VehicleDocument } from '@/types'
+import { VehicleForm } from './VehiclesPage'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type ExpiryLevel = 'expired' | 'critical' | 'warning' | 'ok' | 'none'
@@ -84,15 +91,92 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 }
 
 // ── tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Compliance', 'Owner Details', 'GPS & Notes', 'Order History', 'Trip History'] as const
+const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'GPS & Notes', 'Order History', 'Trip History'] as const
 type Tab = typeof TABS[number]
+
+// ── add document form ─────────────────────────────────────────────────────────
+const docSchema = z.object({
+  documentTypeId: z.coerce.number().min(1, 'Select document type'),
+  documentNumber: z.string().optional(),
+  issueDate:      z.string().optional(),
+  expiryDate:     z.string().optional(),
+  remarks:        z.string().optional(),
+})
+type DocForm = z.infer<typeof docSchema>
+
+function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const { data: docTypesRes } = useQuery({ queryKey: ['document-types'], queryFn: globalMastersApi.getDocumentTypes })
+
+  const vehicleDocTypes = (docTypesRes?.data ?? []).filter(d =>
+    d.applicableFor === 'VEHICLE' || d.applicableFor === 'BOTH'
+  )
+
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<DocForm>({
+    resolver: zodResolver(docSchema) as Resolver<DocForm>,
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: DocForm) => vehiclesApi.addDocument(vehicleId, data),
+    onSuccess: () => {
+      toast.success('Document added')
+      qc.invalidateQueries({ queryKey: ['vehicle-docs', vehicleId] })
+      reset(); onClose()
+    },
+    onError: () => toast.error('Failed to add document'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Add Document</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Document Type *</Label>
+            <select {...register('documentTypeId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+              <option value="">Select type</option>
+              {vehicleDocTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            {errors.documentTypeId && <p className="text-red-500 text-xs">{errors.documentTypeId.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Document Number</Label>
+            <Input placeholder="DOC123456" {...register('documentNumber')} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Issue Date</Label>
+              <Input type="date" {...register('issueDate')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Expiry Date</Label>
+              <Input type="date" {...register('expiryDate')} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Remarks</Label>
+            <Input placeholder="Optional remarks" {...register('remarks')} />
+          </div>
+          <div className="flex justify-end gap-3 pt-1">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+              {mutation.isPending ? 'Adding…' : 'Add Document'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // ── page ─────────────────────────────────────────────────────────────────────
 export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate      = useNavigate()
   const qc            = useQueryClient()
-  const [tab, setTab] = useState<Tab>('Basic Info')
+  const [tab, setTab]         = useState<Tab>('Basic Info')
+  const [editOpen, setEditOpen] = useState(false)
+  const [addDocOpen, setAddDocOpen] = useState(false)
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['vehicle', vehicleId],
@@ -102,6 +186,11 @@ export function VehicleDetailPage() {
   const { data: statusRes } = useQuery({
     queryKey: ['vehicle-statuses'],
     queryFn:  tenantMastersApi.getVehicleStatuses,
+  })
+  const { data: docsRes } = useQuery({
+    queryKey: ['vehicle-docs', vehicleId],
+    queryFn:  () => vehiclesApi.getDocuments(Number(vehicleId)),
+    enabled:  !!vehicleId,
   })
 
   const updateMutation = useMutation({
@@ -185,7 +274,7 @@ export function VehicleDetailPage() {
 
               {/* Edit */}
               <button
-                onClick={() => navigate('/vehicles', { state: { editId: v.id } })}
+                onClick={() => setEditOpen(true)}
                 className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors"
               >
                 <Pencil size={12} /> Edit
@@ -246,6 +335,9 @@ export function VehicleDetailPage() {
               {t === 'Compliance'     && <Shield size={14} />}
               {t === 'Owner Details'  && <Fuel size={14} />}
               {t === 'GPS & Notes'    && <MapPin size={14} />}
+              {t === 'Documents'      && <FileText size={14} />}
+              {t === 'Service'        && <Wrench size={14} />}
+              {t === 'Fuel'           && <Droplets size={14} />}
               {t === 'Order History'  && <ClipboardList size={14} />}
               {t === 'Trip History'   && <Route size={14} />}
               {t}
@@ -284,6 +376,20 @@ export function VehicleDetailPage() {
                 <InfoRow label="PUC No."       value={v.pucNumber} />
                 <InfoRow label="Fitness Cert." value={v.fitnessCertificateNumber} />
               </div>
+              {isHired && (
+                <div className="sm:col-span-2 border-t pt-5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Owner / Hired Details</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                    <InfoRow label="Owner Name"       value={v.ownerName} />
+                    <InfoRow label="Phone"            value={v.ownerPhone} />
+                    <InfoRow label="PAN Number"       value={v.ownerPan} />
+                    <InfoRow label="Address"          value={v.ownerAddress} />
+                    <InfoRow label="Agreement Start"  value={fmtDate(v.agreementStartDate)} />
+                    <InfoRow label="Agreement End"    value={fmtDate(v.agreementEndDate)} />
+                    <InfoRow label="Agreement Amount" value={v.agreementAmount ? `₹${v.agreementAmount.toLocaleString('en-IN')}` : null} />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -321,25 +427,22 @@ export function VehicleDetailPage() {
             </div>
           )}
 
-          {/* ── Owner Details ── */}
-          {tab === 'Owner Details' && (
-            isHired ? (
-              <div className="max-w-lg">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Hired / Attached Owner</p>
-                <InfoRow label="Owner Name"       value={v.ownerName} />
-                <InfoRow label="Phone"            value={v.ownerPhone} />
-                <InfoRow label="PAN Number"       value={v.ownerPan} />
-                <InfoRow label="Address"          value={v.ownerAddress} />
-                <InfoRow label="Agreement Start"  value={fmtDate(v.agreementStartDate)} />
-                <InfoRow label="Agreement End"    value={fmtDate(v.agreementEndDate)} />
-                <InfoRow label="Agreement Amount" value={v.agreementAmount ? `₹${v.agreementAmount.toLocaleString('en-IN')}` : null} />
-              </div>
-            ) : (
-              <div className="py-10 text-center text-gray-400">
-                <Fuel size={32} className="mx-auto mb-3 text-gray-200" />
-                <p className="text-sm">This is an own vehicle — no hired owner details.</p>
-              </div>
-            )
+          {/* ── Service ── */}
+          {tab === 'Service' && (
+            <div className="py-10 text-center text-gray-400">
+              <Wrench size={32} className="mx-auto mb-3 text-gray-200" />
+              <p className="text-sm font-medium text-gray-500">Service History</p>
+              <p className="text-xs mt-1">Maintenance records, tyre changes, and service logs will appear here.</p>
+            </div>
+          )}
+
+          {/* ── Fuel ── */}
+          {tab === 'Fuel' && (
+            <div className="py-10 text-center text-gray-400">
+              <Droplets size={32} className="mx-auto mb-3 text-gray-200" />
+              <p className="text-sm font-medium text-gray-500">Fuel Log</p>
+              <p className="text-xs mt-1">Fuel fill-ups, quantity, cost, and mileage tracking will appear here.</p>
+            </div>
           )}
 
           {/* ── GPS & Notes ── */}
@@ -356,6 +459,66 @@ export function VehicleDetailPage() {
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Notes</p>
                   <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-4">{v.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Documents ── */}
+          {tab === 'Documents' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Uploaded Documents</p>
+                <Button size="sm" onClick={() => setAddDocOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+                  <Plus size={13} /> Add Document
+                </Button>
+              </div>
+              {(docsRes?.data ?? []).length === 0 ? (
+                <div className="py-10 text-center text-gray-400">
+                  <FileText size={32} className="mx-auto mb-3 text-gray-200" />
+                  <p className="text-sm">No documents uploaded yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {(docsRes?.data ?? []).map((doc: VehicleDocument) => {
+                    const level = expiryLevel(doc.expiryDate)
+                    return (
+                      <div key={doc.id} className="flex items-center justify-between p-3.5 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                            <FileText size={15} className="text-feros-navy" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{doc.documentTypeName ?? `Document #${doc.id}`}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {doc.documentNumber && `${doc.documentNumber} · `}
+                              {doc.issueDate && `Issued: ${fmtDate(doc.issueDate)}`}
+                              {doc.expiryDate && ` · Expires: ${fmtDate(doc.expiryDate)}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {level !== 'none' && (
+                            <span className={cn('text-xs px-2 py-1 rounded-full', {
+                              'bg-red-50 text-red-600':    level === 'expired',
+                              'bg-orange-50 text-orange-600': level === 'critical',
+                              'bg-yellow-50 text-yellow-700': level === 'warning',
+                              'bg-green-50 text-green-700':   level === 'ok',
+                            })}>
+                              {level === 'expired' ? 'Expired' : level === 'ok' ? 'Valid' : `${differenceInDays(parseISO(doc.expiryDate!), new Date())}d left`}
+                            </span>
+                          )}
+                          {doc.isVerified ? (
+                            <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                              <BadgeCheck size={12} /> Verified
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full">Pending</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -381,6 +544,9 @@ export function VehicleDetailPage() {
 
         </div>
       </div>
+
+      <VehicleForm open={editOpen} onClose={() => setEditOpen(false)} vehicle={v} />
+      <AddDocumentDialog vehicleId={v.id} open={addDocOpen} onClose={() => setAddDocOpen(false)} />
     </div>
   )
 }
