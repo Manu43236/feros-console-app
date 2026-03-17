@@ -33,8 +33,12 @@ export interface DocumentTypeItem extends MasterItem { applicableFor: 'VEHICLE' 
 export interface TaxItem extends MasterItem { rate: number; taxType: string }
 
 // Tenant masters
-export interface TenantMasterItem extends MasterItem { tenantId: number }
-export interface DesignationItem   extends TenantMasterItem { roleType: string }
+export interface TenantMasterItem extends MasterItem {
+  tenantId: number
+  description?: string
+  createdAt?: string; updatedAt?: string
+}
+export interface DesignationItem extends TenantMasterItem { roleType: string }
 export interface PayRateItem extends TenantMasterItem {
   designationId: number; designationName: string
   vehicleTypeId?: number; vehicleTypeName?: string
@@ -46,6 +50,17 @@ export interface RouteItem extends TenantMasterItem {
   distanceInKm?: number; estimatedHours?: number
 }
 export interface PaymentTermsItem extends TenantMasterItem { creditDays: number }
+export interface TenantSettings {
+  id: number; tenantId: number
+  payCycle: string
+  overtimeThresholdHours: number
+  overtimeRateMultiplier: number
+  maxAdvanceAmount: number
+  maxAdvanceDeductionPerCycle: number
+  isTripBonusEnabled: boolean
+  tripBonusAmount: number
+  isActive: boolean
+}
 
 // ─── Client ───────────────────────────────────────────────────────────────────
 export interface Client {
