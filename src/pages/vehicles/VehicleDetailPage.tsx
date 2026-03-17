@@ -14,7 +14,7 @@ import {
   ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -333,7 +333,7 @@ export function VehicleDetailPage() {
             >
               {t === 'Basic Info'     && <Truck size={14} />}
               {t === 'Compliance'     && <Shield size={14} />}
-              {t === 'Owner Details'  && <Fuel size={14} />}
+              {t === 'Fuel'           && <Fuel size={14} />}
               {t === 'GPS & Notes'    && <MapPin size={14} />}
               {t === 'Documents'      && <FileText size={14} />}
               {t === 'Service'        && <Wrench size={14} />}
