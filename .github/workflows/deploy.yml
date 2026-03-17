@@ -26,6 +26,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Prepare deploy directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo mkdir -p /home/ubuntu/feros-web/dist
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/feros-web
+
       - name: Copy dist to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
