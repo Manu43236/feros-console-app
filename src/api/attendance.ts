@@ -1,6 +1,7 @@
 import apiClient from './client'
 import type { ApiResponse, Attendance } from '@/types'
 
+
 export const attendanceApi = {
   mark:       (data: unknown) => apiClient.post<ApiResponse<Attendance>>('/attendance', data).then(r => r.data),
   markBulk:   (data: unknown) => apiClient.post<ApiResponse<Attendance[]>>('/attendance/bulk', data).then(r => r.data),
