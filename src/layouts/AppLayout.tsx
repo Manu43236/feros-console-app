@@ -47,12 +47,16 @@ function getRoleLabel(role: string | null) {
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const phone       = useAuthStore(s => s.phone)
-  const name        = useAuthStore(s => s.name)
-  const role        = useAuthStore(s => s.role)
-  const companyName = useAuthStore(s => s.companyName)
-  const logout      = useAuthStore(s => s.logout)
+  const phone              = useAuthStore(s => s.phone)
+  const name               = useAuthStore(s => s.name)
+  const role               = useAuthStore(s => s.role)
+  const companyName        = useAuthStore(s => s.companyName)
+  const saSession          = useAuthStore(s => s.saSession)
+  const logout             = useAuthStore(s => s.logout)
+  const exitImpersonation  = useAuthStore(s => s.exitImpersonation)
   const navigate = useNavigate()
+
+  const isImpersonating = !!saSession
 
   const navItems =
     role === 'SUPER_ADMIN' ? SUPER_ADMIN_NAV :
@@ -62,6 +66,11 @@ export function AppLayout() {
   function handleLogout() {
     logout()
     navigate('/login', { replace: true })
+  }
+
+  function handleExitImpersonation() {
+    exitImpersonation()
+    navigate('/sa/tenants', { replace: true })
   }
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
@@ -173,6 +182,23 @@ export function AppLayout() {
             )}
           </div>
         </header>
+
+        {/* Impersonation banner */}
+        {isImpersonating && (
+          <div className="bg-amber-500 text-white px-5 py-2 flex items-center justify-between text-sm shrink-0">
+            <div className="flex items-center gap-2">
+              <Building2 size={15} />
+              <span>Acting as <strong>{companyName}</strong> — you have full admin access on behalf of this tenant</span>
+            </div>
+            <button
+              onClick={handleExitImpersonation}
+              className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-md text-xs font-semibold transition-colors"
+            >
+              <LogOut size={12} />
+              Exit
+            </button>
+          </div>
+        )}
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-6">

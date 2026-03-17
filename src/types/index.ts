@@ -238,11 +238,11 @@ export interface StaffDocument {
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
 export interface Attendance {
-  id: number; userId: number; userName: string
+  id: number; userId: number; userName: string; userPhone: string; roleName: string
   attendanceDate: string; attendanceTypeId: number; attendanceTypeName: string
   leaveTypeId?: number; leaveTypeName?: string; leaveReason?: string
   markedById: number; markedByName: string; markedAt: string
-  remarks?: string; isActive: boolean
+  remarks?: string; createdAt: string; updatedAt: string
 }
 
 // ─── Payroll ──────────────────────────────────────────────────────────────────
@@ -332,6 +332,23 @@ export interface PayrollSummaryRow {
   totalDays: number; presentDays: number; absentDays: number; halfDays: number; leaveDays: number
   dailyRate: number; basicPay: number; overtimePay: number; tripBonus: number
   grossPay: number; totalDeductions: number; netPay: number; payrollStatus: string
+}
+
+// ─── Tenant ───────────────────────────────────────────────────────────────────
+export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED'
+
+export interface Tenant {
+  id: number
+  companyName: string; email: string; phone: string
+  address?: string; city?: string; state?: string; pincode?: string
+  gstin?: string; panNumber?: string; tanNumber?: string; cinNumber?: string; transportLicenseNumber?: string
+  bankName?: string; accountNumber?: string; ifscCode?: string; branchName?: string; accountHolderName?: string
+  ownerName: string; ownerPhone: string; ownerEmail?: string
+  prefix?: string; logoUrl?: string; lorryCount?: number
+  subscriptionStatus: SubscriptionStatus
+  trialStartDate?: string; trialEndDate?: string
+  subscriptionStartDate?: string; subscriptionEndDate?: string
+  isActive: boolean; createdAt: string; updatedAt: string
 }
 
 // ─── User ─────────────────────────────────────────────────────────────────────

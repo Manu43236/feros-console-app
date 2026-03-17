@@ -11,13 +11,22 @@ interface AuthState {
   role:        string | null
   companyName: string | null
   isAuthenticated: boolean
-  login:  (data: LoginResponse) => void
-  logout: () => void
+
+  // Impersonation — saved SA session while impersonating
+  saSession: {
+    token: string; userId: number; phone: string
+    name: string; role: string; companyName: string
+  } | null
+
+  login:              (data: LoginResponse) => void
+  logout:             () => void
+  impersonate:        (data: LoginResponse) => void
+  exitImpersonation:  () => void
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       token:       null,
       userId:      null,
       tenantId:    null,
@@ -26,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
       role:        null,
       companyName: null,
       isAuthenticated: false,
+      saSession:   null,
 
       login: (data: LoginResponse) => {
         localStorage.setItem('feros_token', data.token)
@@ -38,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
           role:        data.role,
           companyName: data.companyName,
           isAuthenticated: true,
+          saSession:   null,
         })
       },
 
@@ -45,7 +56,50 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('feros_token')
         set({
           token: null, userId: null, tenantId: null,
-          phone: null, name: null, role: null, companyName: null, isAuthenticated: false,
+          phone: null, name: null, role: null, companyName: null,
+          isAuthenticated: false, saSession: null,
+        })
+      },
+
+      impersonate: (data: LoginResponse) => {
+        const state = get()
+        // Save current SA session before switching
+        const saSession = {
+          token:       state.token!,
+          userId:      state.userId!,
+          phone:       state.phone!,
+          name:        state.name!,
+          role:        state.role!,
+          companyName: state.companyName!,
+        }
+        localStorage.setItem('feros_token', data.token)
+        set({
+          token:       data.token,
+          userId:      data.userId,
+          tenantId:    data.tenantId,
+          phone:       data.phone,
+          name:        data.name,
+          role:        data.role,
+          companyName: data.companyName,
+          isAuthenticated: true,
+          saSession,
+        })
+      },
+
+      exitImpersonation: () => {
+        const { saSession } = get()
+        if (!saSession) return
+        localStorage.setItem('feros_token', saSession.token)
+        set({
+          token:       saSession.token,
+          userId:      saSession.userId,
+          tenantId:    null,
+          phone:       saSession.phone,
+          name:        saSession.name,
+          role:        saSession.role,
+          companyName: saSession.companyName,
+          isAuthenticated: true,
+          saSession:   null,
         })
       },
     }),

@@ -1,12 +1,33 @@
 import apiClient from './client'
 import type { ApiResponse, Attendance } from '@/types'
 
+export interface AttendanceRequest {
+  userId: number
+  attendanceDate: string
+  attendanceTypeId: number
+  leaveTypeId?: number
+  leaveReason?: string
+  remarks?: string
+}
+
+export interface BulkAttendanceEntry {
+  userId: number
+  attendanceTypeId: number
+  leaveTypeId?: number
+  leaveReason?: string
+  remarks?: string
+}
+
+export interface BulkAttendanceRequest {
+  attendanceDate: string
+  entries: BulkAttendanceEntry[]
+}
 
 export const attendanceApi = {
-  mark:       (data: unknown) => apiClient.post<ApiResponse<Attendance>>('/attendance', data).then(r => r.data),
-  markBulk:   (data: unknown) => apiClient.post<ApiResponse<Attendance[]>>('/attendance/bulk', data).then(r => r.data),
-  getByDate:  (date: string)  => apiClient.get<ApiResponse<Attendance[]>>(`/attendance?date=${date}`).then(r => r.data),
-  getByUser:  (userId: number, from: string, to: string) =>
+  mark:      (data: AttendanceRequest) => apiClient.post<ApiResponse<Attendance>>('/attendance', data).then(r => r.data),
+  markBulk:  (data: BulkAttendanceRequest) => apiClient.post<ApiResponse<Attendance[]>>('/attendance/bulk', data).then(r => r.data),
+  getByDate: (date: string) => apiClient.get<ApiResponse<Attendance[]>>(`/attendance?date=${date}`).then(r => r.data),
+  getByUser: (userId: number, from: string, to: string) =>
     apiClient.get<ApiResponse<Attendance[]>>(`/attendance/user/${userId}?from=${from}&to=${to}`).then(r => r.data),
-  update:     (id: number, data: unknown) => apiClient.put<ApiResponse<Attendance>>(`/attendance/${id}`, data).then(r => r.data),
+  update:    (id: number, data: AttendanceRequest) => apiClient.put<ApiResponse<Attendance>>(`/attendance/${id}`, data).then(r => r.data),
 }
