@@ -1,18 +1,181 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  Plus, Building2, CheckCircle, XCircle, Users, Pencil, Trash2, ChevronDown, ChevronRight, LogIn,
+  Plus, Building2, CheckCircle, XCircle, Users, Pencil, Trash2,
+  ChevronDown, ChevronRight, LogIn, Upload, Download, AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import apiClient from '@/api/client'
+import type { ApiResponse } from '@/types'
 import { tenantsApi } from '@/api/superadmin'
 import { useAuthStore } from '@/store/authStore'
 import type { Tenant, SubscriptionStatus } from '@/types'
+
+// ── Bulk Upload Result type ───────────────────────────────────────────────────
+interface BulkUploadResult {
+  totalRows: number
+  successCount: number
+  failureCount: number
+  errors: string[]
+}
+
+const CSV_TEMPLATE_HEADERS = [
+  'companyName', 'email', 'phone', 'address', 'city', 'state',
+  'pincode', 'gstin', 'panNumber', 'ownerName', 'ownerPhone', 'ownerEmail',
+]
+const CSV_TEMPLATE_SAMPLE = [
+  'Acme Logistics Pvt Ltd', 'acme@example.com', '9876543210',
+  '123 MG Road', 'Mumbai', 'Maharashtra', '400001',
+  '27AABCA1234Z1Z5', 'AABCA1234Z', 'Rajesh Kumar', '9876543211', 'rajesh@acme.com',
+]
+
+function downloadTemplate() {
+  const rows = [CSV_TEMPLATE_HEADERS.join(','), CSV_TEMPLATE_SAMPLE.join(',')]
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url; a.download = 'tenant_bulk_upload_template.csv'; a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── Bulk Upload Dialog ────────────────────────────────────────────────────────
+function BulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [file, setFile]     = useState<File | null>(null)
+  const [result, setResult] = useState<BulkUploadResult | null>(null)
+
+  const mutation = useMutation({
+    mutationFn: async (f: File) => {
+      const form = new FormData()
+      form.append('file', f)
+      const res = await apiClient.post<ApiResponse<BulkUploadResult>>('/tenants/bulk-upload', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return res.data
+    },
+    onSuccess: (res) => {
+      setResult(res.data)
+      qc.invalidateQueries({ queryKey: ['tenants'] })
+      if (res.data.failureCount === 0) toast.success(`${res.data.successCount} tenants created successfully`)
+      else toast.warning(`${res.data.successCount} created, ${res.data.failureCount} failed`)
+    },
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Upload failed'),
+  })
+
+  function handleClose() {
+    setFile(null); setResult(null); onClose()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Bulk Tenant Upload</DialogTitle></DialogHeader>
+        <div className="space-y-4 mt-2">
+          {/* Template download */}
+          <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 flex items-start gap-3">
+            <Download size={16} className="text-blue-500 mt-0.5 shrink-0" />
+            <div className="flex-1 text-sm text-blue-800">
+              <p className="font-medium mb-1">Download CSV Template</p>
+              <p className="text-xs text-blue-600 mb-2">
+                Fill in the template and upload. Required columns: companyName, email, phone, ownerName, ownerPhone.
+              </p>
+              <button onClick={downloadTemplate} className="text-xs underline font-medium hover:text-blue-700">
+                Download template.csv
+              </button>
+            </div>
+          </div>
+
+          {/* File picker */}
+          {!result && (
+            <div>
+              <Label>Select CSV File *</Label>
+              <div
+                className="mt-1 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload size={24} className="mx-auto text-gray-400 mb-2" />
+                {file ? (
+                  <p className="text-sm font-medium text-gray-700">{file.name}</p>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-500">Click to select a CSV file</p>
+                    <p className="text-xs text-gray-400 mt-1">Only .csv files supported</p>
+                  </>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={e => { setFile(e.target.files?.[0] ?? null); setResult(null) }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Result */}
+          {result && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-gray-50 border p-3 text-center">
+                  <p className="text-xl font-bold text-gray-800">{result.totalRows}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Total Rows</p>
+                </div>
+                <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-center">
+                  <p className="text-xl font-bold text-green-700">{result.successCount}</p>
+                  <p className="text-xs text-green-600 mt-0.5">Created</p>
+                </div>
+                <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-center">
+                  <p className="text-xl font-bold text-red-600">{result.failureCount}</p>
+                  <p className="text-xs text-red-500 mt-0.5">Failed</p>
+                </div>
+              </div>
+
+              {result.errors.length > 0 && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 max-h-40 overflow-y-auto">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <AlertCircle size={13} className="text-red-500" />
+                    <p className="text-xs font-semibold text-red-700">Errors ({result.errors.length})</p>
+                  </div>
+                  <ul className="space-y-1">
+                    {result.errors.map((err, i) => (
+                      <li key={i} className="text-xs text-red-600">• {err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <Button variant="outline" size="sm" className="w-full" onClick={() => { setFile(null); setResult(null) }}>
+                Upload Another File
+              </Button>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1 border-t">
+            <Button variant="outline" onClick={handleClose}>
+              {result ? 'Close' : 'Cancel'}
+            </Button>
+            {!result && (
+              <Button
+                onClick={() => file && mutation.mutate(file)}
+                disabled={!file || mutation.isPending}
+              >
+                {mutation.isPending ? 'Uploading…' : 'Upload'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const SUB_COLORS: Record<SubscriptionStatus, string> = {
@@ -339,6 +502,7 @@ export function TenantsPage() {
   const navigate = useNavigate()
   const impersonateStore = useAuthStore(s => s.impersonate)
   const [createOpen, setCreateOpen] = useState(false)
+  const [bulkOpen, setBulkOpen]     = useState(false)
   const [editTarget, setEditTarget] = useState<Tenant | undefined>()
   const [subTarget, setSubTarget]   = useState<Tenant | null>(null)
   const [search, setSearch]         = useState('')
@@ -381,9 +545,14 @@ export function TenantsPage() {
           <h1 className="text-xl font-bold text-gray-900">Tenant Management</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage all FEROS tenants</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus size={14} className="mr-1.5" />New Tenant
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)}>
+            <Upload size={14} className="mr-1.5" />Bulk Upload
+          </Button>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus size={14} className="mr-1.5" />New Tenant
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-5 gap-4">
@@ -448,6 +617,7 @@ export function TenantsPage() {
         )}
       </div>
 
+      <BulkUploadDialog open={bulkOpen} onClose={() => setBulkOpen(false)} />
       <TenantDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       {editTarget && (
         <TenantDialog open={!!editTarget} onClose={() => setEditTarget(undefined)} tenant={editTarget} />

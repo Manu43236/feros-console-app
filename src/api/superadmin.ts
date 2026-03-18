@@ -4,12 +4,20 @@ import type { Tenant } from '@/types'
 
 // ── Tenants ──────────────────────────────────────────────────────────────────
 export const tenantsApi = {
-  getAll:       () => apiClient.get<ApiResponse<Tenant[]>>('/tenants').then(r => r.data),
-  getById:      (id: number) => apiClient.get<ApiResponse<Tenant>>(`/tenants/${id}`).then(r => r.data),
-  create:       (data: unknown) => apiClient.post<ApiResponse<Tenant>>('/tenants', data).then(r => r.data),
-  update:       (id: number, data: unknown) => apiClient.put<ApiResponse<Tenant>>(`/tenants/${id}`, data).then(r => r.data),
-  delete:       (id: number) => apiClient.delete<ApiResponse<void>>(`/tenants/${id}`).then(r => r.data),
-  impersonate:  (id: number) => apiClient.post<ApiResponse<import('@/types').LoginResponse>>(`/tenants/${id}/impersonate`).then(r => r.data),
+  getAll:           () => apiClient.get<ApiResponse<Tenant[]>>('/tenants').then(r => r.data),
+  getById:          (id: number) => apiClient.get<ApiResponse<Tenant>>(`/tenants/${id}`).then(r => r.data),
+  create:           (data: unknown) => apiClient.post<ApiResponse<Tenant>>('/tenants', data).then(r => r.data),
+  update:           (id: number, data: unknown) => apiClient.put<ApiResponse<Tenant>>(`/tenants/${id}`, data).then(r => r.data),
+  delete:           (id: number) => apiClient.delete<ApiResponse<void>>(`/tenants/${id}`).then(r => r.data),
+  impersonate:      (id: number) => apiClient.post<ApiResponse<import('@/types').LoginResponse>>(`/tenants/${id}/impersonate`).then(r => r.data),
+  createUser:       (tenantId: number, data: unknown) => apiClient.post<ApiResponse<unknown>>(`/tenants/${tenantId}/users`, data).then(r => r.data),
+  bulkUploadUsers:  (tenantId: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<ApiResponse<import('@/types').BulkUploadResult>>(`/tenants/${tenantId}/users/bulk-upload`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
 }
 
 // ── Global Masters (write operations, read is in masters.ts) ─────────────────

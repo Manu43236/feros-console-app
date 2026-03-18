@@ -351,6 +351,14 @@ export interface Tenant {
   isActive: boolean; createdAt: string; updatedAt: string
 }
 
+// ─── Bulk Upload ──────────────────────────────────────────────────────────────
+export interface BulkUploadResult {
+  totalRows: number
+  successCount: number
+  failureCount: number
+  errors: string[]
+}
+
 // ─── User ─────────────────────────────────────────────────────────────────────
 export interface User {
   id: number; tenantId: number; name: string; phone: string
