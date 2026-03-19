@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import leftMenuLogo from '@/assets/left_menu_logo.png'
 import { useAuthStore } from '@/store/authStore'
 import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
@@ -76,13 +77,10 @@ export function AppLayout() {
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <aside className={cn('flex flex-col h-full bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
       {/* Logo */}
-      <div className="flex items-center justify-between h-16 px-5 border-b border-white/10 shrink-0">
-        <div>
-          <span className="text-feros-orange font-bold text-2xl tracking-tight">FEROS</span>
-          <span className="ml-2 text-xs text-blue-300 uppercase tracking-widest">{getRoleLabel(role)}</span>
-        </div>
+      <div className="flex items-center justify-center h-16 px-5 border-b border-white/10 shrink-0 relative">
+        <img src={leftMenuLogo} alt="FEROS" className="h-9 w-auto object-contain" />
         {mobile && (
-          <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white">
+          <button onClick={() => setSidebarOpen(false)} className="absolute right-4 text-gray-400 hover:text-white">
             <X size={20} />
           </button>
         )}
