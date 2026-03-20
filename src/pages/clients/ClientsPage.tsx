@@ -349,7 +349,7 @@ export function ClientsPage() {
         )}
       </div>
 
-      <ClientForm open={formOpen} onClose={onClose} client={editing} />
+      <ClientForm key={editing?.id ?? 'new'} open={formOpen} onClose={onClose} client={editing} />
     </div>
   )
 }

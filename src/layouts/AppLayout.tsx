@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import leftMenuLogo from '@/assets/left_menu_logo.png'
 import { useAuthStore } from '@/store/authStore'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { notificationsApi, subscriptionsApi } from '@/api/superadmin'
 import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
   Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
   LogOut, Menu, X, ChevronDown, Building2, Globe,
-  Route, CreditCard, BadgeCheck, UserCog,
+  Route, CreditCard, BadgeCheck, UserCog, Bell, AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -39,6 +41,80 @@ const STAFF_NAV = [
   { to: '/my/payslip',    label: 'My Payslip',    icon: CreditCard },
 ]
 
+// ─── Notification Bell ────────────────────────────────────────────────────────
+function NotificationBell() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const qc = useQueryClient()
+
+  const { data: countRes } = useQuery({
+    queryKey: ['notif-count'],
+    queryFn: () => notificationsApi.getUnreadCount(),
+    refetchInterval: 30_000,
+  })
+  const count = countRes?.data?.count ?? 0
+
+  const { data: notifsRes } = useQuery({
+    queryKey: ['notifs'],
+    queryFn: () => notificationsApi.getAll(),
+    enabled: open,
+  })
+  const notifs = notifsRes?.data ?? []
+
+  const markRead = useMutation({
+    mutationFn: () => notificationsApi.markAllRead(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['notif-count'] }); qc.invalidateQueries({ queryKey: ['notifs'] }) },
+  })
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+      >
+        <Bell size={20} />
+        {count > 0 && (
+          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+            {count > 9 ? '9+' : count}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <span className="font-semibold text-sm text-gray-900">Notifications</span>
+            {count > 0 && (
+              <button onClick={() => markRead.mutate()} className="text-xs text-feros-navy hover:underline">
+                Mark all read
+              </button>
+            )}
+          </div>
+          <div className="max-h-80 overflow-y-auto">
+            {notifs.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">No notifications</p>
+            ) : notifs.slice(0, 15).map(n => (
+              <div key={n.id} className={cn('px-4 py-3 border-b last:border-0', !n.isRead && 'bg-blue-50')}>
+                <p className="text-sm font-medium text-gray-900">{n.title}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
+                <p className="text-[10px] text-gray-400 mt-1">{n.createdAt?.slice(0, 16).replace('T', ' ')}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function getRoleLabel(role: string | null) {
   if (role === 'SUPER_ADMIN') return 'Super Admin'
   if (role === 'ADMIN') return 'Admin'
@@ -58,6 +134,16 @@ export function AppLayout() {
   const navigate = useNavigate()
 
   const isImpersonating = !!saSession
+  const tenantId = useAuthStore(s => s.tenantId)
+
+  // Fetch subscription status for tenant users (not SUPER_ADMIN)
+  const { data: mySubRes } = useQuery({
+    queryKey: ['my-subscription', tenantId],
+    queryFn: () => subscriptionsApi.getMy(),
+    enabled: role !== 'SUPER_ADMIN' && tenantId != null,
+    retry: false,
+  })
+  const subStatus = mySubRes?.data?.status
 
   const navItems =
     role === 'SUPER_ADMIN' ? SUPER_ADMIN_NAV :
@@ -148,6 +234,11 @@ export function AppLayout() {
           </button>
           <div className="flex-1" />
 
+          {/* Notification Bell */}
+          <div className="mr-1">
+            <NotificationBell />
+          </div>
+
           {/* User menu */}
           <div className="relative">
             <button
@@ -195,6 +286,21 @@ export function AppLayout() {
               <LogOut size={12} />
               Exit
             </button>
+          </div>
+        )}
+
+        {/* Subscription lockout banner */}
+        {(subStatus === 'EXPIRED' || subStatus === 'SUSPENDED') && (
+          <div className={cn(
+            'px-5 py-2.5 flex items-center gap-3 text-sm shrink-0',
+            subStatus === 'EXPIRED' ? 'bg-red-600 text-white' : 'bg-yellow-500 text-white'
+          )}>
+            <AlertTriangle size={16} className="shrink-0" />
+            <span>
+              {subStatus === 'EXPIRED'
+                ? 'Your subscription has expired. All actions are disabled. Please contact FEROS support to renew.'
+                : 'Your account has been suspended. Please contact FEROS support for assistance.'}
+            </span>
           </div>
         )}
 

@@ -20,6 +20,37 @@ export const tenantsApi = {
   },
 }
 
+// ── Subscription Plans ────────────────────────────────────────────────────────
+export const subscriptionPlansApi = {
+  getAll:     () => apiClient.get<ApiResponse<import('@/types').SubscriptionPlan[]>>('/subscription-plans/all').then(r => r.data),
+  getActive:  () => apiClient.get<ApiResponse<import('@/types').SubscriptionPlan[]>>('/subscription-plans').then(r => r.data),
+  create:     (data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionPlan>>('/subscription-plans', data).then(r => r.data),
+  update:     (id: number, data: unknown) => apiClient.put<ApiResponse<import('@/types').SubscriptionPlan>>(`/subscription-plans/${id}`, data).then(r => r.data),
+  toggle:     (id: number) => apiClient.patch<ApiResponse<void>>(`/subscription-plans/${id}/toggle`).then(r => r.data),
+}
+
+// ── Subscriptions (SA manages tenants) ────────────────────────────────────────
+export const subscriptionsApi = {
+  activate:         (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/activate`, data).then(r => r.data),
+  extendTrial:      (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/extend-trial`, data).then(r => r.data),
+  extend:           (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/extend`, data).then(r => r.data),
+  suspend:          (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/suspend`, data).then(r => r.data),
+  reactivate:       (tenantId: number) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/reactivate`).then(r => r.data),
+  getHistory:       (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory[]>>(`/subscriptions/${tenantId}/history`).then(r => r.data),
+  getInvoices:      (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>(`/subscriptions/${tenantId}/invoices`).then(r => r.data),
+  getCurrent:       (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/current`).then(r => r.data),
+  getMy:            () => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>('/subscriptions/my').then(r => r.data),
+  getMyInvoices:    () => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/my/invoices').then(r => r.data),
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+export const notificationsApi = {
+  getAll:       () => apiClient.get<ApiResponse<import('@/types').Notification[]>>('/notifications').then(r => r.data),
+  getUnreadCount: () => apiClient.get<ApiResponse<{ count: number }>>('/notifications/unread-count').then(r => r.data),
+  markAllRead:  () => apiClient.patch<ApiResponse<void>>('/notifications/mark-all-read').then(r => r.data),
+  broadcast:    (data: unknown) => apiClient.post<ApiResponse<void>>('/notifications/broadcast', data).then(r => r.data),
+}
+
 // ── Global Masters (write operations, read is in masters.ts) ─────────────────
 export const globalMastersWriteApi = {
   // States

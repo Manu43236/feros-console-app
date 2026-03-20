@@ -9,7 +9,7 @@ import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import { differenceInDays, parseISO, isValid } from 'date-fns'
 import {
-  Plus, Search, Truck, ChevronRight, Pencil, Trash2, AlertTriangle,
+  Plus, Search, Truck, ChevronRight, AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -102,9 +102,9 @@ type FormData = z.infer<typeof schema>
 
 // ── vehicle form dialog ───────────────────────────────────────────────────────
 export function VehicleForm({
-  open, onClose, vehicle,
+  open, onClose, vehicle, onSuccess: onSuccessExtra,
 }: {
-  open: boolean; onClose: () => void; vehicle?: Vehicle
+  open: boolean; onClose: () => void; vehicle?: Vehicle; onSuccess?: () => void
 }) {
   const qc = useQueryClient()
   const isEdit = !!vehicle
@@ -156,6 +156,7 @@ export function VehicleForm({
     onSuccess: () => {
       toast.success(`Vehicle ${isEdit ? 'updated' : 'added'} successfully`)
       qc.invalidateQueries({ queryKey: ['vehicles'] })
+      onSuccessExtra?.()
       reset(); onClose()
     },
     onError: (e: unknown) => {
@@ -402,10 +403,8 @@ export function VehicleForm({
 // ── main page ─────────────────────────────────────────────────────────────────
 export function VehiclesPage() {
   const navigate = useNavigate()
-  const qc = useQueryClient()
   const [search, setSearch]           = useState('')
   const [formOpen, setFormOpen]       = useState(false)
-  const [editing, setEditing]         = useState<Vehicle | undefined>()
   const [typeFilter, setTypeFilter]   = useState('')
   const [ownerFilter, setOwnerFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -413,18 +412,6 @@ export function VehiclesPage() {
   const { data: res, isLoading }  = useQuery({ queryKey: ['vehicles'],         queryFn: vehiclesApi.getAll })
   const { data: typesRes }        = useQuery({ queryKey: ['vehicle-types'],    queryFn: globalMastersApi.getVehicleTypes })
   const { data: ownershipRes }    = useQuery({ queryKey: ['ownership-types'],  queryFn: globalMastersApi.getOwnershipTypes })
-
-  const deleteMutation = useMutation({
-    mutationFn: vehiclesApi.remove,
-    onSuccess: () => { toast.success('Vehicle removed'); qc.invalidateQueries({ queryKey: ['vehicles'] }) },
-    onError: () => toast.error('Failed to remove vehicle'),
-  })
-
-  function handleDelete(v: Vehicle, e: React.MouseEvent) {
-    e.stopPropagation()
-    if (!confirm(`Remove vehicle ${v.registrationNumber}?`)) return
-    deleteMutation.mutate(v.id)
-  }
 
   const allVehicles = res?.data ?? []
 
@@ -447,9 +434,8 @@ export function VehiclesPage() {
     ['expired', 'critical'].includes(expiryStatus(v.fitnessExpiryDate))
   ).length
 
-  function openEdit(v: Vehicle, e: React.MouseEvent) { e.stopPropagation(); setEditing(v); setFormOpen(true) }
-  function openCreate() { setEditing(undefined); setFormOpen(true) }
-  function onClose()    { setFormOpen(false); setEditing(undefined) }
+  function openCreate() { setFormOpen(true) }
+  function onClose()    { setFormOpen(false) }
 
   return (
     <div className="space-y-5">
@@ -591,21 +577,7 @@ export function VehiclesPage() {
                         </Badge>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-1 justify-end">
-                          <button
-                            onClick={e => openEdit(v, e)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-feros-navy hover:bg-blue-50 transition-colors"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={e => handleDelete(v, e)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                          <ChevronRight size={16} className="text-gray-300 ml-1" />
-                        </div>
+                        <ChevronRight size={16} className="text-gray-300" />
                       </td>
                     </tr>
                   )
@@ -616,7 +588,7 @@ export function VehiclesPage() {
         )}
       </div>
 
-      <VehicleForm open={formOpen} onClose={onClose} vehicle={editing} />
+      <VehicleForm open={formOpen} onClose={onClose} />
     </div>
   )
 }

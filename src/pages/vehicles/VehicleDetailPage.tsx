@@ -272,13 +272,6 @@ export function VehicleDetailPage() {
                 {v.isActive ? 'Active' : 'Inactive'}
               </button>
 
-              {/* Edit */}
-              <button
-                onClick={() => setEditOpen(true)}
-                className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors"
-              >
-                <Pencil size={12} /> Edit
-              </button>
             </div>
           </div>
 
@@ -355,6 +348,13 @@ export function VehicleDetailPage() {
 
           {/* ── Basic Info ── */}
           {tab === 'Basic Info' && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Basic Information</p>
+                <Button size="sm" onClick={() => setEditOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+                  <Pencil size={13} /> Edit
+                </Button>
+              </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Vehicle Details</p>
@@ -391,10 +391,18 @@ export function VehicleDetailPage() {
                 </div>
               )}
             </div>
+            </div>
           )}
 
           {/* ── Compliance ── */}
           {tab === 'Compliance' && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Compliance & Documents</p>
+                <Button size="sm" onClick={() => setEditOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+                  <Pencil size={13} /> Edit
+                </Button>
+              </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Document Status</p>
@@ -425,6 +433,7 @@ export function VehicleDetailPage() {
                 </div>
               </div>
             </div>
+            </div>
           )}
 
           {/* ── Service ── */}
@@ -447,6 +456,13 @@ export function VehicleDetailPage() {
 
           {/* ── GPS & Notes ── */}
           {tab === 'GPS & Notes' && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">GPS & Notes</p>
+                <Button size="sm" onClick={() => setEditOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+                  <Pencil size={13} /> Edit
+                </Button>
+              </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">GPS Tracking</p>
@@ -461,6 +477,7 @@ export function VehicleDetailPage() {
                   <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-4">{v.notes}</p>
                 </div>
               )}
+            </div>
             </div>
           )}
 
@@ -545,7 +562,12 @@ export function VehicleDetailPage() {
         </div>
       </div>
 
-      <VehicleForm open={editOpen} onClose={() => setEditOpen(false)} vehicle={v} />
+      <VehicleForm
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        vehicle={v}
+        onSuccess={() => qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })}
+      />
       <AddDocumentDialog vehicleId={v.id} open={addDocOpen} onClose={() => setAddDocOpen(false)} />
     </div>
   )

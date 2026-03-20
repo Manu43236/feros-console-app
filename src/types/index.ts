@@ -351,6 +351,61 @@ export interface Tenant {
   isActive: boolean; createdAt: string; updatedAt: string
 }
 
+// ─── Subscription ─────────────────────────────────────────────────────────────
+export interface SubscriptionPlan {
+  id: number
+  name: string
+  maxLorries: number
+  maxUsers: number
+  priceMonthly: number
+  priceYearly: number
+  features?: string
+  isActive: boolean
+}
+
+export interface SubscriptionHistory {
+  id: number
+  tenantId: number
+  companyName: string
+  planName: string
+  status: SubscriptionStatus
+  billingCycle?: string
+  startDate: string
+  endDate: string
+  amount?: number
+  gstAmount?: number
+  totalAmount?: number
+  paymentRef?: string
+  notes?: string
+  createdAt: string
+}
+
+export interface SubscriptionInvoice {
+  id: number
+  invoiceNumber: string
+  tenantId: number
+  companyName: string
+  planName?: string
+  billingCycle?: string
+  periodStart?: string
+  periodEnd?: string
+  amount?: number
+  gstAmount?: number
+  totalAmount?: number
+  paymentRef?: string
+  createdAt: string
+}
+
+// ─── Notification ─────────────────────────────────────────────────────────────
+export interface Notification {
+  id: number
+  type: string
+  title: string
+  message: string
+  isRead: boolean
+  createdAt: string
+}
+
 // ─── Bulk Upload ──────────────────────────────────────────────────────────────
 export interface BulkUploadResult {
   totalRows: number
