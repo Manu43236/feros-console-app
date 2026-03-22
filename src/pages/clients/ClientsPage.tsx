@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
-import { Plus, Search, Pencil, Trash2, Phone, MapPin, Building2, Upload, Download, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Search, Pencil, Phone, MapPin, Building2, Upload, Download, CheckCircle, XCircle, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -358,10 +358,13 @@ export function ClientsPage() {
 
   const { data: res, isLoading } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
 
-  const deleteMutation = useMutation({
-    mutationFn: clientsApi.remove,
-    onSuccess: () => { toast.success('Client deleted'); qc.invalidateQueries({ queryKey: ['clients'] }) },
-    onError: () => toast.error('Failed to delete client'),
+  const statusMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) => clientsApi.toggleStatus(id, isActive),
+    onSuccess: (_, { isActive }) => {
+      toast.success(`Client ${isActive ? 'activated' : 'deactivated'} successfully`)
+      qc.invalidateQueries({ queryKey: ['clients'] })
+    },
+    onError: () => toast.error('Failed to update client status'),
   })
 
   const clients = (res?.data ?? []).filter(c =>
@@ -372,11 +375,6 @@ export function ClientsPage() {
   function openEdit(c: Client) { setEditing(c); setFormOpen(true) }
   function openCreate()        { setEditing(undefined); setFormOpen(true) }
   function onClose()           { setFormOpen(false); setEditing(undefined) }
-
-  function handleDelete(c: Client) {
-    if (!confirm(`Delete client "${c.clientName}"?`)) return
-    deleteMutation.mutate(c.id)
-  }
 
   return (
     <div className="space-y-5">
@@ -467,14 +465,22 @@ export function ClientsPage() {
                         <button
                           onClick={() => openEdit(c)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-feros-navy hover:bg-blue-50 transition-colors"
+                          title="Edit"
                         >
                           <Pencil size={15} />
                         </button>
                         <button
-                          onClick={() => handleDelete(c)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          onClick={() => statusMutation.mutate({ id: c.id, isActive: !c.isActive })}
+                          disabled={statusMutation.isPending}
+                          className={cn(
+                            'p-1.5 rounded-lg transition-colors',
+                            c.isActive
+                              ? 'text-green-500 hover:text-red-500 hover:bg-red-50'
+                              : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                          )}
+                          title={c.isActive ? 'Deactivate' : 'Activate'}
                         >
-                          <Trash2 size={15} />
+                          {c.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                         </button>
                       </div>
                     </td>

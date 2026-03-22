@@ -6,7 +6,7 @@ export const clientsApi = {
   getById:   (id: number) => apiClient.get<ApiResponse<Client>>(`/clients/${id}`).then(r => r.data),
   create:    (data: Partial<Client>) => apiClient.post<ApiResponse<Client>>('/clients', data).then(r => r.data),
   update:    (id: number, data: Partial<Client>) => apiClient.put<ApiResponse<Client>>(`/clients/${id}`, data).then(r => r.data),
-  remove:    (id: number) => apiClient.delete<ApiResponse<null>>(`/clients/${id}`).then(r => r.data),
+  toggleStatus: (id: number, isActive: boolean) => apiClient.put<ApiResponse<Client>>(`/clients/${id}/status`, { isActive }).then(r => r.data),
   bulkUpload: (file: File) => {
     const form = new FormData()
     form.append('file', file)
