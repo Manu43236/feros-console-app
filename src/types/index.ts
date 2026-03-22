@@ -99,6 +99,7 @@ export interface Vehicle {
   gpsDeviceNumber?: string; gpsDeviceImei?: string; gpsProvider?: string
   currentOdometerReading?: number; notes?: string
   isActive: boolean; createdAt: string; updatedAt: string
+  isAssigned?: boolean; assignedOrderId?: number; assignedOrderNumber?: string
 }
 
 export interface VehicleDocument {

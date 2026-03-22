@@ -9,7 +9,7 @@ import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import { differenceInDays, parseISO, isValid } from 'date-fns'
 import {
-  Plus, Search, Truck, ChevronRight, AlertTriangle, Upload, Download, CheckCircle, XCircle,
+  Plus, Search, Truck, ChevronRight, AlertTriangle, Upload, Download, CheckCircle, XCircle, Calendar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -543,8 +543,13 @@ export function VehiclesPage() {
   const [typeFilter, setTypeFilter]   = useState('')
   const [ownerFilter, setOwnerFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [assignFilter, setAssignFilter] = useState('')
+  const [dateFilter, setDateFilter]   = useState(() => new Date().toISOString().slice(0, 10))
 
-  const { data: res, isLoading }  = useQuery({ queryKey: ['vehicles'],         queryFn: vehiclesApi.getAll })
+  const { data: res, isLoading }  = useQuery({
+    queryKey: ['vehicles', dateFilter],
+    queryFn: () => vehiclesApi.getAll(dateFilter),
+  })
   const { data: typesRes }        = useQuery({ queryKey: ['vehicle-types'],    queryFn: globalMastersApi.getVehicleTypes })
   const { data: ownershipRes }    = useQuery({ queryKey: ['ownership-types'],  queryFn: globalMastersApi.getOwnershipTypes })
 
@@ -558,7 +563,8 @@ export function VehiclesPage() {
     const matchType   = !typeFilter  || String(v.vehicleTypeId) === typeFilter
     const matchOwner  = !ownerFilter || String(v.ownershipTypeId) === ownerFilter
     const matchStatus = !statusFilter || (statusFilter === 'active' ? v.isActive : !v.isActive)
-    return matchSearch && matchType && matchOwner && matchStatus
+    const matchAssign = !assignFilter || (assignFilter === 'assigned' ? v.isAssigned : !v.isAssigned)
+    return matchSearch && matchType && matchOwner && matchStatus && matchAssign
   })
 
   // Count vehicles with any compliance issue
@@ -580,6 +586,9 @@ export function VehiclesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Vehicles</h1>
           <p className="text-gray-500 text-sm mt-0.5">
             {allVehicles.length} total
+            {(() => { const assigned = allVehicles.filter(v => v.isAssigned).length; return assigned > 0 ? (
+              <span className="ml-2 text-blue-600 font-medium">· {assigned} on trip</span>
+            ) : null })()}
             {alertCount > 0 && (
               <span className="ml-2 text-red-600 font-medium">
                 · <AlertTriangle size={12} className="inline mb-0.5" /> {alertCount} compliance alert{alertCount !== 1 ? 's' : ''}
@@ -608,6 +617,15 @@ export function VehiclesPage() {
             className="pl-9"
           />
         </div>
+        <div className="relative">
+          <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <Input
+            type="date"
+            value={dateFilter}
+            onChange={e => setDateFilter(e.target.value)}
+            className="pl-9 w-44"
+          />
+        </div>
         <select
           value={typeFilter}
           onChange={e => setTypeFilter(e.target.value)}
@@ -633,6 +651,15 @@ export function VehiclesPage() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
+        <select
+          value={assignFilter}
+          onChange={e => setAssignFilter(e.target.value)}
+          className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+        >
+          <option value="">All Trips</option>
+          <option value="assigned">On Trip</option>
+          <option value="available">Available</option>
+        </select>
       </div>
 
       {/* Table */}
@@ -655,6 +682,7 @@ export function VehiclesPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Current Status</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Compliance</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Active</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Trip</th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
@@ -715,6 +743,15 @@ export function VehiclesPage() {
                         )}>
                           {v.isActive ? 'Active' : 'Inactive'}
                         </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        {v.isAssigned ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap">
+                            <Truck size={10} /> {v.assignedOrderNumber ?? 'On Trip'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">Available</span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <ChevronRight size={16} className="text-gray-300" />

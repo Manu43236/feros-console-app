@@ -2,7 +2,7 @@ import apiClient from './client'
 import type { ApiResponse, Vehicle, VehicleDocument } from '@/types'
 
 export const vehiclesApi = {
-  getAll:    ()           => apiClient.get<ApiResponse<Vehicle[]>>('/vehicles').then(r => r.data),
+  getAll:    (date?: string) => apiClient.get<ApiResponse<Vehicle[]>>('/vehicles', { params: date ? { date } : {} }).then(r => r.data),
   getById:   (id: number) => apiClient.get<ApiResponse<Vehicle>>(`/vehicles/${id}`).then(r => r.data),
   create:    (data: Partial<Vehicle>) => apiClient.post<ApiResponse<Vehicle>>('/vehicles', data).then(r => r.data),
   update:    (id: number, data: Partial<Vehicle>) => apiClient.put<ApiResponse<Vehicle>>(`/vehicles/${id}`, data).then(r => r.data),
