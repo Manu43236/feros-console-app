@@ -595,13 +595,15 @@ export function OrdersPage() {
                         >
                           <Eye size={15} />
                         </button>
-                        <button
-                          onClick={e => openEdit(o, e)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-feros-navy hover:bg-blue-50 transition-colors"
-                          title="Edit order"
-                        >
-                          <Pencil size={15} />
-                        </button>
+                        {o.orderStatus === 'PENDING' && (
+                          <button
+                            onClick={e => openEdit(o, e)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-feros-navy hover:bg-blue-50 transition-colors"
+                            title="Edit order"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        )}
                         {(o.orderStatus === 'PENDING' || o.orderStatus === 'PARTIALLY_ASSIGNED') && (
                           <button
                             onClick={e => handleCancel(o, e)}

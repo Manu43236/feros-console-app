@@ -560,13 +560,15 @@ export function OrderDetailPage() {
                 <Receipt size={14} /> Payment
               </Button>
             )}
-            <Button
-              size="sm"
-              onClick={() => setEditOpen(true)}
-              className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5"
-            >
-              <Pencil size={14} /> Edit
-            </Button>
+            {order.orderStatus === 'PENDING' && (
+              <Button
+                size="sm"
+                onClick={() => setEditOpen(true)}
+                className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5"
+              >
+                <Pencil size={14} /> Edit
+              </Button>
+            )}
           </div>
         </div>
       </div>
