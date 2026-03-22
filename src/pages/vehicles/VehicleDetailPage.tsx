@@ -203,6 +203,16 @@ export function VehicleDetailPage() {
     onError: () => toast.error('Update failed'),
   })
 
+  const updateStatusMutation = useMutation({
+    mutationFn: (statusId: number) => vehiclesApi.updateStatus(Number(vehicleId), statusId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
+      toast.success('Status updated')
+    },
+    onError: () => toast.error('Status update failed'),
+  })
+
   const v = res?.data
 
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading vehicle…</div>
@@ -249,7 +259,7 @@ export function VehicleDetailPage() {
               {/* Status select */}
               <select
                 value={v.currentStatusId ?? ''}
-                onChange={e => updateMutation.mutate({ currentStatusId: Number(e.target.value) || undefined })}
+                onChange={e => { const id = Number(e.target.value); if (id) updateStatusMutation.mutate(id) }}
                 className="h-8 px-2 rounded-lg text-xs bg-white/10 border border-white/20 text-white appearance-none cursor-pointer hover:bg-white/20 transition-colors"
               >
                 <option value="" className="text-gray-800">No Status</option>
