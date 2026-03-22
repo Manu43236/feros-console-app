@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -6,13 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
-import { Plus, Search, Pencil, Trash2, Phone, MapPin, Building2 } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Phone, MapPin, Building2, Upload, Download, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import type { Client } from '@/types'
+import type { Client, BulkUploadResult } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── schema ────────────────────────────────────────────────────────────────────
@@ -34,6 +34,137 @@ const schema = z.object({
   openingBalance:       z.coerce.number().optional(),
 })
 type FormData = z.infer<typeof schema>
+
+// ── bulk upload ───────────────────────────────────────────────────────────────
+const CSV_TEMPLATE = [
+  'clientName,clientType,phone,email,address,pincode,gstin,panNumber,contactPersonName,contactPersonPhone,paymentTerms,creditLimit,openingBalance',
+  'ABC Logistics Pvt Ltd,Trader,9876543210,accounts@abc.com,123 Main Street,400001,22AAAAA0000A1Z5,AAAAA0000A,Ramesh Kumar,9123456789,Net 30,500000,0',
+  'XYZ Freight Co,Transporter,9112233445,info@xyz.com,45 Park Road,560001,,,,,Net 15,200000,0',
+].join('\n')
+
+function ClientBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [result, setResult] = useState<BulkUploadResult | null>(null)
+
+  function handleClose() {
+    setFile(null)
+    setResult(null)
+    onClose()
+  }
+
+  const mutation = useMutation({
+    mutationFn: (f: File) => clientsApi.bulkUpload(f),
+    onSuccess: (res) => {
+      setResult(res.data)
+      qc.invalidateQueries({ queryKey: ['clients'] })
+      if (res.data.failureCount === 0)
+        toast.success(`${res.data.successCount} clients uploaded successfully`)
+      else
+        toast.warning(`${res.data.successCount} uploaded, ${res.data.failureCount} failed`)
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Upload failed')
+    },
+  })
+
+  function downloadTemplate() {
+    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'clients_template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Bulk Upload Clients</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-1">
+            <p className="font-medium">CSV Format</p>
+            <p>Required: <code className="bg-blue-100 px-1 rounded">clientName</code>, <code className="bg-blue-100 px-1 rounded">clientType</code>, <code className="bg-blue-100 px-1 rounded">phone</code></p>
+            <p>Optional: email, address, pincode, gstin, panNumber, contactPersonName, contactPersonPhone, paymentTerms, creditLimit, openingBalance</p>
+            <p className="text-blue-600 text-xs mt-2">Client type and payment terms names must match exactly as configured in Masters.</p>
+          </div>
+
+          <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 w-full">
+            <Download size={14} /> Download Template
+          </Button>
+
+          <div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={e => setFile(e.target.files?.[0] ?? null)}
+            />
+            <div
+              onClick={() => fileRef.current?.click()}
+              className={cn(
+                'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors',
+                file ? 'border-green-400 bg-green-50' : 'border-gray-200 hover:border-gray-300'
+              )}
+            >
+              <Upload size={20} className={cn('mx-auto mb-2', file ? 'text-green-500' : 'text-gray-400')} />
+              {file
+                ? <p className="text-sm font-medium text-green-700">{file.name}</p>
+                : <p className="text-sm text-gray-500">Click to select a CSV file</p>
+              }
+            </div>
+          </div>
+
+          {result && (
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex gap-4 text-sm">
+                <span className="flex items-center gap-1.5 text-green-700">
+                  <CheckCircle size={14} /> {result.successCount} succeeded
+                </span>
+                {result.failureCount > 0 && (
+                  <span className="flex items-center gap-1.5 text-red-700">
+                    <XCircle size={14} /> {result.failureCount} failed
+                  </span>
+                )}
+                <span className="text-gray-500 ml-auto">Total: {result.totalRows}</span>
+              </div>
+              {result.errors.length > 0 && (
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {result.errors.map((err, i) => (
+                    <p key={i} className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">{err}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-1">
+            <Button variant="outline" onClick={handleClose}>
+              {result ? 'Close' : 'Cancel'}
+            </Button>
+            {!result && (
+              <Button
+                disabled={!file || mutation.isPending}
+                onClick={() => file && mutation.mutate(file)}
+                className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2"
+              >
+                <Upload size={14} />
+                {mutation.isPending ? 'Uploading…' : 'Upload'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // ── form modal ────────────────────────────────────────────────────────────────
 function ClientForm({
@@ -223,6 +354,7 @@ export function ClientsPage() {
   const [search, setSearch]     = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing]   = useState<Client | undefined>()
+  const [bulkOpen, setBulkOpen] = useState(false)
 
   const { data: res, isLoading } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
 
@@ -254,9 +386,14 @@ export function ClientsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
           <p className="text-gray-500 text-sm mt-0.5">{res?.data?.length ?? 0} total clients</p>
         </div>
-        <Button onClick={openCreate} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
-          <Plus size={16} /> Add Client
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
+            <Upload size={16} /> Bulk Upload
+          </Button>
+          <Button onClick={openCreate} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+            <Plus size={16} /> Add Client
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -350,6 +487,7 @@ export function ClientsPage() {
       </div>
 
       <ClientForm key={editing?.id ?? 'new'} open={formOpen} onClose={onClose} client={editing} />
+      <ClientBulkUploadDialog open={bulkOpen} onClose={() => setBulkOpen(false)} />
     </div>
   )
 }
