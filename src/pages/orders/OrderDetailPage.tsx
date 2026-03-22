@@ -19,9 +19,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { StatusBadge, OrderForm } from './OrdersPage'
+import { StatusBadge, PaymentStatusBadge, OrderForm } from './OrdersPage'
 import { cn } from '@/lib/utils'
-import type { VehicleAllocation } from '@/types'
+import type { OrderPaymentStatus, VehicleAllocation } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function fmt(date?: string) {
@@ -477,8 +477,9 @@ export function OrderDetailPage() {
   const navigate    = useNavigate()
   const qc          = useQueryClient()
 
-  const [assignVehicleOpen, setAssignVehicleOpen] = useState(false)
-  const [editOpen, setEditOpen]                   = useState(false)
+  const [assignVehicleOpen, setAssignVehicleOpen]   = useState(false)
+  const [editOpen, setEditOpen]                     = useState(false)
+  const [paymentStatusOpen, setPaymentStatusOpen]   = useState(false)
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['order', Number(orderId)],
@@ -507,8 +508,9 @@ export function OrderDetailPage() {
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading order…</div>
   if (!order)    return <div className="p-12 text-center text-gray-500">Order not found.</div>
 
-  const canAssign   = !['DELIVERED', 'CANCELLED'].includes(order.orderStatus)
+  const canAssign   = !['DELIVERED', 'CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const canCancel   = ['PENDING', 'PARTIALLY_ASSIGNED'].includes(order.orderStatus)
+  const canUpdatePayment = !['CANCELLED'].includes(order.orderStatus)
   const allocations = order.vehicleAllocations ?? []
   const totalAssigned = allocations.reduce((s, a) => s + Number(a.allocatedWeight), 0)
   const remaining   = Number(order.totalWeight) - totalAssigned
@@ -530,6 +532,7 @@ export function OrderDetailPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl font-bold text-gray-900">{order.orderNumber}</h1>
                 <StatusBadge status={order.orderStatus} />
+                <PaymentStatusBadge status={order.orderPaymentStatus} />
               </div>
               <p className="text-gray-500 text-sm mt-1">
                 {order.clientName} · Created by {order.createdByName} on {fmt(order.orderDate)}
@@ -545,6 +548,16 @@ export function OrderDetailPage() {
                 className="text-red-600 border-red-200 hover:bg-red-50 gap-1.5"
               >
                 <X size={14} /> Cancel
+              </Button>
+            )}
+            {canUpdatePayment && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPaymentStatusOpen(true)}
+                className="text-green-700 border-green-200 hover:bg-green-50 gap-1.5"
+              >
+                <Receipt size={14} /> Payment
               </Button>
             )}
             <Button
@@ -701,6 +714,82 @@ export function OrderDetailPage() {
         onClose={() => setAssignVehicleOpen(false)}
       />
       <OrderForm open={editOpen} onClose={() => setEditOpen(false)} order={order} />
+      <UpdatePaymentStatusDialog
+        orderId={order.id}
+        current={order.orderPaymentStatus}
+        open={paymentStatusOpen}
+        onClose={() => setPaymentStatusOpen(false)}
+      />
     </div>
+  )
+}
+
+// ── update payment status dialog ──────────────────────────────────────────────
+const PAYMENT_OPTIONS: { value: OrderPaymentStatus; label: string }[] = [
+  { value: 'UNPAID',         label: 'Unpaid' },
+  { value: 'ADVANCE_PAID',   label: 'Advance Paid' },
+  { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
+  { value: 'PAID',           label: 'Paid (will mark order Completed)' },
+]
+
+function UpdatePaymentStatusDialog({ orderId, current, open, onClose }: {
+  orderId: number; current: OrderPaymentStatus; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [selected, setSelected] = useState<OrderPaymentStatus>(current)
+
+  const mutation = useMutation({
+    mutationFn: () => ordersApi.updatePaymentStatus(orderId, selected),
+    onSuccess: () => {
+      toast.success('Payment status updated')
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['orders'] })
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to update payment status')
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Update Payment Status</DialogTitle></DialogHeader>
+        <div className="space-y-3 pt-2">
+          {PAYMENT_OPTIONS.map(opt => (
+            <label
+              key={opt.value}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer transition-colors',
+                selected === opt.value
+                  ? 'border-feros-navy bg-blue-50'
+                  : 'border-gray-100 hover:bg-gray-50'
+              )}
+            >
+              <input
+                type="radio"
+                name="paymentStatus"
+                value={opt.value}
+                checked={selected === opt.value}
+                onChange={() => setSelected(opt.value)}
+                className="accent-feros-navy"
+              />
+              <span className="text-sm font-medium text-gray-800">{opt.label}</span>
+            </label>
+          ))}
+        </div>
+        <div className="flex justify-end gap-3 pt-2 border-t mt-3">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || selected === current}
+            className="bg-feros-navy hover:bg-feros-navy/90 text-white"
+          >
+            {mutation.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

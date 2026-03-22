@@ -110,7 +110,8 @@ export interface VehicleDocument {
 }
 
 // ─── Order ────────────────────────────────────────────────────────────────────
-export type OrderStatus = 'PENDING'|'PARTIALLY_ASSIGNED'|'FULLY_ASSIGNED'|'IN_TRANSIT'|'PARTIALLY_DELIVERED'|'DELIVERED'|'CANCELLED'
+export type OrderStatus = 'PENDING'|'PARTIALLY_ASSIGNED'|'FULLY_ASSIGNED'|'IN_TRANSIT'|'PARTIALLY_DELIVERED'|'DELIVERED'|'CANCELLED'|'COMPLETED'
+export type OrderPaymentStatus = 'UNPAID'|'ADVANCE_PAID'|'PARTIALLY_PAID'|'PAID'
 export type FreightRateType = 'PER_TON'|'PER_TRIP'|'PER_KM'
 export type BillingOn = 'LOADED_WEIGHT'|'DELIVERED_WEIGHT'
 
@@ -125,7 +126,7 @@ export interface Order {
   destinationAddress?: string; destinationCityId: number; destinationCityName: string; destinationStateId: number; destinationStateName: string
   routeId?: number; routeName?: string
   freightRateType: FreightRateType; freightRate: number; billingOn: BillingOn
-  totalFreightAmount?: number; orderStatus: OrderStatus
+  totalFreightAmount?: number; orderStatus: OrderStatus; orderPaymentStatus: OrderPaymentStatus
   specialInstructions?: string; remarks?: string
   vehicleAllocations?: VehicleAllocation[]
   isActive: boolean; createdAt: string; updatedAt: string

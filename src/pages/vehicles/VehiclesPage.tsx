@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
@@ -9,7 +9,7 @@ import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import { differenceInDays, parseISO, isValid } from 'date-fns'
 import {
-  Plus, Search, Truck, ChevronRight, AlertTriangle,
+  Plus, Search, Truck, ChevronRight, AlertTriangle, Upload, Download, CheckCircle, XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import type { Vehicle } from '@/types'
+import type { Vehicle, BulkUploadResult } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type ExpiryStatus = 'expired' | 'critical' | 'warning' | 'ok' | 'none'
@@ -50,6 +50,140 @@ function ExpiryChip({ date, label }: { date?: string; label: string }) {
       {s === 'expired' && <AlertTriangle size={10} className="inline mr-0.5" />}
       {text}
     </span>
+  )
+}
+
+// ── bulk upload dialog ────────────────────────────────────────────────────────
+const CSV_TEMPLATE = [
+  'registrationNumber,vehicleType,brand,fuelType,ownershipType,capacityInTons,manufactureYear,color',
+  'MH12AB1234,Truck,TATA,DIESEL,Own,10,2020,White',
+  'MH14CD5678,Trailer,Ashok Leyland,DIESEL,Hired,25,2019,Blue',
+].join('\n')
+
+function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [result, setResult] = useState<BulkUploadResult | null>(null)
+
+  function handleClose() {
+    setFile(null)
+    setResult(null)
+    onClose()
+  }
+
+  const mutation = useMutation({
+    mutationFn: (f: File) => vehiclesApi.bulkUpload(f),
+    onSuccess: (res) => {
+      setResult(res.data)
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
+      if (res.data.failureCount === 0)
+        toast.success(`${res.data.successCount} vehicles uploaded successfully`)
+      else
+        toast.warning(`${res.data.successCount} uploaded, ${res.data.failureCount} failed`)
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Upload failed')
+    },
+  })
+
+  function downloadTemplate() {
+    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'vehicles_template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Bulk Upload Vehicles</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          {/* Instructions */}
+          <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-1">
+            <p className="font-medium">CSV Format</p>
+            <p>Required: <code className="bg-blue-100 px-1 rounded">registrationNumber</code></p>
+            <p>Optional: vehicleType, brand, fuelType, ownershipType, capacityInTons, manufactureYear, color</p>
+            <p className="text-blue-600 text-xs mt-2">Names must match exactly as configured in Masters.</p>
+          </div>
+
+          <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 w-full">
+            <Download size={14} /> Download Template
+          </Button>
+
+          {/* File input */}
+          <div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={e => setFile(e.target.files?.[0] ?? null)}
+            />
+            <div
+              onClick={() => fileRef.current?.click()}
+              className={cn(
+                'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors',
+                file ? 'border-green-400 bg-green-50' : 'border-gray-200 hover:border-gray-300'
+              )}
+            >
+              <Upload size={20} className={cn('mx-auto mb-2', file ? 'text-green-500' : 'text-gray-400')} />
+              {file
+                ? <p className="text-sm font-medium text-green-700">{file.name}</p>
+                : <p className="text-sm text-gray-500">Click to select a CSV file</p>
+              }
+            </div>
+          </div>
+
+          {/* Result */}
+          {result && (
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex gap-4 text-sm">
+                <span className="flex items-center gap-1.5 text-green-700">
+                  <CheckCircle size={14} /> {result.successCount} succeeded
+                </span>
+                {result.failureCount > 0 && (
+                  <span className="flex items-center gap-1.5 text-red-700">
+                    <XCircle size={14} /> {result.failureCount} failed
+                  </span>
+                )}
+                <span className="text-gray-500 ml-auto">Total: {result.totalRows}</span>
+              </div>
+              {result.errors.length > 0 && (
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {result.errors.map((err, i) => (
+                    <p key={i} className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">{err}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-1">
+            <Button variant="outline" onClick={handleClose}>
+              {result ? 'Close' : 'Cancel'}
+            </Button>
+            {!result && (
+              <Button
+                disabled={!file || mutation.isPending}
+                onClick={() => file && mutation.mutate(file)}
+                className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2"
+              >
+                <Upload size={14} />
+                {mutation.isPending ? 'Uploading…' : 'Upload'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -405,6 +539,7 @@ export function VehiclesPage() {
   const navigate = useNavigate()
   const [search, setSearch]           = useState('')
   const [formOpen, setFormOpen]       = useState(false)
+  const [bulkOpen, setBulkOpen]       = useState(false)
   const [typeFilter, setTypeFilter]   = useState('')
   const [ownerFilter, setOwnerFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -452,9 +587,14 @@ export function VehiclesPage() {
             )}
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
-          <Plus size={16} /> Add Vehicle
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
+            <Upload size={16} /> Bulk Upload
+          </Button>
+          <Button onClick={openCreate} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+            <Plus size={16} /> Add Vehicle
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -589,6 +729,7 @@ export function VehiclesPage() {
       </div>
 
       <VehicleForm open={formOpen} onClose={onClose} />
+      <VehicleBulkUploadDialog open={bulkOpen} onClose={() => setBulkOpen(false)} />
     </div>
   )
 }

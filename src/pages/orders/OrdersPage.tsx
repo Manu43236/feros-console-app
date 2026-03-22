@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import type { Order, OrderStatus } from '@/types'
+import type { Order, OrderStatus, OrderPaymentStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -26,6 +26,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   PARTIALLY_DELIVERED: 'Partially Delivered',
   DELIVERED:           'Delivered',
   CANCELLED:           'Cancelled',
+  COMPLETED:           'Completed',
 }
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -36,12 +37,35 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   PARTIALLY_DELIVERED: 'bg-purple-50 text-purple-700 hover:bg-purple-50',
   DELIVERED:           'bg-green-50 text-green-700 hover:bg-green-50',
   CANCELLED:           'bg-red-50 text-red-700 hover:bg-red-50',
+  COMPLETED:           'bg-emerald-50 text-emerald-700 hover:bg-emerald-50',
 }
 
 export function StatusBadge({ status }: { status: OrderStatus }) {
   return (
     <Badge className={cn('text-xs font-medium', STATUS_COLORS[status])}>
       {STATUS_LABELS[status]}
+    </Badge>
+  )
+}
+
+const PAYMENT_STATUS_LABELS: Record<OrderPaymentStatus, string> = {
+  UNPAID:         'Unpaid',
+  ADVANCE_PAID:   'Advance Paid',
+  PARTIALLY_PAID: 'Partially Paid',
+  PAID:           'Paid',
+}
+
+const PAYMENT_STATUS_COLORS: Record<OrderPaymentStatus, string> = {
+  UNPAID:         'bg-red-50 text-red-700 hover:bg-red-50',
+  ADVANCE_PAID:   'bg-blue-50 text-blue-700 hover:bg-blue-50',
+  PARTIALLY_PAID: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-50',
+  PAID:           'bg-green-50 text-green-700 hover:bg-green-50',
+}
+
+export function PaymentStatusBadge({ status }: { status: OrderPaymentStatus }) {
+  return (
+    <Badge className={cn('text-xs font-medium', PAYMENT_STATUS_COLORS[status])}>
+      {PAYMENT_STATUS_LABELS[status]}
     </Badge>
   )
 }
@@ -420,7 +444,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
 // ── main page ─────────────────────────────────────────────────────────────────
 const ALL_STATUSES: OrderStatus[] = [
   'PENDING', 'PARTIALLY_ASSIGNED', 'FULLY_ASSIGNED',
-  'IN_TRANSIT', 'PARTIALLY_DELIVERED', 'DELIVERED', 'CANCELLED',
+  'IN_TRANSIT', 'PARTIALLY_DELIVERED', 'DELIVERED', 'CANCELLED', 'COMPLETED',
 ]
 
 export function OrdersPage() {
@@ -520,6 +544,7 @@ export function OrdersPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Weight</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Freight</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Payment</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
                   <th className="py-3 px-4" />
                 </tr>
@@ -552,6 +577,9 @@ export function OrdersPage() {
                     </td>
                     <td className="py-3 px-4">
                       <StatusBadge status={o.orderStatus} />
+                    </td>
+                    <td className="py-3 px-4">
+                      <PaymentStatusBadge status={o.orderPaymentStatus} />
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-500">
                       {o.orderDate
