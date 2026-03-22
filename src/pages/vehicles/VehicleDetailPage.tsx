@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import type { Vehicle, VehicleDocument } from '@/types'
+import type { VehicleDocument } from '@/types'
 import { VehicleForm } from './VehiclesPage'
 
 // ── helpers ───────────────────────────────────────────────────────────────────

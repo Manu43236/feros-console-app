@@ -51,7 +51,7 @@ function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
   orderId: number; remainingWeight?: number; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
-  const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: vehiclesApi.getAll })
+  const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehiclesApi.getAll() })
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AssignVehicleForm>({
     resolver: zodResolver(assignVehicleSchema) as Resolver<AssignVehicleForm>,
