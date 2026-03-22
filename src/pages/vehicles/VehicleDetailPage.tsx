@@ -193,14 +193,14 @@ export function VehicleDetailPage() {
     enabled:  !!vehicleId,
   })
 
-  const updateMutation = useMutation({
-    mutationFn: (data: Partial<Vehicle>) => vehiclesApi.update(Number(vehicleId), data),
+  const toggleActiveMutation = useMutation({
+    mutationFn: () => vehiclesApi.toggleActive(Number(vehicleId)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
       qc.invalidateQueries({ queryKey: ['vehicles'] })
-      toast.success('Vehicle updated')
+      toast.success('Vehicle status updated')
     },
-    onError: () => toast.error('Update failed'),
+    onError: () => toast.error('Status update failed'),
   })
 
   const updateStatusMutation = useMutation({
@@ -270,7 +270,8 @@ export function VehicleDetailPage() {
 
               {/* Active toggle */}
               <button
-                onClick={() => updateMutation.mutate({ isActive: !v.isActive })}
+                onClick={() => toggleActiveMutation.mutate()}
+                disabled={toggleActiveMutation.isPending}
                 className={cn(
                   'flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors',
                   v.isActive

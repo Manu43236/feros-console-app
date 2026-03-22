@@ -6,7 +6,8 @@ export const vehiclesApi = {
   getById:   (id: number) => apiClient.get<ApiResponse<Vehicle>>(`/vehicles/${id}`).then(r => r.data),
   create:    (data: Partial<Vehicle>) => apiClient.post<ApiResponse<Vehicle>>('/vehicles', data).then(r => r.data),
   update:    (id: number, data: Partial<Vehicle>) => apiClient.put<ApiResponse<Vehicle>>(`/vehicles/${id}`, data).then(r => r.data),
-  updateStatus: (id: number, currentStatusId: number) => apiClient.patch<ApiResponse<Vehicle>>(`/vehicles/${id}/status`, { currentStatusId }).then(r => r.data),
+  updateStatus:   (id: number, currentStatusId: number) => apiClient.patch<ApiResponse<Vehicle>>(`/vehicles/${id}/status`, { currentStatusId }).then(r => r.data),
+  toggleActive:   (id: number) => apiClient.patch<ApiResponse<Vehicle>>(`/vehicles/${id}/active`).then(r => r.data),
   remove:    (id: number) => apiClient.delete<ApiResponse<null>>(`/vehicles/${id}`).then(r => r.data),
   bulkUpload: (file: File) => {
     const form = new FormData()
