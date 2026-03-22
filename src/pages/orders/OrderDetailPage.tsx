@@ -319,9 +319,24 @@ function VehicleAllocationCard({
   allocation: VehicleAllocation; orderId: number; canAssign: boolean; existingLrId?: number
 }) {
   const navigate  = useNavigate()
+  const qc        = useQueryClient()
   const [expanded, setExpanded]     = useState(true)
   const [slotDialog, setSlotDialog] = useState<'DRIVER' | 'CLEANER' | null>(null)
   const [lrDialog, setLrDialog]     = useState(false)
+
+  const unassignMutation = useMutation({
+    mutationFn: () => ordersApi.unassignVehicle(orderId, allocation.id),
+    onSuccess: () => {
+      toast.success('Vehicle unassigned')
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to unassign vehicle')
+    },
+  })
+
+  const canUnassign = canAssign && allocation.allocationStatus === 'ALLOCATED' && !existingLrId
 
   const regNo     = allocation.vehicleRegistrationNumber ?? allocation.registrationNumber
   const staff     = allocation.staffAllocations ?? []
@@ -372,6 +387,17 @@ function VehicleAllocationCard({
             <FileText size={11} /> Create LR
           </button>
         ) : null}
+
+        {/* Unassign button */}
+        {canUnassign && (
+          <button
+            onClick={() => confirm(`Unassign ${regNo} from this order?`) && unassignMutation.mutate()}
+            disabled={unassignMutation.isPending}
+            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-red-600 border-red-200 hover:bg-red-50 transition-colors shrink-0 disabled:opacity-50"
+          >
+            <X size={11} /> Unassign
+          </button>
+        )}
 
         <button
           onClick={() => setExpanded(e => !e)}
