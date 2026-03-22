@@ -510,7 +510,7 @@ export function OrderDetailPage() {
 
   const canAssign   = !['DELIVERED', 'CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const canCancel   = ['PENDING', 'PARTIALLY_ASSIGNED'].includes(order.orderStatus)
-  const canUpdatePayment = !['CANCELLED'].includes(order.orderStatus)
+  const canUpdatePayment = !['CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const allocations = order.vehicleAllocations ?? []
   const totalAssigned = allocations.reduce((s, a) => s + Number(a.allocatedWeight), 0)
   const remaining   = Number(order.totalWeight) - totalAssigned
@@ -719,6 +719,7 @@ export function OrderDetailPage() {
       <UpdatePaymentStatusDialog
         orderId={order.id}
         current={order.orderPaymentStatus}
+        orderStatus={order.orderStatus}
         open={paymentStatusOpen}
         onClose={() => setPaymentStatusOpen(false)}
       />
@@ -727,16 +728,22 @@ export function OrderDetailPage() {
 }
 
 // ── update payment status dialog ──────────────────────────────────────────────
-const PAYMENT_OPTIONS: { value: OrderPaymentStatus; label: string }[] = [
+const DELIVERY_STATUSES = ['PARTIALLY_DELIVERED', 'DELIVERED']
+
+const ALL_PAYMENT_OPTIONS: { value: OrderPaymentStatus; label: string }[] = [
   { value: 'UNPAID',         label: 'Unpaid' },
   { value: 'ADVANCE_PAID',   label: 'Advance Paid' },
   { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
   { value: 'PAID',           label: 'Paid (will mark order Completed)' },
 ]
 
-function UpdatePaymentStatusDialog({ orderId, current, open, onClose }: {
-  orderId: number; current: OrderPaymentStatus; open: boolean; onClose: () => void
+function UpdatePaymentStatusDialog({ orderId, current, orderStatus, open, onClose }: {
+  orderId: number; current: OrderPaymentStatus; orderStatus: string; open: boolean; onClose: () => void
 }) {
+  const isDelivered = DELIVERY_STATUSES.includes(orderStatus)
+  const options = isDelivered
+    ? ALL_PAYMENT_OPTIONS
+    : ALL_PAYMENT_OPTIONS.filter(o => o.value === 'UNPAID' || o.value === 'ADVANCE_PAID')
   const qc = useQueryClient()
   const [selected, setSelected] = useState<OrderPaymentStatus>(current)
 
@@ -758,8 +765,13 @@ function UpdatePaymentStatusDialog({ orderId, current, open, onClose }: {
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Update Payment Status</DialogTitle></DialogHeader>
+        {!isDelivered && (
+          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-2">
+            Partially Paid / Paid options are available only after delivery.
+          </p>
+        )}
         <div className="space-y-3 pt-2">
-          {PAYMENT_OPTIONS.map(opt => (
+          {options.map(opt => (
             <label
               key={opt.value}
               className={cn(
