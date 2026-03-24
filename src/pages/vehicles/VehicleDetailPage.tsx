@@ -266,23 +266,38 @@ export function VehicleDetailPage() {
 
             <div className="flex items-center gap-2">
               {/* Status select */}
-              <div className="relative flex items-center">
-                <select
-                  value={v.currentStatusId ?? ''}
-                  onChange={e => { const id = Number(e.target.value); if (id) updateStatusMutation.mutate(id) }}
-                  disabled={updateStatusMutation.isPending}
-                  className={cn(
-                    'h-8 pl-2 pr-6 rounded-lg text-xs border appearance-none cursor-pointer transition-colors',
-                    v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-white/10 border-white/20 text-white hover:bg-white/20',
-                    updateStatusMutation.isPending && 'opacity-60 cursor-wait'
-                  )}
-                >
-                  <option value="" className="text-gray-800">No Status</option>
-                  {statusRes?.data?.map(s => (
-                    <option key={s.id} value={s.id} className="text-gray-800">{s.name}</option>
-                  ))}
-                </select>
-                <ChevronDown size={12} className="absolute right-1.5 pointer-events-none text-current opacity-70" />
+              <div className="flex flex-col items-end gap-1">
+                {v.isAssigned && (
+                  <span className="text-xs text-yellow-300 font-mono">{v.assignedOrderNumber}</span>
+                )}
+                <div className="relative flex items-center">
+                  <select
+                    value={v.isAssigned ? 'assigned' : (v.currentStatusId ?? '')}
+                    onChange={e => { const id = Number(e.target.value); if (id) updateStatusMutation.mutate(id) }}
+                    disabled={updateStatusMutation.isPending || !!v.isAssigned}
+                    className={cn(
+                      'h-8 pl-2 pr-6 rounded-lg text-xs border appearance-none transition-colors',
+                      v.isAssigned
+                        ? 'bg-blue-500/20 border-blue-400/40 text-blue-200 cursor-not-allowed'
+                        : cn('cursor-pointer', v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-white/10 border-white/20 text-white hover:bg-white/20'),
+                      updateStatusMutation.isPending && 'opacity-60 cursor-wait'
+                    )}
+                  >
+                    {v.isAssigned
+                      ? <option value="assigned" className="text-gray-800">Assigned to Order</option>
+                      : <>
+                          <option value="" className="text-gray-800">No Status</option>
+                          {statusRes?.data?.map(s => (
+                            <option key={s.id} value={s.id} className="text-gray-800">{s.name}</option>
+                          ))}
+                        </>
+                    }
+                  </select>
+                  <ChevronDown size={12} className="absolute right-1.5 pointer-events-none text-current opacity-70" />
+                </div>
+                {v.isAssigned && (
+                  <span className="text-xs text-blue-300/70">Unassign from order to change</span>
+                )}
               </div>
 
               {/* Active toggle */}
