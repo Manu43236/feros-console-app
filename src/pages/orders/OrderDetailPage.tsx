@@ -13,7 +13,7 @@ import { format, parseISO } from 'date-fns'
 import {
   ArrowLeft, Truck, Plus, Package, MapPin,
   Scale, Receipt, User, ChevronDown, ChevronUp,
-  Pencil, X, RefreshCw, FileText, ExternalLink,
+  Pencil, X, RefreshCw, FileText, ExternalLink, ClipboardList,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -586,57 +586,60 @@ export function OrderDetailPage() {
   return (
     <div className="space-y-5">
 
-      {/* ── Header ── */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+      {/* ── Banner ── */}
+      <div className="relative bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
+          <ClipboardList size={180} />
+        </div>
+        <div className="relative px-6 py-6">
+          <div className="flex items-start justify-between gap-4">
             <button
               onClick={() => navigate('/orders')}
-              className="mt-0.5 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-1.5 text-blue-300 hover:text-white text-sm transition-colors mt-0.5"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={15} /> Orders
             </button>
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold text-gray-900">{order.orderNumber}</h1>
-                <StatusBadge status={order.orderStatus} />
-                <PaymentStatusBadge status={order.orderPaymentStatus} />
-              </div>
-              <p className="text-gray-500 text-sm mt-1">
-                {order.clientName} · Created by {order.createdByName} on {fmt(order.orderDate)}
-              </p>
+            <div className="flex items-center gap-2 shrink-0">
+              {canCancel && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => confirm(`Cancel order ${order.orderNumber}?`) && cancelMutation.mutate()}
+                  className="text-red-300 border-red-400/40 hover:bg-red-500/20 bg-transparent gap-1.5"
+                >
+                  <X size={14} /> Cancel
+                </Button>
+              )}
+              {canUpdatePayment && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPaymentStatusOpen(true)}
+                  className="text-green-300 border-green-400/40 hover:bg-green-500/20 bg-transparent gap-1.5"
+                >
+                  <Receipt size={14} /> Payment
+                </Button>
+              )}
+              {order.orderStatus === 'PENDING' && (
+                <Button
+                  size="sm"
+                  onClick={() => setEditOpen(true)}
+                  className="bg-white/20 hover:bg-white/30 text-white gap-1.5"
+                >
+                  <Pencil size={14} /> Edit
+                </Button>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {canCancel && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => confirm(`Cancel order ${order.orderNumber}?`) && cancelMutation.mutate()}
-                className="text-red-600 border-red-200 hover:bg-red-50 gap-1.5"
-              >
-                <X size={14} /> Cancel
-              </Button>
-            )}
-            {canUpdatePayment && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPaymentStatusOpen(true)}
-                className="text-green-700 border-green-200 hover:bg-green-50 gap-1.5"
-              >
-                <Receipt size={14} /> Payment
-              </Button>
-            )}
-            {order.orderStatus === 'PENDING' && (
-              <Button
-                size="sm"
-                onClick={() => setEditOpen(true)}
-                className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5"
-              >
-                <Pencil size={14} /> Edit
-              </Button>
-            )}
+          <div className="mt-5">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-bold text-white">{order.orderNumber}</h1>
+              <StatusBadge status={order.orderStatus} />
+              <PaymentStatusBadge status={order.orderPaymentStatus} />
+            </div>
+            <p className="text-blue-200 text-sm mt-1.5">
+              {order.clientName} · Created by {order.createdByName} on {fmt(order.orderDate)}
+            </p>
           </div>
         </div>
       </div>

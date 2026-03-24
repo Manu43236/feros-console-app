@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import {
   ArrowLeft, Eye, EyeOff, KeyRound, Copy, Plus,
-  BadgeCheck, FileText, Pencil, Save, UserCheck, UserX,
+  BadgeCheck, FileText, Pencil, Save, UserCheck, UserX, Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -364,83 +364,95 @@ export function StaffDetailPage() {
   })
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Back + header */}
-      <div className={cn(
-        'flex items-center gap-4 p-4 rounded-xl transition-colors',
-        isAssigned ? 'bg-orange-50 border border-orange-100' : 'bg-transparent'
-      )}>
-        <button
-          onClick={() => navigate('/staff')}
-          className="p-2 rounded-lg hover:bg-white/60 text-gray-500"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex items-center gap-3 flex-1">
-          <div className={cn(
-            'w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg',
-            active ? 'bg-feros-navy' : 'bg-gray-400'
-          )}>
-            {name[0]}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-gray-900">{name}</h1>
-              <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
-                active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
-              )}>
-                {active ? 'Active' : 'Inactive'}
-              </span>
-              {isAssigned && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700">
-                  On Trip
-                </span>
+    <div className="max-w-3xl mx-auto space-y-5">
+
+      {/* ── Banner ── */}
+      <div className="relative bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
+          <Users size={180} />
+        </div>
+        <div className="relative px-6 py-6">
+          <div className="flex items-start justify-between gap-4">
+            <button
+              onClick={() => navigate('/staff')}
+              className="flex items-center gap-1.5 text-blue-300 hover:text-white text-sm transition-colors mt-0.5"
+            >
+              <ArrowLeft size={15} /> Staff
+            </button>
+            <button
+              onClick={() => {
+                const msg = active
+                  ? `Deactivate ${name}? They will no longer be able to log in.`
+                  : `Activate ${name}?`
+                if (confirm(msg)) toggleStatusMutation.mutate(!active)
+              }}
+              disabled={toggleStatusMutation.isPending}
+              className={cn(
+                'flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50',
+                active
+                  ? 'bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30'
+                  : 'bg-green-500/20 border-green-400/40 text-green-300 hover:bg-green-500/30'
               )}
+            >
+              {active ? <UserX size={13} /> : <UserCheck size={13} />}
+              {toggleStatusMutation.isPending ? '…' : active ? 'Deactivate' : 'Activate'}
+            </button>
+          </div>
+          <div className="mt-5">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className={cn(
+                'w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0',
+                active ? 'bg-white/20' : 'bg-white/10'
+              )}>
+                {name[0]}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-bold text-white">{name}</h1>
+                  <span className={cn(
+                    'text-xs px-2 py-0.5 rounded-full font-medium',
+                    active ? 'bg-green-500/20 text-green-300 border border-green-400/30' : 'bg-red-500/20 text-red-300 border border-red-400/30'
+                  )}>
+                    {active ? 'Active' : 'Inactive'}
+                  </span>
+                  {isAssigned && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-orange-500/20 text-orange-300 border border-orange-400/30">
+                      On Trip
+                    </span>
+                  )}
+                </div>
+                <p className="text-blue-200 text-sm mt-1">{role} · {user?.phone ?? '—'}</p>
+              </div>
             </div>
-            <p className="text-sm text-gray-500">{role} · {user?.phone ?? '—'}</p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            const msg = active
-              ? `Deactivate ${name}? They will no longer be able to log in.`
-              : `Activate ${name}?`
-            if (confirm(msg)) toggleStatusMutation.mutate(!active)
-          }}
-          disabled={toggleStatusMutation.isPending}
-          className={cn(
-            'flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50',
-            active
-              ? 'border-red-200 text-red-600 hover:bg-red-50'
-              : 'border-green-200 text-green-700 hover:bg-green-50'
-          )}
-        >
-          {active ? <UserX size={14} /> : <UserCheck size={14} />}
-          {toggleStatusMutation.isPending ? '…' : active ? 'Deactivate' : 'Activate'}
-        </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        {(['info', 'docs'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              'px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
-              tab === t
-                ? 'border-feros-navy text-feros-navy'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            )}
-          >
-            {t === 'info' ? 'Basic Info' : 'Documents'}
-          </button>
-        ))}
-      </div>
+      {/* ── Tabs ── */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="flex border-b border-gray-100">
+          {(['info', 'docs'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={cn(
+                'px-5 py-3.5 text-sm font-medium border-b-2 transition-colors',
+                tab === t
+                  ? 'border-feros-navy text-feros-navy'
+                  : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-200'
+              )}
+            >
+              {t === 'info' ? 'Basic Info' : 'Documents'}
+            </button>
+          ))}
+        </div>
 
-      {/* ── Basic Info tab ── */}
-      {tab === 'info' && (
-        <form onSubmit={handleSubmit(d => saveMutation.mutate(d))} className="space-y-6">
+        {/* ── Tab content ── */}
+        <div className="p-5">
+
+        {/* ── Basic Info tab ── */}
+        {tab === 'info' && (
+          <form onSubmit={handleSubmit(d => saveMutation.mutate(d))} className="space-y-6">
 
           {/* PIN row */}
           <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
@@ -581,12 +593,13 @@ export function StaffDetailPage() {
         </form>
       )}
 
-      {/* ── Documents tab ── */}
-      {tab === 'docs' && (
-        <div className="pb-6">
+        {/* ── Documents tab ── */}
+        {tab === 'docs' && (
           <DocumentsTab userId={uid} />
-        </div>
-      )}
+        )}
+
+        </div>{/* end tab content */}
+      </div>{/* end white card */}
     </div>
   )
 }
