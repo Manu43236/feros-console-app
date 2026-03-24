@@ -344,6 +344,36 @@ export interface PayrollSummaryRow {
   dailyRate: number; basicPay: number; overtimePay: number; tripBonus: number
   grossPay: number; totalDeductions: number; netPay: number; payrollStatus: string
 }
+export interface CollectionReportRow {
+  paymentId: number; paymentDate: string; amount: number
+  paymentMode: string; referenceNumber?: string; remarks?: string
+  invoiceId: number; invoiceNumber: string; clientId: number; clientName: string
+}
+export interface ClientStatementRow {
+  type: 'INVOICE' | 'PAYMENT'; date: string; referenceNumber?: string
+  description: string; debit: number; credit: number; balance: number
+}
+export interface ClientStatementResponse {
+  clientId: number; clientName: string; clientPhone?: string; gstin?: string
+  totalInvoiced: number; totalPaid: number; closingBalance: number
+  rows: ClientStatementRow[]
+}
+export interface VehicleTripRow {
+  vehicleId: number; registrationNumber: string; vehicleType?: string; brand?: string
+  totalTrips: number; totalAllocatedWeight: number; totalLoadedWeight: number; totalDeliveredWeight: number
+}
+export interface OrderStatusRow {
+  orderId: number; orderNumber: string; orderDate: string; expectedDeliveryDate?: string
+  clientId: number; clientName: string
+  fromCity: string; fromState: string; toCity: string; toState: string
+  materialType: string; totalWeight: number; totalFreightAmount?: number
+  orderStatus: string; orderPaymentStatus: string
+}
+export interface AttendanceReportRow {
+  userId: number; userName: string; userPhone: string; roleName: string
+  totalDays: number; presentDays: number; absentDays: number; halfDays: number; leaveDays: number
+  attendancePercentage: number
+}
 
 // ─── Tenant ───────────────────────────────────────────────────────────────────
 export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED'
