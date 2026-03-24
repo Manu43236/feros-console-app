@@ -6,8 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import {
   User, Building2, Pencil, Save, X,
-  Phone, Mail, MapPin, CreditCard, AlertTriangle, BadgeCheck,
-  Shield, KeyRound,
+  Phone, AlertTriangle, BadgeCheck,
+  Shield,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -126,7 +126,7 @@ function AccountTab({ userId, role }: { userId: number; role: string | null }) {
   })
   const { data: citiesRes } = useQuery({
     queryKey: ['cities'],
-    queryFn: globalMastersApi.getCities,
+    queryFn: () => globalMastersApi.getCities(),
     enabled: editing,
   })
 
