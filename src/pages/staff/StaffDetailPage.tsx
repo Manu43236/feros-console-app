@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import {
   ArrowLeft, Eye, EyeOff, KeyRound, Copy, Plus,
-  BadgeCheck, FileText, Pencil, Save,
+  BadgeCheck, FileText, Pencil, Save, UserCheck, UserX,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -345,17 +345,34 @@ export function StaffDetailPage() {
     )
   }
 
-  const name   = user?.name ?? profile?.userName ?? '…'
-  const role   = user?.role ?? profile?.roleName ?? ''
-  const active = user?.isActive ?? profile?.isActive ?? true
+  const name       = user?.name ?? profile?.userName ?? '…'
+  const role       = user?.role ?? profile?.roleName ?? ''
+  const active     = user?.isActive ?? profile?.isActive ?? true
+  const isAssigned = user?.isAssigned ?? false
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: (newActive: boolean) => staffApi.toggleStatus(uid, newActive),
+    onSuccess: () => {
+      toast.success(active ? 'Staff deactivated' : 'Staff activated')
+      qc.invalidateQueries({ queryKey: ['users'] })
+      qc.invalidateQueries({ queryKey: ['staff'] })
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to update status')
+    },
+  })
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Back + header */}
-      <div className="flex items-center gap-4">
+      <div className={cn(
+        'flex items-center gap-4 p-4 rounded-xl transition-colors',
+        isAssigned ? 'bg-orange-50 border border-orange-100' : 'bg-transparent'
+      )}>
         <button
           onClick={() => navigate('/staff')}
-          className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+          className="p-2 rounded-lg hover:bg-white/60 text-gray-500"
         >
           <ArrowLeft size={18} />
         </button>
@@ -374,10 +391,33 @@ export function StaffDetailPage() {
               )}>
                 {active ? 'Active' : 'Inactive'}
               </span>
+              {isAssigned && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700">
+                  On Trip
+                </span>
+              )}
             </div>
             <p className="text-sm text-gray-500">{role} · {user?.phone ?? '—'}</p>
           </div>
         </div>
+        <button
+          onClick={() => {
+            const msg = active
+              ? `Deactivate ${name}? They will no longer be able to log in.`
+              : `Activate ${name}?`
+            if (confirm(msg)) toggleStatusMutation.mutate(!active)
+          }}
+          disabled={toggleStatusMutation.isPending}
+          className={cn(
+            'flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50',
+            active
+              ? 'border-red-200 text-red-600 hover:bg-red-50'
+              : 'border-green-200 text-green-700 hover:bg-green-50'
+          )}
+        >
+          {active ? <UserX size={14} /> : <UserCheck size={14} />}
+          {toggleStatusMutation.isPending ? '…' : active ? 'Deactivate' : 'Activate'}
+        </button>
       </div>
 
       {/* Tabs */}

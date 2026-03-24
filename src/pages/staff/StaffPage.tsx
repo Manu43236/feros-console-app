@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import type { StaffProfile } from '@/types'
@@ -262,7 +261,6 @@ export function StaffPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">PIN</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Trips</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Current</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
@@ -271,7 +269,10 @@ export function StaffPage() {
                   <tr
                     key={s.userId}
                     onClick={() => navigate(`/staff/${s.userId}`)}
-                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer"
+                    className={cn(
+                      'border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer',
+                      !s.isActive && 'opacity-50'
+                    )}
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
@@ -300,7 +301,9 @@ export function StaffPage() {
                       {s.completedTripsCount}
                     </td>
                     <td className="py-3 px-4">
-                      {s.isAssigned ? (
+                      {!s.isActive ? (
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-500 w-fit">Inactive</span>
+                      ) : s.isAssigned ? (
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-50 text-orange-700 w-fit">On Trip</span>
                           {s.activeOrderNumber && (
@@ -310,11 +313,6 @@ export function StaffPage() {
                       ) : (
                         <span className="text-xs text-gray-400">Available</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge className={cn('text-xs', s.isActive ? 'bg-green-50 text-green-700 hover:bg-green-50' : 'bg-red-50 text-red-700 hover:bg-red-50')}>
-                        {s.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
                     </td>
                     <td className="py-3 px-4">
                       <ChevronRight size={16} className="text-gray-300" />
