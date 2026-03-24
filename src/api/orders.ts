@@ -19,5 +19,6 @@ export const ordersApi = {
   assignVehicle:       (id: number, data: AssignVehicleRequest) => apiClient.post<ApiResponse<VehicleAllocation>>(`/orders/${id}/assign-vehicle`, data).then(r => r.data),
   unassignVehicle:     (id: number, allocationId: number)       => apiClient.delete<ApiResponse<null>>(`/orders/${id}/allocations/${allocationId}`).then(r => r.data),
   assignStaff:         (id: number, data: AssignStaffRequest)   => apiClient.post<ApiResponse<StaffAllocation>>(`/orders/${id}/assign-staff`, data).then(r => r.data),
+  unassignStaff:       (id: number, staffAllocationId: number)  => apiClient.delete<ApiResponse<null>>(`/orders/${id}/staff-allocations/${staffAllocationId}`).then(r => r.data),
   updatePaymentStatus: (id: number, status: OrderPaymentStatus) => apiClient.patch<ApiResponse<Order>>(`/orders/${id}/payment-status`, null, { params: { status } }).then(r => r.data),
 }

@@ -160,6 +160,7 @@ interface MergedStaff {
   userId: number; userName: string; userPhone: string
   roleName: string; isActive: boolean; pin: string | null
   designationName?: string; completedTripsCount: number
+  isAssigned: boolean; activeOrderNumber: string | null
   profile?: StaffProfile
 }
 
@@ -187,6 +188,8 @@ export function StaffPage() {
     pin:                u.generatedPin,
     designationName:    u.designationName ?? profileMap[u.id]?.designationName,
     completedTripsCount: u.completedTripsCount ?? 0,
+    isAssigned:          u.isAssigned ?? false,
+    activeOrderNumber:   u.activeOrderNumber ?? null,
     profile:            profileMap[u.id],
   }))
 
@@ -258,6 +261,7 @@ export function StaffPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">PIN</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Trips</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Current</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                   <th className="py-3 px-4" />
                 </tr>
@@ -294,6 +298,18 @@ export function StaffPage() {
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600 font-medium">
                       {s.completedTripsCount}
+                    </td>
+                    <td className="py-3 px-4">
+                      {s.isAssigned ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-50 text-orange-700 w-fit">On Trip</span>
+                          {s.activeOrderNumber && (
+                            <span className="text-xs text-gray-400 font-mono">{s.activeOrderNumber}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">Available</span>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       <Badge className={cn('text-xs', s.isActive ? 'bg-green-50 text-green-700 hover:bg-green-50' : 'bg-red-50 text-red-700 hover:bg-red-50')}>

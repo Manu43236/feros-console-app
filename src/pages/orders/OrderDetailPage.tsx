@@ -174,7 +174,7 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
   const eligible = (staffRes?.data ?? []).filter(u => {
     if (!u.isActive) return false
     return slotRole === 'DRIVER' ? u.role === 'DRIVER' : u.role !== 'DRIVER'
-  })
+  }).sort((a, b) => (a.isAssigned === b.isAssigned ? 0 : a.isAssigned ? 1 : -1))
 
   const regNo = allocation.vehicleRegistrationNumber ?? allocation.registrationNumber
 
@@ -193,7 +193,9 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
             <select {...register('userId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
               <option value="">Select {slotRole === 'DRIVER' ? 'driver' : 'cleaner'}</option>
               {eligible.map(u => (
-                <option key={u.id} value={u.id}>{u.name} · {u.phone}</option>
+                <option key={u.id} value={u.id}>
+                  {u.name} · {u.phone}{u.isAssigned ? ` (On Trip: ${u.activeOrderNumber ?? '—'})` : ''}
+                </option>
               ))}
             </select>
             {errors.userId && <p className="text-red-500 text-xs">{errors.userId.message}</p>}
@@ -338,6 +340,19 @@ function VehicleAllocationCard({
     },
   })
 
+  const unassignStaffMutation = useMutation({
+    mutationFn: (staffAllocationId: number) => ordersApi.unassignStaff(orderId, staffAllocationId),
+    onSuccess: () => {
+      toast.success('Staff unassigned')
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to unassign staff')
+    },
+  })
+
   const canUnassign = canAssign && allocation.allocationStatus === 'ALLOCATED' && !existingLrId
 
   const regNo     = allocation.vehicleRegistrationNumber ?? allocation.registrationNumber
@@ -418,6 +433,7 @@ function VehicleAllocationCard({
             person={activeDriver}
             canAssign={canAssign}
             onAssign={() => setSlotDialog('DRIVER')}
+            onUnassign={canAssign ? (id) => unassignStaffMutation.mutate(id) : undefined}
           />
           {/* Cleaner slot */}
           <StaffSlot
@@ -425,6 +441,7 @@ function VehicleAllocationCard({
             person={activeCleaner}
             canAssign={canAssign}
             onAssign={() => setSlotDialog('CLEANER')}
+            onUnassign={canAssign ? (id) => unassignStaffMutation.mutate(id) : undefined}
           />
         </div>
       )}
@@ -450,12 +467,15 @@ function VehicleAllocationCard({
 }
 
 // ── staff slot row ────────────────────────────────────────────────────────────
-function StaffSlot({ label, person, canAssign, onAssign }: {
+function StaffSlot({ label, person, canAssign, onAssign, onUnassign }: {
   label: string
-  person: { userName: string; expectedStartDate?: string; expectedEndDate?: string; allocationStatus: string } | undefined
+  person: { id: number; userName: string; expectedStartDate?: string; expectedEndDate?: string; allocationStatus: string } | undefined
   canAssign: boolean
   onAssign: () => void
+  onUnassign?: (id: number) => void
 }) {
+  const canUnassignPerson = !!person && person.allocationStatus === 'ALLOCATED' && !!onUnassign
+
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <div className={cn(
@@ -468,33 +488,53 @@ function StaffSlot({ label, person, canAssign, onAssign }: {
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
         {person ? (
-          <p className="text-sm font-medium text-gray-800">
-            {person.userName}
-            {person.expectedStartDate && (
-              <span className="text-xs font-normal text-gray-400 ml-1.5">
-                {fmt(person.expectedStartDate)}{person.expectedEndDate ? ` → ${fmt(person.expectedEndDate)}` : ''}
-              </span>
-            )}
-          </p>
+          <div>
+            <p className="text-sm font-medium text-gray-800">
+              {person.userName}
+              {person.expectedStartDate && (
+                <span className="text-xs font-normal text-gray-400 ml-1.5">
+                  {fmt(person.expectedStartDate)}{person.expectedEndDate ? ` → ${fmt(person.expectedEndDate)}` : ''}
+                </span>
+              )}
+            </p>
+            <span className={cn(
+              'text-xs font-medium px-1.5 py-0.5 rounded-full',
+              person.allocationStatus === 'IN_TRANSIT' ? 'bg-orange-50 text-orange-600' :
+              person.allocationStatus === 'COMPLETED'  ? 'bg-green-50 text-green-600' :
+              'bg-blue-50 text-blue-600'
+            )}>
+              {person.allocationStatus}
+            </span>
+          </div>
         ) : (
           <p className="text-sm text-gray-400 italic">Not assigned</p>
         )}
       </div>
 
-      {canAssign && (
-        <button
-          onClick={onAssign}
-          className={cn(
-            'flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors shrink-0',
-            person
-              ? 'text-orange-600 border-orange-200 hover:bg-orange-50'
-              : 'text-feros-navy border-blue-200 hover:bg-blue-50'
-          )}
-        >
-          {person ? <RefreshCw size={11} /> : <Plus size={11} />}
-          {person ? 'Change' : 'Assign'}
-        </button>
-      )}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {canUnassignPerson && (
+          <button
+            onClick={() => confirm(`Unassign ${person!.userName} from this vehicle?`) && onUnassign!(person!.id)}
+            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-red-600 border-red-200 hover:bg-red-50 transition-colors"
+          >
+            <X size={11} /> Unassign
+          </button>
+        )}
+        {canAssign && (
+          <button
+            onClick={onAssign}
+            className={cn(
+              'flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors',
+              person
+                ? 'text-orange-600 border-orange-200 hover:bg-orange-50'
+                : 'text-feros-navy border-blue-200 hover:bg-blue-50'
+            )}
+          >
+            {person ? <RefreshCw size={11} /> : <Plus size={11} />}
+            {person ? 'Change' : 'Assign'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

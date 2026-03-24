@@ -303,10 +303,13 @@ export function VehicleDetailPage() {
               {/* Active toggle */}
               <button
                 onClick={() => toggleActiveMutation.mutate()}
-                disabled={toggleActiveMutation.isPending}
+                disabled={toggleActiveMutation.isPending || (!!v.isActive && !!v.isAssigned)}
+                title={v.isActive && v.isAssigned ? 'Unassign from order before deactivating' : undefined}
                 className={cn(
                   'flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors',
-                  v.isActive
+                  v.isActive && v.isAssigned
+                    ? 'bg-green-500/10 border-green-400/20 text-green-400/50 cursor-not-allowed'
+                    : v.isActive
                     ? 'bg-green-500/20 border-green-400/40 text-green-300 hover:bg-green-500/30'
                     : 'bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30'
                 )}
