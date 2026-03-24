@@ -251,6 +251,7 @@ export function LrsPage() {
             <p className="text-gray-500 text-sm">No LRs found</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -285,6 +286,7 @@ export function LrsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

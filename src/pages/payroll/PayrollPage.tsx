@@ -368,7 +368,7 @@ export function PayrollPage() {
   const totalAdvOut = advances.filter(a => !a.isFullyRepaid).reduce((s, a) => s + a.balanceAmount, 0)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -539,7 +539,7 @@ export function TenantsPage() {
   const subExpired = tenants.filter(t => t.subscriptionStatus === 'EXPIRED' || t.subscriptionStatus === 'SUSPENDED').length
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Tenant Management</h1>
