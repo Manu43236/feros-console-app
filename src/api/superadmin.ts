@@ -11,6 +11,8 @@ export const tenantsApi = {
   delete:           (id: number) => apiClient.delete<ApiResponse<void>>(`/tenants/${id}`).then(r => r.data),
   impersonate:      (id: number) => apiClient.post<ApiResponse<import('@/types').LoginResponse>>(`/tenants/${id}/impersonate`).then(r => r.data),
   createUser:       (tenantId: number, data: unknown) => apiClient.post<ApiResponse<unknown>>(`/tenants/${tenantId}/users`, data).then(r => r.data),
+  getMy:            () => apiClient.get<ApiResponse<Tenant>>('/tenants/my').then(r => r.data),
+  updateMy:         (data: unknown) => apiClient.put<ApiResponse<Tenant>>('/tenants/my', data).then(r => r.data),
   bulkUploadUsers:  (tenantId: number, file: File) => {
     const form = new FormData()
     form.append('file', file)

@@ -32,6 +32,9 @@ import { SAUsersPage }       from '@/pages/superadmin/SAUsersPage'
 import { GlobalMastersPage } from '@/pages/superadmin/GlobalMastersPage'
 import { SASettingsPage }    from '@/pages/superadmin/SASettingsPage'
 
+// Profile
+import { ProfilePage } from '@/pages/profile/ProfilePage'
+
 // Staff portal pages
 import { MyTripsPage }      from '@/pages/staff-portal/MyTripsPage'
 import { MyAttendancePage } from '@/pages/staff-portal/MyAttendancePage'
@@ -77,6 +80,9 @@ export default function App() {
           <Route path="sa/users"          element={<SAUsersPage />} />
           <Route path="sa/global-masters" element={<GlobalMastersPage />} />
           <Route path="sa/settings"       element={<SASettingsPage />} />
+
+          {/* Profile */}
+          <Route path="profile" element={<ProfilePage />} />
 
           {/* STAFF */}
           <Route path="my/trips"      element={<MyTripsPage />} />

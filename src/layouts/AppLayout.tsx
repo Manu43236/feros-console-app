@@ -7,7 +7,7 @@ import { notificationsApi, subscriptionsApi } from '@/api/superadmin'
 import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
   Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
-  LogOut, Menu, X, ChevronDown, Building2, Globe,
+  LogOut, Menu, X, Building2, Globe,
   Route, CreditCard, BadgeCheck, UserCog, Bell, AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -123,7 +123,6 @@ function getRoleLabel(role: string | null) {
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const phone              = useAuthStore(s => s.phone)
   const name               = useAuthStore(s => s.name)
   const role               = useAuthStore(s => s.role)
@@ -239,37 +238,19 @@ export function AppLayout() {
             <NotificationBell />
           </div>
 
-          {/* User menu */}
-          <div className="relative">
-            <button
-              onClick={() => setUserMenuOpen(v => !v)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-full bg-feros-navy flex items-center justify-center text-white text-sm font-semibold">
-                {name?.[0] ?? phone?.[0] ?? 'U'}
-              </div>
-              <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-gray-800">{name ?? phone}</p>
-                <p className="text-xs text-gray-500">{companyName ?? getRoleLabel(role)}</p>
-              </div>
-              <ChevronDown size={16} className="text-gray-400" />
-            </button>
-
-            {userMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
-                <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    <LogOut size={15} />
-                    Sign Out
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          {/* User menu — navigate to profile */}
+          <button
+            onClick={() => navigate('/profile')}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-full bg-feros-navy flex items-center justify-center text-white text-sm font-semibold">
+              {name?.[0] ?? phone?.[0] ?? 'U'}
+            </div>
+            <div className="hidden sm:block text-left">
+              <p className="text-sm font-medium text-gray-800">{name ?? phone}</p>
+              <p className="text-xs text-gray-500">{companyName ?? getRoleLabel(role)}</p>
+            </div>
+          </button>
         </header>
 
         {/* Impersonation banner */}
