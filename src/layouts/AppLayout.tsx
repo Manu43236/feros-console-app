@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
   Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
   LogOut, Menu, X, Building2, Globe,
-  Route, CreditCard, BadgeCheck, UserCog, Bell, AlertTriangle,
+  BadgeCheck, UserCog, Bell, AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -35,10 +35,24 @@ const SUPER_ADMIN_NAV = [
   { to: '/sa/settings',       label: 'Settings',       icon: Settings },
 ]
 
-const STAFF_NAV = [
-  { to: '/my/trips',      label: 'My Trips',      icon: Route },
-  { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
-  { to: '/my/payslip',    label: 'My Payslip',    icon: CreditCard },
+const OFFICE_STAFF_NAV = [
+  { to: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
+  { to: '/clients',    label: 'Clients',     icon: Users },
+  { to: '/vehicles',   label: 'Vehicles',    icon: Truck },
+  { to: '/orders',     label: 'Orders',      icon: ClipboardList },
+  { to: '/lrs',        label: 'LR Register', icon: FileText },
+  { to: '/invoices',   label: 'Invoices',    icon: Receipt },
+  { to: '/attendance', label: 'Attendance',  icon: Calendar },
+  { to: '/reports',    label: 'Reports',     icon: BarChart3 },
+]
+
+const SUPERVISOR_NAV = [
+  { to: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
+  { to: '/vehicles',   label: 'Vehicles',    icon: Truck },
+  { to: '/orders',     label: 'Orders',      icon: ClipboardList },
+  { to: '/lrs',        label: 'LR Register', icon: FileText },
+  { to: '/attendance', label: 'Attendance',  icon: Calendar },
+  { to: '/reports',    label: 'Reports',     icon: BarChart3 },
 ]
 
 // ─── Notification Bell ────────────────────────────────────────────────────────
@@ -145,8 +159,9 @@ export function AppLayout() {
   const subStatus = mySubRes?.data?.status
 
   const navItems =
-    role === 'SUPER_ADMIN' ? SUPER_ADMIN_NAV :
-    role === 'STAFF'       ? STAFF_NAV :
+    role === 'SUPER_ADMIN'  ? SUPER_ADMIN_NAV :
+    role === 'OFFICE_STAFF' ? OFFICE_STAFF_NAV :
+    role === 'SUPERVISOR'   ? SUPERVISOR_NAV :
     ADMIN_NAV
 
   function handleLogout() {
