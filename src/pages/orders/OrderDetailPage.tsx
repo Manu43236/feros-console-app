@@ -41,8 +41,8 @@ const ALLOC_STATUS_COLORS: Record<string, string> = {
 const assignVehicleSchema = z.object({
   vehicleId:            z.coerce.number().min(1, 'Select a vehicle'),
   allocatedWeight:      z.coerce.number().positive('Enter weight'),
-  expectedLoadDate:     z.string().optional(),
-  expectedDeliveryDate: z.string().optional(),
+  expectedLoadDate:     z.string().min(1, 'Load date is required'),
+  expectedDeliveryDate: z.string().min(1, 'Delivery date is required'),
   remarks:              z.string().optional(),
 })
 type AssignVehicleForm = z.infer<typeof assignVehicleSchema>
@@ -106,12 +106,14 @@ function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Expected Load Date</Label>
+              <Label>Expected Load Date *</Label>
               <Input type="date" {...register('expectedLoadDate')} />
+              {errors.expectedLoadDate && <p className="text-red-500 text-xs">{errors.expectedLoadDate.message}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label>Expected Delivery Date</Label>
+              <Label>Expected Delivery Date *</Label>
               <Input type="date" {...register('expectedDeliveryDate')} />
+              {errors.expectedDeliveryDate && <p className="text-red-500 text-xs">{errors.expectedDeliveryDate.message}</p>}
             </div>
           </div>
 
