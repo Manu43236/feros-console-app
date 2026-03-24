@@ -691,7 +691,6 @@ export function VehiclesPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Current Status</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Compliance</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Active</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Trip</th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
@@ -734,9 +733,14 @@ export function VehiclesPage() {
                       </td>
                       <td className="py-3 px-4">
                         {v.currentStatusName ? (
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-blue-50 text-blue-700'}`}>
-                            {v.currentStatusName}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium w-fit ${v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-blue-50 text-blue-700'}`}>
+                              {v.currentStatusName}
+                            </span>
+                            {v.isAssigned && v.assignedOrderNumber && (
+                              <span className="text-xs text-gray-400 font-mono pl-1">{v.assignedOrderNumber}</span>
+                            )}
+                          </div>
                         ) : <span className="text-gray-300 text-sm">—</span>}
                       </td>
                       <td className="py-3 px-4">
@@ -752,15 +756,6 @@ export function VehiclesPage() {
                         )}>
                           {v.isActive ? 'Active' : 'Inactive'}
                         </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        {v.isAssigned ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap">
-                            <Truck size={10} /> {v.assignedOrderNumber ?? 'On Trip'}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">Available</span>
-                        )}
                       </td>
                       <td className="py-3 px-4">
                         <ChevronRight size={16} className="text-gray-300" />
