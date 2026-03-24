@@ -732,15 +732,19 @@ export function VehiclesPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        {v.currentStatusName ? (
+                        {v.isAssigned ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium w-fit ${v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-blue-50 text-blue-700'}`}>
-                              {v.currentStatusName}
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium w-fit ${vehicleStatusBadge['ASSIGNED']}`}>
+                              Assigned
                             </span>
-                            {v.isAssigned && v.assignedOrderNumber && (
+                            {v.assignedOrderNumber && (
                               <span className="text-xs text-gray-400 font-mono pl-1">{v.assignedOrderNumber}</span>
                             )}
                           </div>
+                        ) : v.currentStatusName ? (
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-blue-50 text-blue-700'}`}>
+                            {v.currentStatusName}
+                          </span>
                         ) : <span className="text-gray-300 text-sm">—</span>}
                       </td>
                       <td className="py-3 px-4">
