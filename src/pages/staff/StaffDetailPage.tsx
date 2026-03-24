@@ -364,7 +364,7 @@ export function StaffDetailPage() {
   })
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="space-y-5">
 
       {/* ── Banner ── */}
       <div className="relative bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden">

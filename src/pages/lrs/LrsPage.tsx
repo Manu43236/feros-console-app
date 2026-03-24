@@ -9,6 +9,10 @@ import { Plus, Search, Truck, FileText, ChevronRight } from 'lucide-react'
 import { lrsApi } from '@/api/lrs'
 import { ordersApi } from '@/api/orders'
 import type { LrStatus } from '@/types'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 
 // ─── Status helpers ─────────────────────────────────────────────────────────
 const STATUS_CFG: Record<LrStatus, { label: string; bg: string; text: string }> = {
@@ -36,17 +40,16 @@ const createSchema = z.object({
 })
 type CreateForm = z.infer<typeof createSchema>
 
-function CreateLrDialog({ onClose }: { onClose: () => void }) {
+function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
   const qc = useQueryClient()
 
-  // The list endpoint already includes vehicleAllocations — no second fetch needed
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ['orders'],
     queryFn: () => ordersApi.getAll().then(r => r.data),
   })
 
-  const { register, handleSubmit, formState: { errors } } = useForm<CreateForm>({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,
     defaultValues: { lrDate: new Date().toISOString().split('T')[0] },
   })
@@ -60,7 +63,7 @@ function CreateLrDialog({ onClose }: { onClose: () => void }) {
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lrs'] })
-      onClose()
+      reset(); setSelectedOrderId(null); onClose()
     },
   })
 
@@ -69,19 +72,14 @@ function CreateLrDialog({ onClose }: { onClose: () => void }) {
   const allocations = selectedOrder?.vehicleAllocations ?? []
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-        <div className="px-6 py-4 border-b flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Create LR</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
-        </div>
-
-        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="p-6 space-y-4">
-          {/* Order selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Order *</label>
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Create LR</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Order *</Label>
             <select
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
               onChange={e => setSelectedOrderId(e.target.value ? parseInt(e.target.value) : null)}
               defaultValue=""
               disabled={ordersLoading}
@@ -95,10 +93,9 @@ function CreateLrDialog({ onClose }: { onClose: () => void }) {
             </select>
           </div>
 
-          {/* Vehicle Allocation */}
           {selectedOrderId && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Allocation *</label>
+            <div className="space-y-1.5">
+              <Label>Vehicle Allocation *</Label>
               {allocations.length === 0 ? (
                 <p className="text-sm text-amber-600 italic">
                   No vehicle allocations found. Assign a vehicle to this order first.
@@ -107,7 +104,7 @@ function CreateLrDialog({ onClose }: { onClose: () => void }) {
                 <>
                   <select
                     {...register('vehicleAllocationId')}
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     defaultValue=""
                   >
                     <option value="">Select vehicle…</option>
@@ -118,64 +115,44 @@ function CreateLrDialog({ onClose }: { onClose: () => void }) {
                     ))}
                   </select>
                   {errors.vehicleAllocationId && (
-                    <p className="mt-1 text-xs text-red-600">{errors.vehicleAllocationId.message}</p>
+                    <p className="text-red-500 text-xs">{errors.vehicleAllocationId.message}</p>
                   )}
                 </>
               )}
             </div>
           )}
 
-          {/* LR Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">LR Date *</label>
-            <input
-              type="date"
-              {...register('lrDate')}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {errors.lrDate && <p className="mt-1 text-xs text-red-600">{errors.lrDate.message}</p>}
+          <div className="space-y-1.5">
+            <Label>LR Date *</Label>
+            <Input type="date" {...register('lrDate')} />
+            {errors.lrDate && <p className="text-red-500 text-xs">{errors.lrDate.message}</p>}
           </div>
 
-          {/* Loaded Weight (optional) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Loaded Weight (tons)</label>
-            <input
-              type="number" step="0.01" min="0"
-              {...register('loadedWeight')}
-              placeholder="Optional — record now or after loading"
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <div className="space-y-1.5">
+            <Label>Loaded Weight (tons)</Label>
+            <Input type="number" step="0.01" min="0" {...register('loadedWeight')} placeholder="Optional — record now or after loading" />
           </div>
 
-          {/* Remarks */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-            <textarea
-              {...register('remarks')}
-              rows={2}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
+          <div className="space-y-1.5">
+            <Label>Remarks</Label>
+            <textarea {...register('remarks')} rows={2} className="w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background" />
           </div>
 
-          {mutation.isError && (
-            <p className="text-sm text-red-600">Failed to create LR. Please try again.</p>
-          )}
+          {mutation.isError && <p className="text-sm text-red-600">Failed to create LR. Please try again.</p>}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">
-              Cancel
-            </button>
-            <button
+          <div className="flex justify-end gap-3 pt-2 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button
               type="submit"
               disabled={mutation.isPending || !selectedOrderId}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="bg-feros-navy hover:bg-feros-navy/90 text-white"
             >
               {mutation.isPending ? 'Creating…' : 'Create LR'}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -215,7 +192,7 @@ export function LrsPage() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
+          className="flex items-center gap-2 bg-feros-navy text-white px-4 py-2 rounded-lg hover:bg-feros-navy/90 text-sm font-medium"
         >
           <Plus className="h-4 w-4" />
           Create LR
@@ -311,7 +288,7 @@ export function LrsPage() {
         )}
       </div>
 
-      {showCreate && <CreateLrDialog onClose={() => setShowCreate(false)} />}
+      <CreateLrDialog open={showCreate} onClose={() => setShowCreate(false)} />
     </div>
   )
 }
