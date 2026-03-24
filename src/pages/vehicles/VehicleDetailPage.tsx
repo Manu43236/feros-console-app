@@ -11,7 +11,7 @@ import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
-  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets,
+  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -266,19 +266,24 @@ export function VehicleDetailPage() {
 
             <div className="flex items-center gap-2">
               {/* Status select */}
-              <select
-                value={v.currentStatusId ?? ''}
-                onChange={e => { const id = Number(e.target.value); if (id) updateStatusMutation.mutate(id) }}
-                className={cn(
-                  'h-8 px-2 rounded-lg text-xs border appearance-none cursor-pointer transition-colors',
-                  v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-                )}
-              >
-                <option value="" className="text-gray-800">No Status</option>
-                {statusRes?.data?.map(s => (
-                  <option key={s.id} value={s.id} className="text-gray-800">{s.name}</option>
-                ))}
-              </select>
+              <div className="relative flex items-center">
+                <select
+                  value={v.currentStatusId ?? ''}
+                  onChange={e => { const id = Number(e.target.value); if (id) updateStatusMutation.mutate(id) }}
+                  disabled={updateStatusMutation.isPending}
+                  className={cn(
+                    'h-8 pl-2 pr-6 rounded-lg text-xs border appearance-none cursor-pointer transition-colors',
+                    v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-white/10 border-white/20 text-white hover:bg-white/20',
+                    updateStatusMutation.isPending && 'opacity-60 cursor-wait'
+                  )}
+                >
+                  <option value="" className="text-gray-800">No Status</option>
+                  {statusRes?.data?.map(s => (
+                    <option key={s.id} value={s.id} className="text-gray-800">{s.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={12} className="absolute right-1.5 pointer-events-none text-current opacity-70" />
+              </div>
 
               {/* Active toggle */}
               <button
