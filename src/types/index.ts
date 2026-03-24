@@ -32,9 +32,18 @@ export interface VehicleTypeItem extends MasterItem { capacityInTons: number; ty
 export interface DocumentTypeItem extends MasterItem { applicableFor: 'VEHICLE' | 'DRIVER' | 'BOTH' }
 export interface TaxItem extends MasterItem { rate: number; taxType: string }
 
+// Vehicle status type enum
+export type VehicleStatusType = 'AVAILABLE' | 'ASSIGNED' | 'ON_TRIP' | 'IN_REPAIR' | 'BREAKDOWN' | 'OTHER'
+
+// Global vehicle status (no tenantId)
+export interface VehicleStatusItem extends MasterItem {
+  statusType: VehicleStatusType
+  createdAt?: string; updatedAt?: string
+}
+
 // Tenant masters
 export interface TenantMasterItem extends MasterItem {
-  tenantId: number
+  tenantId?: number
   description?: string
   createdAt?: string; updatedAt?: string
 }
@@ -83,7 +92,7 @@ export interface Vehicle {
   vehicleTypeId?: number; vehicleTypeName?: string
   fuelTypeId?: number; fuelTypeName?: string
   ownershipTypeId?: number; ownershipTypeName?: string
-  currentStatusId?: number; currentStatusName?: string
+  currentStatusId?: number; currentStatusName?: string; currentStatusType?: VehicleStatusType
   capacityInTons?: number; manufactureYear?: number; color?: string
   chassisNumber?: string; engineNumber?: string
   rcNumber?: string; rcExpiryDate?: string; rcExpired?: boolean

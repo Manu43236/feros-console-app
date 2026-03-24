@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import type { VehicleDocument } from '@/types'
+import type { VehicleDocument, VehicleStatusType } from '@/types'
 import { VehicleForm } from './VehiclesPage'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -169,6 +169,15 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
   )
 }
 
+const vehicleStatusBadge: Record<VehicleStatusType, string> = {
+  AVAILABLE:  'bg-green-500/20 border-green-400/40 text-green-300',
+  ASSIGNED:   'bg-blue-500/20 border-blue-400/40 text-blue-300',
+  ON_TRIP:    'bg-orange-500/20 border-orange-400/40 text-orange-300',
+  IN_REPAIR:  'bg-yellow-500/20 border-yellow-400/40 text-yellow-300',
+  BREAKDOWN:  'bg-red-500/20 border-red-400/40 text-red-300',
+  OTHER:      'bg-white/10 border-white/20 text-white',
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
@@ -260,7 +269,10 @@ export function VehicleDetailPage() {
               <select
                 value={v.currentStatusId ?? ''}
                 onChange={e => { const id = Number(e.target.value); if (id) updateStatusMutation.mutate(id) }}
-                className="h-8 px-2 rounded-lg text-xs bg-white/10 border border-white/20 text-white appearance-none cursor-pointer hover:bg-white/20 transition-colors"
+                className={cn(
+                  'h-8 px-2 rounded-lg text-xs border appearance-none cursor-pointer transition-colors',
+                  v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                )}
               >
                 <option value="" className="text-gray-800">No Status</option>
                 {statusRes?.data?.map(s => (

@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import type { Vehicle, BulkUploadResult } from '@/types'
+import type { Vehicle, BulkUploadResult, VehicleStatusType } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type ExpiryStatus = 'expired' | 'critical' | 'warning' | 'ok' | 'none'
@@ -534,6 +534,15 @@ export function VehicleForm({
   )
 }
 
+const vehicleStatusBadge: Record<VehicleStatusType, string> = {
+  AVAILABLE:  'bg-green-100 text-green-700',
+  ASSIGNED:   'bg-blue-100 text-blue-700',
+  ON_TRIP:    'bg-orange-100 text-orange-700',
+  IN_REPAIR:  'bg-yellow-100 text-yellow-700',
+  BREAKDOWN:  'bg-red-100 text-red-700',
+  OTHER:      'bg-gray-100 text-gray-600',
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 export function VehiclesPage() {
   const navigate = useNavigate()
@@ -725,7 +734,7 @@ export function VehiclesPage() {
                       </td>
                       <td className="py-3 px-4">
                         {v.currentStatusName ? (
-                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-blue-50 text-blue-700'}`}>
                             {v.currentStatusName}
                           </span>
                         ) : <span className="text-gray-300 text-sm">—</span>}

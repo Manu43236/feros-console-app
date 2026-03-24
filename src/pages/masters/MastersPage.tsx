@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
-import type { TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem } from '@/types'
+import type { TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
 
 // ── Section config ────────────────────────────────────────────────────────────
 const SECTIONS = [
@@ -30,6 +30,119 @@ type SectionKey = typeof SECTIONS[number]['key']
 
 const ROLE_TYPES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'ADMIN']
 const PAY_CYCLES = ['DAILY', 'WEEKLY', 'MONTHLY']
+
+const VEHICLE_STATUS_TYPES: { value: VehicleStatusType; label: string }[] = [
+  { value: 'AVAILABLE',  label: 'Available'  },
+  { value: 'ASSIGNED',   label: 'Assigned'   },
+  { value: 'ON_TRIP',    label: 'On Trip'    },
+  { value: 'IN_REPAIR',  label: 'In Repair'  },
+  { value: 'BREAKDOWN',  label: 'Breakdown'  },
+  { value: 'OTHER',      label: 'Other'      },
+]
+
+const vehicleStatusBadge: Record<VehicleStatusType, string> = {
+  AVAILABLE:  'bg-green-100 text-green-700',
+  ASSIGNED:   'bg-blue-100 text-blue-700',
+  ON_TRIP:    'bg-orange-100 text-orange-700',
+  IN_REPAIR:  'bg-yellow-100 text-yellow-700',
+  BREAKDOWN:  'bg-red-100 text-red-700',
+  OTHER:      'bg-gray-100 text-gray-600',
+}
+
+// ── Vehicle Status Section ─────────────────────────────────────────────────────
+function VehicleStatusSection({
+  items, loading, onAdd, onEdit, onDelete,
+}: {
+  items: VehicleStatusItem[]
+  loading: boolean
+  onAdd: (data: { name: string; statusType: VehicleStatusType }) => void
+  onEdit: (item: VehicleStatusItem) => void
+  onDelete: (id: number) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<VehicleStatusItem | null>(null)
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<{ name: string; statusType: VehicleStatusType }>()
+  const selectedType = watch('statusType')
+
+  function openAdd() { setEditing(null); reset({ name: '', statusType: 'AVAILABLE' }); setOpen(true) }
+  function openEdit(item: VehicleStatusItem) {
+    setEditing(item)
+    reset({ name: item.name, statusType: item.statusType })
+    setOpen(true)
+  }
+  function onSubmit(data: { name: string; statusType: VehicleStatusType }) {
+    if (editing) onEdit({ ...editing, ...data })
+    else onAdd(data)
+    setOpen(false)
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-semibold text-gray-800">Vehicle Statuses</h2>
+        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
+      </div>
+      {loading ? (
+        <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+      ) : items.length === 0 ? (
+        <div className="text-sm text-gray-400 py-6 text-center">No vehicle statuses yet</div>
+      ) : (
+        <div className="border rounded-lg divide-y">
+          {items.map(item => (
+            <div key={item.id} className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-3">
+                <p className="text-sm font-medium text-gray-800">{item.name}</p>
+                <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', vehicleStatusBadge[item.statusType])}>
+                  {VEHICLE_STATUS_TYPES.find(t => t.value === item.statusType)?.label ?? item.statusType}
+                </span>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
+                  <Pencil size={13} />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(item.id)}>
+                  <Trash2 size={13} />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit' : 'Add'} Vehicle Status</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
+            <div>
+              <Label>Name *</Label>
+              <Input {...register('name', { required: 'Required' })} className="mt-1" />
+              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
+            </div>
+            <div>
+              <Label>Status Type *</Label>
+              <Select value={selectedType} onValueChange={v => setValue('statusType', v as VehicleStatusType)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {VEHICLE_STATUS_TYPES.map(t => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.statusType && <p className="text-xs text-red-500 mt-1">Required</p>}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">{editing ? 'Update' : 'Add'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
 
 // ── Generic simple list section ───────────────────────────────────────────────
 function SimpleSection({
@@ -685,14 +798,14 @@ export function MastersPage() {
   const qc = useQueryClient()
 
   const { data: vsData, isLoading: vsLoading } = useQuery({ queryKey: ['vehicleStatuses'], queryFn: tenantMastersApi.getVehicleStatuses })
-  const vsItems: TenantMasterItem[] = (vsData?.data as TenantMasterItem[]) ?? []
+  const vsItems: VehicleStatusItem[] = vsData?.data ?? []
   const vsCreate = useMutation({
-    mutationFn: (d: { name: string }) => tenantMastersApi.createVehicleStatus(d),
+    mutationFn: (d: { name: string; statusType: VehicleStatusType }) => tenantMastersApi.createVehicleStatus(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['vehicleStatuses'] }); toast.success('Added') },
     onError: () => toast.error('Failed to add'),
   })
   const vsUpdate = useMutation({
-    mutationFn: ({ id, d }: { id: number; d: { name: string } }) => tenantMastersApi.updateVehicleStatus(id, d),
+    mutationFn: ({ id, d }: { id: number; d: { name: string; statusType: VehicleStatusType } }) => tenantMastersApi.updateVehicleStatus(id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['vehicleStatuses'] }); toast.success('Updated') },
     onError: () => toast.error('Failed to update'),
   })
@@ -742,10 +855,10 @@ export function MastersPage() {
     switch (activeSection) {
       case 'vehicleStatuses':
         return (
-          <SimpleSection
-            title="Vehicle Statuses" items={vsItems} loading={vsLoading}
+          <VehicleStatusSection
+            items={vsItems} loading={vsLoading}
             onAdd={d => vsCreate.mutate(d)}
-            onEdit={item => vsUpdate.mutate({ id: item.id, d: { name: item.name } })}
+            onEdit={item => vsUpdate.mutate({ id: item.id, d: { name: item.name, statusType: item.statusType } })}
             onDelete={id => vsDelete.mutate(id)}
           />
         )
