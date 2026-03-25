@@ -23,6 +23,7 @@ interface AuthState {
   logout:             () => void
   impersonate:        (data: LoginResponse) => void
   exitImpersonation:  () => void
+  setLogoUrl:         (url: string) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -90,6 +91,8 @@ export const useAuthStore = create<AuthState>()(
           saSession,
         })
       },
+
+      setLogoUrl: (url: string) => set({ logoUrl: url }),
 
       exitImpersonation: () => {
         const { saSession } = get()

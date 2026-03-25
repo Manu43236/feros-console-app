@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useAuthStore } from '@/store/authStore'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -493,6 +494,7 @@ function DocumentsTab({ role }: { role: string | null }) {
 // ── Company Profile Tab ───────────────────────────────────────────────────────
 function CompanyTab({ role }: { role: string | null }) {
   const qc = useQueryClient()
+  const setLogoUrl = useAuthStore(s => s.setLogoUrl)
   const [editing, setEditing] = useState(false)
   const canEdit = role === 'ADMIN'
   const logoRef = useRef<HTMLInputElement>(null)
@@ -548,9 +550,10 @@ function CompanyTab({ role }: { role: string | null }) {
     setLogoUploading(true)
     try {
       const compressed = await compressIfNeeded(file)
-      await tenantsApi.uploadMyLogo(compressed)
+      const res = await tenantsApi.uploadMyLogo(compressed)
       toast.success('Logo updated')
       qc.invalidateQueries({ queryKey: ['my-tenant'] })
+      if (res.data?.logoUrl) setLogoUrl(res.data.logoUrl)
     } catch (err: unknown) {
       toast.error(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Upload failed'
