@@ -10,12 +10,13 @@ interface AuthState {
   name:        string | null
   role:        string | null
   companyName: string | null
+  logoUrl:     string | null
   isAuthenticated: boolean
 
   // Impersonation — saved SA session while impersonating
   saSession: {
     token: string; userId: number; phone: string
-    name: string; role: string; companyName: string
+    name: string; role: string; companyName: string; logoUrl: string | null
   } | null
 
   login:              (data: LoginResponse) => void
@@ -34,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
       name:        null,
       role:        null,
       companyName: null,
+      logoUrl:     null,
       isAuthenticated: false,
       saSession:   null,
 
@@ -47,6 +49,7 @@ export const useAuthStore = create<AuthState>()(
           name:        data.name,
           role:        data.role,
           companyName: data.companyName,
+          logoUrl:     data.logoUrl ?? null,
           isAuthenticated: true,
           saSession:   null,
         })
@@ -56,7 +59,7 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('feros_token')
         set({
           token: null, userId: null, tenantId: null,
-          phone: null, name: null, role: null, companyName: null,
+          phone: null, name: null, role: null, companyName: null, logoUrl: null,
           isAuthenticated: false, saSession: null,
         })
       },
@@ -71,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
           name:        state.name!,
           role:        state.role!,
           companyName: state.companyName!,
+          logoUrl:     state.logoUrl,
         }
         localStorage.setItem('feros_token', data.token)
         set({
@@ -81,6 +85,7 @@ export const useAuthStore = create<AuthState>()(
           name:        data.name,
           role:        data.role,
           companyName: data.companyName,
+          logoUrl:     data.logoUrl ?? null,
           isAuthenticated: true,
           saSession,
         })
@@ -98,6 +103,7 @@ export const useAuthStore = create<AuthState>()(
           name:        saSession.name,
           role:        saSession.role,
           companyName: saSession.companyName,
+          logoUrl:     saSession.logoUrl,
           isAuthenticated: true,
           saSession:   null,
         })

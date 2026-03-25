@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
 import type { StaffDocument } from '@/types'
 
 // ── schema ────────────────────────────────────────────────────────────────────
@@ -249,6 +250,7 @@ export function StaffDetailPage() {
   const qc         = useQueryClient()
   const uid        = Number(userId)
 
+  const logoUrl = useAuthStore(s => s.logoUrl)
   const [tab, setTab]               = useState<'info' | 'docs'>('info')
   const [selectedState, setSelectedState] = useState<number | undefined>()
   const [currentPin, setCurrentPin] = useState<string | null>(null)
@@ -400,12 +402,16 @@ export function StaffDetailPage() {
           </div>
           <div className="mt-5">
             <div className="flex items-center gap-3 flex-wrap">
-              <div className={cn(
-                'w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0',
-                active ? 'bg-white/20' : 'bg-white/10'
-              )}>
-                {name[0]}
-              </div>
+              {logoUrl ? (
+                <img src={logoUrl} alt="company logo" className="w-11 h-11 rounded-full object-contain bg-white/90 border border-white/30 shrink-0 p-0.5" />
+              ) : (
+                <div className={cn(
+                  'w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0',
+                  active ? 'bg-white/20' : 'bg-white/10'
+                )}>
+                  {name[0]}
+                </div>
+              )}
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl font-bold text-white">{name}</h1>

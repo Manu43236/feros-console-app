@@ -18,6 +18,7 @@ export interface LoginResponse {
   name: string
   role: string
   companyName: string
+  logoUrl?: string
 }
 
 // ─── Master (shared) ──────────────────────────────────────────────────────────

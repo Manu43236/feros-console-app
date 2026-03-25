@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
 import type { StaffProfile } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -166,6 +167,7 @@ interface MergedStaff {
 // ── main page ─────────────────────────────────────────────────────────────────
 export function StaffPage() {
   const navigate = useNavigate()
+  const logoUrl = useAuthStore(s => s.logoUrl)
   const [search, setSearch]             = useState('')
   const [addOpen, setAddOpen]           = useState(false)
   const [roleFilter, setRoleFilter]     = useState('')
@@ -276,9 +278,13 @@ export function StaffPage() {
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-semibold shrink-0">
-                          {s.userName[0]}
-                        </div>
+                        {logoUrl ? (
+                          <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-full object-contain border border-gray-100 shrink-0 bg-white" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-semibold shrink-0">
+                            {s.userName[0]}
+                          </div>
+                        )}
                         <p className="text-sm font-semibold text-gray-800">{s.userName}</p>
                       </div>
                     </td>
