@@ -106,7 +106,7 @@ function expiryBadge(expiryDate?: string) {
 }
 
 // ── documents tab ─────────────────────────────────────────────────────────────
-function DocumentsTab({ userId }: { userId: number }) {
+function DocumentsTab({ userId, role }: { userId: number; role: string }) {
   const qc = useQueryClient()
   const [addOpen, setAddOpen] = useState(false)
 
@@ -142,9 +142,11 @@ function DocumentsTab({ userId }: { userId: number }) {
   })
 
   const docs: StaffDocument[] = docsRes?.data ?? []
-  const staffDocTypes = (docTypesRes?.data ?? []).filter(t =>
-    t.applicableFor === 'DRIVER' || t.applicableFor === 'BOTH'
-  )
+  const staffDocTypes = (docTypesRes?.data ?? []).filter(t => {
+    if (t.applicableFor === 'VEHICLE') return false
+    if (!t.applicableRoles || t.applicableRoles.length === 0) return true
+    return t.applicableRoles.includes(role)
+  })
 
   return (
     <div className="space-y-4">
@@ -504,14 +506,18 @@ export function StaffDetailPage() {
                 <Label>Joining Date</Label>
                 <Input type="date" {...register('joiningDate')} />
               </div>
-              <div className="space-y-1.5">
-                <Label>License Number</Label>
-                <Input placeholder="MH1234567890" {...register('licenseNumber')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>License Expiry</Label>
-                <Input type="date" {...register('licenseExpiryDate')} />
-              </div>
+              {role === 'DRIVER' && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>License Number</Label>
+                    <Input placeholder="MH1234567890" {...register('licenseNumber')} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>License Expiry</Label>
+                    <Input type="date" {...register('licenseExpiryDate')} />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -601,7 +607,7 @@ export function StaffDetailPage() {
 
         {/* ── Documents tab ── */}
         {tab === 'docs' && (
-          <DocumentsTab userId={uid} />
+          <DocumentsTab userId={uid} role={role} />
         )}
 
         </div>{/* end tab content */}
