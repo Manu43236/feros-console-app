@@ -403,7 +403,7 @@ export function StaffDetailPage() {
           <div className="mt-5">
             <div className="flex items-center gap-3 flex-wrap">
               {logoUrl ? (
-                <img src={logoUrl} alt="company logo" className="w-11 h-11 rounded-full object-contain bg-white/90 border border-white/30 shrink-0 p-0.5" />
+                <img src={logoUrl} alt="company logo" className="w-11 h-11 object-contain shrink-0" />
               ) : (
                 <div className={cn(
                   'w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0',

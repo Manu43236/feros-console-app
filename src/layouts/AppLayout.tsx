@@ -141,6 +141,7 @@ export function AppLayout() {
   const name               = useAuthStore(s => s.name)
   const role               = useAuthStore(s => s.role)
   const companyName        = useAuthStore(s => s.companyName)
+  const logoUrl            = useAuthStore(s => s.logoUrl)
   const saSession          = useAuthStore(s => s.saSession)
   const logout             = useAuthStore(s => s.logout)
   const exitImpersonation  = useAuthStore(s => s.exitImpersonation)
@@ -178,7 +179,11 @@ export function AppLayout() {
     <aside className={cn('flex flex-col h-full bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
       {/* Logo */}
       <div className="flex items-center justify-center h-16 px-5 border-b border-white/10 shrink-0 relative">
-        <img src={leftMenuLogo} alt="FEROS" className="h-9 w-auto object-contain" />
+        {logoUrl ? (
+          <img src={logoUrl} alt={companyName ?? 'Logo'} className="h-9 w-auto object-contain max-w-[160px]" />
+        ) : (
+          <img src={leftMenuLogo} alt="FEROS" className="h-9 w-auto object-contain" />
+        )}
         {mobile && (
           <button onClick={() => setSidebarOpen(false)} className="absolute right-4 text-gray-400 hover:text-white">
             <X size={20} />

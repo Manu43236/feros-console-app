@@ -279,7 +279,7 @@ export function StaffPage() {
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         {logoUrl ? (
-                          <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-full object-contain border border-gray-100 shrink-0 bg-white" />
+                          <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-full object-contain shrink-0" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-semibold shrink-0">
                             {s.userName[0]}
