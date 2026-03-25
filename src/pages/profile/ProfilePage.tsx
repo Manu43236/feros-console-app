@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react'
-import { useAuthStore } from '@/store/authStore'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
