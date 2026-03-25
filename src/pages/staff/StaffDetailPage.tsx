@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import {
   ArrowLeft, Eye, EyeOff, KeyRound, Copy, Plus,
-  BadgeCheck, FileText, Pencil, Save, UserCheck, UserX, Users,
+  BadgeCheck, FileText, Pencil, Save, UserCheck, UserX, Users, ExternalLink, Paperclip,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -109,6 +109,8 @@ function expiryBadge(expiryDate?: string) {
 function DocumentsTab({ userId, role }: { userId: number; role: string }) {
   const qc = useQueryClient()
   const [addOpen, setAddOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const { data: docsRes, isLoading } = useQuery({
     queryKey: ['staff-docs', userId],
@@ -124,11 +126,13 @@ function DocumentsTab({ userId, role }: { userId: number; role: string }) {
   })
 
   const addMutation = useMutation({
-    mutationFn: (data: DocFormData) => staffApi.addDocument(userId, data),
+    mutationFn: (data: DocFormData & { fileUrl?: string }) => staffApi.addDocument(userId, data),
     onSuccess: () => {
       toast.success('Document added')
       qc.invalidateQueries({ queryKey: ['staff-docs', userId] })
-      reset(); setAddOpen(false)
+      reset()
+      if (fileRef.current) fileRef.current.value = ''
+      setAddOpen(false)
     },
     onError: () => toast.error('Failed to add document'),
   })
@@ -147,6 +151,39 @@ function DocumentsTab({ userId, role }: { userId: number; role: string }) {
     if (!t.applicableRoles || t.applicableRoles.length === 0) return true
     return t.applicableRoles.includes(role)
   })
+
+  async function handleSubmitDoc(data: DocFormData) {
+    let fileUrl: string | undefined
+    const file = fileRef.current?.files?.[0]
+    if (file) {
+      setUploading(true)
+      try {
+        const res = await staffApi.uploadDocFile(file)
+        fileUrl = res.data?.key
+      } catch {
+        toast.error('File upload failed')
+        setUploading(false)
+        return
+      }
+      setUploading(false)
+    }
+    addMutation.mutate({ ...data, fileUrl })
+  }
+
+  async function handleView(key: string) {
+    try {
+      const res = await staffApi.getPresignedUrl(key)
+      if (res.data?.url) window.open(res.data.url, '_blank')
+    } catch {
+      toast.error('Could not load file')
+    }
+  }
+
+  function handleClose() {
+    reset()
+    if (fileRef.current) fileRef.current.value = ''
+    setAddOpen(false)
+  }
 
   return (
     <div className="space-y-4">
@@ -182,6 +219,14 @@ function DocumentsTab({ userId, role }: { userId: number; role: string }) {
               </div>
               <div className="flex items-center gap-2">
                 {expiryBadge(doc.expiryDate)}
+                {doc.fileUrl && (
+                  <button
+                    onClick={() => handleView(doc.fileUrl!)}
+                    className="flex items-center gap-1 text-xs text-feros-navy hover:underline"
+                  >
+                    <ExternalLink size={13} /> View
+                  </button>
+                )}
                 {doc.isVerified ? (
                   <span className="flex items-center gap-1 text-xs text-green-600">
                     <BadgeCheck size={14} /> Verified
@@ -202,10 +247,10 @@ function DocumentsTab({ userId, role }: { userId: number; role: string }) {
       )}
 
       {/* Add document dialog */}
-      <Dialog open={addOpen} onOpenChange={v => !v && setAddOpen(false)}>
+      <Dialog open={addOpen} onOpenChange={v => !v && handleClose()}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Add Document</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit(d => addMutation.mutate(d))} className="space-y-4 pt-2">
+          <form onSubmit={handleSubmit(handleSubmitDoc)} className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <Label>Document Type *</Label>
               <select {...register('documentTypeId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
@@ -229,13 +274,22 @@ function DocumentsTab({ userId, role }: { userId: number; role: string }) {
               </div>
             </div>
             <div className="space-y-1.5">
+              <Label>Attach File <span className="text-gray-400 font-normal">(PDF, PNG, JPG — max 10 MB)</span></Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-background text-sm cursor-pointer hover:bg-gray-50"
+                onClick={() => fileRef.current?.click()}>
+                <Paperclip size={14} className="text-gray-400 shrink-0" />
+                <span className="text-gray-400 text-xs truncate">Click to choose file…</span>
+              </div>
+              <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" />
+            </div>
+            <div className="space-y-1.5">
               <Label>Remarks</Label>
               <Input placeholder="Optional notes" {...register('remarks')} />
             </div>
             <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={addMutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
-                {addMutation.isPending ? 'Adding…' : 'Add Document'}
+              <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button type="submit" disabled={addMutation.isPending || uploading} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+                {uploading ? 'Uploading…' : addMutation.isPending ? 'Adding…' : 'Add Document'}
               </Button>
             </div>
           </form>

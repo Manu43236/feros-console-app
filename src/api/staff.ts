@@ -12,4 +12,14 @@ export const staffApi = {
   getDocuments:   (userId: number) => apiClient.get<ApiResponse<StaffDocument[]>>(`/staff/${userId}/documents`).then(r => r.data),
   addDocument:    (userId: number, data: unknown) => apiClient.post<ApiResponse<StaffDocument>>(`/staff/${userId}/documents`, data).then(r => r.data),
   verifyDocument: (docId: number, data: unknown) => apiClient.put<ApiResponse<StaffDocument>>(`/staff/documents/${docId}/verify`, data).then(r => r.data),
+  uploadDocFile:  (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('folder', 'tenants/staff/docs')
+    return apiClient.post<ApiResponse<{ key: string; url: string }>>('/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+  getPresignedUrl: (key: string) =>
+    apiClient.get<ApiResponse<{ url: string }>>('/upload/presigned-url', { params: { key } }).then(r => r.data),
 }
