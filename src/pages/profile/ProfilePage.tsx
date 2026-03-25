@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import {
   User, Building2, Pencil, Save, X,
   Phone, AlertTriangle, BadgeCheck,
-  Shield,
+  Shield, Upload, FileText, Trash2, ExternalLink, FolderOpen,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,7 @@ import { useAuthStore } from '@/store/authStore'
 import { staffApi } from '@/api/staff'
 import { tenantsApi } from '@/api/superadmin'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
+import { compressIfNeeded } from '@/lib/imageCompressor'
 import type { SubscriptionStatus } from '@/types'
 
 // ── schemas ──────────────────────────────────────────────────────────────────
@@ -364,11 +365,138 @@ function AccountTab({ userId, role }: { userId: number; role: string | null }) {
   )
 }
 
+// ── Documents Tab ─────────────────────────────────────────────────────────────
+function DocumentsTab({ role }: { role: string | null }) {
+  const qc = useQueryClient()
+  const canEdit = role === 'ADMIN'
+  const [docName, setDocName] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const { data: docsRes, isLoading } = useQuery({
+    queryKey: ['my-tenant-docs'],
+    queryFn: () => tenantsApi.getMyDocuments(),
+  })
+  const docs = docsRes?.data ?? []
+
+  const deleteMutation = useMutation({
+    mutationFn: (docId: number) => tenantsApi.deleteMyDocument(docId),
+    onSuccess: () => {
+      toast.success('Document deleted')
+      qc.invalidateQueries({ queryKey: ['my-tenant-docs'] })
+    },
+    onError: (e: unknown) => toast.error(
+      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to delete'
+    ),
+  })
+
+  async function handleUpload() {
+    const file = fileRef.current?.files?.[0]
+    if (!file) return toast.error('Select a file')
+    if (!docName.trim()) return toast.error('Enter document name')
+    setUploading(true)
+    try {
+      const compressed = await compressIfNeeded(file)
+      await tenantsApi.addMyDocument(docName.trim(), compressed)
+      toast.success('Document uploaded')
+      qc.invalidateQueries({ queryKey: ['my-tenant-docs'] })
+      setDocName('')
+      if (fileRef.current) fileRef.current.value = ''
+    } catch (e: unknown) {
+      toast.error(
+        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Upload failed'
+      )
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  if (isLoading) return <div className="py-12 text-center text-gray-400 animate-pulse">Loading…</div>
+
+  return (
+    <div className="space-y-6">
+      {/* Upload form — ADMIN only */}
+      {canEdit && (
+        <div className="bg-gray-50 rounded-xl border border-dashed border-gray-300 p-4 space-y-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Upload Document</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-1">
+              <Input
+                placeholder="Document name (e.g. GST Certificate)"
+                value={docName}
+                onChange={e => setDocName(e.target.value)}
+              />
+            </div>
+            <div className="sm:col-span-1">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                className="w-full h-9 text-sm text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-feros-navy file:text-white cursor-pointer"
+              />
+            </div>
+            <Button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="bg-feros-navy hover:bg-feros-navy/90 h-9"
+            >
+              <Upload size={14} className="mr-1.5" />
+              {uploading ? 'Uploading…' : 'Upload'}
+            </Button>
+          </div>
+          <p className="text-xs text-gray-400">Accepted: PDF, PNG, JPG (max 10 MB)</p>
+        </div>
+      )}
+
+      {/* Documents list */}
+      {docs.length === 0 ? (
+        <div className="py-12 text-center text-gray-400">
+          <FolderOpen size={36} className="mx-auto mb-2 opacity-30" />
+          <p className="text-sm">No documents uploaded yet</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {docs.map(doc => (
+            <div key={doc.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+              <div className="flex items-center gap-3 min-w-0">
+                <FileText size={18} className="text-feros-navy shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{doc.documentName}</p>
+                  <p className="text-xs text-gray-400 truncate">{doc.originalFileName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 ml-3">
+                <a href={doc.fileUrl} target="_blank" rel="noreferrer">
+                  <Button variant="outline" size="sm" className="h-8 px-2.5">
+                    <ExternalLink size={13} className="mr-1" /> View
+                  </Button>
+                </a>
+                {canEdit && (
+                  <Button
+                    variant="outline" size="sm"
+                    className="h-8 px-2.5 text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => deleteMutation.mutate(doc.id)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 size={13} />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Company Profile Tab ───────────────────────────────────────────────────────
 function CompanyTab({ role }: { role: string | null }) {
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
   const canEdit = role === 'ADMIN'
+  const logoRef = useRef<HTMLInputElement>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
 
   const { data: tenantRes, isLoading } = useQuery({
     queryKey: ['my-tenant'],
@@ -413,6 +541,25 @@ function CompanyTab({ role }: { role: string | null }) {
       (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to update'
     ),
   })
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoUploading(true)
+    try {
+      const compressed = await compressIfNeeded(file)
+      await tenantsApi.uploadMyLogo(compressed)
+      toast.success('Logo updated')
+      qc.invalidateQueries({ queryKey: ['my-tenant'] })
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Upload failed'
+      )
+    } finally {
+      setLogoUploading(false)
+      if (logoRef.current) logoRef.current.value = ''
+    }
+  }
 
   // Subscription info
   const status = tenant?.subscriptionStatus
@@ -562,13 +709,33 @@ function CompanyTab({ role }: { role: string | null }) {
   // ── view mode ──
   return (
     <div className="space-y-6">
-      {canEdit && (
-        <div className="flex justify-end">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {/* Logo */}
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center shrink-0">
+            {tenant?.logoUrl
+              ? <img src={tenant.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              : <Building2 size={24} className="text-gray-300" />
+            }
+          </div>
+          {canEdit && (
+            <div>
+              <input ref={logoRef} type="file" accept=".png,.jpg,.jpeg,.svg" className="hidden" onChange={handleLogoUpload} />
+              <Button variant="outline" size="sm" onClick={() => logoRef.current?.click()} disabled={logoUploading}>
+                <Upload size={13} className="mr-1.5" />
+                {logoUploading ? 'Uploading…' : tenant?.logoUrl ? 'Change Logo' : 'Upload Logo'}
+              </Button>
+              <p className="text-xs text-gray-400 mt-1">PNG, JPG or SVG</p>
+            </div>
+          )}
+        </div>
+
+        {canEdit && (
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <Pencil size={14} className="mr-1" /> Edit
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Subscription Status */}
       <div className={cn('rounded-xl border p-4', cfg.bg, cfg.border)}>
@@ -672,7 +839,7 @@ export function ProfilePage() {
   const role        = useAuthStore(s => s.role)
   const companyName = useAuthStore(s => s.companyName)
 
-  const [tab, setTab] = useState<'account' | 'company'>('account')
+  const [tab, setTab] = useState<'account' | 'company' | 'documents'>('account')
 
   const showCompanyTab = role === 'ADMIN' || role === 'OFFICE_STAFF'
 
@@ -681,6 +848,7 @@ export function ProfilePage() {
   const tabs = [
     { key: 'account' as const, label: 'Account Details', icon: User },
     ...(showCompanyTab ? [{ key: 'company' as const, label: 'Company Profile', icon: Building2 }] : []),
+    ...(showCompanyTab ? [{ key: 'documents' as const, label: 'Documents', icon: FileText }] : []),
   ]
 
   return (
@@ -733,6 +901,9 @@ export function ProfilePage() {
           )}
           {tab === 'company' && showCompanyTab && (
             <CompanyTab role={role} />
+          )}
+          {tab === 'documents' && showCompanyTab && (
+            <DocumentsTab role={role} />
           )}
         </div>
       </div>

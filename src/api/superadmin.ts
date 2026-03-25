@@ -20,6 +20,44 @@ export const tenantsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },
+  uploadLogo: (tenantId: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<ApiResponse<Tenant>>(`/tenants/${tenantId}/logo`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+  uploadMyLogo: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<ApiResponse<Tenant>>('/tenants/my/logo', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+  addDocument: (tenantId: number, documentName: string, file: File) => {
+    const form = new FormData()
+    form.append('documentName', documentName)
+    form.append('file', file)
+    return apiClient.post<ApiResponse<import('@/types').TenantDocument>>(`/tenants/${tenantId}/documents`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+  getDocuments: (tenantId: number) =>
+    apiClient.get<ApiResponse<import('@/types').TenantDocument[]>>(`/tenants/${tenantId}/documents`).then(r => r.data),
+  deleteDocument: (tenantId: number, docId: number) =>
+    apiClient.delete<ApiResponse<void>>(`/tenants/${tenantId}/documents/${docId}`).then(r => r.data),
+  addMyDocument: (documentName: string, file: File) => {
+    const form = new FormData()
+    form.append('documentName', documentName)
+    form.append('file', file)
+    return apiClient.post<ApiResponse<import('@/types').TenantDocument>>('/tenants/my/documents', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+  getMyDocuments: () =>
+    apiClient.get<ApiResponse<import('@/types').TenantDocument[]>>('/tenants/my/documents').then(r => r.data),
+  deleteMyDocument: (docId: number) =>
+    apiClient.delete<ApiResponse<void>>(`/tenants/my/documents/${docId}`).then(r => r.data),
 }
 
 // ── Subscription Plans ────────────────────────────────────────────────────────

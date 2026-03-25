@@ -378,6 +378,15 @@ export interface AttendanceReportRow {
 // ─── Tenant ───────────────────────────────────────────────────────────────────
 export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED'
 
+export interface TenantDocument {
+  id: number
+  documentName: string
+  originalFileName: string
+  s3Key: string
+  fileUrl: string
+  createdAt: string
+}
+
 export interface Tenant {
   id: number
   companyName: string; email: string; phone: string
