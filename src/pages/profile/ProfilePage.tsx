@@ -553,7 +553,7 @@ function CompanyTab({ role }: { role: string | null }) {
       const res = await tenantsApi.uploadMyLogo(compressed)
       toast.success('Logo updated')
       qc.invalidateQueries({ queryKey: ['my-tenant'] })
-      if (res.data?.logoUrl) setLogoUrl(res.data.logoUrl)
+      if (res.data?.logoUrl) setLogoUrl(`${res.data.logoUrl}?t=${Date.now()}`)
     } catch (err: unknown) {
       toast.error(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Upload failed'
