@@ -11,7 +11,7 @@ import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
-  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown,
+  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, Camera,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -248,13 +248,16 @@ export function VehicleDetailPage() {
     <div className="space-y-0">
 
       {/* ── Banner ── */}
-      <div className="relative bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden mb-5">
-        {/* decorative truck silhouette */}
-        <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
-          <Truck size={180} />
-        </div>
+      <div className="bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden mb-5 flex">
 
-        <div className="relative px-6 py-6">
+        {/* Left: vehicle info (80%) */}
+        <div className="relative flex-[4]">
+          {/* decorative truck silhouette */}
+          <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
+            <Truck size={180} />
+          </div>
+
+          <div className="relative px-6 py-6">
           {/* Top row */}
           <div className="flex items-start justify-between gap-4">
             <button
@@ -353,6 +356,16 @@ export function VehicleDetailPage() {
             ))}
           </div>
         </div>
+        </div>{/* end left flex-[4] */}
+
+        {/* Right: vehicle images (20%) */}
+        <div className="flex-[1] border-l border-white/10 flex flex-col items-center justify-center gap-3 bg-white/5 min-h-[180px]">
+          <div className="p-3 rounded-full bg-white/10">
+            <Camera size={26} className="text-white/40" />
+          </div>
+          <p className="text-xs text-white/30 text-center leading-relaxed px-3">No vehicle images<br/>uploaded yet</p>
+        </div>
+
       </div>
 
       {/* ── Tabs ── */}
