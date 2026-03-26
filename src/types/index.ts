@@ -457,6 +457,74 @@ export interface Notification {
   createdAt: string
 }
 
+// ─── Vehicle Service ──────────────────────────────────────────────────────────
+export interface VehicleServiceRecord {
+  id: number
+  tenantId: number
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  serviceDate: string
+  serviceType: string
+  description?: string
+  cost?: number
+  odometerReading?: number
+  nextServiceDueDate?: string
+  nextServiceDueOdometer?: number
+  serviceCenterName?: string
+  serviceCenterPhone?: string
+  billUrl?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// ─── Credit Note ──────────────────────────────────────────────────────────────
+export type CreditNoteStatus = 'DRAFT' | 'APPROVED' | 'ADJUSTED' | 'CANCELLED'
+
+export interface CreditNote {
+  id: number
+  tenantId: number
+  creditNoteNumber: string
+  invoiceId?: number
+  invoiceNumber?: string
+  clientId: number
+  clientName: string
+  creditNoteDate: string
+  amount: number
+  reason: string
+  creditNoteStatus: CreditNoteStatus
+  remarks?: string
+  createdById: number
+  createdByName: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// ─── Client Advance ───────────────────────────────────────────────────────────
+export interface ClientAdvance {
+  id: number
+  tenantId: number
+  clientId: number
+  clientName: string
+  receivedDate: string
+  amount: number
+  paymentMode: PaymentMode
+  referenceNumber?: string
+  isAdjusted: boolean
+  adjustedAmount: number
+  pendingAmount: number
+  adjustedInvoiceId?: number
+  adjustedInvoiceNumber?: string
+  adjustedAt?: string
+  remarks?: string
+  createdById: number
+  createdByName: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 // ─── Bulk Upload ──────────────────────────────────────────────────────────────
 export interface BulkUploadResult {
   totalRows: number

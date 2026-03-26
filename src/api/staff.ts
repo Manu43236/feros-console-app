@@ -16,10 +16,8 @@ export const staffApi = {
     const form = new FormData()
     form.append('file', file)
     form.append('folder', 'tenants/staff/docs')
-    return apiClient.post<ApiResponse<{ key: string; url: string }>>('/upload', form, {
+    return apiClient.post<ApiResponse<{ key: string; url: string; publicUrl: string }>>('/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },
-  getPresignedUrl: (key: string) =>
-    apiClient.get<ApiResponse<{ url: string }>>('/upload/presigned-url', { params: { key } }).then(r => r.data),
 }

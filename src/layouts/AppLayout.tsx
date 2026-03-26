@@ -8,22 +8,25 @@ import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
   Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
   LogOut, Menu, X, Building2, Globe,
-  BadgeCheck, UserCog, Bell, AlertTriangle,
+  BadgeCheck, UserCog, Bell, AlertTriangle, Banknote, FileMinus, Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ADMIN_NAV = [
   { to: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { to: '/clients',    label: 'Clients',     icon: Users },
-  { to: '/vehicles',   label: 'Vehicles',    icon: Truck },
-  { to: '/orders',     label: 'Orders',      icon: ClipboardList },
-  { to: '/lrs',        label: 'LR Register', icon: FileText },
-  { to: '/invoices',   label: 'Invoices',    icon: Receipt },
-  { to: '/staff',      label: 'Staff',       icon: UserCheck },
-  { to: '/attendance', label: 'Attendance',  icon: Calendar },
-  { to: '/payroll',    label: 'Payroll',     icon: Wallet },
-  { to: '/reports',    label: 'Reports',     icon: BarChart3 },
-  { to: '/masters',    label: 'Masters',     icon: Settings },
+  { to: '/clients',          label: 'Clients',          icon: Users },
+  { to: '/client-advances',  label: 'Client Advances',  icon: Banknote },
+  { to: '/vehicles',         label: 'Vehicles',         icon: Truck },
+  { to: '/vehicle-services', label: 'Vehicle Services', icon: Wrench },
+  { to: '/orders',           label: 'Orders',           icon: ClipboardList },
+  { to: '/lrs',              label: 'LR Register',      icon: FileText },
+  { to: '/invoices',         label: 'Invoices',         icon: Receipt },
+  { to: '/credit-notes',    label: 'Credit Notes',     icon: FileMinus },
+  { to: '/staff',            label: 'Staff',            icon: UserCheck },
+  { to: '/attendance',       label: 'Attendance',       icon: Calendar },
+  { to: '/payroll',          label: 'Payroll',          icon: Wallet },
+  { to: '/reports',          label: 'Reports',          icon: BarChart3 },
+  { to: '/masters',          label: 'Masters',          icon: Settings },
 ]
 
 const SUPER_ADMIN_NAV = [
@@ -36,14 +39,16 @@ const SUPER_ADMIN_NAV = [
 ]
 
 const OFFICE_STAFF_NAV = [
-  { to: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
-  { to: '/clients',    label: 'Clients',     icon: Users },
-  { to: '/vehicles',   label: 'Vehicles',    icon: Truck },
-  { to: '/orders',     label: 'Orders',      icon: ClipboardList },
-  { to: '/lrs',        label: 'LR Register', icon: FileText },
-  { to: '/invoices',   label: 'Invoices',    icon: Receipt },
-  { to: '/attendance', label: 'Attendance',  icon: Calendar },
-  { to: '/reports',    label: 'Reports',     icon: BarChart3 },
+  { to: '/dashboard',         label: 'Dashboard',        icon: LayoutDashboard },
+  { to: '/clients',           label: 'Clients',          icon: Users },
+  { to: '/client-advances',   label: 'Client Advances',  icon: Banknote },
+  { to: '/vehicles',          label: 'Vehicles',         icon: Truck },
+  { to: '/orders',            label: 'Orders',           icon: ClipboardList },
+  { to: '/lrs',               label: 'LR Register',      icon: FileText },
+  { to: '/invoices',          label: 'Invoices',         icon: Receipt },
+  { to: '/credit-notes',      label: 'Credit Notes',     icon: FileMinus },
+  { to: '/attendance',        label: 'Attendance',       icon: Calendar },
+  { to: '/reports',           label: 'Reports',          icon: BarChart3 },
 ]
 
 const SUPERVISOR_NAV = [

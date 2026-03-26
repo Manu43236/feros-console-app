@@ -9,14 +9,17 @@ import { LoginPage } from '@/pages/auth/LoginPage'
 // Admin pages
 import { DashboardPage }  from '@/pages/dashboard/DashboardPage'
 import { ClientsPage }    from '@/pages/clients/ClientsPage'
+import ClientAdvancesPage from '@/pages/clients/ClientAdvancesPage'
 import { VehiclesPage }        from '@/pages/vehicles/VehiclesPage'
 import { VehicleDetailPage }   from '@/pages/vehicles/VehicleDetailPage'
+import VehicleServicesPage     from '@/pages/vehicles/VehicleServicesPage'
 import { OrdersPage }       from '@/pages/orders/OrdersPage'
 import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
 import { LrsPage }        from '@/pages/lrs/LrsPage'
 import { LrDetailPage }  from '@/pages/lrs/LrDetailPage'
 import { InvoicesPage }       from '@/pages/invoices/InvoicesPage'
 import { InvoiceDetailPage } from '@/pages/invoices/InvoiceDetailPage'
+import CreditNotesPage       from '@/pages/invoices/CreditNotesPage'
 import { StaffPage }       from '@/pages/staff/StaffPage'
 import { StaffDetailPage } from '@/pages/staff/StaffDetailPage'
 import { AttendancePage } from '@/pages/attendance/AttendancePage'
@@ -57,15 +60,18 @@ export default function App() {
 
           {/* ADMIN */}
           <Route path="dashboard"  element={<DashboardPage />} />
-          <Route path="clients"    element={<ClientsPage />} />
+          <Route path="clients"          element={<ClientsPage />} />
+          <Route path="client-advances" element={<ClientAdvancesPage />} />
           <Route path="vehicles"            element={<VehiclesPage />} />
           <Route path="vehicles/:vehicleId" element={<VehicleDetailPage />} />
+          <Route path="vehicle-services"    element={<VehicleServicesPage />} />
           <Route path="orders"          element={<OrdersPage />} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="lrs"          element={<LrsPage />} />
           <Route path="lrs/:lrId"  element={<LrDetailPage />} />
           <Route path="invoices"            element={<InvoicesPage />} />
           <Route path="invoices/:invoiceId" element={<InvoiceDetailPage />} />
+          <Route path="credit-notes"        element={<CreditNotesPage />} />
           <Route path="staff"           element={<StaffPage />} />
           <Route path="staff/:userId"   element={<StaffDetailPage />} />
           <Route path="attendance" element={<AttendancePage />} />

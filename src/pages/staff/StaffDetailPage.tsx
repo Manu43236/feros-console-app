@@ -159,7 +159,7 @@ function DocumentsTab({ userId, role }: { userId: number; role: string }) {
       setUploading(true)
       try {
         const res = await staffApi.uploadDocFile(file)
-        fileUrl = res.data?.key
+        fileUrl = res.data?.publicUrl
       } catch {
         toast.error('File upload failed')
         setUploading(false)
@@ -170,13 +170,8 @@ function DocumentsTab({ userId, role }: { userId: number; role: string }) {
     addMutation.mutate({ ...data, fileUrl })
   }
 
-  async function handleView(key: string) {
-    try {
-      const res = await staffApi.getPresignedUrl(key)
-      if (res.data?.url) window.open(res.data.url, '_blank')
-    } catch {
-      toast.error('Could not load file')
-    }
+  function handleView(url: string) {
+    window.open(url, '_blank')
   }
 
   function handleClose() {

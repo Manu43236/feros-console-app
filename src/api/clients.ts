@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, Client } from '@/types'
+import type { ApiResponse, Client, ClientAdvance } from '@/types'
 
 export const clientsApi = {
   getAll:    ()           => apiClient.get<ApiResponse<Client[]>>('/clients').then(r => r.data),
@@ -14,4 +14,12 @@ export const clientsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },
+}
+
+export const clientAdvancesApi = {
+  getAll:      ()                         => apiClient.get<ApiResponse<ClientAdvance[]>>('/client-advances').then(r => r.data),
+  getByClient: (clientId: number)         => apiClient.get<ApiResponse<ClientAdvance[]>>(`/client-advances/client/${clientId}`).then(r => r.data),
+  getById:     (id: number)               => apiClient.get<ApiResponse<ClientAdvance>>(`/client-advances/${id}`).then(r => r.data),
+  create:      (data: Partial<ClientAdvance>) => apiClient.post<ApiResponse<ClientAdvance>>('/client-advances', data).then(r => r.data),
+  delete:      (id: number)               => apiClient.delete<ApiResponse<void>>(`/client-advances/${id}`).then(r => r.data),
 }
