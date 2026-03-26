@@ -265,7 +265,7 @@ export function InvoicesPage() {
     return matchSearch && matchStatus
   })
 
-  const all              = res ?? []
+  const all              = invoicesRes?.data ?? []
   const outstanding      = all.filter(i => ['SENT','PARTIALLY_PAID','OVERDUE'].includes(i.invoiceStatus))
   const overdue          = all.filter(i => i.invoiceStatus === 'OVERDUE')
   const totalOutstanding = outstanding.reduce((s, i) => s + Number(i.balanceDue), 0)
