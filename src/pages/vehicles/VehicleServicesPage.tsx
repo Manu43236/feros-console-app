@@ -213,7 +213,7 @@ export default function VehicleServicesPage() {
     queryKey: ['vehicle-services'],
     queryFn:  vehicleServicesApi.getAll,
   })
-  const records = data?.data ?? []
+  const records = [...(data?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const filtered = records.filter(r =>
     r.vehicleRegistrationNumber.toLowerCase().includes(search.toLowerCase()) ||

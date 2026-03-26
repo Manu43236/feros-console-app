@@ -367,7 +367,7 @@ export function ClientsPage() {
     onError: () => toast.error('Failed to update client status'),
   })
 
-  const clients = (res?.data ?? []).filter(c =>
+  const clients = [...(res?.data ?? [])].sort((a, b) => b.id - a.id).filter(c =>
     c.clientName.toLowerCase().includes(search.toLowerCase()) ||
     c.phone.includes(search)
   )

@@ -258,7 +258,7 @@ export function InvoicesPage() {
     queryFn: invoicesApi.getAll,
   })
 
-  const invoices = (invoicesRes?.data ?? []).filter(inv => {
+  const invoices = [...(invoicesRes?.data ?? [])].sort((a, b) => b.id - a.id).filter(inv => {
     const q = search.toLowerCase()
     const matchSearch = inv.invoiceNumber.toLowerCase().includes(q) || inv.clientName.toLowerCase().includes(q)
     const matchStatus = statusFilter === 'ALL' || inv.invoiceStatus === statusFilter

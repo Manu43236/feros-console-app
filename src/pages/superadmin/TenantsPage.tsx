@@ -508,7 +508,7 @@ export function TenantsPage() {
   const [search, setSearch]         = useState('')
 
   const { data, isLoading } = useQuery({ queryKey: ['tenants'], queryFn: tenantsApi.getAll })
-  const tenants: Tenant[] = data?.data ?? []
+  const tenants: Tenant[] = [...(data?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => tenantsApi.delete(id),

@@ -287,7 +287,7 @@ export function SAUsersPage() {
   }
 
   const { data, isLoading } = useQuery({ queryKey: ['sa-users'], queryFn: staffApi.getUsers })
-  const users: StaffUser[] = ((data?.data ?? []) as unknown[]) as StaffUser[]
+  const users: StaffUser[] = ([...(data?.data ?? [])] as unknown[] as StaffUser[]).sort((a, b) => b.id - a.id)
 
   const { data: tenantsData } = useQuery({ queryKey: ['tenants'], queryFn: tenantsApi.getAll })
   const tenants: Tenant[] = tenantsData?.data ?? []

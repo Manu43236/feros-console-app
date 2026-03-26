@@ -562,7 +562,7 @@ export function VehiclesPage() {
   const { data: typesRes }        = useQuery({ queryKey: ['vehicle-types'],    queryFn: globalMastersApi.getVehicleTypes })
   const { data: ownershipRes }    = useQuery({ queryKey: ['ownership-types'],  queryFn: globalMastersApi.getOwnershipTypes })
 
-  const allVehicles = res?.data ?? []
+  const allVehicles = [...(res?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const vehicles = allVehicles.filter(v => {
     const q = search.toLowerCase()

@@ -169,7 +169,7 @@ export default function ClientAdvancesPage() {
     queryKey: ['client-advances'],
     queryFn:  clientAdvancesApi.getAll,
   })
-  const advances = data?.data ?? []
+  const advances = [...(data?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const filtered = advances.filter(a =>
     a.clientName.toLowerCase().includes(search.toLowerCase()) ||

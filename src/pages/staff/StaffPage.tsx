@@ -180,7 +180,7 @@ export function StaffPage() {
     (profilesRes?.data ?? []).map(p => [p.userId, p])
   )
 
-  const allStaff: MergedStaff[] = (usersRes?.data ?? []).map(u => ({
+  const allStaff: MergedStaff[] = [...(usersRes?.data ?? [])].sort((a, b) => b.id - a.id).map(u => ({
     userId:             u.id,
     userName:           u.name,
     userPhone:          u.phone,

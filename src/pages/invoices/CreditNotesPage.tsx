@@ -247,7 +247,7 @@ export default function CreditNotesPage() {
     queryKey: ['credit-notes'],
     queryFn:  creditNotesApi.getAll,
   })
-  const notes = data?.data ?? []
+  const notes = [...(data?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const filtered = notes.filter(n =>
     n.clientName.toLowerCase().includes(search.toLowerCase()) ||

@@ -168,7 +168,7 @@ export function LrsPage() {
     queryKey: ['lrs'],
     queryFn: lrsApi.getAll,
   })
-  const lrs = lrsRes?.data ?? []
+  const lrs = [...(lrsRes?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const filtered = lrs.filter(lr => {
     if (statusFilter && lr.lrStatus !== statusFilter) return false

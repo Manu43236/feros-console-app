@@ -390,7 +390,7 @@ export function AttendancePage() {
     queryKey: ['attendance', selectedDate],
     queryFn: () => attendanceApi.getByDate(selectedDate),
   })
-  const records = attendanceData?.data ?? []
+  const records = [...(attendanceData?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const { data: usersData } = useQuery({
     queryKey: ['staff-users'],

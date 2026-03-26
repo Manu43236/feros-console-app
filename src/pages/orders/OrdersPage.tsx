@@ -463,7 +463,7 @@ export function OrdersPage() {
     onError: () => toast.error('Failed to cancel order'),
   })
 
-  const orders = (res?.data ?? []).filter(o => {
+  const orders = [...(res?.data ?? [])].sort((a, b) => b.id - a.id).filter(o => {
     const matchesSearch =
       o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
       o.clientName.toLowerCase().includes(search.toLowerCase())

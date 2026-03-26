@@ -344,7 +344,7 @@ export function PayrollPage() {
     queryKey: ['payrolls'],
     queryFn: payrollApi.getAll,
   })
-  const payrolls: Payroll[] = payrollsData?.data ?? []
+  const payrolls: Payroll[] = [...(payrollsData?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const { data: advancesData, isLoading: loadingAdvances } = useQuery({
     queryKey: ['advances'],
