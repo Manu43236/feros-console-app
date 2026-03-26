@@ -44,10 +44,11 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
   const qc = useQueryClient()
 
-  const { data: orders = [], isLoading: ordersLoading } = useQuery({
+  const { data: ordersRes, isLoading: ordersLoading } = useQuery({
     queryKey: ['orders'],
-    queryFn: () => ordersApi.getAll().then(r => r.data),
+    queryFn: ordersApi.getAll,
   })
+  const orders = ordersRes?.data ?? []
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,
@@ -163,10 +164,11 @@ export function LrsPage() {
   const [statusFilter, setStatus] = useState<string>('')
   const [showCreate, setShowCreate] = useState(false)
 
-  const { data: lrs = [], isLoading } = useQuery({
+  const { data: lrsRes, isLoading } = useQuery({
     queryKey: ['lrs'],
-    queryFn: () => lrsApi.getAll().then(r => r.data),
+    queryFn: lrsApi.getAll,
   })
+  const lrs = lrsRes?.data ?? []
 
   const filtered = lrs.filter(lr => {
     if (statusFilter && lr.lrStatus !== statusFilter) return false

@@ -61,10 +61,11 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const [selectedLrIds, setSelectedLrIds] = useState<Set<number>>(new Set())
 
   const { data: clientsRes } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
-  const { data: allLrs = [] } = useQuery({
+  const { data: lrsRes } = useQuery({
     queryKey: ['lrs'],
-    queryFn: () => lrsApi.getAll().then(r => r.data),
+    queryFn: lrsApi.getAll,
   })
+  const allLrs = lrsRes?.data ?? []
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,
@@ -252,12 +253,12 @@ export function InvoicesPage() {
   const [statusFilter, setStatus]   = useState<InvoiceStatus | 'ALL'>('ALL')
   const [createOpen, setCreateOpen] = useState(false)
 
-  const { data: res, isLoading } = useQuery({
+  const { data: invoicesRes, isLoading } = useQuery({
     queryKey: ['invoices'],
-    queryFn: () => invoicesApi.getAll().then(r => r.data),
+    queryFn: invoicesApi.getAll,
   })
 
-  const invoices = (res ?? []).filter(inv => {
+  const invoices = (invoicesRes?.data ?? []).filter(inv => {
     const q = search.toLowerCase()
     const matchSearch = inv.invoiceNumber.toLowerCase().includes(q) || inv.clientName.toLowerCase().includes(q)
     const matchStatus = statusFilter === 'ALL' || inv.invoiceStatus === statusFilter
