@@ -22,7 +22,7 @@ export const vehiclesApi = {
   uploadDocFile:  (vehicleId: number, file: File) => {
     const form = new FormData()
     form.append('file', file)
-    form.append('folder', `vehicles/${vehicleId}/documents`)
+    form.append('folder', `tenants/images/vehicles/${vehicleId}/documents`)
     return apiClient.post<ApiResponse<{ key: string; url: string; publicUrl: string }>>('/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)

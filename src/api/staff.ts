@@ -15,7 +15,7 @@ export const staffApi = {
   uploadDocFile:  (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    form.append('folder', 'tenants/staff/docs')
+    form.append('folder', 'tenants/images/staff/documents')
     return apiClient.post<ApiResponse<{ key: string; url: string; publicUrl: string }>>('/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
