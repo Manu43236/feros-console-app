@@ -11,7 +11,7 @@ import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
-  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, Camera, ExternalLink, Paperclip,
+  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, Camera, ExternalLink, Paperclip, Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -227,9 +227,10 @@ export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate      = useNavigate()
   const qc            = useQueryClient()
-  const [tab, setTab]         = useState<Tab>('Basic Info')
+  const [tab, setTab]           = useState<Tab>('Basic Info')
   const [editOpen, setEditOpen] = useState(false)
   const [addDocOpen, setAddDocOpen] = useState(false)
+  const [docToDelete, setDocToDelete] = useState<VehicleDocument | null>(null)
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['vehicle', vehicleId],
@@ -244,6 +245,16 @@ export function VehicleDetailPage() {
     queryKey: ['vehicle-docs', vehicleId],
     queryFn:  () => vehiclesApi.getDocuments(Number(vehicleId)),
     enabled:  !!vehicleId,
+  })
+
+  const deleteDocMutation = useMutation({
+    mutationFn: (docId: number) => vehiclesApi.deleteDocument(docId),
+    onSuccess: () => {
+      toast.success('Document deleted')
+      qc.invalidateQueries({ queryKey: ['vehicle-docs', vehicleId] })
+      setDocToDelete(null)
+    },
+    onError: () => toast.error('Failed to delete document'),
   })
 
   const toggleActiveMutation = useMutation({
@@ -641,6 +652,13 @@ export function VehicleDetailPage() {
                           ) : (
                             <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full">Pending</span>
                           )}
+                          <button
+                            onClick={() => setDocToDelete(doc)}
+                            className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors"
+                            title="Delete document"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </div>
                     )
@@ -678,6 +696,26 @@ export function VehicleDetailPage() {
         onSuccess={() => qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })}
       />
       <AddDocumentDialog vehicleId={v.id} open={addDocOpen} onClose={() => setAddDocOpen(false)} />
+
+      {/* Delete document confirm */}
+      <Dialog open={!!docToDelete} onOpenChange={val => !val && setDocToDelete(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete Document</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600">
+            Delete <strong>{docToDelete?.documentTypeName}</strong>? This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDocToDelete(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={deleteDocMutation.isPending}
+              onClick={() => docToDelete && deleteDocMutation.mutate(docToDelete.id)}
+            >
+              {deleteDocMutation.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
