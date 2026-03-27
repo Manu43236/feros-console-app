@@ -19,6 +19,14 @@ export const vehiclesApi = {
   getDocuments:   (vehicleId: number) => apiClient.get<ApiResponse<VehicleDocument[]>>(`/staff/vehicles/${vehicleId}/documents`).then(r => r.data),
   addDocument:    (vehicleId: number, data: Partial<VehicleDocument>) => apiClient.post<ApiResponse<VehicleDocument>>(`/staff/vehicles/${vehicleId}/documents`, data).then(r => r.data),
   verifyDocument: (docId: number, data: { isVerified: boolean; remarks?: string }) => apiClient.put<ApiResponse<VehicleDocument>>(`/staff/vehicles/documents/${docId}/verify`, data).then(r => r.data),
+  uploadDocFile:  (vehicleId: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('folder', `vehicles/${vehicleId}/documents`)
+    return apiClient.post<ApiResponse<{ key: string; url: string; publicUrl: string }>>('/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
 }
 
 export const vehicleServicesApi = {

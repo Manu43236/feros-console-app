@@ -11,7 +11,7 @@ import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
-  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, Camera,
+  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, Camera, ExternalLink, Paperclip,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -106,6 +106,9 @@ type DocForm = z.infer<typeof docSchema>
 
 function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+
   const { data: docTypesRes } = useQuery({ queryKey: ['document-types'], queryFn: globalMastersApi.getDocumentTypes })
 
   const vehicleDocTypes = (docTypesRes?.data ?? []).filter(d =>
@@ -117,20 +120,41 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
   })
 
   const mutation = useMutation({
-    mutationFn: (data: DocForm) => vehiclesApi.addDocument(vehicleId, data),
+    mutationFn: (data: DocForm & { fileUrl?: string }) => vehiclesApi.addDocument(vehicleId, data),
     onSuccess: () => {
       toast.success('Document added')
       qc.invalidateQueries({ queryKey: ['vehicle-docs', vehicleId] })
-      reset(); onClose()
+      reset(); setFile(null); onClose()
     },
     onError: () => toast.error('Failed to add document'),
   })
 
+  async function handleSave(data: DocForm) {
+    let fileUrl: string | undefined
+    if (file) {
+      setUploading(true)
+      try {
+        const res = await vehiclesApi.uploadDocFile(vehicleId, file)
+        fileUrl = res.data?.publicUrl
+      } catch {
+        toast.error('File upload failed')
+        setUploading(false)
+        return
+      }
+      setUploading(false)
+    }
+    mutation.mutate({ ...data, fileUrl })
+  }
+
+  function handleClose() { reset(); setFile(null); onClose() }
+
+  const busy = uploading || mutation.isPending
+
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Add Document</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
+        <form onSubmit={handleSubmit(handleSave)} className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Document Type *</Label>
             <select {...register('documentTypeId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
@@ -157,10 +181,30 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
             <Label>Remarks</Label>
             <Input placeholder="Optional remarks" {...register('remarks')} />
           </div>
+
+          {/* File attachment */}
+          <div className="space-y-1.5">
+            <Label>Attach File</Label>
+            <label className={cn(
+              'flex items-center gap-3 w-full border-2 border-dashed rounded-lg px-4 py-3 cursor-pointer transition-colors',
+              file ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            )}>
+              <Paperclip size={16} className={file ? 'text-blue-500' : 'text-gray-400'} />
+              <span className={cn('text-sm truncate', file ? 'text-blue-700 font-medium' : 'text-gray-400')}>
+                {file ? file.name : 'Click to attach PDF, image or any file'}
+              </span>
+              {file && (
+                <button type="button" onClick={e => { e.preventDefault(); setFile(null) }}
+                  className="ml-auto text-xs text-gray-400 hover:text-red-500">✕</button>
+              )}
+              <input type="file" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+            </label>
+          </div>
+
           <div className="flex justify-end gap-3 pt-1">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
-              {mutation.isPending ? 'Adding…' : 'Add Document'}
+            <Button type="button" variant="outline" onClick={handleClose} disabled={busy}>Cancel</Button>
+            <Button type="submit" disabled={busy} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+              {uploading ? 'Uploading…' : mutation.isPending ? 'Saving…' : 'Add Document'}
             </Button>
           </div>
         </form>
@@ -574,6 +618,12 @@ export function VehicleDetailPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          {doc.fileUrl && (
+                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-colors">
+                              <ExternalLink size={11} /> View
+                            </a>
+                          )}
                           {level !== 'none' && (
                             <span className={cn('text-xs px-2 py-1 rounded-full', {
                               'bg-red-50 text-red-600':    level === 'expired',
