@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, Vehicle, VehicleDocument, VehicleServiceRecord } from '@/types'
+import type { ApiResponse, Vehicle, VehicleDocument, VehicleImage, VehicleServiceRecord } from '@/types'
 
 export const vehiclesApi = {
   getAll:    (date?: string) => apiClient.get<ApiResponse<Vehicle[]>>('/vehicles', { params: date ? { date } : {} }).then(r => r.data),
@@ -24,6 +24,17 @@ export const vehiclesApi = {
     const form = new FormData()
     form.append('file', file)
     form.append('folder', `tenants/images/vehicles/${vehicleId}/documents`)
+    return apiClient.post<ApiResponse<{ key: string; url: string; publicUrl: string }>>('/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+  getImages:      (vehicleId: number) => apiClient.get<ApiResponse<VehicleImage[]>>(`/staff/vehicles/${vehicleId}/images`).then(r => r.data),
+  addImage:       (vehicleId: number, imageUrl: string, caption?: string) => apiClient.post<ApiResponse<VehicleImage>>(`/staff/vehicles/${vehicleId}/images`, { imageUrl, caption }).then(r => r.data),
+  deleteImage:    (imageId: number) => apiClient.delete<ApiResponse<void>>(`/staff/vehicles/images/${imageId}`).then(r => r.data),
+  uploadImageFile: (vehicleId: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('folder', `tenants/images/vehicles/${vehicleId}/images`)
     return apiClient.post<ApiResponse<{ key: string; url: string; publicUrl: string }>>('/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)

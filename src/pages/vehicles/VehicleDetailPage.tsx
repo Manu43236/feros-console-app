@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import type { VehicleDocument, VehicleStatusType } from '@/types'
+import type { VehicleDocument, VehicleImage, VehicleStatusType } from '@/types'
 import { VehicleForm } from './VehiclesPage'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -257,6 +257,48 @@ export function VehicleDetailPage() {
     onError: () => toast.error('Failed to delete document'),
   })
 
+  const { data: imagesRes } = useQuery({
+    queryKey: ['vehicle-images', Number(vehicleId)],
+    queryFn:  () => vehiclesApi.getImages(Number(vehicleId)),
+    enabled:  !!vehicleId,
+  })
+
+  const addImageMutation = useMutation({
+    mutationFn: ({ imageUrl, caption }: { imageUrl: string; caption?: string }) =>
+      vehiclesApi.addImage(Number(vehicleId), imageUrl, caption),
+    onSuccess: () => {
+      toast.success('Image added')
+      qc.invalidateQueries({ queryKey: ['vehicle-images', Number(vehicleId)] })
+    },
+    onError: () => toast.error('Failed to add image'),
+  })
+
+  const deleteImageMutation = useMutation({
+    mutationFn: (imageId: number) => vehiclesApi.deleteImage(imageId),
+    onSuccess: () => {
+      toast.success('Image deleted')
+      qc.invalidateQueries({ queryKey: ['vehicle-images', Number(vehicleId)] })
+    },
+    onError: () => toast.error('Failed to delete image'),
+  })
+
+  const [imageUploading, setImageUploading] = useState(false)
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !vehicleId) return
+    setImageUploading(true)
+    try {
+      const uploadRes = await vehiclesApi.uploadImageFile(Number(vehicleId), file)
+      await addImageMutation.mutateAsync({ imageUrl: uploadRes.data.publicUrl })
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setImageUploading(false)
+      e.target.value = ''
+    }
+  }
+
   const toggleActiveMutation = useMutation({
     mutationFn: () => vehiclesApi.toggleActive(Number(vehicleId)),
     onSuccess: () => {
@@ -414,11 +456,37 @@ export function VehicleDetailPage() {
         </div>{/* end left flex-[4] */}
 
         {/* Right: vehicle images (20%) */}
-        <div className="flex-[1] border-l border-white/10 flex flex-col items-center justify-center gap-3 bg-white/5 min-h-[180px]">
-          <div className="p-3 rounded-full bg-white/10">
-            <Camera size={26} className="text-white/40" />
+        <div className="flex-[1] border-l border-white/10 flex flex-col bg-white/5 min-h-[180px] p-3 gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-white/60 uppercase tracking-wide">Photos</span>
+            <label className={cn(
+              'cursor-pointer flex items-center gap-1 text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded px-2 py-1 transition-colors',
+              imageUploading && 'opacity-50 pointer-events-none'
+            )}>
+              {imageUploading ? <span className="animate-pulse">Uploading…</span> : <><Plus size={11} /> Add</>}
+              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageUploading} />
+            </label>
           </div>
-          <p className="text-xs text-white/30 text-center leading-relaxed px-3">No vehicle images<br/>uploaded yet</p>
+          {!imagesRes?.data?.length ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2">
+              <Camera size={22} className="text-white/20" />
+              <p className="text-xs text-white/30 text-center">No photos yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-1.5 overflow-y-auto">
+              {(imagesRes.data as VehicleImage[]).map(img => (
+                <div key={img.id} className="relative group rounded overflow-hidden aspect-square bg-white/10">
+                  <img src={img.imageUrl} alt={img.caption ?? 'Vehicle'} className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => deleteImageMutation.mutate(img.id)}
+                    className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-red-600 text-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>

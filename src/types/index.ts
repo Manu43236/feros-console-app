@@ -120,6 +120,13 @@ export interface VehicleDocument {
   isActive: boolean; createdAt: string
 }
 
+export interface VehicleImage {
+  id: number
+  imageUrl: string
+  caption?: string
+  createdAt: string
+}
+
 // ─── Order ────────────────────────────────────────────────────────────────────
 export type OrderStatus = 'PENDING'|'PARTIALLY_ASSIGNED'|'FULLY_ASSIGNED'|'IN_TRANSIT'|'PARTIALLY_DELIVERED'|'DELIVERED'|'CANCELLED'|'COMPLETED'
 export type OrderPaymentStatus = 'UNPAID'|'ADVANCE_PAID'|'PARTIALLY_PAID'|'PAID'
