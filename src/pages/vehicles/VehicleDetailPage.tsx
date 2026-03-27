@@ -242,7 +242,7 @@ export function VehicleDetailPage() {
     queryFn:  tenantMastersApi.getVehicleStatuses,
   })
   const { data: docsRes } = useQuery({
-    queryKey: ['vehicle-docs', vehicleId],
+    queryKey: ['vehicle-docs', Number(vehicleId)],
     queryFn:  () => vehiclesApi.getDocuments(Number(vehicleId)),
     enabled:  !!vehicleId,
   })
