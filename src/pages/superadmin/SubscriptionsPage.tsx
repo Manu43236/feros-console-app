@@ -32,6 +32,7 @@ function PlansTab() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<SubscriptionPlan | null>(null)
   const [form, setForm] = useState({ name: '', maxLorries: '', maxUsers: '', priceMonthly: '', priceYearly: '', features: '' })
+  const [formErrs, setFormErrs] = useState({ name: '', maxLorries: '', maxUsers: '', priceMonthly: '', priceYearly: '' })
 
   const { data: plansRes, isLoading } = useQuery({
     queryKey: ['sa-plans-all'],
@@ -51,9 +52,22 @@ function PlansTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-plans-all'] }),
   })
 
-  function openAdd() { setEditing(null); setForm({ name: '', maxLorries: '', maxUsers: '', priceMonthly: '', priceYearly: '', features: '' }); setShowForm(true) }
-  function openEdit(p: SubscriptionPlan) { setEditing(p); setForm({ name: p.name, maxLorries: String(p.maxLorries), maxUsers: String(p.maxUsers), priceMonthly: String(p.priceMonthly), priceYearly: String(p.priceYearly), features: p.features ?? '' }); setShowForm(true) }
-  function closeForm() { setShowForm(false); setEditing(null) }
+  const emptyErrs = { name: '', maxLorries: '', maxUsers: '', priceMonthly: '', priceYearly: '' }
+  function openAdd() { setEditing(null); setForm({ name: '', maxLorries: '', maxUsers: '', priceMonthly: '', priceYearly: '', features: '' }); setFormErrs(emptyErrs); setShowForm(true) }
+  function openEdit(p: SubscriptionPlan) { setEditing(p); setForm({ name: p.name, maxLorries: String(p.maxLorries), maxUsers: String(p.maxUsers), priceMonthly: String(p.priceMonthly), priceYearly: String(p.priceYearly), features: p.features ?? '' }); setFormErrs(emptyErrs); setShowForm(true) }
+  function closeForm() { setShowForm(false); setEditing(null); setFormErrs(emptyErrs) }
+
+  function validatePlanForm() {
+    const e = {
+      name:         !form.name.trim() ? 'Plan name is required' : '',
+      maxLorries:   form.maxLorries === '' ? 'Max lorries is required' : '',
+      maxUsers:     form.maxUsers === '' ? 'Max users is required' : '',
+      priceMonthly: form.priceMonthly === '' ? 'Monthly price is required' : '',
+      priceYearly:  form.priceYearly === '' ? 'Yearly price is required' : '',
+    }
+    setFormErrs(e)
+    return !Object.values(e).some(Boolean)
+  }
 
   return (
     <div className="space-y-4">
@@ -69,24 +83,29 @@ function PlansTab() {
           <h3 className="font-semibold text-gray-800">{editing ? 'Edit Plan' : 'New Plan'}</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-xs text-gray-600 mb-1 block">Plan Name</label>
-              <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Starter" />
+              <label className="text-xs text-gray-600 mb-1 block">Plan Name <span className="text-red-500">*</span></label>
+              <input className={`w-full border rounded-lg px-3 py-2 text-sm ${formErrs.name ? 'border-red-400' : ''}`} value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setFormErrs(v => ({ ...v, name: '' })) }} placeholder="e.g. Starter" />
+              {formErrs.name && <p className="text-red-500 text-xs mt-1">{formErrs.name}</p>}
             </div>
             <div>
-              <label className="text-xs text-gray-600 mb-1 block">Max Lorries (-1 = unlimited)</label>
-              <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm" value={form.maxLorries} onChange={e => setForm(f => ({ ...f, maxLorries: e.target.value }))} />
+              <label className="text-xs text-gray-600 mb-1 block">Max Lorries <span className="text-red-500">*</span> (-1 = unlimited)</label>
+              <input type="number" className={`w-full border rounded-lg px-3 py-2 text-sm ${formErrs.maxLorries ? 'border-red-400' : ''}`} value={form.maxLorries} onChange={e => { setForm(f => ({ ...f, maxLorries: e.target.value })); setFormErrs(v => ({ ...v, maxLorries: '' })) }} />
+              {formErrs.maxLorries && <p className="text-red-500 text-xs mt-1">{formErrs.maxLorries}</p>}
             </div>
             <div>
-              <label className="text-xs text-gray-600 mb-1 block">Max Users (-1 = unlimited)</label>
-              <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm" value={form.maxUsers} onChange={e => setForm(f => ({ ...f, maxUsers: e.target.value }))} />
+              <label className="text-xs text-gray-600 mb-1 block">Max Users <span className="text-red-500">*</span> (-1 = unlimited)</label>
+              <input type="number" className={`w-full border rounded-lg px-3 py-2 text-sm ${formErrs.maxUsers ? 'border-red-400' : ''}`} value={form.maxUsers} onChange={e => { setForm(f => ({ ...f, maxUsers: e.target.value })); setFormErrs(v => ({ ...v, maxUsers: '' })) }} />
+              {formErrs.maxUsers && <p className="text-red-500 text-xs mt-1">{formErrs.maxUsers}</p>}
             </div>
             <div>
-              <label className="text-xs text-gray-600 mb-1 block">Price Monthly (₹)</label>
-              <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
+              <label className="text-xs text-gray-600 mb-1 block">Price Monthly (₹) <span className="text-red-500">*</span></label>
+              <input type="number" className={`w-full border rounded-lg px-3 py-2 text-sm ${formErrs.priceMonthly ? 'border-red-400' : ''}`} value={form.priceMonthly} onChange={e => { setForm(f => ({ ...f, priceMonthly: e.target.value })); setFormErrs(v => ({ ...v, priceMonthly: '' })) }} />
+              {formErrs.priceMonthly && <p className="text-red-500 text-xs mt-1">{formErrs.priceMonthly}</p>}
             </div>
             <div>
-              <label className="text-xs text-gray-600 mb-1 block">Price Yearly (₹)</label>
-              <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
+              <label className="text-xs text-gray-600 mb-1 block">Price Yearly (₹) <span className="text-red-500">*</span></label>
+              <input type="number" className={`w-full border rounded-lg px-3 py-2 text-sm ${formErrs.priceYearly ? 'border-red-400' : ''}`} value={form.priceYearly} onChange={e => { setForm(f => ({ ...f, priceYearly: e.target.value })); setFormErrs(v => ({ ...v, priceYearly: '' })) }} />
+              {formErrs.priceYearly && <p className="text-red-500 text-xs mt-1">{formErrs.priceYearly}</p>}
             </div>
             <div className="col-span-2">
               <label className="text-xs text-gray-600 mb-1 block">Features (JSON or text)</label>
@@ -94,7 +113,7 @@ function PlansTab() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending} className="px-4 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
+            <button onClick={() => { if (validatePlanForm()) saveMutation.mutate(form) }} disabled={saveMutation.isPending} className="px-4 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
               {saveMutation.isPending ? 'Saving…' : 'Save'}
             </button>
             <button onClick={closeForm} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
@@ -144,6 +163,7 @@ function HistoryTab() {
   const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null)
   const [actionDialog, setActionDialog] = useState<{ type: 'activate' | 'extend-trial' | 'extend' | 'suspend' | 'reactivate'; tenantId: number } | null>(null)
   const [actionForm, setActionForm] = useState({ planId: '', billingCycle: 'MONTHLY', startDate: '', endDate: '', newEndDate: '', amount: '', paymentRef: '', notes: '' })
+  const [actionErrs, setActionErrs] = useState({ planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' })
 
   const { data: tenantsRes } = useQuery({ queryKey: ['sa-tenants'], queryFn: () => tenantsApi.getAll() })
   const { data: plansRes } = useQuery({ queryKey: ['sa-plans-active'], queryFn: () => subscriptionPlansApi.getActive() })
@@ -196,22 +216,22 @@ function HistoryTab() {
         {selectedTenant && (
           <div className="flex gap-2 flex-wrap">
             {(selectedTenant.subscriptionStatus === 'TRIAL' || selectedTenant.subscriptionStatus === 'EXPIRED') && (
-              <button onClick={() => { setActionForm(f => ({ ...f, startDate: '', endDate: '', planId: '', billingCycle: 'MONTHLY' })); setActionDialog({ type: 'activate', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium">
+              <button onClick={() => { setActionForm(f => ({ ...f, startDate: '', endDate: '', planId: '', billingCycle: 'MONTHLY' })); setActionErrs({ planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' }); setActionDialog({ type: 'activate', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium">
                 Activate Subscription
               </button>
             )}
             {selectedTenant.subscriptionStatus === 'TRIAL' && (
-              <button onClick={() => { setActionForm(f => ({ ...f, newEndDate: '', notes: '' })); setActionDialog({ type: 'extend-trial', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
+              <button onClick={() => { setActionForm(f => ({ ...f, newEndDate: '', notes: '' })); setActionErrs({ planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' }); setActionDialog({ type: 'extend-trial', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
                 Extend Trial
               </button>
             )}
             {selectedTenant.subscriptionStatus === 'ACTIVE' && (
-              <button onClick={() => { setActionForm(f => ({ ...f, newEndDate: '', notes: '' })); setActionDialog({ type: 'extend', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
+              <button onClick={() => { setActionForm(f => ({ ...f, newEndDate: '', notes: '' })); setActionErrs({ planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' }); setActionDialog({ type: 'extend', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
                 Extend
               </button>
             )}
             {(selectedTenant.subscriptionStatus === 'ACTIVE' || selectedTenant.subscriptionStatus === 'TRIAL') && (
-              <button onClick={() => { setActionForm(f => ({ ...f, notes: '' })); setActionDialog({ type: 'suspend', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium">
+              <button onClick={() => { setActionForm(f => ({ ...f, notes: '' })); setActionErrs({ planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' }); setActionDialog({ type: 'suspend', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium">
                 Suspend
               </button>
             )}
@@ -232,14 +252,15 @@ function HistoryTab() {
             {actionDialog.type === 'activate' && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-gray-600 mb-1 block">Plan</label>
-                  <select className="w-full border rounded-lg px-3 py-2 text-sm" value={actionForm.planId} onChange={e => setActionForm(f => ({ ...f, planId: e.target.value }))}>
+                  <label className="text-xs text-gray-600 mb-1 block">Plan <span className="text-red-500">*</span></label>
+                  <select className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.planId ? 'border-red-400' : ''}`} value={actionForm.planId} onChange={e => { setActionForm(f => ({ ...f, planId: e.target.value })); setActionErrs(v => ({ ...v, planId: '' })) }}>
                     <option value="">— select plan —</option>
                     {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
+                  {actionErrs.planId && <p className="text-red-500 text-xs mt-1">{actionErrs.planId}</p>}
                 </div>
                 <div>
-                  <label className="text-xs text-gray-600 mb-1 block">Billing Cycle</label>
+                  <label className="text-xs text-gray-600 mb-1 block">Billing Cycle <span className="text-red-500">*</span></label>
                   <select className="w-full border rounded-lg px-3 py-2 text-sm" value={actionForm.billingCycle} onChange={e => setActionForm(f => ({ ...f, billingCycle: e.target.value }))}>
                     <option value="MONTHLY">Monthly</option>
                     <option value="YEARLY">Yearly</option>
@@ -247,12 +268,14 @@ function HistoryTab() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-gray-600 mb-1 block">Start Date</label>
-                    <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm" value={actionForm.startDate} onChange={e => setActionForm(f => ({ ...f, startDate: e.target.value }))} />
+                    <label className="text-xs text-gray-600 mb-1 block">Start Date <span className="text-red-500">*</span></label>
+                    <input type="date" className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.startDate ? 'border-red-400' : ''}`} value={actionForm.startDate} onChange={e => { setActionForm(f => ({ ...f, startDate: e.target.value })); setActionErrs(v => ({ ...v, startDate: '' })) }} />
+                    {actionErrs.startDate && <p className="text-red-500 text-xs mt-1">{actionErrs.startDate}</p>}
                   </div>
                   <div>
-                    <label className="text-xs text-gray-600 mb-1 block">End Date</label>
-                    <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm" value={actionForm.endDate} onChange={e => setActionForm(f => ({ ...f, endDate: e.target.value }))} />
+                    <label className="text-xs text-gray-600 mb-1 block">End Date <span className="text-red-500">*</span></label>
+                    <input type="date" className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.endDate ? 'border-red-400' : ''}`} value={actionForm.endDate} onChange={e => { setActionForm(f => ({ ...f, endDate: e.target.value })); setActionErrs(v => ({ ...v, endDate: '' })) }} />
+                    {actionErrs.endDate && <p className="text-red-500 text-xs mt-1">{actionErrs.endDate}</p>}
                   </div>
                 </div>
                 <div>
@@ -267,21 +290,47 @@ function HistoryTab() {
             )}
             {(actionDialog.type === 'extend-trial' || actionDialog.type === 'extend') && (
               <div>
-                <label className="text-xs text-gray-600 mb-1 block">New End Date</label>
-                <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm" value={actionForm.newEndDate} onChange={e => setActionForm(f => ({ ...f, newEndDate: e.target.value }))} />
+                <label className="text-xs text-gray-600 mb-1 block">New End Date <span className="text-red-500">*</span></label>
+                <input type="date" className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.newEndDate ? 'border-red-400' : ''}`} value={actionForm.newEndDate} onChange={e => { setActionForm(f => ({ ...f, newEndDate: e.target.value })); setActionErrs(v => ({ ...v, newEndDate: '' })) }} />
+                {actionErrs.newEndDate && <p className="text-red-500 text-xs mt-1">{actionErrs.newEndDate}</p>}
               </div>
             )}
             {actionDialog.type !== 'reactivate' && (
               <div>
-                <label className="text-xs text-gray-600 mb-1 block">Notes {actionDialog.type === 'suspend' ? '(reason, required)' : '(optional)'}</label>
-                <textarea className="w-full border rounded-lg px-3 py-2 text-sm" rows={2} value={actionForm.notes} onChange={e => setActionForm(f => ({ ...f, notes: e.target.value }))} />
+                <label className="text-xs text-gray-600 mb-1 block">
+                  Notes {actionDialog.type === 'suspend' ? <span className="text-red-500">* (reason required)</span> : '(optional)'}
+                </label>
+                <textarea className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.notes ? 'border-red-400' : ''}`} rows={2} value={actionForm.notes} onChange={e => { setActionForm(f => ({ ...f, notes: e.target.value })); setActionErrs(v => ({ ...v, notes: '' })) }} />
+                {actionErrs.notes && <p className="text-red-500 text-xs mt-1">{actionErrs.notes}</p>}
               </div>
             )}
             <div className="flex gap-2">
-              <button onClick={() => actionMutation.mutate()} disabled={actionMutation.isPending} className="flex-1 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              <button
+                onClick={() => {
+                  if (!actionDialog) return
+                  const type = actionDialog.type
+                  const e = { planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' }
+                  if (type === 'activate') {
+                    if (!actionForm.planId) e.planId = 'Select a plan'
+                    if (!actionForm.startDate) e.startDate = 'Start date is required'
+                    if (!actionForm.endDate) e.endDate = 'End date is required'
+                  }
+                  if (type === 'extend-trial' || type === 'extend') {
+                    if (!actionForm.newEndDate) e.newEndDate = 'New end date is required'
+                  }
+                  if (type === 'suspend' && !actionForm.notes.trim()) {
+                    e.notes = 'Reason is required for suspension'
+                  }
+                  setActionErrs(e)
+                  if (Object.values(e).some(Boolean)) return
+                  actionMutation.mutate()
+                }}
+                disabled={actionMutation.isPending}
+                className="flex-1 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50"
+              >
                 {actionMutation.isPending ? 'Processing…' : 'Confirm'}
               </button>
-              <button onClick={() => setActionDialog(null)} className="flex-1 py-2 border rounded-lg text-sm">Cancel</button>
+              <button onClick={() => { setActionDialog(null); setActionErrs({ planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' }) }} className="flex-1 py-2 border rounded-lg text-sm">Cancel</button>
             </div>
           </div>
         </div>

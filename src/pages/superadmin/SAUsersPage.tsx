@@ -1,6 +1,10 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import type { Resolver } from 'react-hook-form'
 import {
   UserCog, CheckCircle, XCircle, KeyRound, X, Eye, EyeOff,
   Plus, Upload, Download, AlertCircle,
@@ -23,6 +27,14 @@ type StaffUser = {
 
 const ROLES = ['ADMIN', 'OFFICE_STAFF', 'SUPERVISOR', 'DRIVER', 'CLEANER']
 
+const addUserSchema = z.object({
+  tenantId: z.string().min(1, 'Select a tenant'),
+  name:     z.string().min(1, 'Name is required'),
+  phone:    z.string().regex(/^[0-9]{10}$/, 'Enter a valid 10-digit phone'),
+  role:     z.string().min(1, 'Select a role'),
+})
+type AddUserForm = z.infer<typeof addUserSchema>
+
 const USER_CSV_HEADERS = ['name', 'phone', 'roleName']
 const USER_CSV_SAMPLE  = ['John Doe', '9876543210', 'ADMIN']
 
@@ -40,13 +52,12 @@ function AddUserDialog({ open, onClose, tenants }: {
   open: boolean; onClose: () => void; tenants: Tenant[]
 }) {
   const qc = useQueryClient()
-  const [tenantId, setTenantId] = useState('')
-  const [name, setName]         = useState('')
-  const [phone, setPhone]       = useState('')
-  const [role, setRole]         = useState('')
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<AddUserForm>({
+    resolver: zodResolver(addUserSchema) as Resolver<AddUserForm>,
+  })
 
   const mutation = useMutation({
-    mutationFn: () => tenantsApi.createUser(Number(tenantId), { name, phone, role }),
+    mutationFn: (d: AddUserForm) => tenantsApi.createUser(Number(d.tenantId), { name: d.name, phone: d.phone, role: d.role }),
     onSuccess: (res: unknown) => {
       const pin = (res as { data?: { generatedPin?: string } })?.data?.generatedPin
       toast.success(`User created. PIN: ${pin ?? '—'}`, { duration: 10000 })
@@ -56,18 +67,7 @@ function AddUserDialog({ open, onClose, tenants }: {
     onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
   })
 
-  function handleClose() {
-    setTenantId(''); setName(''); setPhone(''); setRole(''); onClose()
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!tenantId) return toast.error('Select a tenant')
-    if (!name.trim()) return toast.error('Name is required')
-    if (!/^[0-9]{10}$/.test(phone)) return toast.error('Phone must be 10 digits')
-    if (!role) return toast.error('Select a role')
-    mutation.mutate()
-  }
+  function handleClose() { reset(); onClose() }
 
   const sorted = [...tenants].sort((a, b) => a.companyName.localeCompare(b.companyName))
 
@@ -75,36 +75,36 @@ function AddUserDialog({ open, onClose, tenants }: {
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Add User</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 mt-2">
           <div>
-            <Label>Tenant *</Label>
-            <Select value={tenantId} onValueChange={setTenantId}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Select tenant" /></SelectTrigger>
-              <SelectContent>
-                {sorted.map(t => (
-                  <SelectItem key={t.id} value={String(t.id)}>{t.companyName}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Tenant <span className="text-red-500">*</span></Label>
+            <select {...register('tenantId')} className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.tenantId ? 'border-red-400' : 'border-input'}`}>
+              <option value="">Select tenant</option>
+              {sorted.map(t => (
+                <option key={t.id} value={String(t.id)}>{t.companyName}</option>
+              ))}
+            </select>
+            {errors.tenantId && <p className="text-red-500 text-xs mt-1">{errors.tenantId.message}</p>}
           </div>
           <div>
-            <Label>Name *</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} className="mt-1" placeholder="Full name" />
+            <Label>Name <span className="text-red-500">*</span></Label>
+            <Input {...register('name')} className={`mt-1 ${errors.name ? 'border-red-400' : ''}`} placeholder="Full name" />
+            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
           </div>
           <div>
-            <Label>Phone *</Label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} className="mt-1" placeholder="10-digit phone" maxLength={10} />
+            <Label>Phone <span className="text-red-500">*</span></Label>
+            <Input {...register('phone')} className={`mt-1 ${errors.phone ? 'border-red-400' : ''}`} placeholder="10-digit phone" maxLength={10} />
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
           </div>
           <div>
-            <Label>Role *</Label>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Select role" /></SelectTrigger>
-              <SelectContent>
-                {ROLES.map(r => (
-                  <SelectItem key={r} value={r}>{r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Role <span className="text-red-500">*</span></Label>
+            <select {...register('role')} className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.role ? 'border-red-400' : 'border-input'}`}>
+              <option value="">Select role</option>
+              {ROLES.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+            {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role.message}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-1 border-t">
             <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>

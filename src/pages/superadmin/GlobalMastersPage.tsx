@@ -28,13 +28,15 @@ function SimpleSection({
   const [open, setOpen]       = useState(false)
   const [editItem, setEditItem] = useState<MasterItem | null>(null)
   const [name, setName]       = useState('')
+  const [nameErr, setNameErr] = useState('')
 
-  function openAdd() { setEditItem(null); setName(''); setOpen(true) }
-  function openEdit(it: MasterItem) { setEditItem(it); setName(it.name); setOpen(true) }
+  function openAdd() { setEditItem(null); setName(''); setNameErr(''); setOpen(true) }
+  function openEdit(it: MasterItem) { setEditItem(it); setName(it.name); setNameErr(''); setOpen(true) }
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return toast.error('Name required')
+    if (!name.trim()) { setNameErr('Name is required'); return }
+    setNameErr('')
     if (editItem) onEdit(editItem, name.trim())
     else onAdd(name.trim())
     setOpen(false)
@@ -70,7 +72,11 @@ function SimpleSection({
         <DialogContent className="max-w-xs">
           <DialogHeader><DialogTitle>{editItem ? `Edit ${title}` : `Add ${title}`}</DialogTitle></DialogHeader>
           <form onSubmit={submit} className="space-y-3 mt-2">
-            <div><Label>Name *</Label><Input value={name} onChange={e => setName(e.target.value)} className="mt-1" autoFocus /></div>
+            <div>
+              <Label>Name <span className="text-red-500">*</span></Label>
+              <Input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} className={`mt-1 ${nameErr ? 'border-red-400' : ''}`} autoFocus />
+              {nameErr && <p className="text-red-500 text-xs mt-1">{nameErr}</p>}
+            </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" size="sm">{editItem ? 'Update' : 'Add'}</Button>
@@ -91,16 +97,19 @@ function StatesSection() {
   const [editItem, setEditItem] = useState<StateItem | null>(null)
   const [name, setName]       = useState('')
   const [code, setCode]       = useState('')
+  const [errs, setErrs]       = useState({ name: '', code: '' })
 
   const mutAdd = useMutation({ mutationFn: (d: { name: string; code: string }) => globalMastersWriteApi.createState(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-states'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; code: string } }) => globalMastersWriteApi.updateState(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-states'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutDel = useMutation({ mutationFn: (id: number) => globalMastersWriteApi.deleteState(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-states'] }), onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
 
-  function openAdd() { setEditItem(null); setName(''); setCode(''); setOpen(true) }
-  function openEdit(it: StateItem) { setEditItem(it); setName(it.name); setCode(it.code); setOpen(true) }
+  function openAdd() { setEditItem(null); setName(''); setCode(''); setErrs({ name: '', code: '' }); setOpen(true) }
+  function openEdit(it: StateItem) { setEditItem(it); setName(it.name); setCode(it.code); setErrs({ name: '', code: '' }); setOpen(true) }
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !code.trim()) return toast.error('Name and code required')
+    const e2 = { name: !name.trim() ? 'Name is required' : '', code: !code.trim() ? 'Code is required' : '' }
+    setErrs(e2)
+    if (e2.name || e2.code) return
     if (editItem) mutEdit.mutate({ id: editItem.id, d: { name: name.trim(), code: code.trim() } })
     else mutAdd.mutate({ name: name.trim(), code: code.trim() })
   }
@@ -128,8 +137,16 @@ function StatesSection() {
         <DialogContent className="max-w-xs">
           <DialogHeader><DialogTitle>{editItem ? 'Edit State' : 'Add State'}</DialogTitle></DialogHeader>
           <form onSubmit={submit} className="space-y-3 mt-2">
-            <div><Label>Name *</Label><Input value={name} onChange={e => setName(e.target.value)} className="mt-1" autoFocus /></div>
-            <div><Label>Code *</Label><Input value={code} onChange={e => setCode(e.target.value)} className="mt-1" placeholder="e.g. MH" maxLength={4} /></div>
+            <div>
+              <Label>Name <span className="text-red-500">*</span></Label>
+              <Input value={name} onChange={e => { setName(e.target.value); setErrs(v => ({ ...v, name: '' })) }} className={`mt-1 ${errs.name ? 'border-red-400' : ''}`} autoFocus />
+              {errs.name && <p className="text-red-500 text-xs mt-1">{errs.name}</p>}
+            </div>
+            <div>
+              <Label>Code <span className="text-red-500">*</span></Label>
+              <Input value={code} onChange={e => { setCode(e.target.value); setErrs(v => ({ ...v, code: '' })) }} className={`mt-1 ${errs.code ? 'border-red-400' : ''}`} placeholder="e.g. MH" maxLength={4} />
+              {errs.code && <p className="text-red-500 text-xs mt-1">{errs.code}</p>}
+            </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" size="sm">{editItem ? 'Update' : 'Add'}</Button>
@@ -151,16 +168,19 @@ function CitiesSection({ states }: { states: StateItem[] }) {
   const [name, setName]       = useState('')
   const [stateId, setStateId] = useState('')
   const [filterState, setFilterState] = useState('all')
+  const [errs, setErrs]       = useState({ name: '', stateId: '' })
 
   const mutAdd  = useMutation({ mutationFn: (d: { name: string; stateId: number }) => globalMastersWriteApi.createCity(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-cities'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; stateId: number } }) => globalMastersWriteApi.updateCity(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-cities'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutDel  = useMutation({ mutationFn: (id: number) => globalMastersWriteApi.deleteCity(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-cities'] }), onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
 
-  function openAdd() { setEditItem(null); setName(''); setStateId(''); setOpen(true) }
-  function openEdit(it: CityItem) { setEditItem(it); setName(it.name); setStateId(String(it.stateId)); setOpen(true) }
+  function openAdd() { setEditItem(null); setName(''); setStateId(''); setErrs({ name: '', stateId: '' }); setOpen(true) }
+  function openEdit(it: CityItem) { setEditItem(it); setName(it.name); setStateId(String(it.stateId)); setErrs({ name: '', stateId: '' }); setOpen(true) }
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !stateId) return toast.error('Name and state required')
+    const e2 = { name: !name.trim() ? 'Name is required' : '', stateId: !stateId ? 'Select a state' : '' }
+    setErrs(e2)
+    if (e2.name || e2.stateId) return
     if (editItem) mutEdit.mutate({ id: editItem.id, d: { name: name.trim(), stateId: Number(stateId) } })
     else mutAdd.mutate({ name: name.trim(), stateId: Number(stateId) })
   }
@@ -199,15 +219,20 @@ function CitiesSection({ states }: { states: StateItem[] }) {
         <DialogContent className="max-w-xs">
           <DialogHeader><DialogTitle>{editItem ? 'Edit City' : 'Add City'}</DialogTitle></DialogHeader>
           <form onSubmit={submit} className="space-y-3 mt-2">
-            <div><Label>Name *</Label><Input value={name} onChange={e => setName(e.target.value)} className="mt-1" autoFocus /></div>
             <div>
-              <Label>State *</Label>
-              <Select value={stateId} onValueChange={setStateId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select state" /></SelectTrigger>
+              <Label>Name <span className="text-red-500">*</span></Label>
+              <Input value={name} onChange={e => { setName(e.target.value); setErrs(v => ({ ...v, name: '' })) }} className={`mt-1 ${errs.name ? 'border-red-400' : ''}`} autoFocus />
+              {errs.name && <p className="text-red-500 text-xs mt-1">{errs.name}</p>}
+            </div>
+            <div>
+              <Label>State <span className="text-red-500">*</span></Label>
+              <Select value={stateId} onValueChange={v => { setStateId(v); setErrs(e => ({ ...e, stateId: '' })) }}>
+                <SelectTrigger className={`mt-1 ${errs.stateId ? 'border-red-400' : ''}`}><SelectValue placeholder="Select state" /></SelectTrigger>
                 <SelectContent>
                   {states.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {errs.stateId && <p className="text-red-500 text-xs mt-1">{errs.stateId}</p>}
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
@@ -230,16 +255,18 @@ function VehicleTypesSection() {
   const [name, setName]         = useState('')
   const [capacity, setCapacity] = useState('')
   const [tyres, setTyres]       = useState('')
+  const [nameErr, setNameErr]   = useState('')
 
   const mutAdd  = useMutation({ mutationFn: (d: { name: string; capacityInTons?: number; tyreCount?: number }) => globalMastersWriteApi.createVehicleType(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-vehicle-types'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; capacityInTons?: number; tyreCount?: number } }) => globalMastersWriteApi.updateVehicleType(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-vehicle-types'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutDel  = useMutation({ mutationFn: (id: number) => globalMastersWriteApi.deleteVehicleType(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-vehicle-types'] }), onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
 
-  function openAdd() { setEditItem(null); setName(''); setCapacity(''); setTyres(''); setOpen(true) }
-  function openEdit(it: VehicleTypeItem) { setEditItem(it); setName(it.name); setCapacity(String(it.capacityInTons ?? '')); setTyres(String(it.tyreCount ?? '')); setOpen(true) }
+  function openAdd() { setEditItem(null); setName(''); setCapacity(''); setTyres(''); setNameErr(''); setOpen(true) }
+  function openEdit(it: VehicleTypeItem) { setEditItem(it); setName(it.name); setCapacity(String(it.capacityInTons ?? '')); setTyres(String(it.tyreCount ?? '')); setNameErr(''); setOpen(true) }
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return toast.error('Name required')
+    if (!name.trim()) { setNameErr('Name is required'); return }
+    setNameErr('')
     const d = { name: name.trim(), capacityInTons: capacity ? Number(capacity) : undefined, tyreCount: tyres ? Number(tyres) : undefined }
     if (editItem) mutEdit.mutate({ id: editItem.id, d })
     else mutAdd.mutate(d)
@@ -271,7 +298,11 @@ function VehicleTypesSection() {
         <DialogContent className="max-w-xs">
           <DialogHeader><DialogTitle>{editItem ? 'Edit Vehicle Type' : 'Add Vehicle Type'}</DialogTitle></DialogHeader>
           <form onSubmit={submit} className="space-y-3 mt-2">
-            <div><Label>Name *</Label><Input value={name} onChange={e => setName(e.target.value)} className="mt-1" autoFocus /></div>
+            <div>
+              <Label>Name <span className="text-red-500">*</span></Label>
+              <Input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} className={`mt-1 ${nameErr ? 'border-red-400' : ''}`} autoFocus />
+              {nameErr && <p className="text-red-500 text-xs mt-1">{nameErr}</p>}
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label>Capacity (tons)</Label><Input type="number" value={capacity} onChange={e => setCapacity(e.target.value)} className="mt-1" /></div>
               <div><Label>Tyre Count</Label><Input type="number" value={tyres} onChange={e => setTyres(e.target.value)} className="mt-1" /></div>
@@ -296,16 +327,18 @@ function DocumentTypesSection() {
   const [editItem, setEditItem]   = useState<DocumentTypeItem | null>(null)
   const [name, setName]           = useState('')
   const [applicableFor, setApplicableFor] = useState<'VEHICLE' | 'DRIVER' | 'BOTH'>('BOTH')
+  const [nameErr, setNameErr]     = useState('')
 
   const mutAdd  = useMutation({ mutationFn: (d: { name: string; applicableFor: string }) => globalMastersWriteApi.createDocumentType(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-document-types'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; applicableFor: string } }) => globalMastersWriteApi.updateDocumentType(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-document-types'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutDel  = useMutation({ mutationFn: (id: number) => globalMastersWriteApi.deleteDocumentType(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-document-types'] }), onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
 
-  function openAdd() { setEditItem(null); setName(''); setApplicableFor('BOTH'); setOpen(true) }
-  function openEdit(it: DocumentTypeItem) { setEditItem(it); setName(it.name); setApplicableFor(it.applicableFor); setOpen(true) }
+  function openAdd() { setEditItem(null); setName(''); setApplicableFor('BOTH'); setNameErr(''); setOpen(true) }
+  function openEdit(it: DocumentTypeItem) { setEditItem(it); setName(it.name); setApplicableFor(it.applicableFor); setNameErr(''); setOpen(true) }
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return toast.error('Name required')
+    if (!name.trim()) { setNameErr('Name is required'); return }
+    setNameErr('')
     if (editItem) mutEdit.mutate({ id: editItem.id, d: { name: name.trim(), applicableFor } })
     else mutAdd.mutate({ name: name.trim(), applicableFor })
   }
@@ -336,9 +369,13 @@ function DocumentTypesSection() {
         <DialogContent className="max-w-xs">
           <DialogHeader><DialogTitle>{editItem ? 'Edit Document Type' : 'Add Document Type'}</DialogTitle></DialogHeader>
           <form onSubmit={submit} className="space-y-3 mt-2">
-            <div><Label>Name *</Label><Input value={name} onChange={e => setName(e.target.value)} className="mt-1" autoFocus /></div>
             <div>
-              <Label>Applicable For *</Label>
+              <Label>Name <span className="text-red-500">*</span></Label>
+              <Input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} className={`mt-1 ${nameErr ? 'border-red-400' : ''}`} autoFocus />
+              {nameErr && <p className="text-red-500 text-xs mt-1">{nameErr}</p>}
+            </div>
+            <div>
+              <Label>Applicable For <span className="text-red-500">*</span></Label>
               <Select value={applicableFor} onValueChange={v => setApplicableFor(v as 'VEHICLE' | 'DRIVER' | 'BOTH')}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -369,16 +406,19 @@ function TaxesSection() {
   const [name, setName]         = useState('')
   const [rate, setRate]         = useState('')
   const [taxType, setTaxType]   = useState('')
+  const [errs, setErrs]         = useState({ name: '', rate: '', taxType: '' })
 
   const mutAdd  = useMutation({ mutationFn: (d: { name: string; rate: number; taxType: string }) => globalMastersWriteApi.createTax(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-taxes'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; rate: number; taxType: string } }) => globalMastersWriteApi.updateTax(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-taxes'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutDel  = useMutation({ mutationFn: (id: number) => globalMastersWriteApi.deleteTax(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-taxes'] }), onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
 
-  function openAdd() { setEditItem(null); setName(''); setRate(''); setTaxType(''); setOpen(true) }
-  function openEdit(it: TaxItem) { setEditItem(it); setName(it.name); setRate(String(it.rate)); setTaxType(it.taxType); setOpen(true) }
+  function openAdd() { setEditItem(null); setName(''); setRate(''); setTaxType(''); setErrs({ name: '', rate: '', taxType: '' }); setOpen(true) }
+  function openEdit(it: TaxItem) { setEditItem(it); setName(it.name); setRate(String(it.rate)); setTaxType(it.taxType); setErrs({ name: '', rate: '', taxType: '' }); setOpen(true) }
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !rate || !taxType.trim()) return toast.error('All fields required')
+    const e2 = { name: !name.trim() ? 'Name is required' : '', rate: !rate ? 'Rate is required' : '', taxType: !taxType.trim() ? 'Tax type is required' : '' }
+    setErrs(e2)
+    if (e2.name || e2.rate || e2.taxType) return
     const d = { name: name.trim(), rate: Number(rate), taxType: taxType.trim() }
     if (editItem) mutEdit.mutate({ id: editItem.id, d })
     else mutAdd.mutate(d)
@@ -410,9 +450,21 @@ function TaxesSection() {
         <DialogContent className="max-w-xs">
           <DialogHeader><DialogTitle>{editItem ? 'Edit Tax' : 'Add Tax'}</DialogTitle></DialogHeader>
           <form onSubmit={submit} className="space-y-3 mt-2">
-            <div><Label>Name *</Label><Input value={name} onChange={e => setName(e.target.value)} className="mt-1" autoFocus /></div>
-            <div><Label>Rate (%) *</Label><Input type="number" value={rate} onChange={e => setRate(e.target.value)} className="mt-1" step="0.01" /></div>
-            <div><Label>Tax Type *</Label><Input value={taxType} onChange={e => setTaxType(e.target.value)} className="mt-1" placeholder="e.g. GST, IGST" /></div>
+            <div>
+              <Label>Name <span className="text-red-500">*</span></Label>
+              <Input value={name} onChange={e => { setName(e.target.value); setErrs(v => ({ ...v, name: '' })) }} className={`mt-1 ${errs.name ? 'border-red-400' : ''}`} autoFocus />
+              {errs.name && <p className="text-red-500 text-xs mt-1">{errs.name}</p>}
+            </div>
+            <div>
+              <Label>Rate (%) <span className="text-red-500">*</span></Label>
+              <Input type="number" value={rate} onChange={e => { setRate(e.target.value); setErrs(v => ({ ...v, rate: '' })) }} className={`mt-1 ${errs.rate ? 'border-red-400' : ''}`} step="0.01" />
+              {errs.rate && <p className="text-red-500 text-xs mt-1">{errs.rate}</p>}
+            </div>
+            <div>
+              <Label>Tax Type <span className="text-red-500">*</span></Label>
+              <Input value={taxType} onChange={e => { setTaxType(e.target.value); setErrs(v => ({ ...v, taxType: '' })) }} className={`mt-1 ${errs.taxType ? 'border-red-400' : ''}`} placeholder="e.g. GST, IGST" />
+              {errs.taxType && <p className="text-red-500 text-xs mt-1">{errs.taxType}</p>}
+            </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" size="sm">{editItem ? 'Update' : 'Add'}</Button>

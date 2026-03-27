@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import type { Resolver } from 'react-hook-form'
 import {
   Plus, ChevronDown, ChevronRight, CheckCircle, XCircle,
   Banknote, TrendingUp, AlertCircle, Receipt,
@@ -17,6 +21,21 @@ import type { Payroll, SalaryAdvance, PayrollStatus, PaymentMode } from '@/types
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type StaffUser = { id: number; name: string; role: string; isActive: boolean }
+
+const generateSchema = z.object({
+  userId: z.string().min(1, 'Select a staff member'),
+  from:   z.string().min(1, 'Start date is required'),
+  to:     z.string().min(1, 'End date is required'),
+})
+type GenerateForm = z.infer<typeof generateSchema>
+
+const advanceSchema = z.object({
+  userId:      z.string().min(1, 'Select a staff member'),
+  advanceDate: z.string().min(1, 'Date is required'),
+  amount:      z.coerce.number().min(1, 'Amount must be greater than 0'),
+  reason:      z.string().optional(),
+})
+type AdvanceForm = z.infer<typeof advanceSchema>
 
 const STATUS_COLORS: Record<PayrollStatus, string> = {
   DRAFT:     'bg-gray-100 text-gray-700',
@@ -42,49 +61,43 @@ function GenerateDialog({ open, onClose, users }: {
   open: boolean; onClose: () => void; users: StaffUser[]
 }) {
   const qc = useQueryClient()
-  const [userId, setUserId]   = useState('')
-  const [from, setFrom]       = useState('')
-  const [to, setTo]           = useState('')
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<GenerateForm>({
+    resolver: zodResolver(generateSchema) as Resolver<GenerateForm>,
+  })
 
   const mutation = useMutation({
-    mutationFn: () => payrollApi.generate({ userId: Number(userId), payCycleStartDate: from, payCycleEndDate: to }),
+    mutationFn: (d: GenerateForm) => payrollApi.generate({ userId: Number(d.userId), payCycleStartDate: d.from, payCycleEndDate: d.to }),
     onSuccess: () => {
       toast.success('Payroll generated')
       qc.invalidateQueries({ queryKey: ['payrolls'] })
-      onClose()
-      setUserId(''); setFrom(''); setTo('')
+      reset(); onClose()
     },
     onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to generate'),
   })
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!userId || !from || !to) return toast.error('All fields required')
-    mutation.mutate()
-  }
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Generate Payroll</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 mt-2">
           <div>
-            <Label>Staff *</Label>
-            <Select value={userId} onValueChange={setUserId}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Select staff" /></SelectTrigger>
-              <SelectContent>
-                {users.map(u => <SelectItem key={u.id} value={String(u.id)}>{u.name} — {u.role}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Staff <span className="text-red-500">*</span></Label>
+            <select {...register('userId')} className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.userId ? 'border-red-400' : 'border-input'}`}>
+              <option value="">Select staff</option>
+              {users.map(u => <option key={u.id} value={String(u.id)}>{u.name} — {u.role}</option>)}
+            </select>
+            {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId.message}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Pay Cycle Start *</Label>
-              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1" />
+              <Label>Pay Cycle Start <span className="text-red-500">*</span></Label>
+              <Input type="date" {...register('from')} className={`mt-1 ${errors.from ? 'border-red-400' : ''}`} />
+              {errors.from && <p className="text-red-500 text-xs mt-1">{errors.from.message}</p>}
             </div>
             <div>
-              <Label>Pay Cycle End *</Label>
-              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1" />
+              <Label>Pay Cycle End <span className="text-red-500">*</span></Label>
+              <Input type="date" {...register('to')} className={`mt-1 ${errors.to ? 'border-red-400' : ''}`} />
+              {errors.to && <p className="text-red-500 text-xs mt-1">{errors.to.message}</p>}
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
@@ -132,11 +145,11 @@ function ApproveDialog({ open, onClose, payroll }: {
             </div>
           )}
           <div>
-            <Label>Payment Date *</Label>
+            <Label>Payment Date <span className="text-red-500">*</span></Label>
             <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="mt-1" />
           </div>
           <div>
-            <Label>Payment Mode *</Label>
+            <Label>Payment Mode <span className="text-red-500">*</span></Label>
             <Select value={paymentMode} onValueChange={v => setPaymentMode(v as PaymentMode)}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -271,54 +284,47 @@ function AdvanceDialog({ open, onClose, users }: {
   open: boolean; onClose: () => void; users: StaffUser[]
 }) {
   const qc = useQueryClient()
-  const [userId, setUserId]       = useState('')
-  const [advanceDate, setDate]    = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [amount, setAmount]       = useState('')
-  const [reason, setReason]       = useState('')
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<AdvanceForm>({
+    resolver: zodResolver(advanceSchema) as Resolver<AdvanceForm>,
+    defaultValues: { advanceDate: format(new Date(), 'yyyy-MM-dd') },
+  })
 
   const mutation = useMutation({
-    mutationFn: () => payrollApi.createAdvance({ userId: Number(userId), advanceDate, amount: Number(amount), reason: reason || undefined }),
+    mutationFn: (d: AdvanceForm) => payrollApi.createAdvance({ userId: Number(d.userId), advanceDate: d.advanceDate, amount: d.amount, reason: d.reason || undefined }),
     onSuccess: () => {
       toast.success('Salary advance created')
       qc.invalidateQueries({ queryKey: ['advances'] })
-      onClose()
-      setUserId(''); setAmount(''); setReason('')
-      setDate(format(new Date(), 'yyyy-MM-dd'))
+      reset({ advanceDate: format(new Date(), 'yyyy-MM-dd') }); onClose()
     },
     onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
   })
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!userId || !amount || Number(amount) <= 0) return toast.error('Select staff and enter a valid amount')
-    mutation.mutate()
-  }
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Create Salary Advance</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 mt-2">
           <div>
-            <Label>Staff *</Label>
-            <Select value={userId} onValueChange={setUserId}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Select staff" /></SelectTrigger>
-              <SelectContent>
-                {users.map(u => <SelectItem key={u.id} value={String(u.id)}>{u.name} — {u.role}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Staff <span className="text-red-500">*</span></Label>
+            <select {...register('userId')} className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.userId ? 'border-red-400' : 'border-input'}`}>
+              <option value="">Select staff</option>
+              {users.map(u => <option key={u.id} value={String(u.id)}>{u.name} — {u.role}</option>)}
+            </select>
+            {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId.message}</p>}
           </div>
           <div>
-            <Label>Advance Date *</Label>
-            <Input type="date" value={advanceDate} onChange={e => setDate(e.target.value)} className="mt-1" />
+            <Label>Advance Date <span className="text-red-500">*</span></Label>
+            <Input type="date" {...register('advanceDate')} className={`mt-1 ${errors.advanceDate ? 'border-red-400' : ''}`} />
+            {errors.advanceDate && <p className="text-red-500 text-xs mt-1">{errors.advanceDate.message}</p>}
           </div>
           <div>
-            <Label>Amount (₹) *</Label>
-            <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="mt-1" placeholder="0" min="1" />
+            <Label>Amount (₹) <span className="text-red-500">*</span></Label>
+            <Input type="number" {...register('amount')} className={`mt-1 ${errors.amount ? 'border-red-400' : ''}`} placeholder="0" min="1" />
+            {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount.message}</p>}
           </div>
           <div>
             <Label>Reason</Label>
-            <Input value={reason} onChange={e => setReason(e.target.value)} className="mt-1" placeholder="Optional" />
+            <Input {...register('reason')} className="mt-1" placeholder="Optional" />
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

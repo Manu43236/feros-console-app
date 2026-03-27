@@ -52,6 +52,7 @@ function AttendanceDialog({
   const [userId, setUserId] = useState('')
   const [attendanceTypeId, setAttendanceTypeId] = useState('')
   const [leaveTypeId, setLeaveTypeId] = useState('none')
+  const [selectErrors, setSelectErrors] = useState({ userId: '', attendanceTypeId: '' })
   const { register, handleSubmit, reset } = useForm<{ leaveReason?: string; remarks?: string }>()
 
   useEffect(() => {
@@ -59,6 +60,7 @@ function AttendanceDialog({
       setUserId(record ? String(record.userId) : '')
       setAttendanceTypeId(record ? String(record.attendanceTypeId) : '')
       setLeaveTypeId(record?.leaveTypeId ? String(record.leaveTypeId) : 'none')
+      setSelectErrors({ userId: '', attendanceTypeId: '' })
       reset({ leaveReason: record?.leaveReason ?? '', remarks: record?.remarks ?? '' })
     }
   }, [open, record?.id])
@@ -78,7 +80,12 @@ function AttendanceDialog({
   })
 
   function onSubmit(d: { leaveReason?: string; remarks?: string }) {
-    if (!userId || !attendanceTypeId) { toast.error('User and attendance type are required'); return }
+    const errs = {
+      userId: !userId ? 'Select a staff member' : '',
+      attendanceTypeId: !attendanceTypeId ? 'Select attendance type' : '',
+    }
+    setSelectErrors(errs)
+    if (errs.userId || errs.attendanceTypeId) return
     mutation.mutate({
       userId: Number(userId),
       attendanceDate: date,
@@ -104,24 +111,26 @@ function AttendanceDialog({
             <Input value={date} disabled className="mt-1 bg-gray-50" />
           </div>
           <div>
-            <Label>Staff *</Label>
-            <Select value={userId} onValueChange={setUserId} disabled={isEdit}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Select staff" /></SelectTrigger>
+            <Label>Staff <span className="text-red-500">*</span></Label>
+            <Select value={userId} onValueChange={v => { setUserId(v); setSelectErrors(e => ({ ...e, userId: '' })) }} disabled={isEdit}>
+              <SelectTrigger className={`mt-1 ${selectErrors.userId ? 'border-red-400' : ''}`}><SelectValue placeholder="Select staff" /></SelectTrigger>
               <SelectContent>
                 {users.map(u => (
                   <SelectItem key={u.id} value={String(u.id)}>{u.name} — {u.role}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {selectErrors.userId && <p className="text-red-500 text-xs mt-1">{selectErrors.userId}</p>}
           </div>
           <div>
-            <Label>Attendance Type *</Label>
-            <Select value={attendanceTypeId} onValueChange={setAttendanceTypeId}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
+            <Label>Attendance Type <span className="text-red-500">*</span></Label>
+            <Select value={attendanceTypeId} onValueChange={v => { setAttendanceTypeId(v); setSelectErrors(e => ({ ...e, attendanceTypeId: '' })) }}>
+              <SelectTrigger className={`mt-1 ${selectErrors.attendanceTypeId ? 'border-red-400' : ''}`}><SelectValue placeholder="Select type" /></SelectTrigger>
               <SelectContent>
                 {attendanceTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {selectErrors.attendanceTypeId && <p className="text-red-500 text-xs mt-1">{selectErrors.attendanceTypeId}</p>}
           </div>
           {isLeave && (
             <>

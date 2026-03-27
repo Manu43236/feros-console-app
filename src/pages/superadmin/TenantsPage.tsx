@@ -1,7 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import type { Resolver } from 'react-hook-form'
 import {
   Plus, Building2, CheckCircle, XCircle, Users, Pencil, Trash2,
   ChevronDown, ChevronRight, LogIn, Upload, Download, AlertCircle,
@@ -201,6 +205,21 @@ type TenantFormData = {
   bankName: string; accountNumber: string; ifscCode: string; branchName: string; accountHolderName: string
 }
 
+const tenantSchema = z.object({
+  companyName: z.string().min(1, 'Company name is required'),
+  email:       z.string().email('Enter a valid email'),
+  phone:       z.string().regex(/^[0-9]{10}$/, 'Enter a valid 10-digit phone'),
+  ownerName:   z.string().min(1, 'Owner name is required'),
+  ownerPhone:  z.string().regex(/^[0-9]{10}$/, 'Enter a valid 10-digit phone'),
+  ownerEmail:  z.string().optional().or(z.literal('')),
+  prefix: z.string().optional(), address: z.string().optional(),
+  city: z.string().optional(), state: z.string().optional(), pincode: z.string().optional(),
+  gstin: z.string().optional(), panNumber: z.string().optional(), tanNumber: z.string().optional(),
+  cinNumber: z.string().optional(), transportLicenseNumber: z.string().optional(),
+  bankName: z.string().optional(), accountNumber: z.string().optional(),
+  ifscCode: z.string().optional(), branchName: z.string().optional(), accountHolderName: z.string().optional(),
+})
+
 const EMPTY_FORM: TenantFormData = {
   companyName: '', email: '', phone: '', ownerName: '', ownerPhone: '', ownerEmail: '',
   prefix: '', address: '', city: '', state: '', pincode: '',
@@ -227,12 +246,18 @@ function TenantDialog({ open, onClose, tenant }: {
 }) {
   const qc = useQueryClient()
   const isEdit = !!tenant
-  const [form, setForm] = useState<TenantFormData>(() => tenant ? toForm(tenant) : EMPTY_FORM)
 
-  const set = (k: keyof TenantFormData, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<TenantFormData>({
+    resolver: zodResolver(tenantSchema) as Resolver<TenantFormData>,
+    defaultValues: EMPTY_FORM,
+  })
+
+  useEffect(() => {
+    if (open) reset(tenant ? toForm(tenant) : EMPTY_FORM)
+  }, [open, tenant?.id])
 
   const mutation = useMutation({
-    mutationFn: () => isEdit ? tenantsApi.update(tenant!.id, form) : tenantsApi.create(form),
+    mutationFn: (data: TenantFormData) => isEdit ? tenantsApi.update(tenant!.id, data) : tenantsApi.create(data),
     onSuccess: () => {
       toast.success(isEdit ? 'Tenant updated' : 'Tenant created')
       qc.invalidateQueries({ queryKey: ['tenants'] })
@@ -241,19 +266,23 @@ function TenantDialog({ open, onClose, tenant }: {
     onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
   })
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.companyName || !form.email || !form.phone || !form.ownerName || !form.ownerPhone) {
-      return toast.error('Required fields missing')
-    }
-    mutation.mutate()
+  // Helper for required fields (shows red * and error message)
+  function Req({ label, fk, type = 'text' }: { label: string; fk: keyof TenantFormData; type?: string }) {
+    return (
+      <div>
+        <Label>{label} <span className="text-red-500">*</span></Label>
+        <Input type={type} {...register(fk)} className={`mt-1 ${errors[fk] ? 'border-red-400' : ''}`} placeholder={label} />
+        {errors[fk] && <p className="text-red-500 text-xs mt-1">{errors[fk]?.message}</p>}
+      </div>
+    )
   }
 
+  // Helper for optional fields
   function Field({ label, fk, type = 'text' }: { label: string; fk: keyof TenantFormData; type?: string }) {
     return (
       <div>
         <Label>{label}</Label>
-        <Input type={type} value={form[fk]} onChange={e => set(fk, e.target.value)} className="mt-1" placeholder={label} />
+        <Input type={type} {...register(fk)} className="mt-1" placeholder={label} />
       </div>
     )
   }
@@ -262,14 +291,14 @@ function TenantDialog({ open, onClose, tenant }: {
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>{isEdit ? 'Edit Tenant' : 'Create Tenant'}</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5 mt-2">
+        <form onSubmit={handleSubmit(data => mutation.mutate(data))} className="space-y-5 mt-2">
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Basic Info</p>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Company Name *</Label><Input value={form.companyName} onChange={e => set('companyName', e.target.value)} className="mt-1" placeholder="Company Name" /></div>
+              <Req label="Company Name" fk="companyName" />
               <Field label="Prefix (e.g. ABC)" fk="prefix" />
-              <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => set('email', e.target.value)} className="mt-1" placeholder="Email" /></div>
-              <div><Label>Phone *</Label><Input value={form.phone} onChange={e => set('phone', e.target.value)} className="mt-1" placeholder="10-digit phone" /></div>
+              <Req label="Email" fk="email" type="email" />
+              <Req label="Phone" fk="phone" />
               <div className="col-span-2"><Field label="Address" fk="address" /></div>
               <Field label="City" fk="city" />
               <Field label="State" fk="state" />
@@ -280,8 +309,8 @@ function TenantDialog({ open, onClose, tenant }: {
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Owner Details</p>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Owner Name *</Label><Input value={form.ownerName} onChange={e => set('ownerName', e.target.value)} className="mt-1" placeholder="Owner Name" /></div>
-              <div><Label>Owner Phone *</Label><Input value={form.ownerPhone} onChange={e => set('ownerPhone', e.target.value)} className="mt-1" placeholder="10-digit phone" /></div>
+              <Req label="Owner Name" fk="ownerName" />
+              <Req label="Owner Phone" fk="ownerPhone" />
               <Field label="Owner Email" fk="ownerEmail" type="email" />
             </div>
           </div>
