@@ -285,8 +285,11 @@ export function VehicleForm({
   })
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      isEdit ? vehiclesApi.update(vehicle!.id, data) : vehiclesApi.create(data),
+    mutationFn: (data: FormData) => {
+      // Strip empty strings for backend enum fields so they're not sent as ""
+      const payload = { ...data, permitType: data.permitType || undefined }
+      return isEdit ? vehiclesApi.update(vehicle!.id, payload) : vehiclesApi.create(payload)
+    },
     onSuccess: () => {
       toast.success(`Vehicle ${isEdit ? 'updated' : 'added'} successfully`)
       qc.invalidateQueries({ queryKey: ['vehicles'] })
@@ -295,7 +298,9 @@ export function VehicleForm({
     },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Something went wrong')
+      // Hide raw Spring/JSON technical errors — show a friendly message instead
+      const isTechnical = msg && (msg.startsWith('JSON parse error') || msg.includes('Cannot coerce') || msg.includes('Unrecognized field'))
+      toast.error(isTechnical ? 'Invalid data submitted. Please check all fields and try again.' : (msg ?? 'Something went wrong'))
     },
   })
 
@@ -313,9 +318,9 @@ export function VehicleForm({
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1.5">
-              <Label>Registration Number *</Label>
-              <Input placeholder="MH12AB1234" className="uppercase" {...register('registrationNumber')} />
-              {errors.registrationNumber && <p className="text-red-500 text-xs">{errors.registrationNumber.message}</p>}
+              <Label>Registration Number <span className="text-red-500">*</span></Label>
+              <Input placeholder="MH12AB1234" className={`uppercase ${errors.registrationNumber ? 'border-red-400' : ''}`} {...register('registrationNumber')} />
+              {errors.registrationNumber && <p className="text-red-500 text-xs mt-1">{errors.registrationNumber.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>Brand</Label>
