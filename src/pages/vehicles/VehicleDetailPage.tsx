@@ -455,11 +455,11 @@ export function VehicleDetailPage() {
         </div>
         </div>{/* end left flex-[4] */}
 
-        {/* Right: vehicle images (20%) — padded wrapper creates visual separation from left */}
-        <div className="flex-[1] p-3 pl-0 flex">
-          <div className="flex-1 bg-white/5 rounded-xl overflow-hidden flex flex-col">
+        {/* Right: vehicle images (20%) */}
+        <div className="flex-[1] py-3 pr-3 overflow-hidden self-stretch">
+          <div className="h-full bg-white/5 rounded-xl flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-3 pt-2.5 pb-2 flex-shrink-0">
+            <div className="flex items-center justify-between px-3 pt-2.5 pb-2 shrink-0">
               <span className="text-xs font-semibold text-white/60 uppercase tracking-wide">Photos</span>
               <label className={cn(
                 'cursor-pointer flex items-center gap-1 text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded px-2 py-1 transition-colors',
@@ -474,12 +474,12 @@ export function VehicleDetailPage() {
 
             {/* Body */}
             {!imagesRes?.data?.length ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-1.5 pb-3">
+              <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
                 <Camera size={20} className="text-white/20" />
                 <p className="text-xs text-white/30 text-center leading-relaxed">No photos<br/>uploaded yet</p>
               </div>
             ) : (
-              <div className="flex-1 min-h-0 overflow-x-auto flex items-stretch gap-2 px-2.5 pb-2.5 snap-x snap-mandatory">
+              <div className="flex-1 overflow-x-auto flex items-stretch gap-2 px-2.5 pb-2.5 snap-x snap-mandatory min-h-0">
                 {(imagesRes.data as VehicleImage[]).map(img => (
                   <div key={img.id} className="relative group flex-none h-full aspect-square rounded-lg overflow-hidden bg-white/10 snap-start">
                     <img src={img.imageUrl} alt={img.caption ?? 'Vehicle'} className="w-full h-full object-cover" />
