@@ -9,7 +9,7 @@ import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import { differenceInDays, parseISO, isValid } from 'date-fns'
 import {
-  Plus, Search, Truck, ChevronRight, AlertTriangle, Upload, Download, CheckCircle, XCircle, Calendar, Camera, Trash2,
+  Plus, Search, Truck, ChevronRight, AlertTriangle, Upload, Download, CheckCircle, XCircle, Calendar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import type { Vehicle, VehicleImage, BulkUploadResult, VehicleStatusType } from '@/types'
+import type { Vehicle, BulkUploadResult, VehicleStatusType } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type ExpiryStatus = 'expired' | 'critical' | 'warning' | 'ok' | 'none'
@@ -243,7 +243,6 @@ export function VehicleForm({
   const qc = useQueryClient()
   const isEdit = !!vehicle
   const [ownershipTypeId, setOwnershipTypeId] = useState<number | undefined>(vehicle?.ownershipTypeId)
-  const [imgUploading, setImgUploading] = useState(false)
 
   const { data: brandsRes }        = useQuery({ queryKey: ['vehicle-brands'],    queryFn: globalMastersApi.getVehicleBrands })
   const { data: typesRes }         = useQuery({ queryKey: ['vehicle-types'],     queryFn: globalMastersApi.getVehicleTypes })
@@ -304,40 +303,6 @@ export function VehicleForm({
       toast.error(isTechnical ? 'Invalid data submitted. Please check all fields and try again.' : (msg ?? 'Something went wrong'))
     },
   })
-
-  const { data: imagesRes } = useQuery({
-    queryKey: ['vehicle-images', vehicle?.id],
-    queryFn:  () => vehiclesApi.getImages(vehicle!.id),
-    enabled:  isEdit && !!vehicle?.id && open,
-  })
-
-  const addImgMutation = useMutation({
-    mutationFn: ({ imageUrl, caption }: { imageUrl: string; caption?: string }) =>
-      vehiclesApi.addImage(vehicle!.id, imageUrl, caption),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['vehicle-images', vehicle?.id] }),
-    onError: () => toast.error('Failed to save image'),
-  })
-
-  const delImgMutation = useMutation({
-    mutationFn: (imageId: number) => vehiclesApi.deleteImage(imageId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['vehicle-images', vehicle?.id] }),
-    onError: () => toast.error('Failed to delete image'),
-  })
-
-  async function handleImgUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !vehicle?.id) return
-    setImgUploading(true)
-    try {
-      const up = await vehiclesApi.uploadImageFile(vehicle.id, file)
-      await addImgMutation.mutateAsync({ imageUrl: up.data.publicUrl })
-    } catch {
-      toast.error('Upload failed')
-    } finally {
-      setImgUploading(false)
-      e.target.value = ''
-    }
-  }
 
   const sel = 'w-full h-10 px-3 rounded-md border border-input bg-background text-sm'
 
@@ -560,47 +525,6 @@ export function VehicleForm({
                 <Input placeholder="Any special notes about this vehicle" {...register('notes')} />
               </div>
             </div>
-          </div>
-
-          {/* Photos */}
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Camera size={14} className="text-gray-400" /> Photos
-              </p>
-              {isEdit && (
-                <label className={cn(
-                  'cursor-pointer flex items-center gap-1.5 text-xs text-feros-navy border border-feros-navy/30 hover:bg-feros-navy/5 rounded-md px-2.5 py-1.5 transition-colors',
-                  imgUploading && 'opacity-50 pointer-events-none'
-                )}>
-                  {imgUploading ? <span className="animate-pulse">Uploading…</span> : <><Plus size={12} /> Add Photo</>}
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImgUpload} disabled={imgUploading} />
-                </label>
-              )}
-            </div>
-            {!isEdit ? (
-              <p className="text-xs text-gray-400 italic">Save the vehicle first, then you can add photos.</p>
-            ) : !imagesRes?.data?.length ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-6 border-2 border-dashed border-gray-100 rounded-xl">
-                <Camera size={24} className="text-gray-300" />
-                <p className="text-xs text-gray-400">No photos yet — click "Add Photo" to upload</p>
-              </div>
-            ) : (
-              <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory">
-                {(imagesRes.data as VehicleImage[]).map(img => (
-                  <div key={img.id} className="relative group flex-none w-28 h-28 rounded-xl overflow-hidden bg-gray-100 snap-start">
-                    <img src={img.imageUrl} alt="Vehicle" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => delImgMutation.mutate(img.id)}
-                      className="absolute top-1 right-1 bg-black/60 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={10} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2 border-t">

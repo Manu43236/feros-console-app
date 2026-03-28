@@ -11,7 +11,7 @@ import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
-  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, Camera, ExternalLink, Paperclip, Trash2,
+  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ExternalLink, Paperclip, Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import type { VehicleDocument, VehicleImage, VehicleStatusType } from '@/types'
+import type { VehicleDocument, VehicleStatusType } from '@/types'
 import { VehicleForm } from './VehiclesPage'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -257,48 +257,6 @@ export function VehicleDetailPage() {
     onError: () => toast.error('Failed to delete document'),
   })
 
-  const { data: imagesRes } = useQuery({
-    queryKey: ['vehicle-images', Number(vehicleId)],
-    queryFn:  () => vehiclesApi.getImages(Number(vehicleId)),
-    enabled:  !!vehicleId,
-  })
-
-  const addImageMutation = useMutation({
-    mutationFn: ({ imageUrl, caption }: { imageUrl: string; caption?: string }) =>
-      vehiclesApi.addImage(Number(vehicleId), imageUrl, caption),
-    onSuccess: () => {
-      toast.success('Image added')
-      qc.invalidateQueries({ queryKey: ['vehicle-images', Number(vehicleId)] })
-    },
-    onError: () => toast.error('Failed to add image'),
-  })
-
-  const deleteImageMutation = useMutation({
-    mutationFn: (imageId: number) => vehiclesApi.deleteImage(imageId),
-    onSuccess: () => {
-      toast.success('Image deleted')
-      qc.invalidateQueries({ queryKey: ['vehicle-images', Number(vehicleId)] })
-    },
-    onError: () => toast.error('Failed to delete image'),
-  })
-
-  const [imageUploading, setImageUploading] = useState(false)
-
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !vehicleId) return
-    setImageUploading(true)
-    try {
-      const uploadRes = await vehiclesApi.uploadImageFile(Number(vehicleId), file)
-      await addImageMutation.mutateAsync({ imageUrl: uploadRes.data.publicUrl })
-    } catch {
-      toast.error('Upload failed')
-    } finally {
-      setImageUploading(false)
-      e.target.value = ''
-    }
-  }
-
   const toggleActiveMutation = useMutation({
     mutationFn: () => vehiclesApi.toggleActive(Number(vehicleId)),
     onSuccess: () => {
@@ -345,11 +303,8 @@ export function VehicleDetailPage() {
     <div className="space-y-0">
 
       {/* ── Banner ── */}
-      {/* Grid instead of flex — row height is driven by left content, right cell is bounded by that height.
-          flex-1 inside a grid cell cannot propagate height upward to the page layout. */}
-      <div className="bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden mb-5 grid grid-cols-[4fr_1fr]">
+      <div className="bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden mb-5">
 
-        {/* Left: vehicle info */}
         <div className="relative">
           {/* decorative truck silhouette */}
           <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
@@ -455,47 +410,6 @@ export function VehicleDetailPage() {
             ))}
           </div>
         </div>
-        </div>{/* end left flex-[4] */}
-
-        {/* Right: vehicle images — grid cell acts as flex container, bounded by grid row height */}
-        <div className="py-3 pr-3 flex flex-col">
-          <div className="flex-1 min-h-0 bg-white/5 rounded-xl flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-3 pt-2.5 pb-2 shrink-0">
-              <span className="text-xs font-semibold text-white/60 uppercase tracking-wide">Photos</span>
-              <label className={cn(
-                'cursor-pointer flex items-center gap-1 text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded px-2 py-1 transition-colors',
-                imageUploading && 'opacity-50 pointer-events-none'
-              )}>
-                {imageUploading
-                  ? <span className="animate-pulse text-xs">Uploading…</span>
-                  : <><Plus size={11} /> Add</>}
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageUploading} />
-              </label>
-            </div>
-
-            {/* Body */}
-            {!imagesRes?.data?.length ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
-                <Camera size={20} className="text-white/20" />
-                <p className="text-xs text-white/30 text-center leading-relaxed">No photos<br/>uploaded yet</p>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-x-auto flex items-stretch gap-2 px-2.5 pb-2.5 snap-x snap-mandatory min-h-0">
-                {(imagesRes.data as VehicleImage[]).map(img => (
-                  <div key={img.id} className="relative group flex-none h-full aspect-square rounded-lg overflow-hidden bg-white/10 snap-start">
-                    <img src={img.imageUrl} alt={img.caption ?? 'Vehicle'} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => deleteImageMutation.mutate(img.id)}
-                      className="absolute top-1 right-1 bg-black/60 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={10} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
       </div>
