@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -17,15 +17,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { payrollApi } from '@/api/payroll'
 import { staffApi } from '@/api/staff'
+import { tenantMastersApi } from '@/api/masters'
 import type { Payroll, SalaryAdvance, PayrollStatus, PaymentMode } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type StaffUser = { id: number; name: string; role: string; isActive: boolean }
 
 const generateSchema = z.object({
-  userId: z.string().min(1, 'Select a staff member'),
-  from:   z.string().min(1, 'Start date is required'),
-  to:     z.string().min(1, 'End date is required'),
+  userId:    z.string().min(1, 'Select a staff member'),
+  from:      z.string().min(1, 'Start date is required'),
+  to:        z.string().min(1, 'End date is required'),
+  dailyRate: z.coerce.number().min(1, 'Daily rate is required'),
 })
 type GenerateForm = z.infer<typeof generateSchema>
 
@@ -61,33 +63,85 @@ function GenerateDialog({ open, onClose, users }: {
   open: boolean; onClose: () => void; users: StaffUser[]
 }) {
   const qc = useQueryClient()
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<GenerateForm>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<GenerateForm>({
     resolver: zodResolver(generateSchema) as Resolver<GenerateForm>,
   })
 
+  const selectedUserId = watch('userId')
+  const [rateAutoFilled, setRateAutoFilled] = useState(false)
+
+  // Fetch all pay rates once
+  const { data: payRatesRes } = useQuery({
+    queryKey: ['pay-rates'],
+    queryFn: tenantMastersApi.getPayRates,
+    enabled: open,
+  })
+
+  // Fetch selected staff's profile to get their designation
+  const { data: profileRes, isFetching: profileFetching } = useQuery({
+    queryKey: ['staff-profile', selectedUserId],
+    queryFn: () => staffApi.getByUserId(Number(selectedUserId)),
+    enabled: !!selectedUserId && open,
+  })
+
+  // Auto-fill daily rate when profile + pay rates are available
+  useEffect(() => {
+    if (!profileRes?.data?.designationId || !payRatesRes?.data) return
+    const designationId = profileRes.data.designationId
+    // Find the active pay rate for this designation (prefer no vehicle type, latest effectiveFrom)
+    const match = payRatesRes.data
+      .filter(r => r.designationId === designationId && r.isActive)
+      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0]
+    if (match) {
+      setValue('dailyRate', match.payPerDay)
+      setRateAutoFilled(true)
+    } else {
+      setRateAutoFilled(false)
+    }
+  }, [profileRes?.data?.designationId, payRatesRes?.data, setValue])
+
+  // Clear auto-fill flag when user manually edits the rate
+  function handleRateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setRateAutoFilled(false)
+    register('dailyRate').onChange(e)
+  }
+
   const mutation = useMutation({
-    mutationFn: (d: GenerateForm) => payrollApi.generate({ userId: Number(d.userId), payCycleStartDate: d.from, payCycleEndDate: d.to }),
+    mutationFn: (d: GenerateForm) => payrollApi.generate({
+      userId:            Number(d.userId),
+      payCycleStartDate: d.from,
+      payCycleEndDate:   d.to,
+      dailyRate:         d.dailyRate,
+    }),
     onSuccess: () => {
       toast.success('Payroll generated')
       qc.invalidateQueries({ queryKey: ['payrolls'] })
-      reset(); onClose()
+      reset(); setRateAutoFilled(false); onClose()
     },
     onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to generate'),
   })
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+    <Dialog open={open} onOpenChange={v => !v && (reset(), setRateAutoFilled(false), onClose())}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Generate Payroll</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 mt-2">
+
+          {/* Staff */}
           <div>
             <Label>Staff <span className="text-red-500">*</span></Label>
-            <select {...register('userId')} className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.userId ? 'border-red-400' : 'border-input'}`}>
+            <select
+              {...register('userId')}
+              onChange={e => { register('userId').onChange(e); setRateAutoFilled(false) }}
+              className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.userId ? 'border-red-400' : 'border-input'}`}
+            >
               <option value="">Select staff</option>
               {users.map(u => <option key={u.id} value={String(u.id)}>{u.name} — {u.role}</option>)}
             </select>
             {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId.message}</p>}
           </div>
+
+          {/* Pay Cycle */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Pay Cycle Start <span className="text-red-500">*</span></Label>
@@ -100,8 +154,32 @@ function GenerateDialog({ open, onClose, users }: {
               {errors.to && <p className="text-red-500 text-xs mt-1">{errors.to.message}</p>}
             </div>
           </div>
+
+          {/* Daily Rate — auto-filled from pay rates */}
+          <div>
+            <div className="flex items-center justify-between">
+              <Label>Daily Rate (₹) <span className="text-red-500">*</span></Label>
+              {profileFetching && <span className="text-xs text-gray-400 animate-pulse">Looking up rate…</span>}
+              {rateAutoFilled && !profileFetching && (
+                <span className="text-xs text-green-600 font-medium">Auto-filled from pay rates</span>
+              )}
+              {selectedUserId && !profileFetching && !rateAutoFilled && profileRes?.data && !profileRes.data.designationId && (
+                <span className="text-xs text-amber-500">No designation set — enter manually</span>
+              )}
+            </div>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="e.g. 800"
+              {...register('dailyRate')}
+              onChange={handleRateChange}
+              className={`mt-1 ${errors.dailyRate ? 'border-red-400' : rateAutoFilled ? 'border-green-400 bg-green-50' : ''}`}
+            />
+            {errors.dailyRate && <p className="text-red-500 text-xs mt-1">{errors.dailyRate.message}</p>}
+          </div>
+
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => { reset(); setRateAutoFilled(false); onClose() }}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? 'Generating…' : 'Generate'}
             </Button>
