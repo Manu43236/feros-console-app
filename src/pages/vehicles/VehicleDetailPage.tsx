@@ -345,10 +345,10 @@ export function VehicleDetailPage() {
     <div className="space-y-0">
 
       {/* ── Banner ── */}
-      <div className="flex gap-3 mb-5">
+      <div className="bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden mb-5 flex">
 
         {/* Left: vehicle info (80%) */}
-        <div className="relative flex-[4] bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden">
+        <div className="relative flex-[4]">
           {/* decorative truck silhouette */}
           <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
             <Truck size={180} />
@@ -455,43 +455,45 @@ export function VehicleDetailPage() {
         </div>
         </div>{/* end left flex-[4] */}
 
-        {/* Right: vehicle images (20%) */}
-        <div className="flex-[1] bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 pt-3 pb-2 flex-shrink-0">
-            <span className="text-xs font-semibold text-white/60 uppercase tracking-wide">Photos</span>
-            <label className={cn(
-              'cursor-pointer flex items-center gap-1 text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-md px-2 py-1 transition-colors',
-              imageUploading && 'opacity-50 pointer-events-none'
-            )}>
-              {imageUploading
-                ? <span className="animate-pulse text-xs">Uploading…</span>
-                : <><Plus size={11} /> Add</>}
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageUploading} />
-            </label>
-          </div>
+        {/* Right: vehicle images (20%) — padded wrapper creates visual separation from left */}
+        <div className="flex-[1] p-3 pl-0 flex">
+          <div className="flex-1 bg-white/5 rounded-xl overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-3 pt-2.5 pb-2 flex-shrink-0">
+              <span className="text-xs font-semibold text-white/60 uppercase tracking-wide">Photos</span>
+              <label className={cn(
+                'cursor-pointer flex items-center gap-1 text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded px-2 py-1 transition-colors',
+                imageUploading && 'opacity-50 pointer-events-none'
+              )}>
+                {imageUploading
+                  ? <span className="animate-pulse text-xs">Uploading…</span>
+                  : <><Plus size={11} /> Add</>}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageUploading} />
+              </label>
+            </div>
 
-          {/* Body */}
-          {!imagesRes?.data?.length ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-4">
-              <Camera size={24} className="text-white/20" />
-              <p className="text-xs text-white/30 text-center leading-relaxed">No photos<br/>uploaded yet</p>
-            </div>
-          ) : (
-            <div className="flex-1 min-h-0 overflow-x-auto flex items-stretch gap-2 px-3 pb-3 snap-x snap-mandatory">
-              {(imagesRes.data as VehicleImage[]).map(img => (
-                <div key={img.id} className="relative group flex-none h-full aspect-square rounded-xl overflow-hidden bg-white/10 snap-start">
-                  <img src={img.imageUrl} alt={img.caption ?? 'Vehicle'} className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => deleteImageMutation.mutate(img.id)}
-                    className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 size={10} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+            {/* Body */}
+            {!imagesRes?.data?.length ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-1.5 pb-3">
+                <Camera size={20} className="text-white/20" />
+                <p className="text-xs text-white/30 text-center leading-relaxed">No photos<br/>uploaded yet</p>
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 overflow-x-auto flex items-stretch gap-2 px-2.5 pb-2.5 snap-x snap-mandatory">
+                {(imagesRes.data as VehicleImage[]).map(img => (
+                  <div key={img.id} className="relative group flex-none h-full aspect-square rounded-lg overflow-hidden bg-white/10 snap-start">
+                    <img src={img.imageUrl} alt={img.caption ?? 'Vehicle'} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => deleteImageMutation.mutate(img.id)}
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
       </div>
