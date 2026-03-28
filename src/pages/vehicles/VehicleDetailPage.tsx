@@ -345,10 +345,12 @@ export function VehicleDetailPage() {
     <div className="space-y-0">
 
       {/* ── Banner ── */}
-      <div className="bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden mb-5 flex">
+      {/* Grid instead of flex — row height is driven by left content, right cell is bounded by that height.
+          flex-1 inside a grid cell cannot propagate height upward to the page layout. */}
+      <div className="bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden mb-5 grid grid-cols-[4fr_1fr]">
 
-        {/* Left: vehicle info (80%) */}
-        <div className="relative flex-[4]">
+        {/* Left: vehicle info */}
+        <div className="relative">
           {/* decorative truck silhouette */}
           <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
             <Truck size={180} />
@@ -455,9 +457,9 @@ export function VehicleDetailPage() {
         </div>
         </div>{/* end left flex-[4] */}
 
-        {/* Right: vehicle images (20%) */}
-        <div className="flex-[1] py-3 pr-3 overflow-hidden self-stretch">
-          <div className="h-full bg-white/5 rounded-xl flex flex-col overflow-hidden">
+        {/* Right: vehicle images — grid cell acts as flex container, bounded by grid row height */}
+        <div className="py-3 pr-3 flex flex-col">
+          <div className="flex-1 min-h-0 bg-white/5 rounded-xl flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-3 pt-2.5 pb-2 shrink-0">
               <span className="text-xs font-semibold text-white/60 uppercase tracking-wide">Photos</span>
