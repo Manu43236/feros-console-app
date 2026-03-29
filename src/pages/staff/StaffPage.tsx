@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
@@ -8,6 +8,7 @@ import { staffApi } from '@/api/staff'
 import { toast } from 'sonner'
 import {
   Plus, Search, UserCheck, Phone, ChevronRight, Copy, KeyRound, Eye, EyeOff,
+  Upload, Download, FileText, CheckCircle2, AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
-import type { StaffProfile } from '@/types'
+import type { StaffProfile, BulkUploadResult } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function getRoleColor(role: string) {
@@ -155,6 +156,140 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
   )
 }
 
+// ── staff bulk upload dialog ──────────────────────────────────────────────────
+const CSV_TEMPLATE = `name,phone,role,joiningDate,licenseNumber,licenseExpiryDate
+Ramesh Kumar,9876543210,DRIVER,2024-01-15,DL0123456789,2027-01-14
+Suresh Yadav,9876543211,CLEANER,2024-02-01,,
+Priya Sharma,9876543212,OFFICE_STAFF,2024-03-10,,
+`
+
+function StaffBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [result, setResult] = useState<BulkUploadResult | null>(null)
+
+  function handleClose() { setFile(null); setResult(null); onClose() }
+
+  const mutation = useMutation({
+    mutationFn: (f: File) => staffApi.staffBulkUpload(f),
+    onSuccess: (res) => {
+      setResult(res.data)
+      qc.invalidateQueries({ queryKey: ['staff'] })
+      qc.invalidateQueries({ queryKey: ['users'] })
+      if (res.data.failureCount === 0)
+        toast.success(`${res.data.successCount} staff members uploaded successfully`)
+      else
+        toast.warning(`${res.data.successCount} uploaded, ${res.data.failureCount} failed`)
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Upload failed')
+    },
+  })
+
+  function downloadTemplate() {
+    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'staff_template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Bulk Upload Staff</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          {/* Instructions */}
+          <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-1">
+            <p className="font-medium">CSV Format</p>
+            <p>Required: <code className="bg-blue-100 px-1 rounded">name</code>, <code className="bg-blue-100 px-1 rounded">phone</code>, <code className="bg-blue-100 px-1 rounded">role</code></p>
+            <p>Optional: <code className="bg-blue-100 px-1 rounded">joiningDate</code>, <code className="bg-blue-100 px-1 rounded">licenseNumber</code>, <code className="bg-blue-100 px-1 rounded">licenseExpiryDate</code></p>
+            <p className="text-blue-600 text-xs mt-1">Roles: DRIVER, CLEANER, SUPERVISOR, OFFICE_STAFF · Dates: YYYY-MM-DD</p>
+          </div>
+
+          <Button variant="outline" size="sm" className="w-full gap-2" onClick={downloadTemplate}>
+            <Download size={14} /> Download Template
+          </Button>
+
+          {/* File picker */}
+          <div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={e => { setFile(e.target.files?.[0] ?? null); setResult(null) }}
+            />
+            <div
+              onClick={() => fileRef.current?.click()}
+              className={cn(
+                'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors',
+                file ? 'border-feros-orange bg-orange-50' : 'border-gray-200 hover:border-feros-orange hover:bg-orange-50/30'
+              )}
+            >
+              {file ? (
+                <div className="flex items-center justify-center gap-2 text-sm text-feros-orange font-medium">
+                  <FileText size={16} />
+                  {file.name}
+                </div>
+              ) : (
+                <div className="text-gray-400">
+                  <Upload size={24} className="mx-auto mb-2" />
+                  <p className="text-sm">Click to select CSV file</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Result */}
+          {result && (
+            <div className="rounded-lg border overflow-hidden text-sm">
+              <div className="flex gap-4 p-3 bg-gray-50 border-b">
+                <span className="flex items-center gap-1.5 text-green-700">
+                  <CheckCircle2 size={14} /> {result.successCount} success
+                </span>
+                <span className="flex items-center gap-1.5 text-red-600">
+                  <AlertCircle size={14} /> {result.failureCount} failed
+                </span>
+                <span className="text-gray-400 text-xs ml-auto">{result.totalRows} total rows</span>
+              </div>
+              {result.errors && result.errors.length > 0 && (
+                <div className="max-h-36 overflow-y-auto p-3 space-y-1">
+                  {result.errors.map((err, i) => (
+                    <p key={i} className="text-xs text-red-600">{err}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1" onClick={handleClose}>
+              {result ? 'Close' : 'Cancel'}
+            </Button>
+            {!result && (
+              <Button
+                className="flex-1"
+                disabled={!file || mutation.isPending}
+                onClick={() => file && mutation.mutate(file)}
+              >
+                {mutation.isPending ? 'Uploading…' : 'Upload'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── merged staff type ─────────────────────────────────────────────────────────
 interface MergedStaff {
   userId: number; userName: string; userPhone: string
@@ -170,6 +305,7 @@ export function StaffPage() {
   const logoUrl = useAuthStore(s => s.logoUrl)
   const [search, setSearch]             = useState('')
   const [addOpen, setAddOpen]           = useState(false)
+  const [bulkOpen, setBulkOpen]         = useState(false)
   const [roleFilter, setRoleFilter]     = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
@@ -212,9 +348,14 @@ export function StaffPage() {
           <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
           <p className="text-gray-500 text-sm mt-0.5">{allStaff.length} total staff members</p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
-          <Plus size={16} /> Add Staff
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
+            <Upload size={16} /> Bulk Upload
+          </Button>
+          <Button onClick={() => setAddOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+            <Plus size={16} /> Add Staff
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -332,6 +473,7 @@ export function StaffPage() {
       </div>
 
       <AddStaff open={addOpen} onClose={() => setAddOpen(false)} />
+      <StaffBulkUploadDialog open={bulkOpen} onClose={() => setBulkOpen(false)} />
     </div>
   )
 }
