@@ -71,7 +71,7 @@ function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
     },
   })
 
-  const activeVehicles = (vehiclesRes?.data ?? []).filter(v => v.isActive)
+  const activeVehicles = (vehiclesRes?.data ?? []).filter(v => v.isActive && !v.isAssigned)
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -163,6 +163,7 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
     onSuccess: () => {
       toast.success(`${slotRole === 'DRIVER' ? 'Driver' : 'Cleaner'} assigned successfully`)
       qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['users'] })
       reset(); onClose()
     },
     onError: (e: unknown) => {
