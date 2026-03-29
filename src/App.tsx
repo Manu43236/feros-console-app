@@ -15,6 +15,7 @@ import { VehicleDetailPage }   from '@/pages/vehicles/VehicleDetailPage'
 import VehicleServicesPage     from '@/pages/vehicles/VehicleServicesPage'
 import { OrdersPage }       from '@/pages/orders/OrdersPage'
 import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
+import AssignmentsPage      from '@/pages/orders/AssignmentsPage'
 import { LrsPage }        from '@/pages/lrs/LrsPage'
 import { LrDetailPage }  from '@/pages/lrs/LrDetailPage'
 import { InvoicesPage }       from '@/pages/invoices/InvoicesPage'
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="vehicle-services"    element={<VehicleServicesPage />} />
           <Route path="orders"          element={<OrdersPage />} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
+          <Route path="assignments"     element={<AssignmentsPage />} />
           <Route path="lrs"          element={<LrsPage />} />
           <Route path="lrs/:lrId"  element={<LrDetailPage />} />
           <Route path="invoices"            element={<InvoicesPage />} />
