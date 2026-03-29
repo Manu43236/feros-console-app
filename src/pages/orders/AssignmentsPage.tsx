@@ -162,7 +162,7 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
 function AssignDriverDialog({ open, onClose, orders, drivers }: {
   open: boolean; onClose: () => void
   orders: Order[]
-  drivers: { id: number; name: string; isActive: boolean }[]
+  drivers: { id: number; name: string; isActive: boolean; isAssigned?: boolean }[]
 }) {
   const qc = useQueryClient()
   const [allocationKey, setAllocationKey] = useState('') // "orderId|allocationId"
@@ -182,7 +182,7 @@ function AssignDriverDialog({ open, onClose, orders, drivers }: {
     })
   })
 
-  const activeDrivers = drivers.filter(d => d.isActive)
+  const activeDrivers = drivers.filter(d => d.isActive && !d.isAssigned)
   const [parsedOrderId, parsedAllocationId] = allocationKey
     ? allocationKey.split('|').map(Number)
     : [0, 0]
@@ -198,6 +198,7 @@ function AssignDriverDialog({ open, onClose, orders, drivers }: {
     onSuccess: () => {
       toast.success('Driver assigned successfully')
       qc.invalidateQueries({ queryKey: ['assignments-orders'] })
+      qc.invalidateQueries({ queryKey: ['assignments-users'] })
       handleClose()
     },
     onError: (e: unknown) => {
@@ -375,6 +376,7 @@ export default function AssignmentsPage() {
     onSuccess: () => {
       toast.success('Driver unassigned')
       qc.invalidateQueries({ queryKey: ['assignments-orders'] })
+      qc.invalidateQueries({ queryKey: ['assignments-users'] })
     },
     onError: (e: unknown) => {
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to unassign driver')
