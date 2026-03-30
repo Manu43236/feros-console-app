@@ -341,7 +341,7 @@ export function VehicleDetailPage() {
                     value={v.isAssigned ? 'assigned' : (v.currentStatusId ?? '')}
                     onChange={e => {
                       const id = Number(e.target.value)
-                      if (!id) return
+                      if (!id || id === v.currentStatusId) return  // no change
                       const selected = statusRes?.data?.find(s => s.id === id)
                       if (selected?.statusType === 'BREAKDOWN') {
                         setPendingStatusId(id)
@@ -366,9 +366,11 @@ export function VehicleDetailPage() {
                           {statusRes?.data
                             ?.filter(s => {
                               const cur = v.currentStatusType
-                              if (cur === 'BREAKDOWN') return s.statusType === 'IN_REPAIR'
-                              if (cur === 'IN_REPAIR')  return s.statusType === 'AVAILABLE'
-                              return true
+                              // Always include current + allowed next
+                              if (cur === 'BREAKDOWN') return s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
+                              if (cur === 'IN_REPAIR')  return s.statusType === 'IN_REPAIR'  || s.statusType === 'AVAILABLE'
+                              // AVAILABLE / null → show all except ASSIGNED/ON_TRIP (managed by orders) and IN_REPAIR (only reachable from Breakdown)
+                              return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
                             })
                             .map(s => (
                               <option key={s.id} value={s.id} className="text-gray-800">{s.name}</option>
