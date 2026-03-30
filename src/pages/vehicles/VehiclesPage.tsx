@@ -715,9 +715,15 @@ export function VehiclesPage() {
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
+                            v.currentStatusType === 'BREAKDOWN' ? 'bg-red-100' :
+                            v.currentStatusType === 'IN_REPAIR'  ? 'bg-yellow-100' :
                             hasAlert ? 'bg-red-50' : 'bg-feros-navy/10'
                           )}>
-                            <Truck size={14} className={hasAlert ? 'text-red-500' : 'text-feros-navy'} />
+                            <Truck size={14} className={
+                              v.currentStatusType === 'BREAKDOWN' ? 'text-red-600' :
+                              v.currentStatusType === 'IN_REPAIR'  ? 'text-yellow-600' :
+                              hasAlert ? 'text-red-500' : 'text-feros-navy'
+                            } />
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-gray-800 font-mono">{v.registrationNumber}</p>
@@ -747,9 +753,21 @@ export function VehiclesPage() {
                             )}
                           </div>
                         ) : v.currentStatusName ? (
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-blue-50 text-blue-700'}`}>
-                            {v.currentStatusName}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium w-fit ${v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-blue-50 text-blue-700'}`}>
+                              {v.currentStatusName}
+                            </span>
+                            {v.currentStatusType === 'BREAKDOWN' && (
+                              <span className="text-xs text-red-500 flex items-center gap-1 pl-1">
+                                ⚠ Breakdown
+                              </span>
+                            )}
+                            {v.currentStatusType === 'IN_REPAIR' && (
+                              <span className="text-xs text-yellow-600 flex items-center gap-1 pl-1">
+                                🔧 In Repair
+                              </span>
+                            )}
+                          </div>
                         ) : <span className="text-gray-300 text-sm">—</span>}
                       </td>
                       <td className="py-3 px-4">

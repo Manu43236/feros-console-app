@@ -276,6 +276,8 @@ export function VehicleDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
       qc.invalidateQueries({ queryKey: ['vehicles'] })
+      setPendingStatusId(null)
+      setConfirmStatusId(null)
       toast.success('Status updated')
     },
     onError: (e: unknown) => {
@@ -360,13 +362,13 @@ export function VehicleDetailPage() {
                     {v.isAssigned
                       ? <option value="assigned" className="text-gray-800">Assigned to Order</option>
                       : <>
-                          <option value="" className="text-gray-800">No Status</option>
+                          {!v.currentStatusId && <option value="" className="text-gray-400">— Set Status —</option>}
                           {statusRes?.data
                             ?.filter(s => {
                               const cur = v.currentStatusType
                               if (cur === 'BREAKDOWN') return s.statusType === 'IN_REPAIR'
                               if (cur === 'IN_REPAIR')  return s.statusType === 'AVAILABLE'
-                              return true  // AVAILABLE + others → show all
+                              return true
                             })
                             .map(s => (
                               <option key={s.id} value={s.id} className="text-gray-800">{s.name}</option>
