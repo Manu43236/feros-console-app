@@ -1,12 +1,22 @@
 import apiClient from './client'
-import type { ApiResponse, Vehicle, VehicleDocument, VehicleImage, VehicleServiceRecord } from '@/types'
+import type { ApiResponse, BreakdownDuration, BreakdownType, Vehicle, VehicleDocument, VehicleImage, VehicleServiceRecord } from '@/types'
+
+export interface UpdateStatusPayload {
+  currentStatusId: number
+  breakdownType?: BreakdownType
+  breakdownDuration?: BreakdownDuration
+  reason?: string
+  location?: string
+  breakdownDate?: string
+  notes?: string
+}
 
 export const vehiclesApi = {
   getAll:    (date?: string) => apiClient.get<ApiResponse<Vehicle[]>>('/vehicles', { params: date ? { date } : {} }).then(r => r.data),
   getById:   (id: number) => apiClient.get<ApiResponse<Vehicle>>(`/vehicles/${id}`).then(r => r.data),
   create:    (data: Partial<Vehicle>) => apiClient.post<ApiResponse<Vehicle>>('/vehicles', data).then(r => r.data),
   update:    (id: number, data: Partial<Vehicle>) => apiClient.put<ApiResponse<Vehicle>>(`/vehicles/${id}`, data).then(r => r.data),
-  updateStatus:   (id: number, currentStatusId: number) => apiClient.patch<ApiResponse<Vehicle>>(`/vehicles/${id}/status`, { currentStatusId }).then(r => r.data),
+  updateStatus:   (id: number, payload: UpdateStatusPayload) => apiClient.patch<ApiResponse<Vehicle>>(`/vehicles/${id}/status`, payload).then(r => r.data),
   toggleActive:   (id: number) => apiClient.patch<ApiResponse<Vehicle>>(`/vehicles/${id}/active`).then(r => r.data),
   remove:    (id: number) => apiClient.delete<ApiResponse<null>>(`/vehicles/${id}`).then(r => r.data),
   bulkUpload: (file: File) => {
