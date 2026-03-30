@@ -322,8 +322,8 @@ function CreateLrFromAllocationDialog({
 
 // ── report breakdown dialog ───────────────────────────────────────────────────
 const breakdownSchema = z.object({
-  breakdownType:     z.enum(['MECHANICAL','TYRE','ENGINE','ELECTRICAL','ACCIDENT','OTHER'], { required_error: 'Breakdown type is required' }),
-  breakdownDuration: z.enum(['SHORT','LONG'], { required_error: 'Select SHORT or LONG breakdown' }),
+  breakdownType:     z.enum(['MECHANICAL','TYRE','ENGINE','ELECTRICAL','ACCIDENT','OTHER'], { error: 'Breakdown type is required' }),
+  breakdownDuration: z.enum(['SHORT','LONG'], { error: 'Select SHORT or LONG breakdown' }),
   breakdownDate:     z.string().min(1, 'Date/time is required'),
   location:          z.string().optional(),
   reason:            z.string().min(1, 'Reason is required'),
