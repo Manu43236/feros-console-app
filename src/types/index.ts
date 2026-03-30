@@ -171,6 +171,32 @@ export interface VehicleAllocation {
   staffAllocations?: StaffAllocation[]
 }
 
+// ─── Breakdown ────────────────────────────────────────────────────────────────
+export type BreakdownStatus = 'REPORTED' | 'IN_REPAIR' | 'RESOLVED' | 'VEHICLE_REPLACED'
+export type BreakdownType   = 'MECHANICAL' | 'TYRE' | 'ENGINE' | 'ELECTRICAL' | 'ACCIDENT' | 'OTHER'
+
+export interface Breakdown {
+  id: number
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  vehicleAllocationId: number
+  orderId: number
+  orderNumber: string
+  breakdownDate: string
+  location?: string
+  breakdownType: BreakdownType
+  reason?: string
+  status: BreakdownStatus
+  replacementVehicleAllocationId?: number
+  replacementVehicleRegistrationNumber?: string
+  resolvedAt?: string
+  reportedById: number
+  reportedByName: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
 // ─── LR ───────────────────────────────────────────────────────────────────────
 export type LrStatus = 'CREATED'|'IN_TRANSIT'|'DELIVERED'|'CANCELLED'
 

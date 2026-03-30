@@ -8,13 +8,16 @@ import { ordersApi } from '@/api/orders'
 import { vehiclesApi } from '@/api/vehicles'
 import { staffApi } from '@/api/staff'
 import { lrsApi } from '@/api/lrs'
+import { breakdownsApi } from '@/api/breakdowns'
 import { toast } from 'sonner'
 import { format, parseISO } from 'date-fns'
 import {
   ArrowLeft, Truck, Plus, Package, MapPin,
   Scale, Receipt, User, ChevronDown, ChevronUp,
   Pencil, X, RefreshCw, FileText, ExternalLink, ClipboardList,
+  AlertTriangle, CheckCircle, WrenchIcon,
 } from 'lucide-react'
+import type { Breakdown, BreakdownType } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -317,6 +320,296 @@ function CreateLrFromAllocationDialog({
   )
 }
 
+// ── report breakdown dialog ───────────────────────────────────────────────────
+const breakdownSchema = z.object({
+  breakdownType:  z.enum(['MECHANICAL','TYRE','ENGINE','ELECTRICAL','ACCIDENT','OTHER']),
+  breakdownDate:  z.string().min(1, 'Date/time is required'),
+  location:       z.string().optional(),
+  reason:         z.string().optional(),
+  notes:          z.string().optional(),
+})
+type BreakdownForm = z.infer<typeof breakdownSchema>
+
+const BREAKDOWN_TYPES: { value: BreakdownType; label: string }[] = [
+  { value: 'MECHANICAL',  label: 'Mechanical' },
+  { value: 'TYRE',        label: 'Tyre' },
+  { value: 'ENGINE',      label: 'Engine' },
+  { value: 'ELECTRICAL',  label: 'Electrical' },
+  { value: 'ACCIDENT',    label: 'Accident' },
+  { value: 'OTHER',       label: 'Other' },
+]
+
+function ReportBreakdownDialog({ orderId, allocationId, vehicleReg, open, onClose }: {
+  orderId: number; allocationId: number; vehicleReg: string; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<BreakdownForm>({
+    resolver: zodResolver(breakdownSchema) as Resolver<BreakdownForm>,
+    defaultValues: { breakdownDate: new Date().toISOString().slice(0, 16) },
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: BreakdownForm) => breakdownsApi.report(orderId, allocationId, {
+      ...data,
+      breakdownDate: new Date(data.breakdownDate).toISOString(),
+    }),
+    onSuccess: () => {
+      toast.success('Breakdown reported')
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['breakdown', allocationId] })
+      reset(); onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to report breakdown')
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-orange-600">
+            <AlertTriangle size={18} /> Report Breakdown
+          </DialogTitle>
+          <p className="text-sm text-gray-500 mt-1">
+            Vehicle: <span className="font-semibold font-mono text-gray-800">{vehicleReg}</span>
+          </p>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Breakdown Type *</Label>
+            <select {...register('breakdownType')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+              <option value="">Select type</option>
+              {BREAKDOWN_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            {errors.breakdownType && <p className="text-red-500 text-xs">{errors.breakdownType.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Date & Time *</Label>
+            <Input type="datetime-local" {...register('breakdownDate')} />
+            {errors.breakdownDate && <p className="text-red-500 text-xs">{errors.breakdownDate.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Location</Label>
+            <Input placeholder="e.g. Nashik Highway, km 145" {...register('location')} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Reason</Label>
+            <Input placeholder="Brief description…" {...register('reason')} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Input placeholder="Additional notes…" {...register('notes')} />
+          </div>
+          <div className="flex justify-end gap-3 pt-2 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending} className="bg-orange-600 hover:bg-orange-700 text-white">
+              {mutation.isPending ? 'Reporting…' : 'Report Breakdown'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── replace vehicle dialog ────────────────────────────────────────────────────
+const replaceSchema = z.object({
+  replacementVehicleId:  z.coerce.number().min(1, 'Select a vehicle'),
+  expectedDeliveryDate:  z.string().optional(),
+  transferStaff:         z.enum(['true','false']),
+  notes:                 z.string().optional(),
+})
+type ReplaceForm = z.infer<typeof replaceSchema>
+
+function ReplaceVehicleDialog({ orderId, breakdown, open, onClose }: {
+  orderId: number; breakdown: Breakdown; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehiclesApi.getAll() })
+
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<ReplaceForm>({
+    resolver: zodResolver(replaceSchema) as Resolver<ReplaceForm>,
+    defaultValues: { transferStaff: 'true' },
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: ReplaceForm) => breakdownsApi.replace(orderId, breakdown.id, {
+      replacementVehicleId: data.replacementVehicleId,
+      expectedDeliveryDate:  data.expectedDeliveryDate || undefined,
+      transferStaff:         data.transferStaff === 'true',
+      notes:                 data.notes,
+    }),
+    onSuccess: () => {
+      toast.success('Replacement vehicle assigned — LR transferred')
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['breakdown', breakdown.vehicleAllocationId] })
+      reset(); onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to assign replacement vehicle')
+    },
+  })
+
+  const availableVehicles = (vehiclesRes?.data ?? []).filter(v => v.isActive && !v.isAssigned)
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Truck size={18} /> Assign Replacement Vehicle
+          </DialogTitle>
+          <p className="text-sm text-gray-500 mt-1">
+            Broken vehicle: <span className="font-semibold font-mono text-red-600">{breakdown.vehicleRegistrationNumber}</span>
+            <span className="ml-2 text-gray-400">· Same LR will travel with the goods</span>
+          </p>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Replacement Vehicle *</Label>
+            <select {...register('replacementVehicleId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+              <option value="">Select vehicle</option>
+              {availableVehicles.map(v => (
+                <option key={v.id} value={v.id}>
+                  {v.registrationNumber}{v.vehicleTypeName ? ` · ${v.vehicleTypeName}` : ''}{v.capacityInTons ? ` · ${v.capacityInTons}T` : ''}
+                </option>
+              ))}
+            </select>
+            {errors.replacementVehicleId && <p className="text-red-500 text-xs">{errors.replacementVehicleId.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Revised Delivery Date</Label>
+            <Input type="date" {...register('expectedDeliveryDate')} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Driver / Cleaner *</Label>
+            <select {...register('transferStaff')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+              <option value="true">Transfer existing driver & cleaner to replacement vehicle</option>
+              <option value="false">Cancel staff — assign manually to new vehicle</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Input placeholder="Reason for replacement…" {...register('notes')} />
+          </div>
+          <div className="flex justify-end gap-3 pt-2 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+              {mutation.isPending ? 'Assigning…' : 'Assign Replacement'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── breakdown banner (shown on vehicle card when breakdown exists) ─────────────
+function BreakdownBanner({ orderId, breakdown, onReplace, onResolve, onCancel }: {
+  orderId: number
+  breakdown: Breakdown
+  onReplace: () => void
+  onResolve: () => void
+  onCancel:  () => void
+}) {
+  const qc = useQueryClient()
+  const isActive = breakdown.status === 'REPORTED' || breakdown.status === 'IN_REPAIR'
+
+  const resolveMutation = useMutation({
+    mutationFn: () => breakdownsApi.resolve(orderId, breakdown.id),
+    onSuccess: () => {
+      toast.success('Breakdown resolved — trip continues')
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['breakdown', breakdown.vehicleAllocationId] })
+      onResolve()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to resolve breakdown')
+    },
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: () => breakdownsApi.cancel(orderId, breakdown.id),
+    onSuccess: () => {
+      toast.success('Breakdown report cancelled')
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['breakdown', breakdown.vehicleAllocationId] })
+      onCancel()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to cancel breakdown report')
+    },
+  })
+
+  if (breakdown.status === 'VEHICLE_REPLACED') {
+    return (
+      <div className="mx-4 mb-3 px-3 py-2.5 rounded-lg bg-gray-100 border border-gray-200 flex items-center gap-2 text-xs text-gray-500">
+        <AlertTriangle size={13} className="text-gray-400 shrink-0" />
+        <span>Breakdown — goods transferred to <span className="font-semibold font-mono text-gray-700">{breakdown.replacementVehicleRegistrationNumber}</span></span>
+      </div>
+    )
+  }
+
+  if (breakdown.status === 'RESOLVED') {
+    return (
+      <div className="mx-4 mb-3 px-3 py-2.5 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2 text-xs text-green-700">
+        <CheckCircle size={13} className="shrink-0" />
+        <span>Breakdown resolved — trip continues</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-4 mb-3 rounded-lg bg-orange-50 border border-orange-200 px-3 py-2.5">
+      <div className="flex items-start gap-2">
+        <AlertTriangle size={14} className="text-orange-500 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-orange-700">
+            Breakdown Reported · {breakdown.breakdownType.charAt(0) + breakdown.breakdownType.slice(1).toLowerCase()}
+          </p>
+          {breakdown.location && (
+            <p className="text-xs text-orange-600 mt-0.5">{breakdown.location}</p>
+          )}
+          {breakdown.reason && (
+            <p className="text-xs text-gray-500 mt-0.5">{breakdown.reason}</p>
+          )}
+        </div>
+      </div>
+      {isActive && (
+        <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+          <button
+            onClick={onReplace}
+            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-feros-navy text-white hover:bg-feros-navy/90 transition-colors"
+          >
+            <Truck size={11} /> Assign Replacement
+          </button>
+          <button
+            onClick={() => confirm('Mark breakdown as resolved? Trip will continue with same vehicle.') && resolveMutation.mutate()}
+            disabled={resolveMutation.isPending}
+            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-green-700 border-green-300 hover:bg-green-50 transition-colors disabled:opacity-50"
+          >
+            <WrenchIcon size={11} /> Repaired — Continue Trip
+          </button>
+          {breakdown.status === 'REPORTED' && (
+            <button
+              onClick={() => confirm('Cancel this breakdown report? (Use only for false alarms)') && cancelMutation.mutate()}
+              disabled={cancelMutation.isPending}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-gray-500 border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              <X size={11} /> False Alarm
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── vehicle allocation card ───────────────────────────────────────────────────
 function VehicleAllocationCard({
   allocation, orderId, canAssign, existingLrId,
@@ -325,9 +618,19 @@ function VehicleAllocationCard({
 }) {
   const navigate  = useNavigate()
   const qc        = useQueryClient()
-  const [expanded, setExpanded]     = useState(true)
-  const [slotDialog, setSlotDialog] = useState<'DRIVER' | 'CLEANER' | null>(null)
-  const [lrDialog, setLrDialog]     = useState(false)
+  const [expanded, setExpanded]         = useState(true)
+  const [slotDialog, setSlotDialog]     = useState<'DRIVER' | 'CLEANER' | null>(null)
+  const [lrDialog, setLrDialog]         = useState(false)
+  const [breakdownDialog, setBreakdownDialog] = useState(false)
+  const [replaceDialog, setReplaceDialog]     = useState(false)
+
+  const { data: breakdownRes } = useQuery({
+    queryKey: ['breakdown', allocation.id],
+    queryFn:  () => breakdownsApi.get(orderId, allocation.id),
+    enabled:  allocation.allocationStatus === 'IN_TRANSIT' || allocation.allocationStatus === 'BREAKDOWN',
+    retry: false,
+  })
+  const breakdown = breakdownRes?.data ?? null
 
   const unassignMutation = useMutation({
     mutationFn: () => ordersApi.unassignVehicle(orderId, allocation.id),
@@ -354,7 +657,8 @@ function VehicleAllocationCard({
     },
   })
 
-  const canUnassign = canAssign && allocation.allocationStatus === 'ALLOCATED' && !existingLrId
+  const canUnassign        = canAssign && allocation.allocationStatus === 'ALLOCATED' && !existingLrId
+  const canReportBreakdown = canAssign && allocation.allocationStatus === 'IN_TRANSIT' && !breakdown
 
   const regNo     = allocation.vehicleRegistrationNumber ?? allocation.registrationNumber
   const staff     = allocation.staffAllocations ?? []
@@ -406,6 +710,16 @@ function VehicleAllocationCard({
           </button>
         ) : null}
 
+        {/* Breakdown button */}
+        {canReportBreakdown && (
+          <button
+            onClick={() => setBreakdownDialog(true)}
+            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-orange-600 border-orange-200 hover:bg-orange-50 transition-colors shrink-0"
+          >
+            <AlertTriangle size={11} /> Breakdown
+          </button>
+        )}
+
         {/* Unassign button */}
         {canUnassign && (
           <button
@@ -424,6 +738,17 @@ function VehicleAllocationCard({
           {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </button>
       </div>
+
+      {/* Breakdown banner */}
+      {breakdown && (
+        <BreakdownBanner
+          orderId={orderId}
+          breakdown={breakdown}
+          onReplace={() => setReplaceDialog(true)}
+          onResolve={() => {}}
+          onCancel={() => {}}
+        />
+      )}
 
       {/* Driver + Cleaner slots */}
       {expanded && (
@@ -461,6 +786,23 @@ function VehicleAllocationCard({
           allocation={allocation}
           orderId={orderId}
           onClose={() => setLrDialog(false)}
+        />
+      )}
+      {breakdownDialog && (
+        <ReportBreakdownDialog
+          orderId={orderId}
+          allocationId={allocation.id}
+          vehicleReg={regNo ?? ''}
+          open={breakdownDialog}
+          onClose={() => setBreakdownDialog(false)}
+        />
+      )}
+      {replaceDialog && breakdown && (
+        <ReplaceVehicleDialog
+          orderId={orderId}
+          breakdown={breakdown}
+          open={replaceDialog}
+          onClose={() => setReplaceDialog(false)}
         />
       )}
     </div>
@@ -579,6 +921,7 @@ export function OrderDetailPage() {
 
   const canAssign   = !['DELIVERED', 'CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const canCancel   = ['PENDING', 'PARTIALLY_ASSIGNED'].includes(order.orderStatus)
+  const hasBreakdown = (order.vehicleAllocations ?? []).some(a => a.allocationStatus === 'IN_TRANSIT')
   const canUpdatePayment = !['CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const allocations = order.vehicleAllocations ?? []
   const totalAssigned = allocations.reduce((s, a) => s + Number(a.allocatedWeight), 0)
@@ -605,7 +948,12 @@ export function OrderDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => confirm(`Cancel order ${order.orderNumber}?`) && cancelMutation.mutate()}
+                  onClick={() => {
+                const msg = hasBreakdown
+                  ? `⚠ Warning: This order has vehicles currently in transit.\n\nCancel order ${order.orderNumber} anyway?`
+                  : `Cancel order ${order.orderNumber}?`
+                confirm(msg) && cancelMutation.mutate()
+              }}
                   className="text-red-300 border-red-400/40 hover:bg-red-500/20 bg-transparent gap-1.5"
                 >
                   <X size={14} /> Cancel
