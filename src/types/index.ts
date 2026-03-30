@@ -172,20 +172,22 @@ export interface VehicleAllocation {
 }
 
 // ─── Breakdown ────────────────────────────────────────────────────────────────
-export type BreakdownStatus = 'REPORTED' | 'IN_REPAIR' | 'RESOLVED' | 'VEHICLE_REPLACED'
-export type BreakdownType   = 'MECHANICAL' | 'TYRE' | 'ENGINE' | 'ELECTRICAL' | 'ACCIDENT' | 'OTHER'
+export type BreakdownStatus   = 'REPORTED' | 'IN_REPAIR' | 'RESOLVED' | 'VEHICLE_REPLACED'
+export type BreakdownType     = 'MECHANICAL' | 'TYRE' | 'ENGINE' | 'ELECTRICAL' | 'ACCIDENT' | 'OTHER'
+export type BreakdownDuration = 'SHORT' | 'LONG'
 
 export interface Breakdown {
   id: number
   vehicleId: number
   vehicleRegistrationNumber: string
-  vehicleAllocationId: number
-  orderId: number
-  orderNumber: string
+  vehicleAllocationId?: number
+  orderId?: number
+  orderNumber?: string
   breakdownDate: string
   location?: string
   breakdownType: BreakdownType
-  reason?: string
+  breakdownDuration: BreakdownDuration
+  reason: string
   status: BreakdownStatus
   replacementVehicleAllocationId?: number
   replacementVehicleRegistrationNumber?: string

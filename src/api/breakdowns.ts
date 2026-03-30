@@ -1,11 +1,12 @@
 import apiClient from './client'
-import type { ApiResponse, Breakdown, BreakdownType } from '@/types'
+import type { ApiResponse, Breakdown, BreakdownDuration, BreakdownType } from '@/types'
 
 interface BreakdownRequest {
   breakdownType: BreakdownType
+  breakdownDuration: BreakdownDuration
   breakdownDate: string   // ISO datetime
   location?: string
-  reason?: string
+  reason: string
   notes?: string
 }
 
@@ -45,5 +46,15 @@ export const breakdownsApi = {
   vehicleHistory: (vehicleId: number) =>
     apiClient.get<ApiResponse<Breakdown[]>>(
       `/vehicle-breakdowns`, { params: { vehicleId } }
+    ).then(r => r.data),
+
+  reportStandalone: (vehicleId: number, data: BreakdownRequest) =>
+    apiClient.post<ApiResponse<Breakdown>>(
+      `/vehicles/${vehicleId}/breakdown`, data
+    ).then(r => r.data),
+
+  resolveStandalone: (vehicleId: number, breakdownId: number) =>
+    apiClient.post<ApiResponse<Breakdown>>(
+      `/vehicles/${vehicleId}/breakdown/${breakdownId}/resolve`
     ).then(r => r.data),
 }

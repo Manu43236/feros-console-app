@@ -17,7 +17,7 @@ import {
   Pencil, X, RefreshCw, FileText, ExternalLink, ClipboardList,
   AlertTriangle, CheckCircle, WrenchIcon,
 } from 'lucide-react'
-import type { Breakdown, BreakdownType } from '@/types'
+import type { Breakdown, BreakdownDuration, BreakdownType } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -322,11 +322,12 @@ function CreateLrFromAllocationDialog({
 
 // ── report breakdown dialog ───────────────────────────────────────────────────
 const breakdownSchema = z.object({
-  breakdownType:  z.enum(['MECHANICAL','TYRE','ENGINE','ELECTRICAL','ACCIDENT','OTHER']),
-  breakdownDate:  z.string().min(1, 'Date/time is required'),
-  location:       z.string().optional(),
-  reason:         z.string().optional(),
-  notes:          z.string().optional(),
+  breakdownType:     z.enum(['MECHANICAL','TYRE','ENGINE','ELECTRICAL','ACCIDENT','OTHER'], { required_error: 'Breakdown type is required' }),
+  breakdownDuration: z.enum(['SHORT','LONG'], { required_error: 'Select SHORT or LONG breakdown' }),
+  breakdownDate:     z.string().min(1, 'Date/time is required'),
+  location:          z.string().optional(),
+  reason:            z.string().min(1, 'Reason is required'),
+  notes:             z.string().optional(),
 })
 type BreakdownForm = z.infer<typeof breakdownSchema>
 
@@ -339,14 +340,20 @@ const BREAKDOWN_TYPES: { value: BreakdownType; label: string }[] = [
   { value: 'OTHER',       label: 'Other' },
 ]
 
+const BREAKDOWN_DURATIONS: { value: BreakdownDuration; label: string; sub: string }[] = [
+  { value: 'SHORT', label: 'Short',  sub: 'Minor — back within 1-2 days' },
+  { value: 'LONG',  label: 'Long',   sub: 'Major — extended downtime'    },
+]
+
 function ReportBreakdownDialog({ orderId, allocationId, vehicleReg, open, onClose }: {
   orderId: number; allocationId: number; vehicleReg: string; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<BreakdownForm>({
+  const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<BreakdownForm>({
     resolver: zodResolver(breakdownSchema) as Resolver<BreakdownForm>,
     defaultValues: { breakdownDate: new Date().toISOString().slice(0, 16) },
   })
+  const selectedDuration = watch('breakdownDuration')
 
   const mutation = useMutation({
     mutationFn: (data: BreakdownForm) => breakdownsApi.report(orderId, allocationId, {
@@ -377,6 +384,34 @@ function ReportBreakdownDialog({ orderId, allocationId, vehicleReg, open, onClos
           </p>
         </DialogHeader>
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
+          {/* Duration — SHORT / LONG */}
+          <div className="space-y-1.5">
+            <Label>Breakdown Duration *</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {BREAKDOWN_DURATIONS.map(d => (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => setValue('breakdownDuration', d.value, { shouldValidate: true })}
+                  className={`flex flex-col items-start p-3 rounded-lg border-2 text-left transition-colors ${
+                    selectedDuration === d.value
+                      ? d.value === 'SHORT'
+                        ? 'border-amber-500 bg-amber-50'
+                        : 'border-red-500 bg-red-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className={`text-sm font-semibold ${selectedDuration === d.value ? (d.value === 'SHORT' ? 'text-amber-700' : 'text-red-700') : 'text-gray-700'}`}>
+                    {d.label}
+                  </span>
+                  <span className="text-xs text-gray-500 mt-0.5">{d.sub}</span>
+                </button>
+              ))}
+            </div>
+            {errors.breakdownDuration && <p className="text-red-500 text-xs">{errors.breakdownDuration.message}</p>}
+          </div>
+
+          {/* Cause type */}
           <div className="space-y-1.5">
             <Label>Breakdown Type *</Label>
             <select {...register('breakdownType')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
@@ -385,6 +420,14 @@ function ReportBreakdownDialog({ orderId, allocationId, vehicleReg, open, onClos
             </select>
             {errors.breakdownType && <p className="text-red-500 text-xs">{errors.breakdownType.message}</p>}
           </div>
+
+          {/* Reason — required */}
+          <div className="space-y-1.5">
+            <Label>Reason *</Label>
+            <Input placeholder="What happened? (required)" {...register('reason')} />
+            {errors.reason && <p className="text-red-500 text-xs">{errors.reason.message}</p>}
+          </div>
+
           <div className="space-y-1.5">
             <Label>Date & Time *</Label>
             <Input type="datetime-local" {...register('breakdownDate')} />
@@ -393,10 +436,6 @@ function ReportBreakdownDialog({ orderId, allocationId, vehicleReg, open, onClos
           <div className="space-y-1.5">
             <Label>Location</Label>
             <Input placeholder="e.g. Nashik Highway, km 145" {...register('location')} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Reason</Label>
-            <Input placeholder="Brief description…" {...register('reason')} />
           </div>
           <div className="space-y-1.5">
             <Label>Notes</Label>

@@ -6,12 +6,13 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi } from '@/api/vehicles'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
+import { breakdownsApi } from '@/api/breakdowns'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
-  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ExternalLink, Paperclip, Trash2,
+  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ExternalLink, Paperclip, Trash2, WrenchIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -19,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import type { VehicleDocument, VehicleStatusType } from '@/types'
+import type { Breakdown, BreakdownDuration, BreakdownType, VehicleDocument, VehicleStatusType } from '@/types'
 import { VehicleForm } from './VehiclesPage'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 }
 
 // ── tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'GPS & Notes', 'Order History', 'Trip History'] as const
+const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'GPS & Notes', 'Order History', 'Trip History', 'Breakdowns'] as const
 type Tab = typeof TABS[number]
 
 // ── add document form ─────────────────────────────────────────────────────────
@@ -227,10 +228,12 @@ export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate      = useNavigate()
   const qc            = useQueryClient()
-  const [tab, setTab]           = useState<Tab>('Basic Info')
-  const [editOpen, setEditOpen] = useState(false)
-  const [addDocOpen, setAddDocOpen] = useState(false)
-  const [docToDelete, setDocToDelete] = useState<VehicleDocument | null>(null)
+  const [tab, setTab]                   = useState<Tab>('Basic Info')
+  const [editOpen, setEditOpen]         = useState(false)
+  const [addDocOpen, setAddDocOpen]     = useState(false)
+  const [docToDelete, setDocToDelete]   = useState<VehicleDocument | null>(null)
+  const [breakdownOpen, setBreakdownOpen]               = useState(false)
+  const [breakdownToResolveId, setBreakdownToResolveId] = useState<number | null>(null)
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['vehicle', vehicleId],
@@ -244,6 +247,11 @@ export function VehicleDetailPage() {
   const { data: docsRes } = useQuery({
     queryKey: ['vehicle-docs', Number(vehicleId)],
     queryFn:  () => vehiclesApi.getDocuments(Number(vehicleId)),
+    enabled:  !!vehicleId,
+  })
+  const { data: breakdownHistoryRes } = useQuery({
+    queryKey: ['vehicle-breakdowns', Number(vehicleId)],
+    queryFn:  () => breakdownsApi.vehicleHistory(Number(vehicleId)),
     enabled:  !!vehicleId,
   })
 
@@ -357,6 +365,26 @@ export function VehicleDetailPage() {
                 )}
               </div>
 
+              {/* Breakdown / Resolve button */}
+              {v.currentStatusType === 'BREAKDOWN' && !v.isAssigned ? (
+                <button
+                  onClick={() => {
+                    const active = (breakdownHistoryRes?.data ?? []).find(b => b.status === 'REPORTED')
+                    if (active) setBreakdownToResolveId(active.id)
+                  }}
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border bg-green-500/20 border-green-400/40 text-green-300 hover:bg-green-500/30 transition-colors"
+                >
+                  <CheckCircle size={12} /> Resolve Breakdown
+                </button>
+              ) : !v.isAssigned && v.currentStatusType !== 'ON_TRIP' ? (
+                <button
+                  onClick={() => setBreakdownOpen(true)}
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30 transition-colors"
+                >
+                  <AlertTriangle size={12} /> Mark Breakdown
+                </button>
+              ) : null}
+
               {/* Active toggle */}
               <button
                 onClick={() => toggleActiveMutation.mutate()}
@@ -438,6 +466,7 @@ export function VehicleDetailPage() {
               {t === 'Fuel'           && <Droplets size={14} />}
               {t === 'Order History'  && <ClipboardList size={14} />}
               {t === 'Trip History'   && <Route size={14} />}
+              {t === 'Breakdowns'     && <WrenchIcon size={14} />}
               {t}
               {t === 'Compliance' && alertCount > 0 && (
                 <span className="ml-1 text-xs bg-red-100 text-red-600 rounded-full px-1.5 py-0.5 font-semibold">
@@ -677,6 +706,72 @@ export function VehicleDetailPage() {
             </div>
           )}
 
+          {/* ── Breakdowns ── */}
+          {tab === 'Breakdowns' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Breakdown History</p>
+                {!v.isAssigned && v.currentStatusType !== 'ON_TRIP' && v.currentStatusType !== 'BREAKDOWN' && (
+                  <Button size="sm" onClick={() => setBreakdownOpen(true)} className="bg-red-600 hover:bg-red-700 text-white gap-1.5 h-8 text-xs">
+                    <AlertTriangle size={13} /> Mark Breakdown
+                  </Button>
+                )}
+              </div>
+              {(breakdownHistoryRes?.data ?? []).length === 0 ? (
+                <div className="py-10 text-center text-gray-400">
+                  <WrenchIcon size={32} className="mx-auto mb-3 text-gray-200" />
+                  <p className="text-sm">No breakdown records for this vehicle.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(breakdownHistoryRes?.data ?? []).map((b: Breakdown) => (
+                    <div key={b.id} className={`rounded-lg border p-4 ${b.status === 'REPORTED' ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              b.breakdownDuration === 'LONG'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {b.breakdownDuration} BREAKDOWN
+                            </span>
+                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{b.breakdownType}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              b.status === 'REPORTED'  ? 'bg-red-100 text-red-700' :
+                              b.status === 'RESOLVED'  ? 'bg-green-100 text-green-700' :
+                              b.status === 'VEHICLE_REPLACED' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>{b.status.replace('_', ' ')}</span>
+                          </div>
+                          <p className="text-sm text-gray-800 font-medium">{b.reason}</p>
+                          {b.location && <p className="text-xs text-gray-500 flex items-center gap-1"><MapPin size={11} />{b.location}</p>}
+                          {b.orderNumber && <p className="text-xs text-gray-400">Order: <span className="font-mono">{b.orderNumber}</span></p>}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs text-gray-500">{b.breakdownDate ? format(new Date(b.breakdownDate), 'dd MMM yyyy') : '—'}</p>
+                          {b.resolvedAt && <p className="text-xs text-green-600 mt-0.5">Resolved {format(new Date(b.resolvedAt), 'dd MMM yyyy')}</p>}
+                          <p className="text-xs text-gray-400 mt-0.5">by {b.reportedByName}</p>
+                        </div>
+                      </div>
+                      {b.status === 'REPORTED' && !b.orderId && (
+                        <div className="mt-3 pt-3 border-t border-red-200">
+                          <Button
+                            size="sm"
+                            onClick={() => setBreakdownToResolveId(b.id)}
+                            className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1"
+                          >
+                            <CheckCircle size={12} /> Mark as Resolved
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -685,6 +780,33 @@ export function VehicleDetailPage() {
         onClose={() => setEditOpen(false)}
         vehicle={v}
         onSuccess={() => qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })}
+      />
+
+      {/* Standalone breakdown dialog */}
+      <StandaloneBreakdownDialog
+        vehicleId={v.id}
+        vehicleReg={v.registrationNumber}
+        open={breakdownOpen}
+        onClose={() => setBreakdownOpen(false)}
+        onSuccess={() => {
+          qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
+          qc.invalidateQueries({ queryKey: ['vehicles'] })
+          qc.invalidateQueries({ queryKey: ['vehicle-breakdowns', Number(vehicleId)] })
+        }}
+      />
+
+      {/* Resolve standalone breakdown confirm */}
+      <ResolveBreakdownDialog
+        vehicleId={v.id}
+        breakdownId={breakdownToResolveId}
+        open={!!breakdownToResolveId}
+        onClose={() => setBreakdownToResolveId(null)}
+        onSuccess={() => {
+          qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
+          qc.invalidateQueries({ queryKey: ['vehicles'] })
+          qc.invalidateQueries({ queryKey: ['vehicle-breakdowns', Number(vehicleId)] })
+          setBreakdownToResolveId(null)
+        }}
       />
       <AddDocumentDialog vehicleId={v.id} open={addDocOpen} onClose={() => setAddDocOpen(false)} />
 
@@ -708,5 +830,176 @@ export function VehicleDetailPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+// ── standalone breakdown schema & types ───────────────────────────────────────
+const standaloneBdSchema = z.object({
+  breakdownType:     z.enum(['MECHANICAL','TYRE','ENGINE','ELECTRICAL','ACCIDENT','OTHER'], { required_error: 'Breakdown type is required' }),
+  breakdownDuration: z.enum(['SHORT','LONG'], { required_error: 'Select SHORT or LONG breakdown' }),
+  breakdownDate:     z.string().min(1, 'Date/time is required'),
+  location:          z.string().optional(),
+  reason:            z.string().min(1, 'Reason is required'),
+  notes:             z.string().optional(),
+})
+type StandaloneBdForm = z.infer<typeof standaloneBdSchema>
+
+const BD_TYPES: { value: BreakdownType; label: string }[] = [
+  { value: 'MECHANICAL', label: 'Mechanical' },
+  { value: 'TYRE',       label: 'Tyre'       },
+  { value: 'ENGINE',     label: 'Engine'     },
+  { value: 'ELECTRICAL', label: 'Electrical' },
+  { value: 'ACCIDENT',   label: 'Accident'   },
+  { value: 'OTHER',      label: 'Other'      },
+]
+
+const BD_DURATIONS: { value: BreakdownDuration; label: string; sub: string }[] = [
+  { value: 'SHORT', label: 'Short', sub: 'Minor — back within 1-2 days' },
+  { value: 'LONG',  label: 'Long',  sub: 'Major — extended downtime'    },
+]
+
+function StandaloneBreakdownDialog({ vehicleId, vehicleReg, open, onClose, onSuccess }: {
+  vehicleId: number; vehicleReg: string; open: boolean; onClose: () => void; onSuccess: () => void
+}) {
+  const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<StandaloneBdForm>({
+    resolver: zodResolver(standaloneBdSchema) as Resolver<StandaloneBdForm>,
+    defaultValues: { breakdownDate: new Date().toISOString().slice(0, 16) },
+  })
+  const selectedDuration = watch('breakdownDuration')
+
+  const mutation = useMutation({
+    mutationFn: (data: StandaloneBdForm) => breakdownsApi.reportStandalone(vehicleId, {
+      ...data,
+      breakdownDate: new Date(data.breakdownDate).toISOString(),
+    }),
+    onSuccess: () => {
+      toast.success('Breakdown reported — vehicle marked as BREAKDOWN')
+      reset(); onClose(); onSuccess()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to report breakdown')
+    },
+  })
+
+  function handleClose() { reset(); onClose() }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-600">
+            <AlertTriangle size={18} /> Report Breakdown
+          </DialogTitle>
+          <p className="text-sm text-gray-500 mt-1">
+            Vehicle: <span className="font-semibold font-mono text-gray-800">{vehicleReg}</span>
+          </p>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
+          {/* Duration */}
+          <div className="space-y-1.5">
+            <Label>Breakdown Duration *</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {BD_DURATIONS.map(d => (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => setValue('breakdownDuration', d.value, { shouldValidate: true })}
+                  className={`flex flex-col items-start p-3 rounded-lg border-2 text-left transition-colors ${
+                    selectedDuration === d.value
+                      ? d.value === 'SHORT' ? 'border-amber-500 bg-amber-50' : 'border-red-500 bg-red-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className={`text-sm font-semibold ${selectedDuration === d.value ? (d.value === 'SHORT' ? 'text-amber-700' : 'text-red-700') : 'text-gray-700'}`}>
+                    {d.label}
+                  </span>
+                  <span className="text-xs text-gray-500 mt-0.5">{d.sub}</span>
+                </button>
+              ))}
+            </div>
+            {errors.breakdownDuration && <p className="text-red-500 text-xs">{errors.breakdownDuration.message}</p>}
+          </div>
+
+          {/* Type */}
+          <div className="space-y-1.5">
+            <Label>Breakdown Type *</Label>
+            <select {...register('breakdownType')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+              <option value="">Select type</option>
+              {BD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            {errors.breakdownType && <p className="text-red-500 text-xs">{errors.breakdownType.message}</p>}
+          </div>
+
+          {/* Reason — required */}
+          <div className="space-y-1.5">
+            <Label>Reason *</Label>
+            <Input placeholder="What happened? (required)" {...register('reason')} />
+            {errors.reason && <p className="text-red-500 text-xs">{errors.reason.message}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Date & Time *</Label>
+            <Input type="datetime-local" {...register('breakdownDate')} />
+            {errors.breakdownDate && <p className="text-red-500 text-xs">{errors.breakdownDate.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Location</Label>
+            <Input placeholder="e.g. Depot yard, Mumbai" {...register('location')} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Input placeholder="Additional notes…" {...register('notes')} />
+          </div>
+          <div className="flex justify-end gap-3 pt-2 border-t">
+            <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending} className="bg-red-600 hover:bg-red-700 text-white">
+              {mutation.isPending ? 'Reporting…' : 'Report Breakdown'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ResolveBreakdownDialog({ vehicleId, breakdownId, open, onClose, onSuccess }: {
+  vehicleId: number; breakdownId: number | null; open: boolean; onClose: () => void; onSuccess: () => void
+}) {
+  const mutation = useMutation({
+    mutationFn: () => breakdownsApi.resolveStandalone(vehicleId, breakdownId!),
+    onSuccess: () => {
+      toast.success('Breakdown resolved — vehicle is now Available')
+      onSuccess()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to resolve breakdown')
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-green-600">
+            <CheckCircle size={18} /> Resolve Breakdown
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-gray-600">
+          Mark this breakdown as resolved? The vehicle will be set back to <strong>Available</strong>.
+        </p>
+        <div className="flex justify-end gap-3 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate()}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            {mutation.isPending ? 'Resolving…' : 'Yes, Resolve'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
