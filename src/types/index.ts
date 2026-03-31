@@ -495,8 +495,8 @@ export interface Notification {
 // ─── Vehicle Service ──────────────────────────────────────────────────────────
 export type ServiceTriggeredBy = 'SCHEDULED' | 'BREAKDOWN'
 export type VehicleServiceType = 'INTERNAL' | 'EXTERNAL'
-export type ServiceStatus = 'OPEN' | 'COMPLETED'
-export type ServiceDisplayStatus = 'OPEN' | 'DUE_SOON' | 'OVERDUE' | 'COMPLETED'
+export type ServiceStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
+export type ServiceDisplayStatus = 'OPEN' | 'IN_PROGRESS' | 'DUE_SOON' | 'OVERDUE' | 'COMPLETED'
 export type ServiceTaskStatus = 'PENDING' | 'COMPLETED'
 
 export interface VehicleServiceTask {

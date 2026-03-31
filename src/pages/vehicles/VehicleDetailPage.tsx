@@ -226,13 +226,14 @@ const vehicleStatusBadge: Record<VehicleStatusType, string> = {
 
 // ── service display status helpers ────────────────────────────────────────────
 const statusChip: Record<string, string> = {
-  OPEN:      'bg-blue-50 text-blue-600 border-blue-200',
-  DUE_SOON:  'bg-yellow-50 text-yellow-700 border-yellow-200',
-  OVERDUE:   'bg-red-50 text-red-600 border-red-200',
-  COMPLETED: 'bg-green-50 text-green-700 border-green-200',
+  OPEN:        'bg-blue-50 text-blue-600 border-blue-200',
+  IN_PROGRESS: 'bg-orange-50 text-orange-600 border-orange-200',
+  DUE_SOON:    'bg-yellow-50 text-yellow-700 border-yellow-200',
+  OVERDUE:     'bg-red-50 text-red-600 border-red-200',
+  COMPLETED:   'bg-green-50 text-green-700 border-green-200',
 }
 const statusLabel: Record<string, string> = {
-  OPEN: 'Open', DUE_SOON: 'Due Soon', OVERDUE: 'Overdue', COMPLETED: 'Completed',
+  OPEN: 'Open', IN_PROGRESS: 'In Progress', DUE_SOON: 'Due Soon', OVERDUE: 'Overdue', COMPLETED: 'Completed',
 }
 
 // ── task row inside create dialog ─────────────────────────────────────────────
@@ -599,6 +600,15 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
     queryFn:  () => breakdownsApi.vehicleHistory(vehicleId),
   })
 
+  const startMutation = useMutation({
+    mutationFn: (id: number) => vehicleServicesApi.start(id),
+    onSuccess: () => {
+      toast.success('Service started')
+      qc.invalidateQueries({ queryKey: ['vehicle-services', vehicleId] })
+    },
+    onError: () => toast.error('Failed to start service'),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => vehicleServicesApi.delete(id),
     onSuccess: () => {
@@ -744,6 +754,13 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
                     {/* Actions */}
                     <div className="flex items-center gap-2 shrink-0">
                       {s.status === 'OPEN' && (
+                        <Button size="sm" onClick={() => startMutation.mutate(s.id)}
+                          disabled={startMutation.isPending}
+                          className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white gap-1">
+                          <Wrench size={12} /> Start
+                        </Button>
+                      )}
+                      {s.status === 'IN_PROGRESS' && (
                         <Button size="sm" onClick={() => setCompleteService(s)}
                           className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1">
                           <Check size={12} /> Done

@@ -11,10 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusChip(s: ServiceDisplayStatus) {
   const map: Record<ServiceDisplayStatus, { label: string; cls: string }> = {
-    OPEN:      { label: 'Open',      cls: 'bg-blue-50 text-blue-700' },
-    DUE_SOON:  { label: 'Due Soon',  cls: 'bg-yellow-50 text-yellow-700' },
-    OVERDUE:   { label: 'Overdue',   cls: 'bg-red-50 text-red-700' },
-    COMPLETED: { label: 'Completed', cls: 'bg-green-50 text-green-700' },
+    OPEN:        { label: 'Open',        cls: 'bg-blue-50 text-blue-700' },
+    IN_PROGRESS: { label: 'In Progress', cls: 'bg-orange-50 text-orange-700' },
+    DUE_SOON:    { label: 'Due Soon',    cls: 'bg-yellow-50 text-yellow-700' },
+    OVERDUE:     { label: 'Overdue',     cls: 'bg-red-50 text-red-700' },
+    COMPLETED:   { label: 'Completed',   cls: 'bg-green-50 text-green-700' },
   }
   const { label, cls } = map[s] ?? map.OPEN
   return <span className={`px-2 py-0.5 rounded text-xs font-medium ${cls}`}>{label}</span>
@@ -180,12 +181,15 @@ export default function VehicleServicesPage() {
   const dueSoon   = records.filter(r => r.displayStatus === 'DUE_SOON').length
   const overdue   = records.filter(r => r.displayStatus === 'OVERDUE').length
 
+  const inProgress = records.filter(r => r.displayStatus === 'IN_PROGRESS').length
+
   const filterPills: { label: string; value: FilterType; count?: number }[] = [
-    { label: 'All',       value: 'ALL',       count: records.length },
-    { label: 'Open',      value: 'OPEN' },
-    { label: 'Due Soon',  value: 'DUE_SOON',  count: dueSoon },
-    { label: 'Overdue',   value: 'OVERDUE',   count: overdue },
-    { label: 'Completed', value: 'COMPLETED' },
+    { label: 'All',         value: 'ALL',         count: records.length },
+    { label: 'Open',        value: 'OPEN' },
+    { label: 'In Progress', value: 'IN_PROGRESS', count: inProgress },
+    { label: 'Due Soon',    value: 'DUE_SOON',    count: dueSoon },
+    { label: 'Overdue',     value: 'OVERDUE',     count: overdue },
+    { label: 'Completed',   value: 'COMPLETED' },
   ]
 
   return (
