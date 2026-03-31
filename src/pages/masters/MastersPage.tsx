@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   Truck, Users, Tag, CreditCard, MapPin, DollarSign, Settings,
-  Plus, Pencil, Trash2, ChevronRight,
+  Plus, Pencil, Trash2, ChevronRight, Upload, Download, CheckCircle, XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
-import type { TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
+import { sparePartsApi } from '@/api/inventory'
+import type { TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType, SparePart, BulkUploadResult } from '@/types'
 
 // ── Section config ────────────────────────────────────────────────────────────
 const SECTIONS = [
@@ -24,6 +25,7 @@ const SECTIONS = [
   { key: 'designations',    label: 'Designations',     icon: Users      },
   { key: 'routes',          label: 'Routes',           icon: MapPin     },
   { key: 'payRates',        label: 'Pay Rates',        icon: DollarSign },
+  { key: 'spareParts',      label: 'Spare Parts',      icon: Settings   },
   { key: 'settings',        label: 'Settings',         icon: Settings   },
 ] as const
 type SectionKey = typeof SECTIONS[number]['key']
@@ -792,6 +794,192 @@ function SettingsSection() {
   )
 }
 
+const PART_CATEGORIES = [
+  'Engine', 'Brakes', 'Tyres & Wheels', 'Electrical',
+  'Filters', 'Transmission', 'Suspension', 'Cooling System',
+  'Fuel System', 'Exhaust', 'Lights & Indicators', 'Body & Frame', 'Others',
+]
+
+const SPARE_PARTS_TEMPLATE = [
+  'name,category,unit,minStockLevel',
+  'Engine Oil Filter,Engine,Pieces,5',
+  'Air Filter,Filters,Pieces,3',
+  'Brake Pad Set,Brakes,Sets,2',
+].join('\n')
+
+// ── Spare Parts Bulk Upload Dialog ────────────────────────────────────────────
+function SparePartsBulkDialog({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [result, setResult] = useState<BulkUploadResult | null>(null)
+
+  function handleClose() { setFile(null); setResult(null); onClose() }
+
+  const mutation = useMutation({
+    mutationFn: (f: File) => sparePartsApi.bulkUpload(f),
+    onSuccess: (res) => {
+      setResult(res.data)
+      qc.invalidateQueries({ queryKey: ['spare-parts'] })
+      if (res.data.failureCount === 0) toast.success(`${res.data.successCount} parts uploaded`)
+      else toast.warning(`${res.data.successCount} uploaded, ${res.data.failureCount} failed`)
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Upload failed')
+    },
+  })
+
+  function downloadTemplate() {
+    const blob = new Blob([SPARE_PARTS_TEMPLATE], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'spare_parts_template.csv'; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <Dialog open onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Bulk Upload Spare Parts</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-800 space-y-1">
+            <p className="font-medium">CSV Format</p>
+            <p>Required: <code className="bg-blue-100 px-1 rounded">name</code></p>
+            <p>Optional: category, unit (default: Pieces), minStockLevel (default: 0)</p>
+            <p className="text-blue-600 text-xs mt-1">Part number is auto-generated for each part.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 w-full"><Download size={14} /> Download Template</Button>
+          <div>
+            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+            <div onClick={() => fileRef.current?.click()}
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${file ? 'border-green-400 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}>
+              <Upload size={20} className={`mx-auto mb-2 ${file ? 'text-green-500' : 'text-gray-400'}`} />
+              {file ? <p className="text-sm font-medium text-green-700">{file.name}</p> : <p className="text-sm text-gray-500">Click to select a CSV file</p>}
+            </div>
+          </div>
+          {result && (
+            <div className="border rounded-lg p-4 space-y-2 text-sm">
+              <div className="flex gap-4">
+                <span className="text-gray-500">Total: <strong>{result.totalRows}</strong></span>
+                <span className="text-green-600 flex items-center gap-1"><CheckCircle size={13} />{result.successCount} success</span>
+                {result.failureCount > 0 && <span className="text-red-600 flex items-center gap-1"><XCircle size={13} />{result.failureCount} failed</span>}
+              </div>
+              {result.errors.length > 0 && (
+                <div className="bg-red-50 rounded p-2 max-h-32 overflow-y-auto space-y-1">
+                  {result.errors.map((e, i) => <p key={i} className="text-xs text-red-700">{e}</p>)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" onClick={handleClose}>Close</Button>
+          {!result && <Button disabled={!file || mutation.isPending} onClick={() => file && mutation.mutate(file)} className="gap-2">
+            <Upload size={14} />{mutation.isPending ? 'Uploading…' : 'Upload'}
+          </Button>}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Spare Parts Section ───────────────────────────────────────────────────────
+function SparePartsSection() {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<SparePart | null>(null)
+  const [form, setForm] = useState({ name: '', category: '', unit: 'Pieces', minStockLevel: 0 })
+  const [bulkOpen, setBulkOpen] = useState(false)
+
+  const { data, isLoading } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
+  const parts = data?.data ?? []
+
+  const save = useMutation({
+    mutationFn: () => editing ? sparePartsApi.update(editing.id, form) : sparePartsApi.create(form),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['spare-parts'] }); toast.success(editing ? 'Updated' : 'Added'); setOpen(false) },
+    onError: () => toast.error('Failed to save'),
+  })
+  const del = useMutation({
+    mutationFn: (id: number) => sparePartsApi.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['spare-parts'] }); toast.success('Deleted') },
+    onError: () => toast.error('Failed to delete'),
+  })
+
+  function openAdd() { setEditing(null); setForm({ name: '', category: '', unit: 'Pieces', minStockLevel: 0 }); setOpen(true) }
+  function openEdit(p: SparePart) { setEditing(p); setForm({ name: p.name, category: p.category ?? '', unit: p.unit, minStockLevel: p.minStockLevel }); setOpen(true) }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-semibold text-gray-800">Spare Parts</h2>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)} className="gap-1"><Upload size={13} />Bulk Upload</Button>
+          <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
+        </div>
+      </div>
+      {isLoading ? (
+        <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+      ) : parts.length === 0 ? (
+        <div className="text-sm text-gray-400 py-6 text-center">No spare parts yet</div>
+      ) : (
+        <div className="border rounded-lg divide-y">
+          {parts.map(p => (
+            <div key={p.id} className="flex items-center justify-between px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-gray-800">{p.name}</p>
+                <p className="text-xs text-gray-400">
+                  <span className="font-mono text-gray-500">{p.partNumber}</span>
+                  {p.category ? ` · ${p.category}` : ''}
+                  {` · ${p.unit} · Min: ${p.minStockLevel}`}
+                </p>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil size={13} /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => del.mutate(p.id)}><Trash2 size={13} /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Spare Part</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <Label>Name *</Label>
+              <Input className="mt-1" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Engine Oil Filter" />
+            </div>
+            <div>
+              <Label>Category</Label>
+              <select className="mt-1 w-full border rounded-md px-3 py-2 text-sm" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                <option value="">Select category…</option>
+                {PART_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Unit *</Label>
+                <select className="mt-1 w-full border rounded-md px-3 py-2 text-sm" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
+                  {['Pieces', 'Litres', 'Kg', 'Metres', 'Sets', 'Pairs'].map(u => <option key={u}>{u}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Min Stock Alert</Label>
+                <Input className="mt-1" type="number" min={0} value={form.minStockLevel} onChange={e => setForm(f => ({ ...f, minStockLevel: Number(e.target.value) }))} />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button disabled={save.isPending || !form.name.trim()} onClick={() => save.mutate()}>{save.isPending ? 'Saving…' : editing ? 'Update' : 'Add'}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {bulkOpen && <SparePartsBulkDialog onClose={() => setBulkOpen(false)} />}
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function MastersPage() {
   const [activeSection, setActiveSection] = useState<SectionKey>('vehicleStatuses')
@@ -884,6 +1072,7 @@ export function MastersPage() {
       case 'designations':   return <DesignationsSection />
       case 'routes':         return <RoutesSection />
       case 'payRates':       return <PayRatesSection />
+      case 'spareParts':     return <SparePartsSection />
       case 'settings':       return <SettingsSection />
       default:               return null
     }

@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vehicleServicesApi } from '@/api/vehicles'
-import type { VehicleServiceRecord, ServiceDisplayStatus } from '@/types'
+import { servicePartsApi, sparePartsApi } from '@/api/inventory'
+import type { VehicleServiceRecord, ServiceDisplayStatus, ServicePart } from '@/types'
 import { toast } from 'sonner'
-import { Search, Wrench, IndianRupee, AlertTriangle, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, Wrench, IndianRupee, AlertTriangle, Trash2, ChevronDown, ChevronUp, Plus, Package, Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { ServiceDetailModal } from '@/components/shared/ServiceDetailModal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusChip(s: ServiceDisplayStatus) {
@@ -65,9 +68,154 @@ function DeleteDialog({ record, onClose }: { record: VehicleServiceRecord | null
   )
 }
 
+// ── Add Part Dialog ───────────────────────────────────────────────────────────
+function AddPartDialog({ serviceId, onClose }: { serviceId: number; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({ sparePartId: 0, quantityRequested: 1 })
+
+  const { data: partsData } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
+  const parts = partsData?.data ?? []
+
+  const mutation = useMutation({
+    mutationFn: () => servicePartsApi.request(serviceId, {
+      sparePartId: form.sparePartId,
+      quantityRequested: form.quantityRequested,
+    }),
+    onSuccess: () => {
+      toast.success('Part request submitted for approval')
+      qc.invalidateQueries({ queryKey: ['service-parts', serviceId] })
+      qc.invalidateQueries({ queryKey: ['part-requests'] })
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to request part')
+    },
+  })
+
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Request Spare Part</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Spare Part *</Label>
+            <select
+              className="mt-1 w-full border rounded-md px-3 py-2 text-sm"
+              value={form.sparePartId}
+              onChange={e => setForm(f => ({ ...f, sparePartId: Number(e.target.value) }))}
+            >
+              <option value={0}>Select part…</option>
+              {parts.map(p => (
+                <option key={p.id} value={p.id}>{p.name} — {p.partNumber}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label>Quantity *</Label>
+            <Input
+              className="mt-1" type="number" min={1}
+              value={form.quantityRequested}
+              onChange={e => setForm(f => ({ ...f, quantityRequested: Number(e.target.value) }))}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={mutation.isPending || form.sparePartId === 0 || form.quantityRequested < 1}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? 'Requesting…' : 'Request Part'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Parts Section (shown when expanded + IN_PROGRESS or has parts) ─────────────
+function ServicePartsSection({ record }: { record: VehicleServiceRecord }) {
+  const qc = useQueryClient()
+  const [showAddPart, setShowAddPart] = useState(false)
+  const isInProgress = record.status === 'IN_PROGRESS'
+
+  const { data } = useQuery({
+    queryKey: ['service-parts', record.id],
+    queryFn: () => servicePartsApi.getByService(record.id),
+  })
+  const parts: ServicePart[] = data?.data ?? []
+
+  const removeMutation = useMutation({
+    mutationFn: (id: number) => servicePartsApi.remove(id),
+    onSuccess: () => {
+      toast.success('Part request removed')
+      qc.invalidateQueries({ queryKey: ['service-parts', record.id] })
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to remove')
+    },
+  })
+
+  function statusChip(s: ServicePart['status']) {
+    const map = {
+      REQUESTED: 'bg-yellow-50 text-yellow-700',
+      APPROVED:  'bg-green-50 text-green-700',
+      REJECTED:  'bg-red-50 text-red-700',
+    }
+    return <span className={`px-2 py-0.5 rounded text-xs font-medium ${map[s]}`}>{s}</span>
+  }
+
+  return (
+    <div className="border-t px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+          <Package size={13} /> Parts Used
+        </p>
+        {isInProgress && (
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setShowAddPart(true)}>
+            <Plus size={12} /> Add Part
+          </Button>
+        )}
+      </div>
+
+      {parts.length === 0 ? (
+        <p className="text-xs text-gray-400 py-1">No parts requested yet</p>
+      ) : (
+        <div className="space-y-1.5">
+          {parts.map(p => (
+            <div key={p.id} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-700">{p.partName}</span>
+                <span className="text-xs text-gray-400">{p.quantityRequested} {p.unit}</span>
+                {statusChip(p.status)}
+                {p.status === 'REJECTED' && p.rejectionReason && (
+                  <span className="text-xs text-red-500">({p.rejectionReason})</span>
+                )}
+              </div>
+              {p.status === 'REQUESTED' && isInProgress && (
+                <button
+                  onClick={() => removeMutation.mutate(p.id)}
+                  className="text-gray-300 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAddPart && <AddPartDialog serviceId={record.id} onClose={() => setShowAddPart(false)} />}
+    </div>
+  )
+}
+
 // ── Service Card ──────────────────────────────────────────────────────────────
 function ServiceCard({ record, onDelete }: { record: VehicleServiceRecord; onDelete: () => void }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded]   = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
 
   return (
     <div className="bg-white rounded-xl border hover:border-gray-300 transition-colors">
@@ -105,6 +253,13 @@ function ServiceCard({ record, onDelete }: { record: VehicleServiceRecord; onDel
             {record.totalCost != null && record.totalCost > 0 && (
               <span className="text-sm font-semibold text-gray-900">{fmt(record.totalCost)}</span>
             )}
+            <button
+              onClick={() => setShowDetail(true)}
+              className="p-1.5 text-gray-400 hover:text-feros-navy rounded transition-colors"
+              title="View details"
+            >
+              <Info size={15} />
+            </button>
             <button
               onClick={() => setExpanded(v => !v)}
               className="p-1.5 text-gray-400 hover:text-gray-600 rounded transition-colors"
@@ -150,6 +305,9 @@ function ServiceCard({ record, onDelete }: { record: VehicleServiceRecord; onDel
           )}
         </div>
       )}
+
+      {expanded && <ServicePartsSection record={record} />}
+      <ServiceDetailModal service={showDetail ? record : null} open={showDetail} onClose={() => setShowDetail(false)} />
     </div>
   )
 }

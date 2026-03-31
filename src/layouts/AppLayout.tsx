@@ -9,23 +9,25 @@ import {
   Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
+  Boxes,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ADMIN_NAV = [
-  { to: '/dashboard',        label: 'Dashboard',    icon: LayoutDashboard },
-  { to: '/clients',          label: 'Clients',      icon: Users },
-  { to: '/vehicles',         label: 'Vehicles',     icon: Truck },
-  { to: '/orders',           label: 'Orders',       icon: ClipboardList },
-  { to: '/assignments',      label: 'Assignments',  icon: ClipboardCheck },
-  { to: '/lrs',              label: 'LR Register',  icon: FileText },
-  { to: '/invoices',         label: 'Invoices',     icon: Receipt },
-  { to: '/credit-notes',     label: 'Credit Notes', icon: FileMinus },
-  { to: '/staff',            label: 'Staff',        icon: UserCheck },
-  { to: '/attendance',       label: 'Attendance',   icon: Calendar },
-  { to: '/payroll',          label: 'Payroll',      icon: Wallet },
-  { to: '/reports',          label: 'Reports',      icon: BarChart3 },
-  { to: '/masters',          label: 'Masters',      icon: Settings },
+  { to: '/dashboard',                  label: 'Dashboard',    icon: LayoutDashboard },
+  { to: '/clients',                    label: 'Clients',      icon: Users },
+  { to: '/vehicles',                   label: 'Vehicles',     icon: Truck },
+  { to: '/orders',                     label: 'Orders',       icon: ClipboardList },
+  { to: '/assignments',                label: 'Assignments',  icon: ClipboardCheck },
+  { to: '/lrs',                        label: 'LR Register',  icon: FileText },
+  { to: '/invoices',                   label: 'Invoices',     icon: Receipt },
+  { to: '/credit-notes',               label: 'Credit Notes', icon: FileMinus },
+  { to: '/staff',                      label: 'Staff',        icon: UserCheck },
+  { to: '/attendance',                 label: 'Attendance',   icon: Calendar },
+  { to: '/payroll',                    label: 'Payroll',      icon: Wallet },
+  { to: '/reports',                    label: 'Reports',      icon: BarChart3 },
+  { to: '/masters',   label: 'Masters',   icon: Settings },
+  { to: '/inventory', label: 'Inventory', icon: Boxes },
 ]
 
 const SUPER_ADMIN_NAV = [
@@ -57,6 +59,15 @@ const SUPERVISOR_NAV = [
   { to: '/lrs',         label: 'LR Register', icon: FileText },
   { to: '/attendance',  label: 'Attendance',  icon: Calendar },
   { to: '/reports',     label: 'Reports',     icon: BarChart3 },
+]
+
+const STORE_KEEPER_NAV = [
+  { to: '/inventory', label: 'Inventory', icon: Boxes },
+]
+
+const SERVICE_MEN_NAV = [
+  { to: '/vehicle-services', label: 'Services',  icon: Truck },
+  { to: '/inventory',        label: 'Inventory', icon: Boxes },
 ]
 
 // ─── Notification Nav Link ─────────────────────────────────────────────────────
@@ -123,6 +134,8 @@ export function AppLayout() {
     role === 'SUPER_ADMIN'  ? SUPER_ADMIN_NAV :
     role === 'OFFICE_STAFF' ? OFFICE_STAFF_NAV :
     role === 'SUPERVISOR'   ? SUPERVISOR_NAV :
+    role === 'STORE_KEEPER' ? STORE_KEEPER_NAV :
+    role === 'SERVICE_MEN'  ? SERVICE_MEN_NAV :
     ADMIN_NAV
 
   function handleLogout() {

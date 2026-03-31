@@ -27,6 +27,7 @@ import { AttendancePage } from '@/pages/attendance/AttendancePage'
 import { PayrollPage }    from '@/pages/payroll/PayrollPage'
 import { ReportsPage }    from '@/pages/reports/ReportsPage'
 import { MastersPage }    from '@/pages/masters/MastersPage'
+import InventoryPage      from '@/pages/inventory/InventoryPage'
 
 // Super Admin pages
 import { SADashboardPage }   from '@/pages/superadmin/SADashboardPage'
@@ -83,6 +84,7 @@ export default function App() {
           <Route path="payroll"    element={<PayrollPage />} />
           <Route path="reports"    element={<ReportsPage />} />
           <Route path="masters"    element={<MastersPage />} />
+          <Route path="inventory" element={<InventoryPage />} />
 
           {/* SUPER_ADMIN */}
           <Route path="sa/dashboard"      element={<SADashboardPage />} />

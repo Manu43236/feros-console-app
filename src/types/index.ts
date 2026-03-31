@@ -531,6 +531,7 @@ export interface VehicleServiceRecord {
   notes?: string
   totalCost?: number
   tasks: VehicleServiceTask[]
+  startedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -595,4 +596,42 @@ export interface User {
   id: number; tenantId: number; name: string; phone: string
   roles: string[]; isActive: boolean; isPinResetRequired: boolean
   createdAt: string; updatedAt: string
+}
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+export interface SparePart {
+  id: number; tenantId: number
+  name: string; partNumber?: string; category?: string; unit: string
+  minStockLevel: number; isActive: boolean
+  createdAt: string; updatedAt: string
+}
+
+export interface StockItem {
+  inventoryId: number; sparePartId: number
+  partName: string; partNumber?: string; category?: string; unit: string
+  quantity: number; minStockLevel: number; isLowStock: boolean
+}
+
+export type ServicePartStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED'
+export type StockTransactionType = 'IN' | 'OUT' | 'DAMAGE'
+export type StockReferenceType = 'PURCHASE' | 'SERVICE' | 'DAMAGE' | 'ADJUSTMENT'
+
+export interface ServicePart {
+  id: number; serviceId: number; serviceNumber: string; vehicleRegistrationNumber: string
+  sparePartId: number; partName: string; partNumber?: string; unit: string
+  quantityRequested: number; quantityApproved?: number
+  status: ServicePartStatus; rejectionReason?: string
+  requestedById: number; requestedByName: string
+  approvedById?: number; approvedByName?: string
+  approvedAt?: string; createdAt: string
+}
+
+export interface SparePartsTransaction {
+  id: number; sparePartId: number; partName: string; unit: string
+  transactionType: StockTransactionType; quantity: number
+  unitCost?: number; totalCost?: number
+  referenceType: StockReferenceType
+  servicePartId?: number; serviceNumber?: string; vehicleRegistrationNumber?: string
+  supplierName?: string; notes?: string
+  createdById: number; createdByName: string; createdAt: string
 }

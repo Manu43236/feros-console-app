@@ -5,6 +5,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi, vehicleServicesApi } from '@/api/vehicles'
+import { servicePartsApi, sparePartsApi } from '@/api/inventory'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
 import { breakdownsApi } from '@/api/breakdowns'
 import { toast } from 'sonner'
@@ -12,8 +13,8 @@ import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
-  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ExternalLink, Paperclip, Trash2,
-  Calendar, IndianRupee, RotateCcw, Check, Search, X,
+  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ChevronUp, ExternalLink, Paperclip, Trash2,
+  Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -21,8 +22,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import type { BreakdownDuration, BreakdownType, VehicleDocument, VehicleStatusType, VehicleServiceRecord, Breakdown, MasterItem } from '@/types'
+import type { BreakdownDuration, BreakdownType, VehicleDocument, VehicleStatusType, VehicleServiceRecord, Breakdown, MasterItem, ServicePart } from '@/types'
 import { VehicleForm } from './VehiclesPage'
+import { ServiceDetailModal } from '@/components/shared/ServiceDetailModal'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type ExpiryLevel = 'expired' | 'critical' | 'warning' | 'ok' | 'none'
@@ -274,6 +276,9 @@ function CreateServiceDialog({
     onSuccess: () => {
       toast.success('Service created')
       qc.invalidateQueries({ queryKey: ['vehicle-services', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle-breakdowns-history', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
       handleClose()
     },
     onError: (e: unknown) => toast.error(
@@ -534,7 +539,7 @@ function CreateServiceDialog({
 function CompleteServiceDialog({ service, open, onClose }: { service: VehicleServiceRecord | null; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const [completedDate, setCompletedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [odometer, setOdometer]           = useState('')
+  const [odometer, setOdometer]           = useState(service?.odometer?.toString() ?? '')
 
   const mutation = useMutation({
     mutationFn: () => vehicleServicesApi.complete(service!.id, {
@@ -544,6 +549,9 @@ function CompleteServiceDialog({ service, open, onClose }: { service: VehicleSer
     onSuccess: () => {
       toast.success('Service marked complete!')
       qc.invalidateQueries({ queryKey: ['vehicle-services', service!.vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle-breakdowns-history', service!.vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle', service!.vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
       handleClose()
     },
     onError: (e: unknown) => toast.error(
@@ -551,7 +559,7 @@ function CompleteServiceDialog({ service, open, onClose }: { service: VehicleSer
     ),
   })
 
-  function handleClose() { setCompletedDate(format(new Date(), 'yyyy-MM-dd')); setOdometer(''); onClose() }
+  function handleClose() { setCompletedDate(format(new Date(), 'yyyy-MM-dd')); setOdometer(service?.odometer?.toString() ?? ''); onClose() }
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
@@ -580,16 +588,175 @@ function CompleteServiceDialog({ service, open, onClose }: { service: VehicleSer
   )
 }
 
+// ── add part dialog ────────────────────────────────────────────────────────────
+function AddPartDialog({ serviceId, onClose }: { serviceId: number; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({ sparePartId: 0, quantityRequested: 1 })
+
+  const { data: partsData } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
+  const parts = partsData?.data ?? []
+
+  const mutation = useMutation({
+    mutationFn: () => servicePartsApi.request(serviceId, {
+      sparePartId: form.sparePartId,
+      quantityRequested: form.quantityRequested,
+    }),
+    onSuccess: () => {
+      toast.success('Part request submitted for approval')
+      qc.invalidateQueries({ queryKey: ['service-parts', serviceId] })
+      qc.invalidateQueries({ queryKey: ['part-requests'] })
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to request part')
+    },
+  })
+
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Request Spare Part</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Spare Part *</Label>
+            <select
+              className="mt-1 w-full border rounded-md px-3 py-2 text-sm"
+              value={form.sparePartId}
+              onChange={e => setForm(f => ({ ...f, sparePartId: Number(e.target.value) }))}
+            >
+              <option value={0}>Select part…</option>
+              {parts.map(p => (
+                <option key={p.id} value={p.id}>{p.name} — {p.partNumber}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label>Quantity *</Label>
+            <Input
+              className="mt-1" type="number" min={1}
+              value={form.quantityRequested}
+              onChange={e => setForm(f => ({ ...f, quantityRequested: Number(e.target.value) }))}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={mutation.isPending || form.sparePartId === 0 || form.quantityRequested < 1}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? 'Requesting…' : 'Request Part'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── service parts section ──────────────────────────────────────────────────────
+function ServicePartsSection({ record }: { record: VehicleServiceRecord }) {
+  const qc = useQueryClient()
+  const [showAddPart, setShowAddPart] = useState(false)
+  const [listOpen, setListOpen]       = useState(true)
+  const isInProgress = record.status === 'IN_PROGRESS'
+
+  const { data } = useQuery({
+    queryKey: ['service-parts', record.id],
+    queryFn: () => servicePartsApi.getByService(record.id),
+  })
+  const parts: ServicePart[] = data?.data ?? []
+
+  const removeMutation = useMutation({
+    mutationFn: (id: number) => servicePartsApi.remove(id),
+    onSuccess: () => {
+      toast.success('Part request removed')
+      qc.invalidateQueries({ queryKey: ['service-parts', record.id] })
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to remove')
+    },
+  })
+
+  function partStatusChip(s: ServicePart['status']) {
+    const map = {
+      REQUESTED: 'bg-yellow-50 text-yellow-700',
+      APPROVED:  'bg-green-50 text-green-700',
+      REJECTED:  'bg-red-50 text-red-700',
+    }
+    return <span className={`px-2 py-0.5 rounded text-xs font-medium ${map[s]}`}>{s}</span>
+  }
+
+  return (
+    <div className="border-t bg-gray-50/50 px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <button
+          onClick={() => parts.length > 0 && setListOpen(v => !v)}
+          className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide"
+        >
+          <Package size={13} />
+          Parts Used
+          {parts.length > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600 text-xs font-semibold normal-case tracking-normal">
+              {parts.length}
+            </span>
+          )}
+          {parts.length > 0 && (
+            listOpen ? <ChevronUp size={12} className="text-gray-400" /> : <ChevronDown size={12} className="text-gray-400" />
+          )}
+        </button>
+        {isInProgress && (
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setShowAddPart(true)}>
+            <Plus size={12} /> Add Part
+          </Button>
+        )}
+      </div>
+
+      {listOpen && (
+        parts.length === 0 ? (
+          <p className="text-xs text-gray-400 py-1">No parts requested yet</p>
+        ) : (
+          <div className="space-y-1.5">
+            {parts.map(p => (
+              <div key={p.id} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-700">{p.partName}</span>
+                  <span className="text-xs text-gray-400">{p.quantityRequested} {p.unit}</span>
+                  {partStatusChip(p.status)}
+                  {p.status === 'REJECTED' && p.rejectionReason && (
+                    <span className="text-xs text-red-500">({p.rejectionReason})</span>
+                  )}
+                </div>
+                {p.status === 'REQUESTED' && isInProgress && (
+                  <button
+                    onClick={() => removeMutation.mutate(p.id)}
+                    className="text-gray-300 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      )}
+      {showAddPart && <AddPartDialog serviceId={record.id} onClose={() => setShowAddPart(false)} />}
+    </div>
+  )
+}
+
 // ── service tab content ────────────────────────────────────────────────────────
 function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehicleReg: string }) {
   const qc = useQueryClient()
   const [subTab, setSubTab]         = useState<'general' | 'breakdown'>('general')
-  const [filter, setFilter]         = useState<'all' | 'due_soon' | 'overdue' | 'completed'>('all')
+  const [filter, setFilter]         = useState<'all' | 'open' | 'in_progress' | 'due_soon' | 'overdue' | 'completed'>('all')
   const [search, setSearch]         = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [createBreakdownId, setCreateBreakdownId] = useState<number | undefined>()
   const [completeService, setCompleteService]     = useState<VehicleServiceRecord | null>(null)
   const [deleteId, setDeleteId]                   = useState<number | null>(null)
+  const [detailService, setDetailService]         = useState<VehicleServiceRecord | null>(null)
 
   const { data: servicesRes, isLoading: servicesLoading } = useQuery({
     queryKey: ['vehicle-services', vehicleId],
@@ -624,9 +791,11 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
 
   // Filter services
   const filtered = allServices.filter(s => {
-    if (filter === 'due_soon'  && s.displayStatus !== 'DUE_SOON')  return false
-    if (filter === 'overdue'   && s.displayStatus !== 'OVERDUE')   return false
-    if (filter === 'completed' && s.displayStatus !== 'COMPLETED') return false
+    if (filter === 'open'        && s.status !== 'OPEN')              return false
+    if (filter === 'in_progress' && s.status !== 'IN_PROGRESS')       return false
+    if (filter === 'due_soon'    && s.displayStatus !== 'DUE_SOON')   return false
+    if (filter === 'overdue'     && s.displayStatus !== 'OVERDUE')    return false
+    if (filter === 'completed'   && s.displayStatus !== 'COMPLETED')  return false
     if (search && !s.serviceNumber?.toLowerCase().includes(search.toLowerCase()) &&
         !s.notes?.toLowerCase().includes(search.toLowerCase())) return false
     return true
@@ -674,10 +843,12 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
           {/* Filter pills */}
           <div className="flex gap-2 flex-wrap">
             {([
-              { key: 'all',       label: 'All',       count: allServices.length },
-              { key: 'due_soon',  label: 'Due Soon',  count: dueSoonCount },
-              { key: 'overdue',   label: 'Overdue',   count: overdueCount },
-              { key: 'completed', label: 'Completed', count: allServices.filter(s => s.displayStatus === 'COMPLETED').length },
+              { key: 'all',         label: 'All',         count: allServices.length },
+              { key: 'open',        label: 'Open',        count: allServices.filter(s => s.status === 'OPEN').length },
+              { key: 'in_progress', label: 'In Progress', count: allServices.filter(s => s.status === 'IN_PROGRESS').length },
+              { key: 'due_soon',    label: 'Due Soon',    count: dueSoonCount },
+              { key: 'overdue',     label: 'Overdue',     count: overdueCount },
+              { key: 'completed',   label: 'Completed',   count: allServices.filter(s => s.displayStatus === 'COMPLETED').length },
             ] as const).map(f => (
               <button key={f.key} onClick={() => setFilter(f.key)}
                 className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
@@ -707,71 +878,79 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
           ) : (
             <div className="space-y-2">
               {filtered.map(s => (
-                <div key={s.id} className="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      {/* Header row */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-mono text-gray-400">{s.serviceNumber}</span>
-                        <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', statusChip[s.displayStatus])}>
-                          {statusLabel[s.displayStatus]}
-                        </span>
-                        <span className="text-xs text-gray-400 capitalize">{s.triggeredBy === 'BREAKDOWN' ? '⚡ Breakdown' : '📅 Scheduled'}</span>
-                        <span className="text-xs text-gray-400">{s.serviceType === 'INTERNAL' ? '🏭 Internal' : `🔧 ${s.vendorName}`}</span>
+                <div key={s.id} className="border border-gray-100 rounded-xl overflow-hidden hover:border-gray-200 transition-colors">
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {/* Header row */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-mono text-gray-400">{s.serviceNumber}</span>
+                          <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', statusChip[s.displayStatus])}>
+                            {statusLabel[s.displayStatus]}
+                          </span>
+                          <span className="text-xs text-gray-400 capitalize">{s.triggeredBy === 'BREAKDOWN' ? '⚡ Breakdown' : '📅 Scheduled'}</span>
+                          <span className="text-xs text-gray-400">{s.serviceType === 'INTERNAL' ? '🏭 Internal' : `🔧 ${s.vendorName}`}</span>
+                        </div>
+
+                        {/* Tasks */}
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {s.tasks.map(t => (
+                            <span key={t.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                              {t.displayName}{t.isRecurring ? ` 🔄${t.frequencyKm?.toLocaleString('en-IN')}km` : ''}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Meta row */}
+                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 flex-wrap">
+                          {s.dueAtOdometer && (
+                            <span className="flex items-center gap-1">
+                              <RotateCcw size={11} />Due at {s.dueAtOdometer.toLocaleString('en-IN')} km
+                            </span>
+                          )}
+                          {s.odometer && (
+                            <span>{s.odometer.toLocaleString('en-IN')} km</span>
+                          )}
+                          {s.serviceDate && (
+                            <span className="flex items-center gap-1"><Calendar size={11} />{fmtDate(s.serviceDate)}</span>
+                          )}
+                          {s.location && <span>📍 {s.location}</span>}
+                          {(s.totalCost ?? 0) > 0 && (
+                            <span className="flex items-center gap-1 text-green-600 font-medium">
+                              <IndianRupee size={11} />{s.totalCost?.toLocaleString('en-IN')}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Tasks */}
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {s.tasks.map(t => (
-                          <span key={t.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                            {t.displayName}{t.isRecurring ? ` 🔄${t.frequencyKm?.toLocaleString('en-IN')}km` : ''}
-                          </span>
-                        ))}
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {s.status === 'OPEN' && (
+                          <Button size="sm" onClick={() => startMutation.mutate(s.id)}
+                            disabled={startMutation.isPending}
+                            className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white gap-1">
+                            <Wrench size={12} /> Start
+                          </Button>
+                        )}
+                        {s.status === 'IN_PROGRESS' && (
+                          <Button size="sm" onClick={() => setCompleteService(s)}
+                            className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1">
+                            <Check size={12} /> Done
+                          </Button>
+                        )}
+                        <button onClick={() => setDetailService(s)}
+                          className="p-1.5 text-gray-300 hover:text-feros-navy rounded transition-colors"
+                          title="View details">
+                          <Info size={14} />
+                        </button>
+                        <button onClick={() => setDeleteId(s.id)}
+                          className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors">
+                          <Trash2 size={14} />
+                        </button>
                       </div>
-
-                      {/* Meta row */}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 flex-wrap">
-                        {s.dueAtOdometer && (
-                          <span className="flex items-center gap-1">
-                            <RotateCcw size={11} />Due at {s.dueAtOdometer.toLocaleString('en-IN')} km
-                          </span>
-                        )}
-                        {s.odometer && (
-                          <span>{s.odometer.toLocaleString('en-IN')} km</span>
-                        )}
-                        {s.serviceDate && (
-                          <span className="flex items-center gap-1"><Calendar size={11} />{fmtDate(s.serviceDate)}</span>
-                        )}
-                        {s.location && <span>📍 {s.location}</span>}
-                        {(s.totalCost ?? 0) > 0 && (
-                          <span className="flex items-center gap-1 text-green-600 font-medium">
-                            <IndianRupee size={11} />{s.totalCost?.toLocaleString('en-IN')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {s.status === 'OPEN' && (
-                        <Button size="sm" onClick={() => startMutation.mutate(s.id)}
-                          disabled={startMutation.isPending}
-                          className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white gap-1">
-                          <Wrench size={12} /> Start
-                        </Button>
-                      )}
-                      {s.status === 'IN_PROGRESS' && (
-                        <Button size="sm" onClick={() => setCompleteService(s)}
-                          className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1">
-                          <Check size={12} /> Done
-                        </Button>
-                      )}
-                      <button onClick={() => setDeleteId(s.id)}
-                        className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors">
-                        <Trash2 size={14} />
-                      </button>
                     </div>
                   </div>
+                  <ServicePartsSection record={s} />
                 </div>
               ))}
             </div>
@@ -792,15 +971,18 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
           ) : (
             allBreakdowns.map(b => {
               const isOpen = b.status !== 'RESOLVED' && b.status !== 'VEHICLE_REPLACED'
+              const isInRepair = b.status === 'IN_REPAIR'
               return (
                 <div key={b.id} className="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border',
-                          isOpen ? 'bg-red-50 text-red-600 border-red-200' : 'bg-green-50 text-green-700 border-green-200'
+                          isInRepair ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                          isOpen ? 'bg-red-50 text-red-600 border-red-200' :
+                          'bg-green-50 text-green-700 border-green-200'
                         )}>
-                          {isOpen ? '⚠ Open' : '✓ Resolved'}
+                          {isInRepair ? '🔧 In Repair' : isOpen ? '⚠ Open' : '✓ Resolved'}
                         </span>
                         <span className="text-xs text-gray-500 capitalize">{b.breakdownType.replace('_', ' ')}</span>
                         <span className="text-xs text-gray-400">{b.breakdownDuration === 'SHORT' ? 'Minor' : 'Major'}</span>
@@ -814,7 +996,7 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
                         {b.orderNumber && <span>Order: {b.orderNumber}</span>}
                       </div>
                     </div>
-                    {isOpen && (
+                    {isOpen && !isInRepair && (
                       <Button size="sm" onClick={() => { setCreateBreakdownId(b.id); setCreateOpen(true) }}
                         className="h-7 text-xs bg-feros-navy hover:bg-feros-navy/90 text-white gap-1 shrink-0">
                         <Wrench size={12} /> Log Service
@@ -829,6 +1011,11 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
       )}
 
       {/* Dialogs */}
+      <ServiceDetailModal
+        service={detailService}
+        open={!!detailService}
+        onClose={() => setDetailService(null)}
+      />
       <CreateServiceDialog
         vehicleId={vehicleId}
         vehicleReg={vehicleReg}
