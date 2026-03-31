@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import leftMenuLogo from '@/assets/left_menu_logo.png'
 import { useAuthStore } from '@/store/authStore'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { notificationsApi, subscriptionsApi } from '@/api/superadmin'
 import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
@@ -59,12 +59,8 @@ const SUPERVISOR_NAV = [
   { to: '/reports',     label: 'Reports',     icon: BarChart3 },
 ]
 
-// ─── Notification Bell ────────────────────────────────────────────────────────
-function NotificationBell() {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const qc = useQueryClient()
-
+// ─── Notification Nav Link ─────────────────────────────────────────────────────
+function NotifNavLink() {
   const { data: countRes } = useQuery({
     queryKey: ['notif-count'],
     queryFn: () => notificationsApi.getUnreadCount(),
@@ -72,68 +68,24 @@ function NotificationBell() {
   })
   const count = countRes?.data?.count ?? 0
 
-  const { data: notifsRes } = useQuery({
-    queryKey: ['notifs'],
-    queryFn: () => notificationsApi.getAll(),
-    enabled: open,
-  })
-  const notifs = notifsRes?.data ?? []
-
-  const markRead = useMutation({
-    mutationFn: () => notificationsApi.markAllRead(),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['notif-count'] }); qc.invalidateQueries({ queryKey: ['notifs'] }) },
-  })
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(v => !v)}
-        className={cn(
-          'relative flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-          open ? 'bg-feros-orange text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'
-        )}
-      >
-        <Bell size={18} className="shrink-0" />
-        <span>Notifications</span>
-        {count > 0 && (
-          <span className="ml-auto min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-            {count > 9 ? '9+' : count}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute left-full top-0 ml-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b">
-            <span className="font-semibold text-sm text-gray-900">Notifications</span>
-            {count > 0 && (
-              <button onClick={() => markRead.mutate()} className="text-xs text-feros-navy hover:underline">
-                Mark all read
-              </button>
-            )}
-          </div>
-          <div className="max-h-80 overflow-y-auto">
-            {notifs.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">No notifications</p>
-            ) : notifs.slice(0, 15).map(n => (
-              <div key={n.id} className={cn('px-4 py-3 border-b last:border-0', !n.isRead && 'bg-blue-50')}>
-                <p className="text-sm font-medium text-gray-900">{n.title}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
-                <p className="text-[10px] text-gray-400 mt-1">{n.createdAt?.slice(0, 16).replace('T', ' ')}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+    <NavLink
+      to="/notifications"
+      className={({ isActive }) => cn(
+        'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+        isActive
+          ? 'bg-feros-orange text-white'
+          : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
-    </div>
+    >
+      <Bell size={18} className="shrink-0" />
+      <span>Notifications</span>
+      {count > 0 && (
+        <span className="ml-auto min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+          {count > 9 ? '9+' : count}
+        </span>
+      )}
+    </NavLink>
   )
 }
 
@@ -221,7 +173,7 @@ export function AppLayout() {
 
       {/* Footer */}
       <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
-        <NotificationBell />
+        <NotifNavLink />
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"

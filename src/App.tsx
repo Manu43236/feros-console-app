@@ -39,6 +39,9 @@ import { SASettingsPage }    from '@/pages/superadmin/SASettingsPage'
 // Profile
 import { ProfilePage } from '@/pages/profile/ProfilePage'
 
+// Notifications
+import { NotificationsPage } from '@/pages/notifications/NotificationsPage'
+
 // Staff portal pages
 import { MyTripsPage }      from '@/pages/staff-portal/MyTripsPage'
 import { MyAttendancePage } from '@/pages/staff-portal/MyAttendancePage'
@@ -91,6 +94,9 @@ export default function App() {
 
           {/* Profile */}
           <Route path="profile" element={<ProfilePage />} />
+
+          {/* Notifications */}
+          <Route path="notifications" element={<NotificationsPage />} />
 
           {/* STAFF */}
           <Route path="my/trips"      element={<MyTripsPage />} />
