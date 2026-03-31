@@ -96,18 +96,22 @@ function NotificationBell() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(v => !v)}
-        className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+        className={cn(
+          'relative flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+          open ? 'bg-feros-orange text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'
+        )}
       >
-        <Bell size={20} />
+        <Bell size={18} className="shrink-0" />
+        <span>Notifications</span>
         {count > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          <span className="ml-auto min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
             {count > 9 ? '9+' : count}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
+        <div className="absolute left-full top-0 ml-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <span className="font-semibold text-sm text-gray-900">Notifications</span>
             {count > 0 && (
@@ -216,7 +220,8 @@ export function AppLayout() {
       </nav>
 
       {/* Footer */}
-      <div className="shrink-0 p-3 border-t border-white/10">
+      <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
+        <NotificationBell />
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
@@ -256,11 +261,6 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
           <div className="flex-1" />
-
-          {/* Notification Bell */}
-          <div className="mr-1">
-            <NotificationBell />
-          </div>
 
           {/* User menu — navigate to profile */}
           <button
