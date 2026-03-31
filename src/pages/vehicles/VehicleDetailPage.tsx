@@ -4,14 +4,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { vehiclesApi } from '@/api/vehicles'
+import { vehiclesApi, vehicleServicesApi } from '@/api/vehicles'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
+import { breakdownsApi } from '@/api/breakdowns'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
   ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ExternalLink, Paperclip, Trash2,
+  Calendar, IndianRupee, RotateCcw, Check, Search, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -19,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import type { BreakdownDuration, BreakdownType, VehicleDocument, VehicleStatusType } from '@/types'
+import type { BreakdownDuration, BreakdownType, VehicleDocument, VehicleStatusType, VehicleServiceRecord, Breakdown, MasterItem } from '@/types'
 import { VehicleForm } from './VehiclesPage'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -220,6 +222,623 @@ const vehicleStatusBadge: Record<VehicleStatusType, string> = {
   IN_REPAIR:  'bg-yellow-500/20 border-yellow-400/40 text-yellow-300',
   BREAKDOWN:  'bg-red-500/20 border-red-400/40 text-red-300',
   OTHER:      'bg-white/10 border-white/20 text-white',
+}
+
+// ── service display status helpers ────────────────────────────────────────────
+const statusChip: Record<string, string> = {
+  OPEN:      'bg-blue-50 text-blue-600 border-blue-200',
+  DUE_SOON:  'bg-yellow-50 text-yellow-700 border-yellow-200',
+  OVERDUE:   'bg-red-50 text-red-600 border-red-200',
+  COMPLETED: 'bg-green-50 text-green-700 border-green-200',
+}
+const statusLabel: Record<string, string> = {
+  OPEN: 'Open', DUE_SOON: 'Due Soon', OVERDUE: 'Overdue', COMPLETED: 'Completed',
+}
+
+// ── task row inside create dialog ─────────────────────────────────────────────
+interface TaskDraft {
+  taskTypeId?: number
+  customName?: string
+  isRecurring: boolean
+  frequencyKm?: number
+  cost?: number
+}
+
+// ── create service dialog ─────────────────────────────────────────────────────
+function CreateServiceDialog({
+  vehicleId, vehicleReg, breakdownId, open, onClose,
+}: {
+  vehicleId: number; vehicleReg: string; breakdownId?: number; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [serviceType, setServiceType] = useState<'INTERNAL' | 'EXTERNAL'>('INTERNAL')
+  const [vendorName, setVendorName]   = useState('')
+  const [location, setLocation]       = useState('')
+  const [serviceDate, setServiceDate] = useState('')
+  const [odometer, setOdometer]       = useState('')
+  const [notes, setNotes]             = useState('')
+  const [dueAtOdometer, setDueAtOdometer] = useState('')
+  // tasks state: selected master tasks + custom
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
+  const [taskDrafts, setTaskDrafts]           = useState<Record<string | number, TaskDraft>>({})
+  const [customTasks, setCustomTasks]         = useState<TaskDraft[]>([])
+  const [showCustom, setShowCustom]           = useState(false)
+  const [customTaskName, setCustomTaskName]   = useState('')
+
+  const { data: taskTypesRes } = useQuery({ queryKey: ['service-task-types'], queryFn: globalMastersApi.getServiceTaskTypes })
+  const taskTypes: MasterItem[] = taskTypesRes?.data ?? []
+
+  const mutation = useMutation({
+    mutationFn: (data: unknown) => vehicleServicesApi.create(data),
+    onSuccess: () => {
+      toast.success('Service created')
+      qc.invalidateQueries({ queryKey: ['vehicle-services', vehicleId] })
+      handleClose()
+    },
+    onError: (e: unknown) => toast.error(
+      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to create service'
+    ),
+  })
+
+  function handleClose() {
+    setServiceType('INTERNAL'); setVendorName(''); setLocation('')
+    setServiceDate(''); setOdometer(''); setNotes(''); setDueAtOdometer('')
+    setSelectedTaskIds(new Set()); setTaskDrafts({}); setCustomTasks([])
+    setShowCustom(false); setCustomTaskName('')
+    onClose()
+  }
+
+  function toggleTask(id: number) {
+    setSelectedTaskIds(prev => {
+      const s = new Set(prev)
+      if (s.has(id)) { s.delete(id); setTaskDrafts(d => { const n = { ...d }; delete n[id]; return n }) }
+      else { s.add(id); setTaskDrafts(d => ({ ...d, [id]: { taskTypeId: id, isRecurring: false } })) }
+      return s
+    })
+  }
+
+  function updateDraft(id: number | string, patch: Partial<TaskDraft>) {
+    setTaskDrafts(d => ({ ...d, [id]: { ...(d[id] ?? {}), ...patch } as TaskDraft }))
+  }
+
+  function addCustomTask() {
+    if (!customTaskName.trim()) return
+    setCustomTasks(c => [...c, { customName: customTaskName.trim(), isRecurring: false }])
+    setCustomTaskName('')
+  }
+
+  function removeCustomTask(i: number) {
+    setCustomTasks(c => c.filter((_, j) => j !== i))
+  }
+
+  function buildTasks() {
+    const masterTasks = Array.from(selectedTaskIds).map(id => taskDrafts[id] ?? { taskTypeId: id, isRecurring: false })
+    return [...masterTasks, ...customTasks]
+  }
+
+  function handleSubmit() {
+    const tasks = buildTasks()
+    if (tasks.length === 0) { toast.error('Add at least one task'); return }
+    const payload = {
+      vehicleId,
+      triggeredBy: breakdownId ? 'BREAKDOWN' : 'SCHEDULED',
+      breakdownId: breakdownId ?? null,
+      serviceType,
+      vendorName: serviceType === 'INTERNAL' ? 'Self' : vendorName,
+      location: location || null,
+      serviceDate: serviceDate || null,
+      odometer: odometer ? Number(odometer) : null,
+      dueAtOdometer: dueAtOdometer ? Number(dueAtOdometer) : null,
+      notes: notes || null,
+      tasks: tasks.map(t => ({
+        taskTypeId: t.taskTypeId ?? null,
+        customName: t.customName ?? null,
+        isRecurring: t.isRecurring,
+        frequencyKm: t.isRecurring && t.frequencyKm ? Number(t.frequencyKm) : null,
+        cost: t.cost ? Number(t.cost) : null,
+      })),
+    }
+    mutation.mutate(payload)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wrench size={16} className="text-feros-navy" /> New Service
+          </DialogTitle>
+          <p className="text-xs text-gray-400 font-mono">{vehicleReg}</p>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-1">
+          {/* Service Type */}
+          <div className="space-y-1.5">
+            <Label>Service Type</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(['INTERNAL', 'EXTERNAL'] as const).map(t => (
+                <button key={t} type="button"
+                  onClick={() => setServiceType(t)}
+                  className={cn('py-2 rounded-lg border-2 text-sm font-medium transition-colors',
+                    serviceType === t ? 'border-feros-navy bg-feros-navy/5 text-feros-navy' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                  )}
+                >
+                  {t === 'INTERNAL' ? '🏭 Internal (Self)' : '🔧 External'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Vendor & Location */}
+          {serviceType === 'EXTERNAL' && (
+            <div className="space-y-1.5">
+              <Label>Garage / Vendor Name</Label>
+              <Input placeholder="e.g. Raju Tyre Works" value={vendorName} onChange={e => setVendorName(e.target.value)} />
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label>Location <span className="text-gray-400 font-normal">(optional)</span></Label>
+            <Input placeholder="e.g. Pune highway, Depot yard" value={location} onChange={e => setLocation(e.target.value)} />
+          </div>
+
+          {/* Date & Odometer */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Service Date</Label>
+              <Input type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Odometer (km)</Label>
+              <Input type="number" placeholder="42300" value={odometer} onChange={e => setOdometer(e.target.value)} />
+            </div>
+          </div>
+
+          {/* Due At Odometer (for scheduled services) */}
+          {!breakdownId && (
+            <div className="space-y-1.5">
+              <Label>Due At Odometer <span className="text-gray-400 font-normal">(km — for scheduled services)</span></Label>
+              <Input type="number" placeholder="45000" value={dueAtOdometer} onChange={e => setDueAtOdometer(e.target.value)} />
+            </div>
+          )}
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <Label>Notes <span className="text-gray-400 font-normal">(optional)</span></Label>
+            <Input placeholder="Any additional notes…" value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+
+          {/* Tasks */}
+          <div className="space-y-2">
+            <Label>Tasks <span className="text-red-500">*</span></Label>
+            <div className="border rounded-lg divide-y divide-gray-100">
+              {taskTypes.map(t => {
+                const checked = selectedTaskIds.has(t.id)
+                const draft = taskDrafts[t.id]
+                return (
+                  <div key={t.id} className="px-3 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <input type="checkbox" id={`task-${t.id}`} checked={checked}
+                        onChange={() => toggleTask(t.id)}
+                        className="w-4 h-4 accent-feros-navy cursor-pointer" />
+                      <label htmlFor={`task-${t.id}`} className="text-sm text-gray-700 flex-1 cursor-pointer">{t.name}</label>
+                    </div>
+                    {checked && (
+                      <div className="mt-2 ml-6 space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
+                            <Input type="number" placeholder="0" className="h-8 text-sm"
+                              value={draft?.cost ?? ''}
+                              onChange={e => updateDraft(t.id, { cost: e.target.value ? Number(e.target.value) : undefined })} />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Recurring?</p>
+                            <button type="button"
+                              onClick={() => updateDraft(t.id, { isRecurring: !draft?.isRecurring })}
+                              className={cn('h-8 w-full rounded-md border text-xs font-medium transition-colors',
+                                draft?.isRecurring ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500'
+                              )}>
+                              {draft?.isRecurring ? '🔄 Yes' : 'One-time'}
+                            </button>
+                          </div>
+                        </div>
+                        {draft?.isRecurring && (
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Every (km)</p>
+                            <Input type="number" placeholder="10000" className="h-8 text-sm"
+                              value={draft?.frequencyKm ?? ''}
+                              onChange={e => updateDraft(t.id, { frequencyKm: e.target.value ? Number(e.target.value) : undefined })} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Other / custom tasks */}
+              {customTasks.map((ct, i) => (
+                <div key={`custom-${i}`} className="px-3 py-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <Check size={14} className="text-feros-navy ml-0.5" />
+                    <span className="text-sm text-gray-700 flex-1">{ct.customName}</span>
+                    <button type="button" onClick={() => removeCustomTask(i)} className="text-gray-300 hover:text-red-500">
+                      <X size={13} />
+                    </button>
+                  </div>
+                  <div className="mt-2 ml-6 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
+                        <Input type="number" placeholder="0" className="h-8 text-sm"
+                          value={ct.cost ?? ''}
+                          onChange={e => setCustomTasks(c => c.map((x, j) => j === i ? { ...x, cost: e.target.value ? Number(e.target.value) : undefined } : x))} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Recurring?</p>
+                        <button type="button"
+                          onClick={() => setCustomTasks(c => c.map((x, j) => j === i ? { ...x, isRecurring: !x.isRecurring } : x))}
+                          className={cn('h-8 w-full rounded-md border text-xs font-medium transition-colors',
+                            ct.isRecurring ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500'
+                          )}>
+                          {ct.isRecurring ? '🔄 Yes' : 'One-time'}
+                        </button>
+                      </div>
+                    </div>
+                    {ct.isRecurring && (
+                      <div>
+                        <p className="text-xs text-gray-400 mb-1">Every (km)</p>
+                        <Input type="number" placeholder="10000" className="h-8 text-sm"
+                          value={ct.frequencyKm ?? ''}
+                          onChange={e => setCustomTasks(c => c.map((x, j) => j === i ? { ...x, frequencyKm: e.target.value ? Number(e.target.value) : undefined } : x))} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Add custom task row */}
+              <div className="px-3 py-2.5">
+                {!showCustom ? (
+                  <button type="button" onClick={() => setShowCustom(true)}
+                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-feros-navy transition-colors">
+                    <Plus size={13} /> Add custom task
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input placeholder="Task name…" className="h-8 text-sm flex-1"
+                      value={customTaskName} onChange={e => setCustomTaskName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomTask())} />
+                    <Button type="button" size="sm" onClick={addCustomTask} className="h-8 bg-feros-navy text-white">Add</Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => { setShowCustom(false); setCustomTaskName('') }} className="h-8">✕</Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={handleClose} disabled={mutation.isPending}>Cancel</Button>
+            <Button type="button" onClick={handleSubmit} disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+              {mutation.isPending ? 'Creating…' : 'Create Service'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── complete service dialog ────────────────────────────────────────────────────
+function CompleteServiceDialog({ service, open, onClose }: { service: VehicleServiceRecord | null; open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [completedDate, setCompletedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [odometer, setOdometer]           = useState('')
+
+  const mutation = useMutation({
+    mutationFn: () => vehicleServicesApi.complete(service!.id, {
+      completedDate,
+      odometer: odometer ? Number(odometer) : undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Service marked complete!')
+      qc.invalidateQueries({ queryKey: ['vehicle-services', service!.vehicleId] })
+      handleClose()
+    },
+    onError: (e: unknown) => toast.error(
+      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'
+    ),
+  })
+
+  function handleClose() { setCompletedDate(format(new Date(), 'yyyy-MM-dd')); setOdometer(''); onClose() }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Complete Service</DialogTitle></DialogHeader>
+        <p className="text-sm text-gray-500">{service?.serviceNumber}</p>
+        <div className="space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <Label>Completed Date *</Label>
+            <Input type="date" value={completedDate} onChange={e => setCompletedDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Odometer at Completion (km)</Label>
+            <Input type="number" placeholder={service?.odometer?.toString() ?? '0'} value={odometer} onChange={e => setOdometer(e.target.value)} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={handleClose} disabled={mutation.isPending}>Cancel</Button>
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !completedDate}
+            className="bg-green-600 hover:bg-green-700 text-white">
+            {mutation.isPending ? 'Saving…' : 'Mark Complete'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── service tab content ────────────────────────────────────────────────────────
+function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehicleReg: string }) {
+  const qc = useQueryClient()
+  const [subTab, setSubTab]         = useState<'general' | 'breakdown'>('general')
+  const [filter, setFilter]         = useState<'all' | 'due_soon' | 'overdue' | 'completed'>('all')
+  const [search, setSearch]         = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createBreakdownId, setCreateBreakdownId] = useState<number | undefined>()
+  const [completeService, setCompleteService]     = useState<VehicleServiceRecord | null>(null)
+  const [deleteId, setDeleteId]                   = useState<number | null>(null)
+
+  const { data: servicesRes, isLoading: servicesLoading } = useQuery({
+    queryKey: ['vehicle-services', vehicleId],
+    queryFn:  () => vehicleServicesApi.getByVehicle(vehicleId),
+  })
+  const { data: breakdownsRes, isLoading: breakdownsLoading } = useQuery({
+    queryKey: ['vehicle-breakdowns-history', vehicleId],
+    queryFn:  () => breakdownsApi.vehicleHistory(vehicleId),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => vehicleServicesApi.delete(id),
+    onSuccess: () => {
+      toast.success('Service deleted')
+      qc.invalidateQueries({ queryKey: ['vehicle-services', vehicleId] })
+      setDeleteId(null)
+    },
+    onError: () => toast.error('Failed to delete'),
+  })
+
+  const allServices: VehicleServiceRecord[] = servicesRes?.data ?? []
+  const allBreakdowns: Breakdown[] = breakdownsRes?.data ?? []
+
+  // Filter services
+  const filtered = allServices.filter(s => {
+    if (filter === 'due_soon'  && s.displayStatus !== 'DUE_SOON')  return false
+    if (filter === 'overdue'   && s.displayStatus !== 'OVERDUE')   return false
+    if (filter === 'completed' && s.displayStatus !== 'COMPLETED') return false
+    if (search && !s.serviceNumber?.toLowerCase().includes(search.toLowerCase()) &&
+        !s.notes?.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
+  const dueSoonCount = allServices.filter(s => s.displayStatus === 'DUE_SOON').length
+  const overdueCount = allServices.filter(s => s.displayStatus === 'OVERDUE').length
+  const openBreakdowns = allBreakdowns.filter(b => b.status !== 'RESOLVED' && b.status !== 'VEHICLE_REPLACED')
+
+  return (
+    <div className="space-y-4">
+      {/* Sub-tab bar */}
+      <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+        {(['general', 'breakdown'] as const).map(t => (
+          <button key={t} onClick={() => setSubTab(t)}
+            className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors capitalize relative',
+              subTab === t ? 'bg-white text-feros-navy shadow-sm' : 'text-gray-500 hover:text-gray-800'
+            )}>
+            {t === 'breakdown' && openBreakdowns.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {openBreakdowns.length}
+              </span>
+            )}
+            {t === 'general' ? 'General' : 'Breakdowns'}
+          </button>
+        ))}
+      </div>
+
+      {/* ── General tab ── */}
+      {subTab === 'general' && (
+        <div className="space-y-4">
+          {/* Search + Create */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input placeholder="Search services…" className="pl-8 h-9"
+                value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <Button size="sm" onClick={() => { setCreateBreakdownId(undefined); setCreateOpen(true) }}
+              className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-9 text-xs">
+              <Plus size={13} /> New Service
+            </Button>
+          </div>
+
+          {/* Filter pills */}
+          <div className="flex gap-2 flex-wrap">
+            {([
+              { key: 'all',       label: 'All',       count: allServices.length },
+              { key: 'due_soon',  label: 'Due Soon',  count: dueSoonCount },
+              { key: 'overdue',   label: 'Overdue',   count: overdueCount },
+              { key: 'completed', label: 'Completed', count: allServices.filter(s => s.displayStatus === 'COMPLETED').length },
+            ] as const).map(f => (
+              <button key={f.key} onClick={() => setFilter(f.key)}
+                className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                  filter === f.key ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                )}>
+                {f.label}
+                <span className={cn('px-1.5 py-0.5 rounded-full text-xs',
+                  filter === f.key ? 'bg-white/20' : 'bg-gray-100'
+                )}>{f.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Service list */}
+          {servicesLoading ? (
+            <div className="py-8 text-center text-gray-400 text-sm animate-pulse">Loading…</div>
+          ) : filtered.length === 0 ? (
+            <div className="py-12 text-center text-gray-400">
+              <Wrench size={32} className="mx-auto mb-3 text-gray-200" />
+              <p className="text-sm font-medium text-gray-500">
+                {allServices.length === 0 ? 'No services yet' : 'No services match filter'}
+              </p>
+              {allServices.length === 0 && (
+                <p className="text-xs mt-1 text-gray-400">Create the first service to start tracking.</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filtered.map(s => (
+                <div key={s.id} className="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      {/* Header row */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono text-gray-400">{s.serviceNumber}</span>
+                        <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', statusChip[s.displayStatus])}>
+                          {statusLabel[s.displayStatus]}
+                        </span>
+                        <span className="text-xs text-gray-400 capitalize">{s.triggeredBy === 'BREAKDOWN' ? '⚡ Breakdown' : '📅 Scheduled'}</span>
+                        <span className="text-xs text-gray-400">{s.serviceType === 'INTERNAL' ? '🏭 Internal' : `🔧 ${s.vendorName}`}</span>
+                      </div>
+
+                      {/* Tasks */}
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {s.tasks.map(t => (
+                          <span key={t.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                            {t.displayName}{t.isRecurring ? ` 🔄${t.frequencyKm?.toLocaleString('en-IN')}km` : ''}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Meta row */}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 flex-wrap">
+                        {s.dueAtOdometer && (
+                          <span className="flex items-center gap-1">
+                            <RotateCcw size={11} />Due at {s.dueAtOdometer.toLocaleString('en-IN')} km
+                          </span>
+                        )}
+                        {s.odometer && (
+                          <span>{s.odometer.toLocaleString('en-IN')} km</span>
+                        )}
+                        {s.serviceDate && (
+                          <span className="flex items-center gap-1"><Calendar size={11} />{fmtDate(s.serviceDate)}</span>
+                        )}
+                        {s.location && <span>📍 {s.location}</span>}
+                        {(s.totalCost ?? 0) > 0 && (
+                          <span className="flex items-center gap-1 text-green-600 font-medium">
+                            <IndianRupee size={11} />{s.totalCost?.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {s.status === 'OPEN' && (
+                        <Button size="sm" onClick={() => setCompleteService(s)}
+                          className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1">
+                          <Check size={12} /> Done
+                        </Button>
+                      )}
+                      <button onClick={() => setDeleteId(s.id)}
+                        className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Breakdown tab ── */}
+      {subTab === 'breakdown' && (
+        <div className="space-y-2">
+          {breakdownsLoading ? (
+            <div className="py-8 text-center text-gray-400 text-sm animate-pulse">Loading…</div>
+          ) : allBreakdowns.length === 0 ? (
+            <div className="py-12 text-center text-gray-400">
+              <AlertTriangle size={32} className="mx-auto mb-3 text-gray-200" />
+              <p className="text-sm font-medium text-gray-500">No breakdowns recorded</p>
+            </div>
+          ) : (
+            allBreakdowns.map(b => {
+              const isOpen = b.status !== 'RESOLVED' && b.status !== 'VEHICLE_REPLACED'
+              return (
+                <div key={b.id} className="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border',
+                          isOpen ? 'bg-red-50 text-red-600 border-red-200' : 'bg-green-50 text-green-700 border-green-200'
+                        )}>
+                          {isOpen ? '⚠ Open' : '✓ Resolved'}
+                        </span>
+                        <span className="text-xs text-gray-500 capitalize">{b.breakdownType.replace('_', ' ')}</span>
+                        <span className="text-xs text-gray-400">{b.breakdownDuration === 'SHORT' ? 'Minor' : 'Major'}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 mt-1.5">{b.reason}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+                        <span><Calendar size={11} className="inline mr-1" />
+                          {b.breakdownDate ? format(parseISO(b.breakdownDate), 'dd MMM yyyy HH:mm') : '—'}
+                        </span>
+                        {b.location && <span>📍 {b.location}</span>}
+                        {b.orderNumber && <span>Order: {b.orderNumber}</span>}
+                      </div>
+                    </div>
+                    {isOpen && (
+                      <Button size="sm" onClick={() => { setCreateBreakdownId(b.id); setCreateOpen(true) }}
+                        className="h-7 text-xs bg-feros-navy hover:bg-feros-navy/90 text-white gap-1 shrink-0">
+                        <Wrench size={12} /> Log Service
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
+
+      {/* Dialogs */}
+      <CreateServiceDialog
+        vehicleId={vehicleId}
+        vehicleReg={vehicleReg}
+        breakdownId={createBreakdownId}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
+      <CompleteServiceDialog
+        service={completeService}
+        open={!!completeService}
+        onClose={() => setCompleteService(null)}
+      />
+      <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete Service</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600">Delete this service record? This cannot be undone.</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={deleteMutation.isPending}
+              onClick={() => deleteId && deleteMutation.mutate(deleteId)}>
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
 }
 
 // ── page ─────────────────────────────────────────────────────────────────────
@@ -570,12 +1189,8 @@ export function VehicleDetailPage() {
           )}
 
           {/* ── Service ── */}
-          {tab === 'Service' && (
-            <div className="py-10 text-center text-gray-400">
-              <Wrench size={32} className="mx-auto mb-3 text-gray-200" />
-              <p className="text-sm font-medium text-gray-500">Service History</p>
-              <p className="text-xs mt-1">Maintenance records, tyre changes, and service logs will appear here.</p>
-            </div>
+          {tab === 'Service' && v && (
+            <ServiceTabContent vehicleId={v.id} vehicleReg={v.registrationNumber} />
           )}
 
           {/* ── Fuel ── */}

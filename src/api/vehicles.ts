@@ -52,10 +52,10 @@ export const vehiclesApi = {
 }
 
 export const vehicleServicesApi = {
-  getAll:      ()                      => apiClient.get<ApiResponse<VehicleServiceRecord[]>>('/vehicle-services').then(r => r.data),
-  getByVehicle:(vehicleId: number)     => apiClient.get<ApiResponse<VehicleServiceRecord[]>>(`/vehicle-services/vehicle/${vehicleId}`).then(r => r.data),
-  getById:     (id: number)            => apiClient.get<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}`).then(r => r.data),
-  create:      (data: unknown)         => apiClient.post<ApiResponse<VehicleServiceRecord>>('/vehicle-services', data).then(r => r.data),
-  update:      (id: number, data: unknown) => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}`, data).then(r => r.data),
-  delete:      (id: number)            => apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}`).then(r => r.data),
+  getAll:        ()                               => apiClient.get<ApiResponse<VehicleServiceRecord[]>>('/vehicle-services').then(r => r.data),
+  getByVehicle:  (vehicleId: number)              => apiClient.get<ApiResponse<VehicleServiceRecord[]>>(`/vehicle-services/vehicle/${vehicleId}`).then(r => r.data),
+  getById:       (id: number)                     => apiClient.get<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}`).then(r => r.data),
+  create:        (data: unknown)                  => apiClient.post<ApiResponse<VehicleServiceRecord>>('/vehicle-services', data).then(r => r.data),
+  complete:      (id: number, data: { completedDate: string; odometer?: number }) => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/complete`, data).then(r => r.data),
+  delete:        (id: number)                     => apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}`).then(r => r.data),
 }

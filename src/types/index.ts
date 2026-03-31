@@ -493,22 +493,44 @@ export interface Notification {
 }
 
 // ─── Vehicle Service ──────────────────────────────────────────────────────────
+export type ServiceTriggeredBy = 'SCHEDULED' | 'BREAKDOWN'
+export type VehicleServiceType = 'INTERNAL' | 'EXTERNAL'
+export type ServiceStatus = 'OPEN' | 'COMPLETED'
+export type ServiceDisplayStatus = 'OPEN' | 'DUE_SOON' | 'OVERDUE' | 'COMPLETED'
+export type ServiceTaskStatus = 'PENDING' | 'COMPLETED'
+
+export interface VehicleServiceTask {
+  id: number
+  taskTypeId?: number
+  taskTypeName?: string
+  customName?: string
+  displayName: string
+  isRecurring: boolean
+  frequencyKm?: number
+  cost?: number
+  status: ServiceTaskStatus
+}
+
 export interface VehicleServiceRecord {
   id: number
   tenantId: number
   vehicleId: number
   vehicleRegistrationNumber: string
-  serviceDate: string
-  serviceType: string
-  description?: string
-  cost?: number
-  odometerReading?: number
-  nextServiceDueDate?: string
-  nextServiceDueOdometer?: number
-  serviceCenterName?: string
-  serviceCenterPhone?: string
-  billUrl?: string
-  isActive: boolean
+  serviceNumber: string
+  triggeredBy: ServiceTriggeredBy
+  breakdownId?: number
+  serviceType: VehicleServiceType
+  vendorName?: string
+  location?: string
+  status: ServiceStatus
+  displayStatus: ServiceDisplayStatus
+  dueAtOdometer?: number
+  serviceDate?: string
+  completedDate?: string
+  odometer?: number
+  notes?: string
+  totalCost?: number
+  tasks: VehicleServiceTask[]
   createdAt: string
   updatedAt: string
 }
