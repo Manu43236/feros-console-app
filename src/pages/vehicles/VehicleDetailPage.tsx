@@ -275,7 +275,7 @@ function CreateServiceDialog({
     mutationFn: (data: unknown) => vehicleServicesApi.create(data),
     onSuccess: () => {
       toast.success('Service created')
-      qc.invalidateQueries({ queryKey: ['vehicle-services', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
       qc.invalidateQueries({ queryKey: ['vehicle-breakdowns-history', vehicleId] })
       qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
       qc.invalidateQueries({ queryKey: ['vehicles'] })
@@ -548,7 +548,7 @@ function CompleteServiceDialog({ service, open, onClose }: { service: VehicleSer
     }),
     onSuccess: () => {
       toast.success('Service marked complete!')
-      qc.invalidateQueries({ queryKey: ['vehicle-services', service!.vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
       qc.invalidateQueries({ queryKey: ['vehicle-breakdowns-history', service!.vehicleId] })
       qc.invalidateQueries({ queryKey: ['vehicle', service!.vehicleId] })
       qc.invalidateQueries({ queryKey: ['vehicles'] })
@@ -771,7 +771,9 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
     mutationFn: (id: number) => vehicleServicesApi.start(id),
     onSuccess: () => {
       toast.success('Service started')
-      qc.invalidateQueries({ queryKey: ['vehicle-services', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+      qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
     },
     onError: () => toast.error('Failed to start service'),
   })
@@ -780,7 +782,7 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
     mutationFn: (id: number) => vehicleServicesApi.delete(id),
     onSuccess: () => {
       toast.success('Service deleted')
-      qc.invalidateQueries({ queryKey: ['vehicle-services', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
       setDeleteId(null)
     },
     onError: () => toast.error('Failed to delete'),

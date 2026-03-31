@@ -26,6 +26,7 @@ function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => v
       toast.success(action === 'APPROVED' ? 'Part approved, stock deducted' : 'Part request rejected')
       qc.invalidateQueries({ queryKey: ['part-requests'] })
       qc.invalidateQueries({ queryKey: ['stock'] })
+      qc.invalidateQueries({ queryKey: ['service-parts', part.serviceId] })
       onClose()
     },
     onError: (e: unknown) => {
