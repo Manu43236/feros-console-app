@@ -284,12 +284,17 @@ export interface StaffDocument {
 }
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
+export type AttendanceApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
 export interface Attendance {
   id: number; userId: number; userName: string; userPhone: string; roleName: string
   attendanceDate: string; attendanceTypeId: number; attendanceTypeName: string
   leaveTypeId?: number; leaveTypeName?: string; leaveReason?: string
   markedById: number; markedByName: string; markedAt: string
-  remarks?: string; createdAt: string; updatedAt: string
+  remarks?: string
+  approvalStatus: AttendanceApprovalStatus
+  approvedById?: number; approvedByName?: string; approvedAt?: string
+  createdAt: string; updatedAt: string
 }
 
 // ─── Payroll ──────────────────────────────────────────────────────────────────

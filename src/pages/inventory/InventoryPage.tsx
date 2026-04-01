@@ -15,7 +15,6 @@ import { Label } from '@/components/ui/label'
 
 type Tab = 'stock' | 'requests' | 'transactions'
 
-
 // ─── Stock In Dialog ──────────────────────────────────────────────────────────
 function StockInDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
@@ -39,8 +38,7 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
       onClose()
     },
     onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to add stock')
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to add stock')
     },
   })
 
@@ -106,8 +104,7 @@ function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => v
       onClose()
     },
     onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to process')
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to process')
     },
   })
 
@@ -186,8 +183,7 @@ function BulkStockInDialog({ onClose }: { onClose: () => void }) {
       else toast.warning(`${res.data.successCount} uploaded, ${res.data.failureCount} failed`)
     },
     onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Upload failed')
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Upload failed')
     },
   })
 
@@ -261,7 +257,8 @@ function StockTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* Stats + Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="grid grid-cols-3 gap-3 flex-1">
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-xs text-gray-500">Total Items</p>
@@ -276,9 +273,9 @@ function StockTab() {
             <p className="text-xl font-bold text-red-600">{lowStockCount}</p>
           </div>
         </div>
-        <div className="ml-4 flex gap-2 shrink-0">
-          <Button variant="outline" onClick={() => setShowBulkIn(true)} className="gap-2"><Upload size={15} /> Bulk Upload</Button>
-          <Button onClick={() => setShowStockIn(true)} className="gap-2"><Plus size={15} /> Add Stock</Button>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" onClick={() => setShowBulkIn(true)} className="gap-2 flex-1 sm:flex-none"><Upload size={15} /> Bulk</Button>
+          <Button onClick={() => setShowStockIn(true)} className="gap-2 flex-1 sm:flex-none"><Plus size={15} /> Add Stock</Button>
         </div>
       </div>
 
@@ -289,7 +286,7 @@ function StockTab() {
         </div>
       )}
 
-      <div className="relative max-w-xs">
+      <div className="relative">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <Input className="pl-9" placeholder="Search stock…" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
@@ -300,37 +297,39 @@ function StockTab() {
         ) : filtered.length === 0 ? (
           <div className="p-8 flex flex-col items-center gap-2 text-gray-400"><Boxes size={32} /><p className="text-sm">No stock records</p></div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Part</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Category</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Unit</th>
-                <th className="text-right px-4 py-2.5 font-medium text-gray-600">Qty</th>
-                <th className="text-right px-4 py-2.5 font-medium text-gray-600">Min</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filtered.map(item => (
-                <tr key={item.inventoryId} className={`hover:bg-gray-50 ${item.isLowStock ? 'bg-red-50/30' : ''}`}>
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{item.partName}</p>
-                    {item.partNumber && <p className="text-xs text-gray-400">{item.partNumber}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{item.category ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{item.unit}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{item.quantity}</td>
-                  <td className="px-4 py-3 text-right text-gray-500">{item.minStockLevel}</td>
-                  <td className="px-4 py-3">
-                    {item.isLowStock
-                      ? <span className="flex items-center gap-1 text-xs font-medium text-red-600"><AlertTriangle size={12} />Low</span>
-                      : <span className="text-xs font-medium text-green-600">OK</span>}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[480px]">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Part</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Category</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Unit</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-gray-600">Qty</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-gray-600">Min</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y">
+                {filtered.map(item => (
+                  <tr key={item.inventoryId} className={`hover:bg-gray-50 ${item.isLowStock ? 'bg-red-50/30' : ''}`}>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{item.partName}</p>
+                      {item.partNumber && <p className="text-xs text-gray-400">{item.partNumber}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{item.category ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{item.unit}</td>
+                    <td className="px-4 py-3 text-right font-semibold">{item.quantity}</td>
+                    <td className="px-4 py-3 text-right text-gray-500">{item.minStockLevel}</td>
+                    <td className="px-4 py-3">
+                      {item.isLowStock
+                        ? <span className="flex items-center gap-1 text-xs font-medium text-red-600"><AlertTriangle size={12} />Low</span>
+                        : <span className="text-xs font-medium text-green-600">OK</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -364,38 +363,40 @@ function PartRequestsTab() {
         ) : requests.length === 0 ? (
           <div className="p-8 flex flex-col items-center gap-2 text-gray-400"><ClipboardList size={32} /><p className="text-sm">No pending requests</p></div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Part</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Service</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Vehicle</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Requested By</th>
-                <th className="text-right px-4 py-2.5 font-medium text-gray-600">Qty</th>
-                <th className="px-4 py-2.5" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {requests.map(r => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{r.partName}</p>
-                    {r.partNumber && <p className="text-xs text-gray-400">{r.partNumber}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">{r.serviceNumber}</td>
-                  <td className="px-4 py-3 text-gray-700">{r.vehicleRegistrationNumber}</td>
-                  <td className="px-4 py-3 text-gray-700">{r.requestedByName}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{r.quantityRequested} {r.unit}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => setSelected(r)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100">
-                      <CheckCircle2 size={13} /> Process
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Part</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Service</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Vehicle</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Requested By</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-gray-600">Qty</th>
+                  <th className="px-4 py-2.5" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y">
+                {requests.map(r => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{r.partName}</p>
+                      {r.partNumber && <p className="text-xs text-gray-400">{r.partNumber}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{r.serviceNumber}</td>
+                    <td className="px-4 py-3 text-gray-700">{r.vehicleRegistrationNumber}</td>
+                    <td className="px-4 py-3 text-gray-700">{r.requestedByName}</td>
+                    <td className="px-4 py-3 text-right font-semibold">{r.quantityRequested} {r.unit}</td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => setSelected(r)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 whitespace-nowrap">
+                        <CheckCircle2 size={13} /> Process
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -428,21 +429,23 @@ function TransactionsTab() {
 
   return (
     <div className="space-y-4">
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-gray-50 rounded-lg p-3"><p className="text-xs text-gray-500">Stock In</p><p className="text-xl font-bold text-green-600">{transactions.filter(t => t.transactionType === 'IN').length}</p></div>
         <div className="bg-gray-50 rounded-lg p-3"><p className="text-xs text-gray-500">Stock Out</p><p className="text-xl font-bold text-orange-600">{transactions.filter(t => t.transactionType === 'OUT').length}</p></div>
         <div className="bg-gray-50 rounded-lg p-3"><p className="text-xs text-gray-500">Damage</p><p className="text-xl font-bold text-red-600">{transactions.filter(t => t.transactionType === 'DAMAGE').length}</p></div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="relative">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input className="pl-9 w-56" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} />
+          <Input className="pl-9 w-full" placeholder="Search by part, service, vehicle…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 shrink-0">
           {(['ALL', 'IN', 'OUT', 'DAMAGE'] as const).map(t => (
             <button key={t} onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${typeFilter === t ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-medium border ${typeFilter === t ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
               {t}
             </button>
           ))}
@@ -455,35 +458,37 @@ function TransactionsTab() {
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-gray-400 text-sm">No transactions found</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Date</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Type</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Part</th>
-                <th className="text-right px-4 py-2.5 font-medium text-gray-600">Qty</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Reference</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-600">By</th>
-                <th className="text-right px-4 py-2.5 font-medium text-gray-600">Cost</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filtered.map(t => (
-                <tr key={t.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDate(t.createdAt)}</td>
-                  <td className="px-4 py-3">{txChip(t.transactionType)}</td>
-                  <td className="px-4 py-3"><p className="font-medium text-gray-900">{t.partName}</p><p className="text-xs text-gray-400">{t.unit}</p></td>
-                  <td className="px-4 py-3 text-right font-semibold">{t.quantity}</td>
-                  <td className="px-4 py-3 text-gray-700">
-                    {t.serviceNumber ? <div><p>{t.serviceNumber}</p><p className="text-xs text-gray-400">{t.vehicleRegistrationNumber}</p></div>
-                      : t.supplierName ?? <span className="text-gray-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{t.createdByName}</td>
-                  <td className="px-4 py-3 text-right text-gray-700">{t.totalCost ? `₹${t.totalCost.toLocaleString('en-IN')}` : '—'}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Date</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Type</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Part</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-gray-600">Qty</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Reference</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">By</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-gray-600">Cost</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y">
+                {filtered.map(t => (
+                  <tr key={t.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDate(t.createdAt)}</td>
+                    <td className="px-4 py-3">{txChip(t.transactionType)}</td>
+                    <td className="px-4 py-3"><p className="font-medium text-gray-900">{t.partName}</p><p className="text-xs text-gray-400">{t.unit}</p></td>
+                    <td className="px-4 py-3 text-right font-semibold">{t.quantity}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {t.serviceNumber ? <div><p>{t.serviceNumber}</p><p className="text-xs text-gray-400">{t.vehicleRegistrationNumber}</p></div>
+                        : t.supplierName ?? <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{t.createdByName}</td>
+                    <td className="px-4 py-3 text-right text-gray-700">{t.totalCost ? `₹${t.totalCost.toLocaleString('en-IN')}` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -501,19 +506,19 @@ export default function InventoryPage() {
   const [tab, setTab] = useState<Tab>('stock')
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Inventory</h1>
         <p className="text-sm text-gray-500">Spare parts stock management and tracking</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
               tab === t.key
                 ? 'border-feros-orange text-feros-orange'
                 : 'border-transparent text-gray-500 hover:text-gray-700'

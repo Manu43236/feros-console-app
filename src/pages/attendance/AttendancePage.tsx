@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import {
   CalendarDays, ChevronLeft, ChevronRight, Users,
   CheckCircle, XCircle, Clock, Umbrella, Pencil, ClipboardList,
+  AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,10 +21,10 @@ import type { Attendance } from '@/types'
 
 type StaffUser = { id: number; name: string; phone: string; role: string; isActive: boolean }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-const STAFF_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF']
+const STAFF_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MEN', 'STORE_KEEPER']
 function todayStr() { return format(new Date(), 'yyyy-MM-dd') }
 
+// ── Badges ────────────────────────────────────────────────────────────────────
 function AttendanceBadge({ type }: { type: string }) {
   const t = type?.toLowerCase() ?? ''
   if (t.includes('present'))
@@ -35,6 +36,14 @@ function AttendanceBadge({ type }: { type: string }) {
   if (t.includes('leave'))
     return <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full"><Umbrella size={11} />{type}</span>
   return <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{type}</span>
+}
+
+function ApprovalBadge({ status }: { status: string }) {
+  if (status === 'APPROVED')
+    return <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full"><CheckCircle size={10} />Approved</span>
+  if (status === 'REJECTED')
+    return <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full"><XCircle size={10} />Rejected</span>
+  return <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full"><AlertCircle size={10} />Pending</span>
 }
 
 // ── Single mark / edit dialog ─────────────────────────────────────────────────
@@ -74,8 +83,7 @@ function AttendanceDialog({
       onClose()
     },
     onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to save attendance')
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to save attendance')
     },
   })
 
@@ -210,8 +218,7 @@ function BulkMarkDialog({
       onClose()
     },
     onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to save')
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to save')
     },
   })
 
@@ -248,8 +255,7 @@ function BulkMarkDialog({
               </Button>
             )}
           </div>
-
-          <div className="border rounded-lg divide-y">
+          <div className="border rounded-lg divide-y max-h-96 overflow-y-auto">
             {users.map(u => {
               const entry = entries[u.id] ?? { typeId: '', leaveTypeId: 'none' }
               const selType = attendanceTypes.find(t => String(t.id) === entry.typeId)
@@ -264,9 +270,7 @@ function BulkMarkDialog({
                     value={entry.typeId}
                     onValueChange={v => setEntries(prev => ({ ...prev, [u.id]: { ...prev[u.id], typeId: v } }))}
                   >
-                    <SelectTrigger className="h-8 text-xs w-36">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Select type" /></SelectTrigger>
                     <SelectContent>
                       {attendanceTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
                     </SelectContent>
@@ -276,9 +280,7 @@ function BulkMarkDialog({
                       value={entry.leaveTypeId}
                       onValueChange={v => setEntries(prev => ({ ...prev, [u.id]: { ...prev[u.id], leaveTypeId: v } }))}
                     >
-                      <SelectTrigger className="h-8 text-xs w-36">
-                        <SelectValue placeholder="Leave type" />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Leave type" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Not specified</SelectItem>
                         {leaveTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
@@ -288,11 +290,8 @@ function BulkMarkDialog({
                 </div>
               )
             })}
-            {users.length === 0 && (
-              <div className="py-8 text-center text-sm text-gray-400">No staff found</div>
-            )}
+            {users.length === 0 && <div className="py-8 text-center text-sm text-gray-400">No staff found</div>}
           </div>
-
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
@@ -306,11 +305,7 @@ function BulkMarkDialog({
 }
 
 // ── Staff history dialog ──────────────────────────────────────────────────────
-function StaffHistoryDialog({
-  open, onClose, user,
-}: {
-  open: boolean; onClose: () => void; user: StaffUser | null
-}) {
+function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: () => void; user: StaffUser | null }) {
   const [from, setFrom] = useState(() => format(subDays(new Date(), 29), 'yyyy-MM-dd'))
   const [to, setTo]     = useState(todayStr)
 
@@ -336,26 +331,18 @@ function StaffHistoryDialog({
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{user?.name} — Attendance History</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>{user?.name} — Attendance History</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="flex gap-3">
-            <div className="flex-1">
-              <Label>From</Label>
-              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1" />
-            </div>
-            <div className="flex-1">
-              <Label>To</Label>
-              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1" />
-            </div>
+            <div className="flex-1"><Label>From</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1" /></div>
+            <div className="flex-1"><Label>To</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1" /></div>
           </div>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { label: 'Present',  value: summary.present, color: 'text-green-700 bg-green-50'  },
-              { label: 'Absent',   value: summary.absent,  color: 'text-red-700 bg-red-50'      },
-              { label: 'Half Day', value: summary.half,    color: 'text-yellow-700 bg-yellow-50'},
-              { label: 'Leave',    value: summary.leave,   color: 'text-blue-700 bg-blue-50'    },
+              { label: 'Present',  value: summary.present, color: 'text-green-700 bg-green-50'   },
+              { label: 'Absent',   value: summary.absent,  color: 'text-red-700 bg-red-50'       },
+              { label: 'Half Day', value: summary.half,    color: 'text-yellow-700 bg-yellow-50' },
+              { label: 'Leave',    value: summary.leave,   color: 'text-blue-700 bg-blue-50'     },
             ].map(s => (
               <div key={s.label} className={cn('rounded-lg p-3 text-center', s.color)}>
                 <p className="text-xl font-bold">{s.value}</p>
@@ -374,8 +361,8 @@ function StaffHistoryDialog({
                   <span className="text-sm text-gray-700">{r.attendanceDate}</span>
                   <div className="flex items-center gap-3">
                     <AttendanceBadge type={r.attendanceTypeName} />
+                    <ApprovalBadge status={r.approvalStatus} />
                     {r.leaveTypeName && <span className="text-xs text-gray-500">{r.leaveTypeName}</span>}
-                    {r.remarks && <span className="text-xs text-gray-400 truncate max-w-[120px]">{r.remarks}</span>}
                   </div>
                 </div>
               ))}
@@ -387,8 +374,97 @@ function StaffHistoryDialog({
   )
 }
 
+// ── Pending Approvals Tab ─────────────────────────────────────────────────────
+function PendingApprovalsTab() {
+  const qc = useQueryClient()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['attendance-pending'],
+    queryFn: attendanceApi.getPending,
+  })
+  const records = data?.data ?? []
+
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => attendanceApi.approve(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Attendance approved') },
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: number) => attendanceApi.reject(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Attendance rejected') },
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+  })
+
+  if (isLoading) return <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+
+  if (records.length === 0)
+    return (
+      <div className="bg-white rounded-xl border p-12 flex flex-col items-center text-gray-400">
+        <CheckCircle size={36} className="mb-3 text-green-300" />
+        <p className="font-medium">All caught up!</p>
+        <p className="text-sm mt-1">No pending attendance approvals</p>
+      </div>
+    )
+
+  return (
+    <div className="border rounded-xl bg-white overflow-hidden">
+      <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-700">Pending Approvals</h2>
+        <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+          {records.length} pending
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
+              <th className="text-left px-5 py-3">Staff</th>
+              <th className="text-left px-5 py-3">Role</th>
+              <th className="text-left px-5 py-3">Date</th>
+              <th className="text-left px-5 py-3">Type</th>
+              <th className="text-left px-5 py-3">Marked At</th>
+              <th className="text-left px-5 py-3">Remarks</th>
+              <th className="px-5 py-3"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {records.map(r => (
+              <tr key={r.id} className="hover:bg-gray-50">
+                <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
+                <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
+                <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
+                <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                <td className="px-5 py-3 text-gray-400 text-xs">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
+                <td className="px-5 py-3 text-gray-400 text-xs max-w-[140px] truncate">{r.remarks || '—'}</td>
+                <td className="px-5 py-3">
+                  <div className="flex gap-1.5 justify-end">
+                    <Button size="sm" variant="outline"
+                      className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-2.5 text-xs"
+                      disabled={approveMutation.isPending}
+                      onClick={() => approveMutation.mutate(r.id)}>
+                      <CheckCircle size={12} className="mr-1" />Approve
+                    </Button>
+                    <Button size="sm" variant="outline"
+                      className="text-red-600 border-red-300 hover:bg-red-50 h-7 px-2.5 text-xs"
+                      disabled={rejectMutation.isPending}
+                      onClick={() => rejectMutation.mutate(r.id)}>
+                      <XCircle size={12} className="mr-1" />Reject
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function AttendancePage() {
+  const [activeTab, setActiveTab]       = useState<'daily' | 'pending'>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [markOpen, setMarkOpen]         = useState(false)
   const [bulkOpen, setBulkOpen]         = useState(false)
@@ -401,10 +477,7 @@ export function AttendancePage() {
   })
   const records = [...(attendanceData?.data ?? [])].sort((a, b) => b.id - a.id)
 
-  const { data: usersData } = useQuery({
-    queryKey: ['staff-users'],
-    queryFn: staffApi.getUsers,
-  })
+  const { data: usersData } = useQuery({ queryKey: ['staff-users'], queryFn: staffApi.getUsers })
   const allUsers: StaffUser[] = ((usersData?.data ?? []) as StaffUser[]).filter(u => STAFF_ROLES.includes(u.role ?? ''))
 
   const { data: attTypesData } = useQuery({ queryKey: ['attendance-types'], queryFn: globalMastersApi.getAttendanceTypes })
@@ -412,6 +485,9 @@ export function AttendancePage() {
 
   const { data: leaveTypesData } = useQuery({ queryKey: ['leave-types'], queryFn: globalMastersApi.getLeaveTypes })
   const leaveTypes = (leaveTypesData?.data ?? []) as { id: number; name: string }[]
+
+  const { data: pendingData } = useQuery({ queryKey: ['attendance-pending'], queryFn: attendanceApi.getPending })
+  const pendingCount = pendingData?.data?.length ?? 0
 
   const existingMap: Record<number, Attendance> = {}
   records.forEach(r => { existingMap[r.userId] = r })
@@ -443,141 +519,168 @@ export function AttendancePage() {
           <h1 className="text-xl font-bold text-gray-900">Attendance</h1>
           <p className="text-sm text-gray-500 mt-0.5">Track daily attendance for all staff</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { setEditRecord(undefined); setMarkOpen(true) }}>
-            <Pencil size={14} className="mr-1.5" />Mark Single
-          </Button>
-          <Button onClick={() => setBulkOpen(true)}>
-            <ClipboardList size={14} className="mr-1.5" />Bulk Mark
-          </Button>
-        </div>
-      </div>
-
-      {/* Date navigator */}
-      <div className="flex items-center gap-3">
-        <Button variant="outline" size="icon" onClick={() => shiftDay(-1)}><ChevronLeft size={16} /></Button>
-        <div className="flex items-center gap-2 border rounded-lg px-4 py-2 bg-white">
-          <CalendarDays size={16} className="text-gray-400" />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
-            className="text-sm font-medium text-gray-800 border-none outline-none bg-transparent"
-          />
-        </div>
-        <Button variant="outline" size="icon" onClick={() => shiftDay(1)}><ChevronRight size={16} /></Button>
-        <Button variant="ghost" size="sm" onClick={() => setSelectedDate(todayStr())} className="text-xs text-gray-500">
-          Today
-        </Button>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {[
-          { label: 'Total Staff', value: allUsers.length, icon: Users,       color: 'text-gray-700',   bg: 'bg-white'       },
-          { label: 'Present',     value: stats.present,  icon: CheckCircle,  color: 'text-green-700',  bg: 'bg-green-50'    },
-          { label: 'Absent',      value: stats.absent,   icon: XCircle,      color: 'text-red-700',    bg: 'bg-red-50'      },
-          { label: 'Half Day',    value: stats.half,     icon: Clock,        color: 'text-yellow-700', bg: 'bg-yellow-50'   },
-          { label: 'On Leave',    value: stats.leave,    icon: Umbrella,     color: 'text-blue-700',   bg: 'bg-blue-50'     },
-        ].map(s => {
-          const Icon = s.icon
-          return (
-            <div key={s.label} className={cn('rounded-xl border p-4', s.bg)}>
-              <div className="flex items-center gap-2 mb-1">
-                <Icon size={15} className={s.color} />
-                <span className="text-xs text-gray-500">{s.label}</span>
-              </div>
-              <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Table */}
-      <div className="border rounded-xl bg-white overflow-hidden">
-        <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">Attendance for {selectedDate}</h2>
-          {unmarked > 0 && (
-            <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
-              {unmarked} not marked
-            </span>
-          )}
-        </div>
-        {isLoading ? (
-          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
-                  <th className="text-left px-5 py-3">Staff</th>
-                  <th className="text-left px-5 py-3">Role</th>
-                  <th className="text-left px-5 py-3">Status</th>
-                  <th className="text-left px-5 py-3">Leave Type</th>
-                  <th className="text-left px-5 py-3">Remarks</th>
-                  <th className="text-left px-5 py-3">Marked By</th>
-                  <th className="px-5 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {records.map(r => (
-                  <tr key={r.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
-                    <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{r.leaveTypeName ?? '—'}</td>
-                    <td className="px-5 py-3 text-gray-400 text-xs max-w-[160px] truncate">{r.remarks || '—'}</td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{r.markedByName}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="icon" className="h-7 w-7"
-                          onClick={() => { setEditRecord(r); setMarkOpen(true) }}>
-                          <Pencil size={12} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
-                          onClick={() => setHistoryUser(allUsers.find(u => u.id === r.userId) ?? null)}>
-                          <CalendarDays size={12} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {allUsers.filter(u => !existingMap[u.id]).map(u => (
-                  <tr key={`u-${u.id}`} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-700">{u.name}</td>
-                    <td className="px-5 py-3 text-gray-400 text-xs">{u.role}</td>
-                    <td className="px-5 py-3">
-                      <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Not marked</span>
-                    </td>
-                    <td className="px-5 py-3 text-gray-400">—</td>
-                    <td className="px-5 py-3 text-gray-400">—</td>
-                    <td className="px-5 py-3 text-gray-400">—</td>
-                    <td className="px-5 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="icon" className="h-7 w-7"
-                          onClick={() => { setEditRecord(undefined); setMarkOpen(true) }}>
-                          <Pencil size={12} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
-                          onClick={() => setHistoryUser(u)}>
-                          <CalendarDays size={12} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {allUsers.length === 0 && records.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
-                      No staff found. Add staff from the Staff module first.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        {activeTab === 'daily' && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { setEditRecord(undefined); setMarkOpen(true) }}>
+              <Pencil size={14} className="mr-1.5" />Mark Single
+            </Button>
+            <Button onClick={() => setBulkOpen(true)}>
+              <ClipboardList size={14} className="mr-1.5" />Bulk Mark
+            </Button>
           </div>
         )}
       </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+        <button
+          onClick={() => setActiveTab('daily')}
+          className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+            activeTab === 'daily' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
+        >
+          Daily Attendance
+        </button>
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors relative',
+            activeTab === 'pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
+        >
+          Pending Approvals
+          {pendingCount > 0 && (
+            <span className="ml-2 min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center px-1">
+              {pendingCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'pending' ? <PendingApprovalsTab /> : (
+        <>
+          {/* Date navigator */}
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="icon" onClick={() => shiftDay(-1)}><ChevronLeft size={16} /></Button>
+            <div className="flex items-center gap-2 border rounded-lg px-4 py-2 bg-white">
+              <CalendarDays size={16} className="text-gray-400" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                className="text-sm font-medium text-gray-800 border-none outline-none bg-transparent"
+              />
+            </div>
+            <Button variant="outline" size="icon" onClick={() => shiftDay(1)}><ChevronRight size={16} /></Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedDate(todayStr())} className="text-xs text-gray-500">Today</Button>
+          </div>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: 'Total Staff', value: allUsers.length, icon: Users,       color: 'text-gray-700',   bg: 'bg-white'     },
+              { label: 'Present',     value: stats.present,  icon: CheckCircle,  color: 'text-green-700',  bg: 'bg-green-50'  },
+              { label: 'Absent',      value: stats.absent,   icon: XCircle,      color: 'text-red-700',    bg: 'bg-red-50'    },
+              { label: 'Half Day',    value: stats.half,     icon: Clock,        color: 'text-yellow-700', bg: 'bg-yellow-50' },
+              { label: 'On Leave',    value: stats.leave,    icon: Umbrella,     color: 'text-blue-700',   bg: 'bg-blue-50'   },
+            ].map(s => {
+              const Icon = s.icon
+              return (
+                <div key={s.label} className={cn('rounded-xl border p-4', s.bg)}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon size={15} className={s.color} />
+                    <span className="text-xs text-gray-500">{s.label}</span>
+                  </div>
+                  <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Table */}
+          <div className="border rounded-xl bg-white overflow-hidden">
+            <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-700">Attendance for {selectedDate}</h2>
+              {unmarked > 0 && (
+                <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                  {unmarked} not marked
+                </span>
+              )}
+            </div>
+            {isLoading ? (
+              <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
+                      <th className="text-left px-5 py-3">Staff</th>
+                      <th className="text-left px-5 py-3">Role</th>
+                      <th className="text-left px-5 py-3">Status</th>
+                      <th className="text-left px-5 py-3">Approval</th>
+                      <th className="text-left px-5 py-3">Leave Type</th>
+                      <th className="text-left px-5 py-3">Marked By</th>
+                      <th className="px-5 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {records.map(r => (
+                      <tr key={r.id} className="hover:bg-gray-50">
+                        <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
+                        <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                        <td className="px-5 py-3"><ApprovalBadge status={r.approvalStatus} /></td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">{r.leaveTypeName ?? '—'}</td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">{r.markedByName}</td>
+                        <td className="px-5 py-3">
+                          <div className="flex gap-1 justify-end">
+                            <Button variant="ghost" size="icon" className="h-7 w-7"
+                              onClick={() => { setEditRecord(r); setMarkOpen(true) }}>
+                              <Pencil size={12} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
+                              onClick={() => setHistoryUser(allUsers.find(u => u.id === r.userId) ?? null)}>
+                              <CalendarDays size={12} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {allUsers.filter(u => !existingMap[u.id]).map(u => (
+                      <tr key={`u-${u.id}`} className="hover:bg-gray-50">
+                        <td className="px-5 py-3 font-medium text-gray-700">{u.name}</td>
+                        <td className="px-5 py-3 text-gray-400 text-xs">{u.role}</td>
+                        <td className="px-5 py-3">
+                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Not marked</span>
+                        </td>
+                        <td className="px-5 py-3 text-gray-400">—</td>
+                        <td className="px-5 py-3 text-gray-400">—</td>
+                        <td className="px-5 py-3 text-gray-400">—</td>
+                        <td className="px-5 py-3">
+                          <div className="flex gap-1 justify-end">
+                            <Button variant="ghost" size="icon" className="h-7 w-7"
+                              onClick={() => { setEditRecord(undefined); setMarkOpen(true) }}>
+                              <Pencil size={12} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
+                              onClick={() => setHistoryUser(u)}>
+                              <CalendarDays size={12} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {allUsers.length === 0 && records.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
+                          No staff found. Add staff from the Staff module first.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Dialogs */}
       <AttendanceDialog

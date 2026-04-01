@@ -52,22 +52,29 @@ const OFFICE_STAFF_NAV = [
 ]
 
 const SUPERVISOR_NAV = [
-  { to: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
-  { to: '/vehicles',    label: 'Vehicles',    icon: Truck },
-  { to: '/orders',      label: 'Orders',      icon: ClipboardList },
-  { to: '/assignments', label: 'Assignments', icon: ClipboardCheck },
-  { to: '/lrs',         label: 'LR Register', icon: FileText },
-  { to: '/attendance',  label: 'Attendance',  icon: Calendar },
-  { to: '/reports',     label: 'Reports',     icon: BarChart3 },
+  { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
+  { to: '/orders',        label: 'Orders',        icon: ClipboardList },
+  { to: '/assignments',   label: 'Assignments',   icon: ClipboardCheck },
+  { to: '/lrs',           label: 'LR Register',   icon: FileText },
+  { to: '/my/payslip',    label: 'My Payslip',    icon: Wallet },
+]
+
+const DRIVER_CLEANER_NAV = [
+  { to: '/my/trips',      label: 'My Trips',      icon: Truck },
+  { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
+  { to: '/my/payslip',    label: 'My Payslip',    icon: Wallet },
 ]
 
 const STORE_KEEPER_NAV = [
-  { to: '/inventory', label: 'Inventory', icon: Boxes },
+  { to: '/inventory',     label: 'Inventory',     icon: Boxes },
+  { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
+  { to: '/my/payslip',    label: 'My Payslip',    icon: Wallet },
 ]
 
 const SERVICE_MEN_NAV = [
-  { to: '/vehicle-services', label: 'Services',  icon: Truck },
-  { to: '/inventory',        label: 'Inventory', icon: Boxes },
+  { to: '/vehicle-services', label: 'Vehicle Services', icon: Truck },
+  { to: '/my/attendance',    label: 'My Attendance',    icon: Calendar },
+  { to: '/my/payslip',       label: 'My Payslip',       icon: Wallet },
 ]
 
 // ─── Notification Nav Link ─────────────────────────────────────────────────────
@@ -134,6 +141,8 @@ export function AppLayout() {
     role === 'SUPER_ADMIN'  ? SUPER_ADMIN_NAV :
     role === 'OFFICE_STAFF' ? OFFICE_STAFF_NAV :
     role === 'SUPERVISOR'   ? SUPERVISOR_NAV :
+    role === 'DRIVER'       ? DRIVER_CLEANER_NAV :
+    role === 'CLEANER'      ? DRIVER_CLEANER_NAV :
     role === 'STORE_KEEPER' ? STORE_KEEPER_NAV :
     role === 'SERVICE_MEN'  ? SERVICE_MEN_NAV :
     ADMIN_NAV
