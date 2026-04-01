@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import apiClient from '@/api/client'
 import type { ApiResponse } from '@/types'
 import { tenantsApi } from '@/api/superadmin'
@@ -535,6 +536,7 @@ export function TenantsPage() {
   const [editTarget, setEditTarget] = useState<Tenant | undefined>()
   const [subTarget, setSubTarget]   = useState<Tenant | null>(null)
   const [search, setSearch]         = useState('')
+  const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['tenants'], queryFn: tenantsApi.getAll })
   const tenants: Tenant[] = [...(data?.data ?? [])].sort((a, b) => b.id - a.id)
@@ -635,9 +637,7 @@ export function TenantsPage() {
                   tenant={t}
                   onEdit={setEditTarget}
                   onSubscription={setSubTarget}
-                  onDelete={tr => {
-                    if (confirm(`Delete ${tr.companyName}? This cannot be undone.`)) deleteMutation.mutate(tr.id)
-                  }}
+                  onDelete={tr => setDlg({ title: 'Delete Tenant', desc: `Delete ${tr.companyName}? This cannot be undone.`, onOk: () => deleteMutation.mutate(tr.id) })}
                   onImpersonate={tr => impersonateMutation.mutate(tr.id)}
                 />
               ))}
@@ -652,6 +652,14 @@ export function TenantsPage() {
         <TenantDialog open={!!editTarget} onClose={() => setEditTarget(undefined)} tenant={editTarget} />
       )}
       <SubscriptionDialog open={!!subTarget} onClose={() => setSubTarget(null)} tenant={subTarget} />
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Delete"
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }

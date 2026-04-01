@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import type { StaffDocument } from '@/types'
@@ -305,6 +306,7 @@ export function StaffDetailPage() {
   const [tab, setTab]               = useState<'info' | 'docs'>('info')
   const [selectedState, setSelectedState] = useState<number | undefined>()
   const [currentPin, setCurrentPin] = useState<string | null>(null)
+  const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   // Load this user from the cached users list
   const { data: usersRes } = useQuery({ queryKey: ['users'], queryFn: staffApi.getUsers })
@@ -434,10 +436,10 @@ export function StaffDetailPage() {
             </button>
             <button
               onClick={() => {
-                const msg = active
+                const desc = active
                   ? `Deactivate ${name}? They will no longer be able to log in.`
                   : `Activate ${name}?`
-                if (confirm(msg)) toggleStatusMutation.mutate(!active)
+                setDlg({ title: active ? 'Deactivate Staff' : 'Activate Staff', desc, onOk: () => toggleStatusMutation.mutate(!active) })
               }}
               disabled={toggleStatusMutation.isPending}
               className={cn(
@@ -517,10 +519,7 @@ export function StaffDetailPage() {
               <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Login PIN</p>
               <PinDisplay
                 pin={currentPin}
-                onReset={() => {
-                  if (confirm(`Reset PIN for ${name}? The old PIN will stop working.`))
-                    resetPinMutation.mutate()
-                }}
+                onReset={() => setDlg({ title: 'Reset PIN', desc: `Reset PIN for ${name}? The old PIN will stop working immediately.`, onOk: () => resetPinMutation.mutate() })}
                 resetting={resetPinMutation.isPending}
               />
             </div>
@@ -661,6 +660,15 @@ export function StaffDetailPage() {
 
         </div>{/* end tab content */}
       </div>{/* end white card */}
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Confirm"
+        variant={dlg?.title?.startsWith('Deactivate') ? 'destructive' : 'default'}
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }

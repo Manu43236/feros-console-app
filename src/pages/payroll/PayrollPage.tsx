@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { payrollApi } from '@/api/payroll'
 import { staffApi } from '@/api/staff'
 import { tenantMastersApi } from '@/api/masters'
@@ -423,6 +424,7 @@ export function PayrollPage() {
   const [genOpen, setGenOpen]       = useState(false)
   const [approveTarget, setApprove] = useState<Payroll | null>(null)
   const [advOpen, setAdvOpen]       = useState(false)
+  const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: payrollsData, isLoading: loadingPayrolls } = useQuery({
     queryKey: ['payrolls'],
@@ -533,9 +535,7 @@ export function PayrollPage() {
                     key={p.id}
                     payroll={p}
                     onApprove={setApprove}
-                    onCancel={pr => {
-                      if (confirm(`Cancel payroll for ${pr.userName}?`)) cancelMutation.mutate(pr.id)
-                    }}
+                    onCancel={pr => setDlg({ title: 'Cancel Payroll', desc: `Cancel payroll for ${pr.userName}? This cannot be undone.`, onOk: () => cancelMutation.mutate(pr.id) })}
                   />
                 ))}
               </tbody>
@@ -595,6 +595,14 @@ export function PayrollPage() {
       <GenerateDialog open={genOpen} onClose={() => setGenOpen(false)} users={users} />
       <ApproveDialog open={!!approveTarget} onClose={() => setApprove(null)} payroll={approveTarget} />
       <AdvanceDialog open={advOpen} onClose={() => setAdvOpen(false)} users={users} />
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Yes, Cancel"
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }

@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { staffApi } from '@/api/staff'
 import { tenantsApi } from '@/api/superadmin'
 import type { Tenant, BulkUploadResult } from '@/types'
@@ -277,6 +278,7 @@ export function SAUsersPage() {
   const [visiblePins, setVisiblePins] = useState<Set<number>>(new Set())
   const [addOpen, setAddOpen]       = useState(false)
   const [bulkOpen, setBulkOpen]     = useState(false)
+  const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   function togglePin(id: number) {
     setVisiblePins(prev => {
@@ -483,7 +485,7 @@ export function SAUsersPage() {
                       </Button>
                       <Button
                         variant="ghost" size="icon" className="h-7 w-7 text-orange-500" title="Reset PIN"
-                        onClick={() => { if (confirm(`Reset PIN for ${u.name}?`)) resetPinMutation.mutate(u.id) }}
+                        onClick={() => setDlg({ title: 'Reset PIN', desc: `Reset PIN for ${u.name}? The current PIN will stop working.`, onOk: () => resetPinMutation.mutate(u.id) })}
                       >
                         <KeyRound size={12} />
                       </Button>
@@ -498,6 +500,15 @@ export function SAUsersPage() {
 
       <AddUserDialog open={addOpen} onClose={() => setAddOpen(false)} tenants={tenants} />
       <BulkUploadUsersDialog open={bulkOpen} onClose={() => setBulkOpen(false)} tenants={tenants} />
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Reset PIN"
+        variant="default"
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }

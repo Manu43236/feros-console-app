@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 
 // ── Record Payment Dialog ─────────────────────────────────────────────────
 const paymentSchema = z.object({
@@ -136,6 +137,7 @@ export function InvoiceDetailPage() {
 
   const [tab, setTab]             = useState<'lrs' | 'payments'>('lrs')
   const [showPayment, setShowPay] = useState(false)
+  const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
@@ -237,7 +239,7 @@ export function InvoiceDetailPage() {
               )}
               {canCancel && (
                 <button
-                  onClick={() => { if (confirm('Cancel this invoice?')) statusMutation.mutate('CANCELLED') }}
+                  onClick={() => setDlg({ title: 'Cancel Invoice', desc: 'Are you sure you want to cancel this invoice? This cannot be undone.', onOk: () => statusMutation.mutate('CANCELLED') })}
                   className="flex items-center gap-2 bg-white/10 hover:bg-red-500/30 text-red-300 border border-white/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                   <X className="h-4 w-4" />
@@ -458,6 +460,14 @@ export function InvoiceDetailPage() {
         balanceDue={balanceDue}
         open={showPayment}
         onClose={() => setShowPay(false)}
+      />
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Yes, Cancel"
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
       />
     </div>
   )

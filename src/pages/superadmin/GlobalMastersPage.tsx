@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { globalMastersApi } from '@/api/masters'
 import { globalMastersWriteApi } from '@/api/superadmin'
 import type { MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem } from '@/types'
@@ -29,6 +30,7 @@ function SimpleSection({
   const [editItem, setEditItem] = useState<MasterItem | null>(null)
   const [name, setName]       = useState('')
   const [nameErr, setNameErr] = useState('')
+  const [dlg, setDlg]         = useState<{ name: string; id: number } | null>(null)
 
   function openAdd() { setEditItem(null); setName(''); setNameErr(''); setOpen(true) }
   function openEdit(it: MasterItem) { setEditItem(it); setName(it.name); setNameErr(''); setOpen(true) }
@@ -61,7 +63,7 @@ function SimpleSection({
               <span className="text-sm text-gray-700">{it.name}</span>
               <div className="flex gap-1">
                 <button onClick={() => openEdit(it)} className="p-1 text-gray-400 hover:text-gray-600"><Pencil size={11} /></button>
-                <button onClick={() => { if (confirm(`Delete "${it.name}"?`)) onDelete(it.id) }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
+                <button onClick={() => setDlg({ name: it.name, id: it.id })} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
               </div>
             </div>
           ))}
@@ -84,6 +86,14 @@ function SimpleSection({
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!dlg}
+        title="Delete Item"
+        description={`Delete "${dlg?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (dlg) onDelete(dlg.id); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }
@@ -98,6 +108,7 @@ function StatesSection() {
   const [name, setName]       = useState('')
   const [code, setCode]       = useState('')
   const [errs, setErrs]       = useState({ name: '', code: '' })
+  const [dlg, setDlg]         = useState<{ name: string; id: number } | null>(null)
 
   const mutAdd = useMutation({ mutationFn: (d: { name: string; code: string }) => globalMastersWriteApi.createState(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-states'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; code: string } }) => globalMastersWriteApi.updateState(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-states'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
@@ -127,7 +138,7 @@ function StatesSection() {
               <div><span className="text-sm text-gray-700">{it.name}</span><span className="ml-2 text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{it.code}</span></div>
               <div className="flex gap-1">
                 <button onClick={() => openEdit(it)} className="p-1 text-gray-400 hover:text-gray-600"><Pencil size={11} /></button>
-                <button onClick={() => { if (confirm(`Delete "${it.name}"?`)) mutDel.mutate(it.id) }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
+                <button onClick={() => setDlg({ name: it.name, id: it.id })} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
               </div>
             </div>
           ))}
@@ -154,6 +165,14 @@ function StatesSection() {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!dlg}
+        title="Delete State"
+        description={`Delete "${dlg?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (dlg) mutDel.mutate(dlg.id); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }
@@ -169,6 +188,7 @@ function CitiesSection({ states }: { states: StateItem[] }) {
   const [stateId, setStateId] = useState('')
   const [filterState, setFilterState] = useState('all')
   const [errs, setErrs]       = useState({ name: '', stateId: '' })
+  const [dlg, setDlg]         = useState<{ name: string; id: number } | null>(null)
 
   const mutAdd  = useMutation({ mutationFn: (d: { name: string; stateId: number }) => globalMastersWriteApi.createCity(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-cities'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; stateId: number } }) => globalMastersWriteApi.updateCity(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-cities'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
@@ -209,7 +229,7 @@ function CitiesSection({ states }: { states: StateItem[] }) {
               <div><span className="text-sm text-gray-700">{it.name}</span><span className="ml-2 text-xs text-gray-400">{it.stateName}</span></div>
               <div className="flex gap-1">
                 <button onClick={() => openEdit(it)} className="p-1 text-gray-400 hover:text-gray-600"><Pencil size={11} /></button>
-                <button onClick={() => { if (confirm(`Delete "${it.name}"?`)) mutDel.mutate(it.id) }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
+                <button onClick={() => setDlg({ name: it.name, id: it.id })} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
               </div>
             </div>
           ))}
@@ -241,6 +261,14 @@ function CitiesSection({ states }: { states: StateItem[] }) {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!dlg}
+        title="Delete City"
+        description={`Delete "${dlg?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (dlg) mutDel.mutate(dlg.id); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }
@@ -256,6 +284,7 @@ function VehicleTypesSection() {
   const [capacity, setCapacity] = useState('')
   const [tyres, setTyres]       = useState('')
   const [nameErr, setNameErr]   = useState('')
+  const [dlg, setDlg]           = useState<{ name: string; id: number } | null>(null)
 
   const mutAdd  = useMutation({ mutationFn: (d: { name: string; capacityInTons?: number; tyreCount?: number }) => globalMastersWriteApi.createVehicleType(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-vehicle-types'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; capacityInTons?: number; tyreCount?: number } }) => globalMastersWriteApi.updateVehicleType(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-vehicle-types'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
@@ -288,7 +317,7 @@ function VehicleTypesSection() {
               </div>
               <div className="flex gap-1">
                 <button onClick={() => openEdit(it)} className="p-1 text-gray-400 hover:text-gray-600"><Pencil size={11} /></button>
-                <button onClick={() => { if (confirm(`Delete "${it.name}"?`)) mutDel.mutate(it.id) }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
+                <button onClick={() => setDlg({ name: it.name, id: it.id })} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
               </div>
             </div>
           ))}
@@ -314,6 +343,14 @@ function VehicleTypesSection() {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!dlg}
+        title="Delete Vehicle Type"
+        description={`Delete "${dlg?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (dlg) mutDel.mutate(dlg.id); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }
@@ -328,6 +365,7 @@ function DocumentTypesSection() {
   const [name, setName]           = useState('')
   const [applicableFor, setApplicableFor] = useState<'VEHICLE' | 'DRIVER' | 'BOTH'>('BOTH')
   const [nameErr, setNameErr]     = useState('')
+  const [dlg, setDlg]             = useState<{ name: string; id: number } | null>(null)
 
   const mutAdd  = useMutation({ mutationFn: (d: { name: string; applicableFor: string }) => globalMastersWriteApi.createDocumentType(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-document-types'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; applicableFor: string } }) => globalMastersWriteApi.updateDocumentType(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-document-types'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
@@ -359,7 +397,7 @@ function DocumentTypesSection() {
               </div>
               <div className="flex gap-1">
                 <button onClick={() => openEdit(it)} className="p-1 text-gray-400 hover:text-gray-600"><Pencil size={11} /></button>
-                <button onClick={() => { if (confirm(`Delete "${it.name}"?`)) mutDel.mutate(it.id) }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
+                <button onClick={() => setDlg({ name: it.name, id: it.id })} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
               </div>
             </div>
           ))}
@@ -392,6 +430,14 @@ function DocumentTypesSection() {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!dlg}
+        title="Delete Document Type"
+        description={`Delete "${dlg?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (dlg) mutDel.mutate(dlg.id); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }
@@ -407,6 +453,7 @@ function TaxesSection() {
   const [rate, setRate]         = useState('')
   const [taxType, setTaxType]   = useState('')
   const [errs, setErrs]         = useState({ name: '', rate: '', taxType: '' })
+  const [dlg, setDlg]           = useState<{ name: string; id: number } | null>(null)
 
   const mutAdd  = useMutation({ mutationFn: (d: { name: string; rate: number; taxType: string }) => globalMastersWriteApi.createTax(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-taxes'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; rate: number; taxType: string } }) => globalMastersWriteApi.updateTax(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-taxes'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
@@ -440,7 +487,7 @@ function TaxesSection() {
               </div>
               <div className="flex gap-1">
                 <button onClick={() => openEdit(it)} className="p-1 text-gray-400 hover:text-gray-600"><Pencil size={11} /></button>
-                <button onClick={() => { if (confirm(`Delete "${it.name}"?`)) mutDel.mutate(it.id) }} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
+                <button onClick={() => setDlg({ name: it.name, id: it.id })} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
               </div>
             </div>
           ))}
@@ -472,6 +519,14 @@ function TaxesSection() {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!dlg}
+        title="Delete Tax"
+        description={`Delete "${dlg?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (dlg) mutDel.mutate(dlg.id); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }

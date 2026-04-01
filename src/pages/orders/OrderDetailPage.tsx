@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { StatusBadge, PaymentStatusBadge, OrderForm } from './OrdersPage'
 import { cn } from '@/lib/utils'
 import type { OrderPaymentStatus, VehicleAllocation } from '@/types'
@@ -556,6 +557,7 @@ function BreakdownBanner({ orderId, breakdown, onReplace, onResolve, onCancel }:
 }) {
   const qc = useQueryClient()
   const isActive = breakdown.status === 'REPORTED' || breakdown.status === 'IN_REPAIR'
+  const [dlg, setDlg] = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const resolveMutation = useMutation({
     mutationFn: () => breakdownsApi.resolve(orderId, breakdown.id),
@@ -628,7 +630,7 @@ function BreakdownBanner({ orderId, breakdown, onReplace, onResolve, onCancel }:
             <Truck size={11} /> Assign Replacement
           </button>
           <button
-            onClick={() => confirm('Mark breakdown as resolved? Trip will continue with same vehicle.') && resolveMutation.mutate()}
+            onClick={() => setDlg({ title: 'Resolve Breakdown', desc: 'Mark breakdown as resolved? Trip will continue with the same vehicle.', onOk: () => resolveMutation.mutate() })}
             disabled={resolveMutation.isPending}
             className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-green-700 border-green-300 hover:bg-green-50 transition-colors disabled:opacity-50"
           >
@@ -636,7 +638,7 @@ function BreakdownBanner({ orderId, breakdown, onReplace, onResolve, onCancel }:
           </button>
           {breakdown.status === 'REPORTED' && (
             <button
-              onClick={() => confirm('Cancel this breakdown report? (Use only for false alarms)') && cancelMutation.mutate()}
+              onClick={() => setDlg({ title: 'Cancel Breakdown Report', desc: 'Cancel this breakdown report? Use only for false alarms.', onOk: () => cancelMutation.mutate() })}
               disabled={cancelMutation.isPending}
               className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-gray-500 border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
@@ -645,6 +647,15 @@ function BreakdownBanner({ orderId, breakdown, onReplace, onResolve, onCancel }:
           )}
         </div>
       )}
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Confirm"
+        variant="default"
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }
@@ -662,6 +673,7 @@ function VehicleAllocationCard({
   const [lrDialog, setLrDialog]         = useState(false)
   const [breakdownDialog, setBreakdownDialog] = useState(false)
   const [replaceDialog, setReplaceDialog]     = useState(false)
+  const [dlg, setDlg]                         = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: breakdownRes } = useQuery({
     queryKey: ['breakdown', allocation.id],
@@ -762,7 +774,7 @@ function VehicleAllocationCard({
         {/* Unassign button */}
         {canUnassign && (
           <button
-            onClick={() => confirm(`Unassign ${regNo} from this order?`) && unassignMutation.mutate()}
+            onClick={() => setDlg({ title: 'Unassign Vehicle', desc: `Unassign ${regNo} from this order?`, onOk: () => unassignMutation.mutate() })}
             disabled={unassignMutation.isPending}
             className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-red-600 border-red-200 hover:bg-red-50 transition-colors shrink-0 disabled:opacity-50"
           >
@@ -844,6 +856,14 @@ function VehicleAllocationCard({
           onClose={() => setReplaceDialog(false)}
         />
       )}
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Unassign"
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }
@@ -857,6 +877,7 @@ function StaffSlot({ label, person, canAssign, onAssign, onUnassign }: {
   onUnassign?: (id: number) => void
 }) {
   const canUnassignPerson = !!person && person.allocationStatus === 'ALLOCATED' && !!onUnassign
+  const [dlg, setDlg] = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   return (
     <div className="flex items-center gap-3 px-4 py-3">
@@ -896,7 +917,7 @@ function StaffSlot({ label, person, canAssign, onAssign, onUnassign }: {
       <div className="flex items-center gap-1.5 shrink-0">
         {canUnassignPerson && (
           <button
-            onClick={() => confirm(`Unassign ${person!.userName} from this vehicle?`) && onUnassign!(person!.id)}
+            onClick={() => setDlg({ title: 'Unassign Staff', desc: `Unassign ${person!.userName} from this vehicle?`, onOk: () => onUnassign!(person!.id) })}
             className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-red-600 border-red-200 hover:bg-red-50 transition-colors"
           >
             <X size={11} /> Unassign
@@ -917,6 +938,14 @@ function StaffSlot({ label, person, canAssign, onAssign, onUnassign }: {
           </button>
         )}
       </div>
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Unassign"
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }
@@ -930,6 +959,7 @@ export function OrderDetailPage() {
   const [assignVehicleOpen, setAssignVehicleOpen]   = useState(false)
   const [editOpen, setEditOpen]                     = useState(false)
   const [paymentStatusOpen, setPaymentStatusOpen]   = useState(false)
+  const [dlg, setDlg]                               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['order', Number(orderId)],
@@ -988,10 +1018,10 @@ export function OrderDetailPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                const msg = hasBreakdown
-                  ? `⚠ Warning: This order has vehicles currently in transit.\n\nCancel order ${order.orderNumber} anyway?`
-                  : `Cancel order ${order.orderNumber}?`
-                confirm(msg) && cancelMutation.mutate()
+                const desc = hasBreakdown
+                  ? `Warning: This order has vehicles currently in transit. Cancel order ${order.orderNumber} anyway?`
+                  : `Cancel order ${order.orderNumber}? This cannot be undone.`
+                setDlg({ title: 'Cancel Order', desc, onOk: () => cancelMutation.mutate() })
               }}
                   className="text-red-300 border-red-400/40 hover:bg-red-500/20 bg-transparent gap-1.5"
                 >
@@ -1181,6 +1211,14 @@ export function OrderDetailPage() {
         orderStatus={order.orderStatus}
         open={paymentStatusOpen}
         onClose={() => setPaymentStatusOpen(false)}
+      />
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Yes, Cancel"
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
       />
     </div>
   )

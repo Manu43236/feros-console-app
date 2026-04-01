@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import type { Order, OrderStatus, OrderPaymentStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -454,6 +455,7 @@ export function OrdersPage() {
   const [statusFilter, setStatus] = useState<OrderStatus | 'ALL'>('ALL')
   const [formOpen, setFormOpen]   = useState(false)
   const [editing, setEditing]     = useState<Order | undefined>()
+  const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: res, isLoading } = useQuery({ queryKey: ['orders'], queryFn: ordersApi.getAll })
 
@@ -473,8 +475,7 @@ export function OrdersPage() {
 
   function handleCancel(o: Order, e: React.MouseEvent) {
     e.stopPropagation()
-    if (!confirm(`Cancel order ${o.orderNumber}?`)) return
-    cancelMutation.mutate(o.id)
+    setDlg({ title: 'Cancel Order', desc: `Cancel order ${o.orderNumber}? This cannot be undone.`, onOk: () => cancelMutation.mutate(o.id) })
   }
 
   function openEdit(o: Order, e: React.MouseEvent) {
@@ -624,6 +625,14 @@ export function OrdersPage() {
       </div>
 
       <OrderForm open={formOpen} onClose={onClose} order={editing} />
+      <ConfirmDialog
+        open={!!dlg}
+        title={dlg?.title ?? ''}
+        description={dlg?.desc ?? ''}
+        confirmLabel="Yes, Cancel"
+        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
     </div>
   )
 }
