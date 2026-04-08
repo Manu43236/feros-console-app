@@ -12,6 +12,7 @@ import {
 import { lrsApi } from '@/api/lrs'
 import { ordersApi } from '@/api/orders'
 import { tenantMastersApi } from '@/api/masters'
+import { tenantsApi } from '@/api/superadmin'
 import { useAuthStore } from '@/store/authStore'
 import { openLrPdf } from './LrPdf'
 import type { LrStatus, LrCheckpost, LrCharge } from '@/types'
@@ -398,6 +399,11 @@ export function LrDetailPage() {
 
   const companyName = useAuthStore(s => s.companyName) ?? 'FEROS'
 
+  const { data: tenantData } = useQuery({
+    queryKey: ['tenant-my'],
+    queryFn: () => tenantsApi.getMy().then(r => r.data),
+  })
+
   const { data: lr, isLoading } = useQuery({
     queryKey: ['lr', id],
     queryFn: () => lrsApi.getById(id).then(r => r.data),
@@ -426,7 +432,13 @@ export function LrDetailPage() {
     if (!lr) return
     setPdfLoading(true)
     try {
-      await openLrPdf(lr, order, checkposts, charges, companyName)
+      await openLrPdf(lr, order, checkposts, charges, {
+        companyName: tenantData?.companyName ?? companyName,
+        address:     tenantData?.address,
+        gstin:       tenantData?.gstin,
+        panNumber:   tenantData?.panNumber,
+        ownerName:   tenantData?.ownerName,
+      })
     } finally {
       setPdfLoading(false)
     }
