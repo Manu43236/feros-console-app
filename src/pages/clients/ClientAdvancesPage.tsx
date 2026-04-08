@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, type Resolver } from 'react-hook-form'
+import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { clientsApi, clientAdvancesApi } from '@/api/clients'
@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { ClientAdvance } from '@/types'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
@@ -32,7 +33,7 @@ function AddAdvanceDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const { data: clientsRes } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
   const clients = clientsRes?.data ?? []
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
   })
 
@@ -61,10 +62,19 @@ function AddAdvanceDialog({ open, onClose }: { open: boolean; onClose: () => voi
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4">
           <div>
             <Label>Client *</Label>
-            <select {...register('clientId')} className="w-full border rounded-md px-3 py-2 text-sm mt-1 bg-white">
-              <option value="">Select client</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.clientName}</option>)}
-            </select>
+            <Controller
+              name="clientId"
+              control={control}
+              render={({ field }) => (
+                <SearchableSelect
+                  value={field.value ? String(field.value) : ''}
+                  onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                  options={clients.map(c => ({ value: String(c.id), label: c.clientName }))}
+                  placeholder="Select client"
+                  className="mt-1"
+                />
+              )}
+            />
             {errors.clientId && <p className="text-xs text-red-500 mt-1">{errors.clientId.message}</p>}
           </div>
 
@@ -84,12 +94,19 @@ function AddAdvanceDialog({ open, onClose }: { open: boolean; onClose: () => voi
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Payment Mode *</Label>
-              <select {...register('paymentMode')} className="w-full border rounded-md px-3 py-2 text-sm mt-1 bg-white">
-                <option value="">Select mode</option>
-                {['CASH', 'CHEQUE', 'NEFT', 'UPI', 'RTGS'].map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+              <Controller
+                name="paymentMode"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ?? ''}
+                    onValueChange={v => field.onChange(v)}
+                    options={['CASH', 'CHEQUE', 'NEFT', 'UPI', 'RTGS'].map(m => ({ value: m, label: m }))}
+                    placeholder="Select mode"
+                    className="mt-1"
+                  />
+                )}
+              />
               {errors.paymentMode && <p className="text-xs text-red-500 mt-1">{errors.paymentMode.message}</p>}
             </div>
             <div>

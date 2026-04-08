@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { Resolver } from 'react-hook-form'
@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { InvoiceStatus } from '@/types'
 import { cn } from '@/lib/utils'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── Status config ─────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -67,7 +68,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   })
   const allLrs = lrsRes?.data ?? []
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<CreateForm>({
+  const { register, handleSubmit, watch, control, formState: { errors } } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,
     defaultValues: { invoiceDate: new Date().toISOString().split('T')[0] },
   })

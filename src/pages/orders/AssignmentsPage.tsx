@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── Flattened row types ────────────────────────────────────────────────────────
 interface VehicleAssignmentRow {
@@ -78,18 +79,16 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
         <div className="space-y-4 pt-2">
           <div>
             <Label>Order <span className="text-red-500">*</span></Label>
-            <select
-              className="w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-feros-orange"
+            <SearchableSelect
               value={orderId}
-              onChange={e => setOrderId(e.target.value)}
-            >
-              <option value="">Select order (Pending / Partially Assigned)</option>
-              {eligibleOrders.map(o => (
-                <option key={o.id} value={o.id}>
-                  {o.orderNumber} — {o.clientName} · {o.sourceCityName} → {o.destinationCityName} ({o.orderStatus})
-                </option>
-              ))}
-            </select>
+              onValueChange={setOrderId}
+              options={eligibleOrders.map(o => ({
+                value: String(o.id),
+                label: `${o.orderNumber} — ${o.clientName} · ${o.sourceCityName} → ${o.destinationCityName} (${o.orderStatus})`,
+              }))}
+              placeholder="Select order (Pending / Partially Assigned)"
+              className="mt-1"
+            />
             {eligibleOrders.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">No pending or partially assigned orders found.</p>
             )}
@@ -97,18 +96,16 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
 
           <div>
             <Label>Available Vehicle <span className="text-red-500">*</span></Label>
-            <select
-              className="w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-feros-orange"
+            <SearchableSelect
               value={vehicleId}
-              onChange={e => setVehicleId(e.target.value)}
-            >
-              <option value="">Select vehicle</option>
-              {availableVehicles.map(v => (
-                <option key={v.id} value={v.id}>
-                  {v.registrationNumber}{v.vehicleTypeName ? ` — ${v.vehicleTypeName}` : ''}{v.capacityInTons ? ` (${v.capacityInTons} T)` : ''}
-                </option>
-              ))}
-            </select>
+              onValueChange={setVehicleId}
+              options={availableVehicles.map(v => ({
+                value: String(v.id),
+                label: `${v.registrationNumber}${v.vehicleTypeName ? ` — ${v.vehicleTypeName}` : ''}${v.capacityInTons ? ` (${v.capacityInTons} T)` : ''}`,
+              }))}
+              placeholder="Select vehicle"
+              className="mt-1"
+            />
             {availableVehicles.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">No available vehicles found.</p>
             )}
@@ -219,18 +216,16 @@ function AssignDriverDialog({ open, onClose, orders, drivers }: {
         <div className="space-y-4 pt-2">
           <div>
             <Label>Vehicle Allocation (without driver) <span className="text-red-500">*</span></Label>
-            <select
-              className="w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-feros-orange"
+            <SearchableSelect
               value={allocationKey}
-              onChange={e => setAllocationKey(e.target.value)}
-            >
-              <option value="">Select vehicle allocation</option>
-              {vehiclesWithoutDriver.map(({ orderId, orderNumber, allocation }) => (
-                <option key={allocation.id} value={`${orderId}|${allocation.id}`}>
-                  {orderNumber} — {allocation.registrationNumber || allocation.vehicleRegistrationNumber} ({allocation.allocatedWeight} T)
-                </option>
-              ))}
-            </select>
+              onValueChange={setAllocationKey}
+              options={vehiclesWithoutDriver.map(({ orderId: oId, orderNumber, allocation }) => ({
+                value: `${oId}|${allocation.id}`,
+                label: `${orderNumber} — ${allocation.registrationNumber || allocation.vehicleRegistrationNumber} (${allocation.allocatedWeight} T)`,
+              }))}
+              placeholder="Select vehicle allocation"
+              className="mt-1"
+            />
             {vehiclesWithoutDriver.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">All assigned vehicles already have a driver.</p>
             )}
@@ -238,16 +233,13 @@ function AssignDriverDialog({ open, onClose, orders, drivers }: {
 
           <div>
             <Label>Driver <span className="text-red-500">*</span></Label>
-            <select
-              className="w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-feros-orange"
+            <SearchableSelect
               value={driverId}
-              onChange={e => setDriverId(e.target.value)}
-            >
-              <option value="">Select driver</option>
-              {activeDrivers.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
+              onValueChange={setDriverId}
+              options={activeDrivers.map(d => ({ value: String(d.id), label: d.name }))}
+              placeholder="Select driver"
+              className="mt-1"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

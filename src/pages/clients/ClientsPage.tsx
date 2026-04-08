@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, type Resolver } from 'react-hook-form'
+import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { clientsApi } from '@/api/clients'
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { Client, BulkUploadResult } from '@/types'
 import { cn } from '@/lib/utils'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
@@ -186,7 +187,7 @@ function ClientForm({
     enabled: !!selectedState,
   })
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: client ? {
       clientName: client.clientName, clientTypeId: client.clientTypeId,
@@ -230,10 +231,19 @@ function ClientForm({
 
             <div className="space-y-1.5">
               <Label>Client Type *</Label>
-              <select {...register('clientTypeId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                <option value="">Select type</option>
-                {clientTypesRes?.data?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              <Controller
+                name="clientTypeId"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                    options={(clientTypesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name }))}
+                    placeholder="Select type"
+                    className="mt-1"
+                  />
+                )}
+              />
               {errors.clientTypeId && <p className="text-red-500 text-xs">{errors.clientTypeId.message}</p>}
             </div>
 
@@ -260,21 +270,38 @@ function ClientForm({
               </div>
               <div className="space-y-1.5">
                 <Label>State</Label>
-                <select
-                  {...register('stateId')}
-                  onChange={e => setSelectedState(Number(e.target.value) || undefined)}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="">Select state</option>
-                  {statesRes?.data?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <Controller
+                  name="stateId"
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      value={field.value ? String(field.value) : ''}
+                      onValueChange={v => {
+                        field.onChange(v ? Number(v) : undefined)
+                        setSelectedState(Number(v) || undefined)
+                      }}
+                      options={(statesRes?.data ?? []).map(s => ({ value: String(s.id), label: s.name }))}
+                      placeholder="Select state"
+                      className="mt-1"
+                    />
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>City</Label>
-                <select {...register('cityId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                  <option value="">Select city</option>
-                  {citiesRes?.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <Controller
+                  name="cityId"
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      value={field.value ? String(field.value) : ''}
+                      onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                      options={(citiesRes?.data ?? []).map(c => ({ value: String(c.id), label: c.name }))}
+                      placeholder="Select city"
+                      className="mt-1"
+                    />
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Pincode</Label>
@@ -319,10 +346,19 @@ function ClientForm({
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>Payment Terms</Label>
-                <select {...register('paymentTermsId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                  <option value="">Select terms</option>
-                  {payTermsRes?.data?.map(t => <option key={t.id} value={t.id}>{t.name} ({t.creditDays}d)</option>)}
-                </select>
+                <Controller
+                  name="paymentTermsId"
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      value={field.value ? String(field.value) : ''}
+                      onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                      options={(payTermsRes?.data ?? []).map(t => ({ value: String(t.id), label: `${t.name} (${t.creditDays}d)` }))}
+                      placeholder="Select terms"
+                      className="mt-1"
+                    />
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Credit Limit (₹)</Label>

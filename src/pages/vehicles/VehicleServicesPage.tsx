@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { ServiceDetailModal } from '@/components/shared/ServiceDetailModal'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusChip(s: ServiceDisplayStatus) {
@@ -100,16 +101,13 @@ function AddPartDialog({ serviceId, onClose }: { serviceId: number; onClose: () 
         <div className="space-y-3">
           <div>
             <Label>Spare Part *</Label>
-            <select
-              className="mt-1 w-full border rounded-md px-3 py-2 text-sm"
-              value={form.sparePartId}
-              onChange={e => setForm(f => ({ ...f, sparePartId: Number(e.target.value) }))}
-            >
-              <option value={0}>Select part…</option>
-              {parts.map(p => (
-                <option key={p.id} value={p.id}>{p.name} — {p.partNumber}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={form.sparePartId ? String(form.sparePartId) : ''}
+              onValueChange={v => setForm(f => ({ ...f, sparePartId: Number(v) }))}
+              options={parts.map(p => ({ value: String(p.id), label: `${p.name} — ${p.partNumber}` }))}
+              placeholder="Select part…"
+              className="mt-1"
+            />
           </div>
           <div>
             <Label>Quantity *</Label>

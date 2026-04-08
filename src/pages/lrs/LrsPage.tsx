@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ─── Status helpers ─────────────────────────────────────────────────────────
 const STATUS_CFG: Record<LrStatus, { label: string; bg: string; text: string }> = {
@@ -50,7 +51,7 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
   })
   const orders = ordersRes?.data ?? []
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateForm>({
+  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,
     defaultValues: { lrDate: new Date().toISOString().split('T')[0] },
   })
@@ -79,19 +80,17 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Order *</Label>
-            <select
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-              onChange={e => setSelectedOrderId(e.target.value ? parseInt(e.target.value) : null)}
-              defaultValue=""
+            <SearchableSelect
+              value={selectedOrderId ? String(selectedOrderId) : ''}
+              onValueChange={v => setSelectedOrderId(v ? parseInt(v) : null)}
+              options={activeOrders.map(o => ({
+                value: String(o.id),
+                label: `${o.orderNumber} — ${o.clientName} (${o.sourceCityName} → ${o.destinationCityName})`,
+              }))}
+              placeholder={ordersLoading ? 'Loading orders…' : activeOrders.length === 0 ? 'No active orders available' : 'Select order…'}
               disabled={ordersLoading}
-            >
-              <option value="">{ordersLoading ? 'Loading orders…' : activeOrders.length === 0 ? 'No active orders available' : 'Select order…'}</option>
-              {activeOrders.map(o => (
-                <option key={o.id} value={o.id}>
-                  {o.orderNumber} — {o.clientName} ({o.sourceCityName} → {o.destinationCityName})
-                </option>
-              ))}
-            </select>
+              className="mt-1"
+            />
           </div>
 
           {selectedOrderId && (
@@ -103,18 +102,22 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
                 </p>
               ) : (
                 <>
-                  <select
-                    {...register('vehicleAllocationId')}
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                    defaultValue=""
-                  >
-                    <option value="">Select vehicle…</option>
-                    {allocations.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.registrationNumber || a.vehicleRegistrationNumber} — {a.allocatedWeight}T allocated
-                      </option>
-                    ))}
-                  </select>
+                  <Controller
+                    name="vehicleAllocationId"
+                    control={control}
+                    render={({ field }) => (
+                      <SearchableSelect
+                        value={field.value ?? ''}
+                        onValueChange={v => field.onChange(v)}
+                        options={allocations.map(a => ({
+                          value: String(a.id),
+                          label: `${a.registrationNumber || a.vehicleRegistrationNumber} — ${a.allocatedWeight}T allocated`,
+                        }))}
+                        placeholder="Select vehicle…"
+                        className="mt-1"
+                      />
+                    )}
+                  />
                   {errors.vehicleAllocationId && (
                     <p className="text-red-500 text-xs">{errors.vehicleAllocationId.message}</p>
                   )}
@@ -212,17 +215,18 @@ export function LrsPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <select
-          className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <SearchableSelect
           value={statusFilter}
-          onChange={e => setStatus(e.target.value)}
-        >
-          <option value="">All Statuses</option>
-          <option value="CREATED">Created</option>
-          <option value="IN_TRANSIT">In Transit</option>
-          <option value="DELIVERED">Delivered</option>
-          <option value="CANCELLED">Cancelled</option>
-        </select>
+          onValueChange={setStatus}
+          options={[
+            { value: '', label: 'All Statuses' },
+            { value: 'CREATED', label: 'Created' },
+            { value: 'IN_TRANSIT', label: 'In Transit' },
+            { value: 'DELIVERED', label: 'Delivered' },
+            { value: 'CANCELLED', label: 'Cancelled' },
+          ]}
+          className="h-10 w-40"
+        />
       </div>
 
       {/* Summary strip */}

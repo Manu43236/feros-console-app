@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import type { Order, OrderStatus, OrderPaymentStatus } from '@/types'
 import { cn } from '@/lib/utils'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -231,34 +232,28 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Client *</Label>
-              <select
-                {...register('clientId')}
-                value={watchedClientId ?? ''}
-                onChange={e => setValue('clientId', Number(e.target.value))}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-              >
-                <option value="">Select client</option>
-                {clientsRes?.data?.filter(c => c.isActive).map(c => (
-                  <option key={c.id} value={c.id}>{c.clientName}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={watchedClientId ? String(watchedClientId) : ''}
+                onValueChange={v => setValue('clientId', v ? Number(v) : undefined)}
+                options={(clientsRes?.data ?? []).filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))}
+                placeholder="Select client"
+                className="mt-1"
+              />
               {errors.clientId && <p className="text-red-500 text-xs">{errors.clientId.message}</p>}
             </div>
 
             <div className="space-y-1.5">
               <Label>Material Type *</Label>
-              <select
-                {...register('materialTypeId')}
-                value={watchedMaterialId ?? ''}
-                onChange={e => setValue('materialTypeId', Number(e.target.value))}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-              >
-                <option value="">Select material</option>
-                {materials.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-                <option value={MATERIAL_OTHER_SENTINEL}>Other (specify manually)</option>
-              </select>
+              <SearchableSelect
+                value={watchedMaterialId != null ? String(watchedMaterialId) : ''}
+                onValueChange={v => setValue('materialTypeId', v !== '' ? Number(v) : undefined)}
+                options={[
+                  ...materials.map(m => ({ value: String(m.id), label: m.name })),
+                  { value: String(MATERIAL_OTHER_SENTINEL), label: 'Other (specify manually)' },
+                ]}
+                placeholder="Select material"
+                className="mt-1"
+              />
               {errors.materialTypeId && <p className="text-red-500 text-xs">{errors.materialTypeId.message}</p>}
               {isOtherMaterial && (
                 <Input
@@ -293,33 +288,29 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>State *</Label>
-                <select
-                  {...register('sourceStateId')}
-                  value={watchedSrcState ?? ''}
-                  onChange={e => {
-                    const val = Number(e.target.value) || undefined
+                <SearchableSelect
+                  value={watchedSrcState ? String(watchedSrcState) : ''}
+                  onValueChange={v => {
+                    const val = Number(v) || undefined
                     setSrcState(val)
-                    setValue('sourceStateId', Number(e.target.value))
+                    setValue('sourceStateId', Number(v))
                     setValue('sourceCityId', 0)
                   }}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="">Select state</option>
-                  {statesRes?.data?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                  options={(statesRes?.data ?? []).map(s => ({ value: String(s.id), label: s.name }))}
+                  placeholder="Select state"
+                  className="mt-1"
+                />
                 {errors.sourceStateId && <p className="text-red-500 text-xs">{errors.sourceStateId.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>City *</Label>
-                <select
-                  {...register('sourceCityId')}
-                  value={watchedSrcCity ?? ''}
-                  onChange={e => setValue('sourceCityId', Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="">Select city</option>
-                  {srcCitiesRes?.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <SearchableSelect
+                  value={watchedSrcCity ? String(watchedSrcCity) : ''}
+                  onValueChange={v => setValue('sourceCityId', Number(v))}
+                  options={(srcCitiesRes?.data ?? []).map(c => ({ value: String(c.id), label: c.name }))}
+                  placeholder="Select city"
+                  className="mt-1"
+                />
                 {errors.sourceCityId && <p className="text-red-500 text-xs">{errors.sourceCityId.message}</p>}
               </div>
               <div className="col-span-2 space-y-1.5">
@@ -342,33 +333,29 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>State *</Label>
-                <select
-                  {...register('destinationStateId')}
-                  value={watchedDstState ?? ''}
-                  onChange={e => {
-                    const val = Number(e.target.value) || undefined
+                <SearchableSelect
+                  value={watchedDstState ? String(watchedDstState) : ''}
+                  onValueChange={v => {
+                    const val = Number(v) || undefined
                     setDstState(val)
-                    setValue('destinationStateId', Number(e.target.value))
+                    setValue('destinationStateId', Number(v))
                     setValue('destinationCityId', 0)
                   }}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="">Select state</option>
-                  {statesRes?.data?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                  options={(statesRes?.data ?? []).map(s => ({ value: String(s.id), label: s.name }))}
+                  placeholder="Select state"
+                  className="mt-1"
+                />
                 {errors.destinationStateId && <p className="text-red-500 text-xs">{errors.destinationStateId.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>City *</Label>
-                <select
-                  {...register('destinationCityId')}
-                  value={watchedDstCity ?? ''}
-                  onChange={e => setValue('destinationCityId', Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="">Select city</option>
-                  {dstCitiesRes?.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <SearchableSelect
+                  value={watchedDstCity ? String(watchedDstCity) : ''}
+                  onValueChange={v => setValue('destinationCityId', Number(v))}
+                  options={(dstCitiesRes?.data ?? []).map(c => ({ value: String(c.id), label: c.name }))}
+                  placeholder="Select city"
+                  className="mt-1"
+                />
                 {errors.destinationCityId && <p className="text-red-500 text-xs">{errors.destinationCityId.message}</p>}
               </div>
               <div className="col-span-2 space-y-1.5">
@@ -384,16 +371,16 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>Rate Type *</Label>
-                <select
-                  {...register('freightRateType')}
+                <SearchableSelect
                   value={watchedFreightType ?? 'PER_TON'}
-                  onChange={e => setValue('freightRateType', e.target.value as 'PER_TON' | 'PER_TRIP' | 'PER_KM')}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="PER_TON">Per Ton</option>
-                  <option value="PER_TRIP">Per Trip</option>
-                  <option value="PER_KM">Per KM</option>
-                </select>
+                  onValueChange={v => setValue('freightRateType', v as 'PER_TON' | 'PER_TRIP' | 'PER_KM')}
+                  options={[
+                    { value: 'PER_TON', label: 'Per Ton' },
+                    { value: 'PER_TRIP', label: 'Per Trip' },
+                    { value: 'PER_KM', label: 'Per KM' },
+                  ]}
+                  className="mt-1"
+                />
                 {errors.freightRateType && <p className="text-red-500 text-xs">{errors.freightRateType.message}</p>}
               </div>
               <div className="space-y-1.5">
@@ -403,15 +390,15 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               </div>
               <div className="space-y-1.5">
                 <Label>Bill On</Label>
-                <select
-                  {...register('billingOn')}
+                <SearchableSelect
                   value={watchedBillingOn ?? 'LOADED_WEIGHT'}
-                  onChange={e => setValue('billingOn', e.target.value as 'LOADED_WEIGHT' | 'DELIVERED_WEIGHT')}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="LOADED_WEIGHT">Loaded Weight</option>
-                  <option value="DELIVERED_WEIGHT">Delivered Weight</option>
-                </select>
+                  onValueChange={v => setValue('billingOn', v as 'LOADED_WEIGHT' | 'DELIVERED_WEIGHT')}
+                  options={[
+                    { value: 'LOADED_WEIGHT', label: 'Loaded Weight' },
+                    { value: 'DELIVERED_WEIGHT', label: 'Delivered Weight' },
+                  ]}
+                  className="mt-1"
+                />
               </div>
             </div>
           </div>
@@ -510,14 +497,15 @@ export function OrdersPage() {
             className="pl-9 w-72"
           />
         </div>
-        <select
+        <SearchableSelect
           value={statusFilter}
-          onChange={e => setStatus(e.target.value as OrderStatus | 'ALL')}
-          className="h-10 px-3 rounded-md border border-input bg-background text-sm"
-        >
-          <option value="ALL">All Statuses</option>
-          {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-        </select>
+          onValueChange={v => setStatus(v as OrderStatus | 'ALL')}
+          options={[
+            { value: 'ALL', label: 'All Statuses' },
+            ...ALL_STATUSES.map(s => ({ value: s, label: STATUS_LABELS[s] })),
+          ]}
+          className="h-10 w-48"
+        />
       </div>
 
       {/* Table */}

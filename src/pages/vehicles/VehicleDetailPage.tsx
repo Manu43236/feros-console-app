@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, type Resolver } from 'react-hook-form'
+import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi, vehicleServicesApi } from '@/api/vehicles'
@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import type { BreakdownDuration, BreakdownType, VehicleDocument, VehicleStatusType, VehicleServiceRecord, Breakdown, MasterItem, ServicePart } from '@/types'
 import { VehicleForm } from './VehiclesPage'
 import { ServiceDetailModal } from '@/components/shared/ServiceDetailModal'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type ExpiryLevel = 'expired' | 'critical' | 'warning' | 'ok' | 'none'
@@ -119,7 +120,7 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
     d.applicableFor === 'VEHICLE' || d.applicableFor === 'BOTH'
   )
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<DocForm>({
+  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<DocForm>({
     resolver: zodResolver(docSchema) as Resolver<DocForm>,
   })
 
@@ -161,10 +162,19 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
         <form onSubmit={handleSubmit(handleSave)} className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Document Type *</Label>
-            <select {...register('documentTypeId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-              <option value="">Select type</option>
-              {vehicleDocTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
+            <Controller
+              name="documentTypeId"
+              control={control}
+              render={({ field }) => (
+                <SearchableSelect
+                  value={field.value ? String(field.value) : ''}
+                  onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                  options={vehicleDocTypes.map(t => ({ value: String(t.id), label: t.name }))}
+                  placeholder="Select type"
+                  className="mt-1"
+                />
+              )}
+            />
             {errors.documentTypeId && <p className="text-red-500 text-xs">{errors.documentTypeId.message}</p>}
           </div>
           <div className="space-y-1.5">
@@ -620,16 +630,13 @@ function AddPartDialog({ serviceId, onClose }: { serviceId: number; onClose: () 
         <div className="space-y-3">
           <div>
             <Label>Spare Part *</Label>
-            <select
-              className="mt-1 w-full border rounded-md px-3 py-2 text-sm"
-              value={form.sparePartId}
-              onChange={e => setForm(f => ({ ...f, sparePartId: Number(e.target.value) }))}
-            >
-              <option value={0}>Select part…</option>
-              {parts.map(p => (
-                <option key={p.id} value={p.id}>{p.name} — {p.partNumber}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={form.sparePartId ? String(form.sparePartId) : ''}
+              onValueChange={v => setForm(f => ({ ...f, sparePartId: Number(v) }))}
+              options={parts.map(p => ({ value: String(p.id), label: `${p.name} — ${p.partNumber}` }))}
+              placeholder="Select part…"
+              className="mt-1"
+            />
           </div>
           <div>
             <Label>Quantity *</Label>
@@ -1162,11 +1169,11 @@ export function VehicleDetailPage() {
                   <span className="text-xs text-yellow-300 font-mono">{v.assignedOrderNumber}</span>
                 )}
                 <div className="relative flex items-center">
-                  <select
-                    value={v.isAssigned ? 'assigned' : (v.currentStatusId ?? '')}
-                    onChange={e => {
-                      const id = Number(e.target.value)
-                      if (!id || id === v.currentStatusId) return  // no change
+                  <SearchableSelect
+                    value={v.isAssigned ? 'assigned' : String(v.currentStatusId ?? '')}
+                    onValueChange={v2 => {
+                      const id = Number(v2)
+                      if (!id || id === v.currentStatusId) return
                       const selected = statusRes?.data?.find(s => s.id === id)
                       if (selected?.statusType === 'BREAKDOWN') {
                         setPendingStatusId(id)
@@ -1176,34 +1183,24 @@ export function VehicleDetailPage() {
                       }
                     }}
                     disabled={updateStatusMutation.isPending || !!v.isAssigned}
-                    className={cn(
-                      'h-8 pl-2 pr-6 rounded-lg text-xs border appearance-none transition-colors',
+                    options={
                       v.isAssigned
-                        ? 'bg-blue-500/20 border-blue-400/40 text-blue-200 cursor-not-allowed'
-                        : cn('cursor-pointer', v.currentStatusType ? vehicleStatusBadge[v.currentStatusType] : 'bg-white/10 border-white/20 text-white hover:bg-white/20'),
-                      updateStatusMutation.isPending && 'opacity-60 cursor-wait'
-                    )}
-                  >
-                    {v.isAssigned
-                      ? <option value="assigned" className="text-gray-800">Assigned to Order</option>
-                      : <>
-                          {!v.currentStatusId && <option value="" className="text-gray-400">— Set Status —</option>}
-                          {statusRes?.data
-                            ?.filter(s => {
-                              const cur = v.currentStatusType
-                              // Always include current + allowed next
-                              if (cur === 'BREAKDOWN') return s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
-                              if (cur === 'IN_REPAIR')  return s.statusType === 'IN_REPAIR'  || s.statusType === 'AVAILABLE'
-                              // AVAILABLE / null → show all except ASSIGNED/ON_TRIP (managed by orders) and IN_REPAIR (only reachable from Breakdown)
-                              return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
-                            })
-                            .map(s => (
-                              <option key={s.id} value={s.id} className="text-gray-800">{s.name}</option>
-                            ))}
-                        </>
+                        ? [{ value: 'assigned', label: 'Assigned to Order' }]
+                        : [
+                            ...(!v.currentStatusId ? [{ value: '', label: '— Set Status —' }] : []),
+                            ...(statusRes?.data ?? [])
+                              .filter(s => {
+                                const cur = v.currentStatusType
+                                if (cur === 'BREAKDOWN') return s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
+                                if (cur === 'IN_REPAIR')  return s.statusType === 'IN_REPAIR'  || s.statusType === 'AVAILABLE'
+                                return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
+                              })
+                              .map(s => ({ value: String(s.id), label: s.name })),
+                          ]
                     }
-                  </select>
-                  <ChevronDown size={12} className="absolute right-1.5 pointer-events-none text-current opacity-70" />
+                    className="h-8 w-44"
+                    triggerClassName="h-8 text-xs"
+                  />
                 </div>
                 {v.isAssigned && (
                   <span className="text-xs text-blue-300/70">Unassign from order to change</span>
@@ -1631,7 +1628,7 @@ function BreakdownFormDialog({ vehicleReg, open, onClose, onSubmit, isPending }:
   onSubmit: (data: Omit<BdForm, 'breakdownDate'> & { breakdownDate: string }) => void
   isPending: boolean
 }) {
-  const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<BdForm>({
+  const { register, handleSubmit, watch, setValue, control, formState: { errors }, reset } = useForm<BdForm>({
     resolver: zodResolver(bdSchema) as Resolver<BdForm>,
     defaultValues: { breakdownDate: new Date().toISOString().slice(0, 16) },
   })
@@ -1678,10 +1675,19 @@ function BreakdownFormDialog({ vehicleReg, open, onClose, onSubmit, isPending }:
           {/* Type */}
           <div className="space-y-1.5">
             <Label>Type *</Label>
-            <select {...register('breakdownType')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-              <option value="">Select type</option>
-              {BD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
+            <Controller
+              name="breakdownType"
+              control={control}
+              render={({ field }) => (
+                <SearchableSelect
+                  value={field.value ?? ''}
+                  onValueChange={v => field.onChange(v)}
+                  options={BD_TYPES.map(t => ({ value: t.value, label: t.label }))}
+                  placeholder="Select type"
+                  className="mt-1"
+                />
+              )}
+            />
             {errors.breakdownType && <p className="text-red-500 text-xs">{errors.breakdownType.message}</p>}
           </div>
 

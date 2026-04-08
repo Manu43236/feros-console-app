@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, type Resolver } from 'react-hook-form'
+import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi } from '@/api/vehicles'
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import type { Vehicle, BulkUploadResult, VehicleStatusType } from '@/types'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type ExpiryStatus = 'expired' | 'critical' | 'warning' | 'ok' | 'none'
@@ -230,6 +231,8 @@ const schema = z.object({
   gpsDeviceImei:            z.string().optional(),
   gpsProvider:              z.string().optional(),
   currentOdometerReading:   z.coerce.number().optional(),
+  fuelTankCapacity:         z.coerce.number().optional(),
+  currentFuelLevel:         z.coerce.number().optional(),
   notes:                    z.string().optional(),
 })
 type FormData = z.infer<typeof schema>
@@ -253,7 +256,7 @@ export function VehicleForm({
   const selectedOwnershipName = ownershipRes?.data?.find(o => o.id === ownershipTypeId)?.name ?? ''
   const showOwnerSection = !!ownershipTypeId && !selectedOwnershipName.toUpperCase().includes('OWN')
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: vehicle ? {
       registrationNumber: vehicle.registrationNumber,
@@ -280,7 +283,10 @@ export function VehicleForm({
       agreementAmount: vehicle.agreementAmount,
       gpsDeviceNumber: vehicle.gpsDeviceNumber ?? '',
       gpsDeviceImei: vehicle.gpsDeviceImei ?? '', gpsProvider: vehicle.gpsProvider ?? '',
-      currentOdometerReading: vehicle.currentOdometerReading, notes: vehicle.notes ?? '',
+      currentOdometerReading: vehicle.currentOdometerReading,
+      fuelTankCapacity: vehicle.fuelTankCapacity,
+      currentFuelLevel: vehicle.currentFuelLevel,
+      notes: vehicle.notes ?? '',
     } : {},
   })
 
@@ -304,8 +310,6 @@ export function VehicleForm({
     },
   })
 
-  const sel = 'w-full h-10 px-3 rounded-md border border-input bg-background text-sm'
-
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -324,42 +328,86 @@ export function VehicleForm({
             </div>
             <div className="space-y-1.5">
               <Label>Brand</Label>
-              <select {...register('brandId')} className={sel}>
-                <option value="">Select brand</option>
-                {brandsRes?.data?.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
+              <Controller
+                name="brandId"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                    options={(brandsRes?.data ?? []).map(b => ({ value: String(b.id), label: b.name }))}
+                    placeholder="Select brand"
+                    className="mt-1"
+                  />
+                )}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Vehicle Type</Label>
-              <select {...register('vehicleTypeId')} className={sel}>
-                <option value="">Select type</option>
-                {typesRes?.data?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              <Controller
+                name="vehicleTypeId"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                    options={(typesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name }))}
+                    placeholder="Select type"
+                    className="mt-1"
+                  />
+                )}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Fuel Type</Label>
-              <select {...register('fuelTypeId')} className={sel}>
-                <option value="">Select fuel type</option>
-                {fuelRes?.data?.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
+              <Controller
+                name="fuelTypeId"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                    options={(fuelRes?.data ?? []).map(f => ({ value: String(f.id), label: f.name }))}
+                    placeholder="Select fuel type"
+                    className="mt-1"
+                  />
+                )}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Ownership Type</Label>
-              <select
-                {...register('ownershipTypeId')}
-                onChange={e => setOwnershipTypeId(Number(e.target.value) || undefined)}
-                className={sel}
-              >
-                <option value="">Select ownership</option>
-                {ownershipRes?.data?.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
+              <Controller
+                name="ownershipTypeId"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={v => {
+                      field.onChange(v ? Number(v) : undefined)
+                      setOwnershipTypeId(Number(v) || undefined)
+                    }}
+                    options={(ownershipRes?.data ?? []).map(o => ({ value: String(o.id), label: o.name }))}
+                    placeholder="Select ownership"
+                    className="mt-1"
+                  />
+                )}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Current Status</Label>
-              <select {...register('currentStatusId')} className={sel}>
-                <option value="">Select status</option>
-                {statusRes?.data?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <Controller
+                name="currentStatusId"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                    options={(statusRes?.data ?? []).map(s => ({ value: String(s.id), label: s.name }))}
+                    placeholder="Select status"
+                    className="mt-1"
+                  />
+                )}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Capacity (tons)</Label>
@@ -419,11 +467,22 @@ export function VehicleForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Permit Type</Label>
-                <select {...register('permitType')} className={sel}>
-                  <option value="">Select type</option>
-                  <option value="NATIONAL">National</option>
-                  <option value="STATE">State</option>
-                </select>
+                <Controller
+                  name="permitType"
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      value={field.value ?? ''}
+                      onValueChange={v => field.onChange(v)}
+                      options={[
+                        { value: 'NATIONAL', label: 'National' },
+                        { value: 'STATE', label: 'State' },
+                      ]}
+                      placeholder="Select type"
+                      className="mt-1"
+                    />
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Permit Start</Label>
@@ -519,6 +578,14 @@ export function VehicleForm({
               <div className="space-y-1.5">
                 <Label>Current Odometer (km)</Label>
                 <Input type="number" placeholder="45000" {...register('currentOdometerReading')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tank Capacity (litres)</Label>
+                <Input type="number" placeholder="300" {...register('fuelTankCapacity')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Current Fuel Level (litres)</Label>
+                <Input type="number" placeholder="120" {...register('currentFuelLevel')} />
               </div>
               <div className="col-span-2 space-y-1.5">
                 <Label>Notes</Label>
@@ -640,40 +707,44 @@ export function VehiclesPage() {
             className="pl-9 w-44"
           />
         </div>
-        <select
+        <SearchableSelect
           value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-          className="h-10 px-3 rounded-md border border-input bg-background text-sm"
-        >
-          <option value="">All Types</option>
-          {typesRes?.data?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        <select
+          onValueChange={setTypeFilter}
+          options={[
+            { value: '', label: 'All Types' },
+            ...(typesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name })),
+          ]}
+          className="h-10 w-36"
+        />
+        <SearchableSelect
           value={ownerFilter}
-          onChange={e => setOwnerFilter(e.target.value)}
-          className="h-10 px-3 rounded-md border border-input bg-background text-sm"
-        >
-          <option value="">All Ownership</option>
-          {ownershipRes?.data?.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-        </select>
-        <select
+          onValueChange={setOwnerFilter}
+          options={[
+            { value: '', label: 'All Ownership' },
+            ...(ownershipRes?.data ?? []).map(o => ({ value: String(o.id), label: o.name })),
+          ]}
+          className="h-10 w-40"
+        />
+        <SearchableSelect
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          className="h-10 px-3 rounded-md border border-input bg-background text-sm"
-        >
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-        <select
+          onValueChange={setStatusFilter}
+          options={[
+            { value: '', label: 'All Status' },
+            { value: 'active', label: 'Active' },
+            { value: 'inactive', label: 'Inactive' },
+          ]}
+          className="h-10 w-36"
+        />
+        <SearchableSelect
           value={assignFilter}
-          onChange={e => setAssignFilter(e.target.value)}
-          className="h-10 px-3 rounded-md border border-input bg-background text-sm"
-        >
-          <option value="">All Trips</option>
-          <option value="assigned">On Trip</option>
-          <option value="available">Available</option>
-        </select>
+          onValueChange={setAssignFilter}
+          options={[
+            { value: '', label: 'All Trips' },
+            { value: 'assigned', label: 'On Trip' },
+            { value: 'available', label: 'Available' },
+          ]}
+          className="h-10 w-36"
+        />
       </div>
 
       {/* Table */}

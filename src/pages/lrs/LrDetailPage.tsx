@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ─── Status helpers ────────────────────────────────────────────────────────
 const STATUS_CFG: Record<LrStatus, { label: string; bg: string; text: string; dot: string }> = {
@@ -237,7 +238,7 @@ function AddChargeDialog({ lrId, open, onClose }: { lrId: number; open: boolean;
     queryFn: () => tenantMastersApi.getChargeTypes().then(r => r.data),
   })
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<ChargeForm>({
+  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<ChargeForm>({
     resolver: zodResolver(chargeSchema) as Resolver<ChargeForm>,
   })
 
@@ -261,16 +262,19 @@ function AddChargeDialog({ lrId, open, onClose }: { lrId: number; open: boolean;
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Charge Type *</Label>
-            <select
-              {...register('chargeTypeId')}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-              defaultValue=""
-            >
-              <option value="">Select type…</option>
-              {chargeTypes.map(ct => (
-                <option key={ct.id} value={ct.id}>{ct.name}</option>
-              ))}
-            </select>
+            <Controller
+              name="chargeTypeId"
+              control={control}
+              render={({ field }) => (
+                <SearchableSelect
+                  value={field.value ?? ''}
+                  onValueChange={v => field.onChange(v)}
+                  options={chargeTypes.map(ct => ({ value: String(ct.id), label: ct.name }))}
+                  placeholder="Select type…"
+                  className="mt-1"
+                />
+              )}
+            />
             {errors.chargeTypeId && <p className="text-red-500 text-xs">{errors.chargeTypeId.message}</p>}
           </div>
           <div className="space-y-1.5">
