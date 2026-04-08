@@ -132,16 +132,29 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
 
           {/* ── Info row ── */}
           <div className="grid grid-cols-2 gap-3 text-sm">
-            {service.serviceType === 'EXTERNAL' && service.vendorName && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <User size={13} className="text-gray-400 shrink-0" />
-                <span>{service.vendorName}</span>
+            <div className="flex items-center gap-2 text-gray-600">
+              <User size={13} className="text-gray-400 shrink-0" />
+              <span>
+                {service.serviceType === 'INTERNAL'   ? 'Internal (Self)' :
+                 service.serviceType === 'OEM_CENTER'  ? `OEM: ${service.vendorName ?? 'Service Center'}` :
+                 service.vendorName ?? '3rd Party'}
+              </span>
+            </div>
+            {service.payerType && service.payerType !== 'OWN_EXPENSE' && (
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                  {service.payerType === 'WARRANTY_OEM' ? 'OEM Warranty' :
+                   service.payerType === 'WARRANTY_ANC' ? 'ANC Warranty' :
+                   service.payerType === 'INSURANCE'    ? 'Insurance' :
+                   service.payerType === 'AMC'          ? 'AMC Contract' : service.payerType}
+                </span>
               </div>
             )}
-            {service.serviceType === 'INTERNAL' && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <User size={13} className="text-gray-400 shrink-0" />
-                <span>Internal (Self)</span>
+            {service.isEscalated && (
+              <div className="col-span-2">
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">
+                  ⚠ Escalated from internal to 3rd party
+                </span>
               </div>
             )}
             {service.location && (
@@ -169,6 +182,26 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
               </div>
             )}
           </div>
+
+          {/* ── Insurance details ── */}
+          {service.payerType === 'INSURANCE' && (service.insuranceClaimNo || service.insuranceClaimAmt) && (
+            <div className="bg-blue-50 rounded-lg px-3 py-2.5 text-sm space-y-1">
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Insurance Claim</p>
+              {service.insuranceClaimNo && <p className="text-gray-700">Claim No: <span className="font-medium">{service.insuranceClaimNo}</span></p>}
+              {service.insuranceClaimAmt != null && (
+                <p className="text-gray-700">Claim Amount: <span className="font-medium flex items-center gap-0.5 inline-flex"><IndianRupee size={11} />{service.insuranceClaimAmt.toLocaleString('en-IN')}</span></p>
+              )}
+            </div>
+          )}
+
+          {/* ── Compliance certificate ── */}
+          {service.triggeredBy === 'COMPLIANCE' && (service.certificateNumber || service.certificateValidUntil) && (
+            <div className="bg-purple-50 rounded-lg px-3 py-2.5 text-sm space-y-1">
+              <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Compliance Certificate</p>
+              {service.certificateNumber && <p className="text-gray-700">Certificate No: <span className="font-medium">{service.certificateNumber}</span></p>}
+              {service.certificateValidUntil && <p className="text-gray-700">Valid Until: <span className="font-medium">{fmtDate(service.certificateValidUntil)}</span></p>}
+            </div>
+          )}
 
           {/* ── Timeline ── */}
           <div>

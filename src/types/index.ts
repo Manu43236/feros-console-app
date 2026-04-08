@@ -107,7 +107,7 @@ export interface Vehicle {
   ownerName?: string; ownerPhone?: string; ownerPan?: string; ownerAddress?: string
   agreementStartDate?: string; agreementEndDate?: string; agreementAmount?: number
   gpsDeviceNumber?: string; gpsDeviceImei?: string; gpsProvider?: string
-  currentOdometerReading?: number; notes?: string
+  currentOdometerReading?: number; fuelTankCapacity?: number; currentFuelLevel?: number; notes?: string
   isActive: boolean; createdAt: string; updatedAt: string
   isAssigned?: boolean; assignedOrderId?: number; assignedOrderNumber?: string
 }
@@ -498,8 +498,9 @@ export interface Notification {
 }
 
 // ─── Vehicle Service ──────────────────────────────────────────────────────────
-export type ServiceTriggeredBy = 'SCHEDULED' | 'BREAKDOWN'
-export type VehicleServiceType = 'INTERNAL' | 'EXTERNAL'
+export type ServiceTriggeredBy = 'SCHEDULED' | 'BREAKDOWN' | 'ACCIDENT' | 'COMPLIANCE' | 'WARRANTY'
+export type VehicleServiceType = 'INTERNAL' | 'THIRD_PARTY' | 'OEM_CENTER'
+export type ServicePayerType = 'OWN_EXPENSE' | 'WARRANTY_OEM' | 'WARRANTY_ANC' | 'INSURANCE' | 'AMC'
 export type ServiceStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
 export type ServiceDisplayStatus = 'OPEN' | 'IN_PROGRESS' | 'DUE_SOON' | 'OVERDUE' | 'COMPLETED'
 export type ServiceTaskStatus = 'PENDING' | 'COMPLETED'
@@ -525,6 +526,7 @@ export interface VehicleServiceRecord {
   triggeredBy: ServiceTriggeredBy
   breakdownId?: number
   serviceType: VehicleServiceType
+  payerType?: ServicePayerType
   vendorName?: string
   location?: string
   status: ServiceStatus
@@ -535,6 +537,11 @@ export interface VehicleServiceRecord {
   odometer?: number
   notes?: string
   totalCost?: number
+  insuranceClaimNo?: string
+  insuranceClaimAmt?: number
+  certificateNumber?: string
+  certificateValidUntil?: string
+  isEscalated?: boolean
   tasks: VehicleServiceTask[]
   startedAt?: string
   createdAt: string
@@ -639,4 +646,63 @@ export interface SparePartsTransaction {
   servicePartId?: number; serviceNumber?: string; vehicleRegistrationNumber?: string
   supplierName?: string; notes?: string
   createdById: number; createdByName: string; createdAt: string
+}
+
+
+// ─── Fuel Logs ────────────────────────────────────────────────────────────────
+export type FuelPaymentMode = 'CASH' | 'COMPANY_ACCOUNT' | 'REIMBURSEMENT'
+
+export interface FuelLog {
+  id: number
+  tenantId: number
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  orderId?: number
+  orderNumber?: string
+  filledById: number
+  filledByName: string
+  fillDate: string
+  litresFilled: number
+  odometerReading: number
+  costPerLitre: number
+  totalCost: number
+  isFullTank: boolean
+  paymentMode: FuelPaymentMode
+  fuelStationName?: string
+  fuelStationCity?: string
+  receiptUrl?: string
+  notes?: string
+  mileageKmPerLitre?: number
+  kmTravelled?: number
+  createdAt: string
+  updatedAt: string
+}
+
+// ─── Meter Readings ───────────────────────────────────────────────────────────
+export type MeterReadingType = 'TRIP_START' | 'TRIP_END' | 'FUEL_FILL' | 'GENERAL'
+
+export interface MeterReadingServiceAlert {
+  serviceId: number
+  serviceNumber?: string
+  serviceType?: string
+  dueAtOdometer: number
+  status: 'DUE_SOON' | 'OVERDUE'
+}
+
+export interface MeterReading {
+  id: number
+  tenantId: number
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  readingKm: number
+  readingType: MeterReadingType
+  lrId?: number
+  lrNumber?: string
+  photoUrl?: string
+  recordedById: number
+  recordedByName: string
+  recordedAt: string
+  notes?: string
+  createdAt: string
+  serviceAlerts: MeterReadingServiceAlert[]
 }

@@ -9,7 +9,7 @@ import {
   Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
-  Boxes,
+  Boxes, Fuel, Gauge,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,7 +26,9 @@ const ADMIN_NAV = [
   { to: '/attendance',                 label: 'Attendance',   icon: Calendar },
   { to: '/payroll',                    label: 'Payroll',      icon: Wallet },
   { to: '/reports',                    label: 'Reports',      icon: BarChart3 },
-  { to: '/masters',   label: 'Masters',   icon: Settings },
+  { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
+  { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
+  { to: '/masters',        label: 'Masters',        icon: Settings },
   { to: '/inventory', label: 'Inventory', icon: Boxes },
 ]
 

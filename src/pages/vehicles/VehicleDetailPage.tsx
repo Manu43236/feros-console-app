@@ -8,6 +8,9 @@ import { vehiclesApi, vehicleServicesApi } from '@/api/vehicles'
 import { servicePartsApi, sparePartsApi } from '@/api/inventory'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
 import { breakdownsApi } from '@/api/breakdowns'
+import { fuelLogsApi } from '@/api/fuelLogs'
+import { compressIfNeeded } from '@/lib/imageCompressor'
+import type { FuelLog, FuelPaymentMode } from '@/types'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
@@ -236,6 +239,14 @@ const vehicleStatusBadge: Record<VehicleStatusType, string> = {
   OTHER:      'bg-white/10 border-white/20 text-white',
 }
 
+const vehicleStatusOptionColor: Partial<Record<VehicleStatusType, string>> = {
+  AVAILABLE: 'text-green-600 font-medium',
+  ASSIGNED:  'text-blue-600 font-medium',
+  ON_TRIP:   'text-orange-600 font-medium',
+  IN_REPAIR: 'text-yellow-600 font-medium',
+  BREAKDOWN: 'text-red-600 font-medium',
+}
+
 // ── service display status helpers ────────────────────────────────────────────
 const statusChip: Record<string, string> = {
   OPEN:        'bg-blue-50 text-blue-600 border-blue-200',
@@ -259,18 +270,25 @@ interface TaskDraft {
 
 // ── create service dialog ─────────────────────────────────────────────────────
 function CreateServiceDialog({
-  vehicleId, vehicleReg, breakdownId, open, onClose,
+  vehicleId, vehicleReg, breakdownId, currentOdometer, open, onClose,
 }: {
-  vehicleId: number; vehicleReg: string; breakdownId?: number; open: boolean; onClose: () => void
+  vehicleId: number; vehicleReg: string; breakdownId?: number; currentOdometer?: number; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
-  const [serviceType, setServiceType] = useState<'INTERNAL' | 'EXTERNAL'>('INTERNAL')
+  const [triggeredBy, setTriggeredBy] = useState<string>(breakdownId ? 'BREAKDOWN' : 'SCHEDULED')
+  const [serviceType, setServiceType] = useState<'INTERNAL' | 'THIRD_PARTY' | 'OEM_CENTER'>('INTERNAL')
+  const [payerType, setPayerType]     = useState<string>('OWN_EXPENSE')
   const [vendorName, setVendorName]   = useState('')
   const [location, setLocation]       = useState('')
   const [serviceDate, setServiceDate] = useState('')
-  const [odometer, setOdometer]       = useState('')
+  const [odometer, setOdometer]       = useState(currentOdometer ? String(currentOdometer) : '')
   const [notes, setNotes]             = useState('')
   const [dueAtOdometer, setDueAtOdometer] = useState('')
+  const [insuranceClaimNo, setInsuranceClaimNo]   = useState('')
+  const [insuranceClaimAmt, setInsuranceClaimAmt] = useState('')
+  const [certificateNumber, setCertificateNumber] = useState('')
+  const [certificateValidUntil, setCertificateValidUntil] = useState('')
+  const [isEscalated, setIsEscalated] = useState(false)
   // tasks state: selected master tasks + custom
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
   const [taskDrafts, setTaskDrafts]           = useState<Record<string | number, TaskDraft>>({})
@@ -297,8 +315,13 @@ function CreateServiceDialog({
   })
 
   function handleClose() {
-    setServiceType('INTERNAL'); setVendorName(''); setLocation('')
-    setServiceDate(''); setOdometer(''); setNotes(''); setDueAtOdometer('')
+    setTriggeredBy(breakdownId ? 'BREAKDOWN' : 'SCHEDULED')
+    setServiceType('INTERNAL'); setPayerType('OWN_EXPENSE')
+    setVendorName(''); setLocation('')
+    setServiceDate(''); setOdometer(currentOdometer ? String(currentOdometer) : ''); setNotes(''); setDueAtOdometer('')
+    setInsuranceClaimNo(''); setInsuranceClaimAmt('')
+    setCertificateNumber(''); setCertificateValidUntil('')
+    setIsEscalated(false)
     setSelectedTaskIds(new Set()); setTaskDrafts({}); setCustomTasks([])
     setShowCustom(false); setCustomTaskName('')
     onClose()
@@ -335,17 +358,29 @@ function CreateServiceDialog({
   function handleSubmit() {
     const tasks = buildTasks()
     if (tasks.length === 0) { toast.error('Add at least one task'); return }
+    if (payerType === 'INSURANCE' && !insuranceClaimNo.trim()) {
+      toast.error('Insurance claim number is required'); return
+    }
+    if (triggeredBy === 'COMPLIANCE' && !certificateNumber.trim()) {
+      toast.error('Certificate number is required for compliance service'); return
+    }
     const payload = {
       vehicleId,
-      triggeredBy: breakdownId ? 'BREAKDOWN' : 'SCHEDULED',
+      triggeredBy,
       breakdownId: breakdownId ?? null,
       serviceType,
-      vendorName: serviceType === 'INTERNAL' ? 'Self' : vendorName,
+      payerType,
+      vendorName: serviceType === 'INTERNAL' ? (vendorName || 'Self') : vendorName,
       location: location || null,
       serviceDate: serviceDate || null,
       odometer: odometer ? Number(odometer) : null,
       dueAtOdometer: dueAtOdometer ? Number(dueAtOdometer) : null,
       notes: notes || null,
+      insuranceClaimNo: payerType === 'INSURANCE' ? insuranceClaimNo || null : null,
+      insuranceClaimAmt: payerType === 'INSURANCE' && insuranceClaimAmt ? Number(insuranceClaimAmt) : null,
+      certificateNumber: triggeredBy === 'COMPLIANCE' ? certificateNumber || null : null,
+      certificateValidUntil: triggeredBy === 'COMPLIANCE' ? certificateValidUntil || null : null,
+      isEscalated,
       tasks: tasks.map(t => ({
         taskTypeId: t.taskTypeId ?? null,
         customName: t.customName ?? null,
@@ -368,33 +403,129 @@ function CreateServiceDialog({
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
-          {/* Service Type */}
+
+          {/* Triggered By */}
+          {!breakdownId && (
+            <div className="space-y-1.5">
+              <Label>Reason / Trigger <span className="text-red-500">*</span></Label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { v: 'SCHEDULED',  label: '📅 Scheduled' },
+                  { v: 'BREAKDOWN',  label: '⚡ Breakdown' },
+                  { v: 'ACCIDENT',   label: '💥 Accident' },
+                  { v: 'COMPLIANCE', label: '📋 Compliance' },
+                  { v: 'WARRANTY',   label: '🔒 Warranty' },
+                ] as const).map(({ v, label }) => (
+                  <button key={v} type="button"
+                    onClick={() => {
+                      setTriggeredBy(v)
+                      // Auto-suggest service type + payer
+                      if (v === 'WARRANTY')   { setServiceType('OEM_CENTER');  setPayerType('WARRANTY_OEM') }
+                      if (v === 'COMPLIANCE') { setServiceType('THIRD_PARTY'); setPayerType('OWN_EXPENSE') }
+                      if (v === 'ACCIDENT')   { setServiceType('THIRD_PARTY'); setPayerType('OWN_EXPENSE') }
+                      if (v === 'SCHEDULED')  { setServiceType('INTERNAL');    setPayerType('OWN_EXPENSE') }
+                      if (v === 'BREAKDOWN')  { setServiceType('INTERNAL');    setPayerType('OWN_EXPENSE') }
+                    }}
+                    className={cn('py-2 rounded-lg border-2 text-xs font-medium transition-colors',
+                      triggeredBy === v ? 'border-feros-navy bg-feros-navy/5 text-feros-navy' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    )}
+                  >{label}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Service Location Type */}
           <div className="space-y-1.5">
-            <Label>Service Type</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['INTERNAL', 'EXTERNAL'] as const).map(t => (
-                <button key={t} type="button"
-                  onClick={() => setServiceType(t)}
-                  className={cn('py-2 rounded-lg border-2 text-sm font-medium transition-colors',
-                    serviceType === t ? 'border-feros-navy bg-feros-navy/5 text-feros-navy' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+            <Label>Service Location <span className="text-red-500">*</span></Label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { v: 'INTERNAL',   label: '🏭 Internal' },
+                { v: 'THIRD_PARTY', label: '🔧 3rd Party' },
+                { v: 'OEM_CENTER', label: '🏢 OEM Center' },
+              ] as const).map(({ v, label }) => (
+                <button key={v} type="button"
+                  onClick={() => setServiceType(v)}
+                  className={cn('py-2 rounded-lg border-2 text-xs font-medium transition-colors',
+                    serviceType === v ? 'border-feros-navy bg-feros-navy/5 text-feros-navy' : 'border-gray-200 text-gray-500 hover:border-gray-300'
                   )}
-                >
-                  {t === 'INTERNAL' ? '🏭 Internal (Self)' : '🔧 External'}
-                </button>
+                >{label}</button>
               ))}
             </div>
           </div>
 
-          {/* Vendor & Location */}
-          {serviceType === 'EXTERNAL' && (
+          {/* Payer Type */}
+          <div className="space-y-1.5">
+            <Label>Who Pays? <span className="text-red-500">*</span></Label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { v: 'OWN_EXPENSE',  label: '💰 Own Expense' },
+                { v: 'WARRANTY_OEM', label: '🔒 OEM Warranty' },
+                { v: 'WARRANTY_ANC', label: '🔐 ANC Warranty' },
+                { v: 'INSURANCE',    label: '🏦 Insurance' },
+                { v: 'AMC',          label: '📄 AMC' },
+              ] as const).map(({ v, label }) => (
+                <button key={v} type="button"
+                  onClick={() => setPayerType(v)}
+                  className={cn('py-2 rounded-lg border-2 text-xs font-medium transition-colors',
+                    payerType === v ? 'border-feros-navy bg-feros-navy/5 text-feros-navy' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                  )}
+                >{label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Vendor Name — shown for non-internal */}
+          {serviceType !== 'INTERNAL' && (
             <div className="space-y-1.5">
-              <Label>Garage / Vendor Name</Label>
-              <Input placeholder="e.g. Raju Tyre Works" value={vendorName} onChange={e => setVendorName(e.target.value)} />
+              <Label>{serviceType === 'OEM_CENTER' ? 'OEM Service Center Name' : 'Vendor / Workshop Name'}</Label>
+              <Input
+                placeholder={serviceType === 'OEM_CENTER' ? 'e.g. TATA Motors Service, Vizag' : 'e.g. Raju Tyre Works'}
+                value={vendorName} onChange={e => setVendorName(e.target.value)}
+              />
             </div>
           )}
+
+          {/* Insurance fields */}
+          {payerType === 'INSURANCE' && (
+            <div className="grid grid-cols-2 gap-3 bg-blue-50 rounded-lg p-3">
+              <div className="space-y-1.5">
+                <Label>Claim Number <span className="text-red-500">*</span></Label>
+                <Input placeholder="e.g. CLM/2026/001234" value={insuranceClaimNo} onChange={e => setInsuranceClaimNo(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Claim Amount (₹)</Label>
+                <Input type="number" placeholder="0" value={insuranceClaimAmt} onChange={e => setInsuranceClaimAmt(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* Compliance fields */}
+          {triggeredBy === 'COMPLIANCE' && (
+            <div className="grid grid-cols-2 gap-3 bg-purple-50 rounded-lg p-3">
+              <div className="space-y-1.5">
+                <Label>Certificate Number <span className="text-red-500">*</span></Label>
+                <Input placeholder="e.g. FC/AP/2026/00123" value={certificateNumber} onChange={e => setCertificateNumber(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Valid Until</Label>
+                <Input type="date" value={certificateValidUntil} onChange={e => setCertificateValidUntil(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* Escalation flag — for breakdown → 3rd party */}
+          {serviceType === 'THIRD_PARTY' && triggeredBy === 'BREAKDOWN' && (
+            <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" checked={isEscalated} onChange={e => setIsEscalated(e.target.checked)}
+                className="w-4 h-4 accent-feros-navy" />
+              Internal mechanic could not fix — escalated to 3rd party
+            </label>
+          )}
+
           <div className="space-y-1.5">
             <Label>Location <span className="text-gray-400 font-normal">(optional)</span></Label>
-            <Input placeholder="e.g. Pune highway, Depot yard" value={location} onChange={e => setLocation(e.target.value)} />
+            <Input placeholder="e.g. Vizag highway, Depot yard" value={location} onChange={e => setLocation(e.target.value)} />
           </div>
 
           {/* Date & Odometer */}
@@ -410,9 +541,9 @@ function CreateServiceDialog({
           </div>
 
           {/* Due At Odometer (for scheduled services) */}
-          {!breakdownId && (
+          {!breakdownId && triggeredBy === 'SCHEDULED' && (
             <div className="space-y-1.5">
-              <Label>Due At Odometer <span className="text-gray-400 font-normal">(km — for scheduled services)</span></Label>
+              <Label>Due At Odometer <span className="text-gray-400 font-normal">(km)</span></Label>
               <Input type="number" placeholder="45000" value={dueAtOdometer} onChange={e => setDueAtOdometer(e.target.value)} />
             </div>
           )}
@@ -426,67 +557,94 @@ function CreateServiceDialog({
           {/* Tasks */}
           <div className="space-y-2">
             <Label>Tasks <span className="text-red-500">*</span></Label>
-            <div className="border rounded-lg divide-y divide-gray-100">
-              {taskTypes.map(t => {
-                const checked = selectedTaskIds.has(t.id)
-                const draft = taskDrafts[t.id]
-                return (
-                  <div key={t.id} className="px-3 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <input type="checkbox" id={`task-${t.id}`} checked={checked}
-                        onChange={() => toggleTask(t.id)}
-                        className="w-4 h-4 accent-feros-navy cursor-pointer" />
-                      <label htmlFor={`task-${t.id}`} className="text-sm text-gray-700 flex-1 cursor-pointer">{t.name}</label>
-                    </div>
-                    {checked && (
-                      <div className="mt-2 ml-6 space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
-                            <Input type="number" placeholder="0" className="h-8 text-sm"
-                              value={draft?.cost ?? ''}
-                              onChange={e => updateDraft(t.id, { cost: e.target.value ? Number(e.target.value) : undefined })} />
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-400 mb-1">Recurring?</p>
-                            <button type="button"
-                              onClick={() => updateDraft(t.id, { isRecurring: !draft?.isRecurring })}
-                              className={cn('h-8 w-full rounded-md border text-xs font-medium transition-colors',
-                                draft?.isRecurring ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500'
-                              )}>
-                              {draft?.isRecurring ? '🔄 Yes' : 'One-time'}
-                            </button>
-                          </div>
-                        </div>
-                        {draft?.isRecurring && (
-                          <div>
-                            <p className="text-xs text-gray-400 mb-1">Every (km)</p>
-                            <Input type="number" placeholder="10000" className="h-8 text-sm"
-                              value={draft?.frequencyKm ?? ''}
-                              onChange={e => updateDraft(t.id, { frequencyKm: e.target.value ? Number(e.target.value) : undefined })} />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
 
-              {/* Other / custom tasks */}
-              {customTasks.map((ct, i) => (
-                <div key={`custom-${i}`} className="px-3 py-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <Check size={14} className="text-feros-navy ml-0.5" />
-                    <span className="text-sm text-gray-700 flex-1">{ct.customName}</span>
-                    <button type="button" onClick={() => removeCustomTask(i)} className="text-gray-300 hover:text-red-500">
-                      <X size={13} />
-                    </button>
-                  </div>
-                  <div className="mt-2 ml-6 space-y-2">
+            {/* Dropdown + custom button */}
+            <div className="flex gap-2">
+              <select
+                value=""
+                onChange={e => { if (e.target.value) toggleTask(Number(e.target.value)) }}
+                className="flex-1 h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-feros-navy/20 focus:border-feros-navy"
+              >
+                <option value="">+ Select a task…</option>
+                {taskTypes.filter(t => !selectedTaskIds.has(t.id)).map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              <Button type="button" variant="outline" size="sm" className="h-9 text-xs px-3 shrink-0"
+                onClick={() => setShowCustom(v => !v)}>
+                <Plus size={13} className="mr-1" /> Custom
+              </Button>
+            </div>
+
+            {/* Custom task input */}
+            {showCustom && (
+              <div className="flex gap-2">
+                <Input placeholder="Custom task name…" className="h-8 text-sm flex-1"
+                  value={customTaskName} onChange={e => setCustomTaskName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomTask())} />
+                <Button type="button" size="sm" onClick={addCustomTask} className="h-8 bg-feros-navy text-white shrink-0">Add</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => { setShowCustom(false); setCustomTaskName('') }} className="h-8 shrink-0">✕</Button>
+              </div>
+            )}
+
+            {/* Selected task chips */}
+            {(selectedTaskIds.size > 0 || customTasks.length > 0) && (
+              <div className="space-y-2 pt-1">
+                {Array.from(selectedTaskIds).map(id => {
+                  const t = taskTypes.find(x => x.id === id)
+                  const draft = taskDrafts[id]
+                  return (
+                    <div key={id} className="rounded-lg border border-feros-navy/20 bg-feros-navy/3 px-3 py-2.5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-feros-navy">{t?.name}</span>
+                        <button type="button" onClick={() => toggleTask(id)}
+                          className="text-gray-300 hover:text-red-500 transition-colors ml-2">
+                          <X size={13} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
+                          <Input type="number" placeholder="0" className="h-7 text-xs"
+                            value={draft?.cost ?? ''}
+                            onChange={e => updateDraft(id, { cost: e.target.value ? Number(e.target.value) : undefined })} />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Recurring?</p>
+                          <button type="button"
+                            onClick={() => updateDraft(id, { isRecurring: !draft?.isRecurring })}
+                            className={cn('h-7 w-full rounded-md border text-xs font-medium transition-colors',
+                              draft?.isRecurring ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500'
+                            )}>
+                            {draft?.isRecurring ? '🔄 Recurring' : 'One-time'}
+                          </button>
+                        </div>
+                      </div>
+                      {draft?.isRecurring && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Every (km)</p>
+                          <Input type="number" placeholder="10000" className="h-7 text-xs"
+                            value={draft?.frequencyKm ?? ''}
+                            onChange={e => updateDraft(id, { frequencyKm: e.target.value ? Number(e.target.value) : undefined })} />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {customTasks.map((ct, i) => (
+                  <div key={`custom-${i}`} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">{ct.customName}</span>
+                      <button type="button" onClick={() => removeCustomTask(i)}
+                        className="text-gray-300 hover:text-red-500 transition-colors ml-2">
+                        <X size={13} />
+                      </button>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
-                        <Input type="number" placeholder="0" className="h-8 text-sm"
+                        <Input type="number" placeholder="0" className="h-7 text-xs"
                           value={ct.cost ?? ''}
                           onChange={e => setCustomTasks(c => c.map((x, j) => j === i ? { ...x, cost: e.target.value ? Number(e.target.value) : undefined } : x))} />
                       </div>
@@ -494,43 +652,25 @@ function CreateServiceDialog({
                         <p className="text-xs text-gray-400 mb-1">Recurring?</p>
                         <button type="button"
                           onClick={() => setCustomTasks(c => c.map((x, j) => j === i ? { ...x, isRecurring: !x.isRecurring } : x))}
-                          className={cn('h-8 w-full rounded-md border text-xs font-medium transition-colors',
+                          className={cn('h-7 w-full rounded-md border text-xs font-medium transition-colors',
                             ct.isRecurring ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500'
                           )}>
-                          {ct.isRecurring ? '🔄 Yes' : 'One-time'}
+                          {ct.isRecurring ? '🔄 Recurring' : 'One-time'}
                         </button>
                       </div>
                     </div>
                     {ct.isRecurring && (
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Every (km)</p>
-                        <Input type="number" placeholder="10000" className="h-8 text-sm"
+                        <Input type="number" placeholder="10000" className="h-7 text-xs"
                           value={ct.frequencyKm ?? ''}
                           onChange={e => setCustomTasks(c => c.map((x, j) => j === i ? { ...x, frequencyKm: e.target.value ? Number(e.target.value) : undefined } : x))} />
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
-
-              {/* Add custom task row */}
-              <div className="px-3 py-2.5">
-                {!showCustom ? (
-                  <button type="button" onClick={() => setShowCustom(true)}
-                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-feros-navy transition-colors">
-                    <Plus size={13} /> Add custom task
-                  </button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input placeholder="Task name…" className="h-8 text-sm flex-1"
-                      value={customTaskName} onChange={e => setCustomTaskName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomTask())} />
-                    <Button type="button" size="sm" onClick={addCustomTask} className="h-8 bg-feros-navy text-white">Add</Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={() => { setShowCustom(false); setCustomTaskName('') }} className="h-8">✕</Button>
-                  </div>
-                )}
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -546,10 +686,10 @@ function CreateServiceDialog({
 }
 
 // ── complete service dialog ────────────────────────────────────────────────────
-function CompleteServiceDialog({ service, open, onClose }: { service: VehicleServiceRecord | null; open: boolean; onClose: () => void }) {
+function CompleteServiceDialog({ service, currentOdometer, open, onClose }: { service: VehicleServiceRecord | null; currentOdometer?: number; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const [completedDate, setCompletedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [odometer, setOdometer]           = useState(service?.odometer?.toString() ?? '')
+  const [odometer, setOdometer]           = useState(currentOdometer ? String(currentOdometer) : (service?.odometer?.toString() ?? ''))
 
   const mutation = useMutation({
     mutationFn: () => vehicleServicesApi.complete(service!.id, {
@@ -569,7 +709,7 @@ function CompleteServiceDialog({ service, open, onClose }: { service: VehicleSer
     ),
   })
 
-  function handleClose() { setCompletedDate(format(new Date(), 'yyyy-MM-dd')); setOdometer(service?.odometer?.toString() ?? ''); onClose() }
+  function handleClose() { setCompletedDate(format(new Date(), 'yyyy-MM-dd')); setOdometer(currentOdometer ? String(currentOdometer) : (service?.odometer?.toString() ?? '')); onClose() }
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
@@ -897,8 +1037,17 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
                           <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', statusChip[s.displayStatus])}>
                             {statusLabel[s.displayStatus]}
                           </span>
-                          <span className="text-xs text-gray-400 capitalize">{s.triggeredBy === 'BREAKDOWN' ? '⚡ Breakdown' : '📅 Scheduled'}</span>
-                          <span className="text-xs text-gray-400">{s.serviceType === 'INTERNAL' ? '🏭 Internal' : `🔧 ${s.vendorName}`}</span>
+                          <span className="text-xs text-gray-400">
+                            {s.triggeredBy === 'BREAKDOWN' ? '⚡ Breakdown' :
+                             s.triggeredBy === 'ACCIDENT'  ? '💥 Accident' :
+                             s.triggeredBy === 'COMPLIANCE'? '📋 Compliance' :
+                             s.triggeredBy === 'WARRANTY'  ? '🔒 Warranty' : '📅 Scheduled'}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {s.serviceType === 'INTERNAL'    ? '🏭 Internal' :
+                             s.serviceType === 'OEM_CENTER'   ? `🏢 ${s.vendorName ?? 'OEM Center'}` :
+                             `🔧 ${s.vendorName ?? '3rd Party'}`}
+                          </span>
                         </div>
 
                         {/* Tasks */}
@@ -1029,11 +1178,13 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
         vehicleId={vehicleId}
         vehicleReg={vehicleReg}
         breakdownId={createBreakdownId}
+        currentOdometer={v.currentOdometerReading ? Number(v.currentOdometerReading) : undefined}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
       />
       <CompleteServiceDialog
         service={completeService}
+        currentOdometer={v.currentOdometerReading ? Number(v.currentOdometerReading) : undefined}
         open={!!completeService}
         onClose={() => setCompleteService(null)}
       />
@@ -1050,6 +1201,358 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+// ── fuel tab ─────────────────────────────────────────────────────────────────
+const fuelLogSchema = z.object({
+  fillDate:         z.string().min(1, 'Required'),
+  litresFilled:     z.coerce.number().positive('Required'),
+  odometerReading:  z.coerce.number().positive('Required'),
+  costPerLitre:     z.coerce.number().positive('Required'),
+  totalCost:        z.coerce.number().optional(),
+  isFullTank:       z.boolean().default(false),
+  paymentMode:      z.enum(['CASH', 'COMPANY_ACCOUNT', 'REIMBURSEMENT']),
+  fuelStationName:  z.string().optional(),
+  fuelStationCity:  z.string().optional(),
+  receiptUrl:       z.string().optional(),
+  notes:            z.string().optional(),
+})
+type FuelLogForm = z.infer<typeof fuelLogSchema>
+
+const PAYMENT_MODE_LABELS: Record<FuelPaymentMode, string> = {
+  CASH:            'Cash',
+  COMPANY_ACCOUNT: 'Company Account',
+  REIMBURSEMENT:   'Reimbursement',
+}
+
+function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber: string; fuelTankCapacity?: number; currentFuelLevel?: number; currentOdometerReading?: number } }) {
+  const qc = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editLog, setEditLog]       = useState<FuelLog | null>(null)
+  const [uploading, setUploading]   = useState(false)
+
+  const { data: logs = [], isLoading } = useQuery({
+    queryKey: ['fuel-logs', vehicle.id],
+    queryFn:  () => fuelLogsApi.getAll(vehicle.id).then(r => r.data),
+  })
+
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FuelLogForm>({
+    resolver: zodResolver(fuelLogSchema) as Resolver<FuelLogForm>,
+    defaultValues: { isFullTank: false, paymentMode: 'CASH' },
+  })
+
+  const litres      = watch('litresFilled')
+  const costPerL    = watch('costPerLitre')
+  const isFullTank  = watch('isFullTank')
+
+  // Auto-calculate total cost
+  const autoTotal = litres && costPerL ? (Number(litres) * Number(costPerL)).toFixed(2) : ''
+
+  function openAdd() {
+    reset({
+      isFullTank: false,
+      paymentMode: 'CASH',
+      fillDate: new Date().toISOString().split('T')[0],
+      odometerReading: vehicle.currentOdometerReading ?? undefined,
+    })
+    setEditLog(null)
+    setDialogOpen(true)
+  }
+
+  function openEdit(log: FuelLog) {
+    reset({
+      fillDate:        log.fillDate,
+      litresFilled:    log.litresFilled,
+      odometerReading: log.odometerReading,
+      costPerLitre:    log.costPerLitre,
+      totalCost:       log.totalCost,
+      isFullTank:      log.isFullTank,
+      paymentMode:     log.paymentMode,
+      fuelStationName: log.fuelStationName ?? '',
+      fuelStationCity: log.fuelStationCity ?? '',
+      receiptUrl:      log.receiptUrl ?? '',
+      notes:           log.notes ?? '',
+    })
+    setEditLog(log)
+    setDialogOpen(true)
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: (data: FuelLogForm) => {
+      const payload = { ...data, vehicleId: vehicle.id, totalCost: (data.totalCost ?? Number(autoTotal)) || undefined }
+      return editLog
+        ? fuelLogsApi.update(editLog.id, payload)
+        : fuelLogsApi.create(payload)
+    },
+    onSuccess: () => {
+      toast.success(editLog ? 'Fuel log updated' : 'Fuel log added')
+      qc.invalidateQueries({ queryKey: ['fuel-logs', vehicle.id] })
+      setDialogOpen(false)
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => fuelLogsApi.delete(id),
+    onSuccess: () => {
+      toast.success('Fuel log deleted')
+      qc.invalidateQueries({ queryKey: ['fuel-logs', vehicle.id] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+  })
+
+  async function handleReceiptUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const compressed = await compressIfNeeded(file)
+      const res = await fuelLogsApi.uploadReceipt(vehicle.id, compressed)
+      setValue('receiptUrl', res.data.publicUrl)
+      toast.success('Receipt uploaded')
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // Summary calculations
+  const fuelPct = vehicle.fuelTankCapacity && vehicle.currentFuelLevel
+    ? Math.round((vehicle.currentFuelLevel / vehicle.fuelTankCapacity) * 100)
+    : null
+
+  const avgMileage = logs.filter(l => l.mileageKmPerLitre).length > 0
+    ? (logs.filter(l => l.mileageKmPerLitre).reduce((s, l) => s + (l.mileageKmPerLitre ?? 0), 0) /
+       logs.filter(l => l.mileageKmPerLitre).length).toFixed(2)
+    : null
+
+  const totalSpend = logs.reduce((s, l) => s + l.totalCost, 0)
+
+  const receiptUrl = watch('receiptUrl')
+
+  return (
+    <div className="space-y-5">
+
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+          <p className="text-xs text-blue-500 font-semibold uppercase tracking-wide mb-1">Tank Capacity</p>
+          <p className="text-lg font-bold text-blue-700">
+            {vehicle.fuelTankCapacity ? `${vehicle.fuelTankCapacity} L` : '—'}
+          </p>
+        </div>
+        <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+          <p className="text-xs text-orange-500 font-semibold uppercase tracking-wide mb-1">Current Fuel</p>
+          <p className="text-lg font-bold text-orange-700">
+            {vehicle.currentFuelLevel ? `${vehicle.currentFuelLevel} L` : '—'}
+          </p>
+          {fuelPct !== null && (
+            <div className="mt-1.5">
+              <div className="h-1.5 bg-orange-100 rounded-full overflow-hidden">
+                <div className="h-full bg-orange-400 rounded-full" style={{ width: `${fuelPct}%` }} />
+              </div>
+              <p className="text-xs text-orange-400 mt-0.5">{fuelPct}% full</p>
+            </div>
+          )}
+        </div>
+        <div className="bg-green-50 rounded-lg p-3 border border-green-100">
+          <p className="text-xs text-green-500 font-semibold uppercase tracking-wide mb-1">Avg Mileage</p>
+          <p className="text-lg font-bold text-green-700">
+            {avgMileage ? `${avgMileage} km/L` : '—'}
+          </p>
+          <p className="text-xs text-green-400">from full tank fills</p>
+        </div>
+        <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+          <p className="text-xs text-purple-500 font-semibold uppercase tracking-wide mb-1">Total Fuel Spend</p>
+          <p className="text-lg font-bold text-purple-700">
+            {totalSpend > 0 ? `₹${totalSpend.toLocaleString('en-IN')}` : '—'}
+          </p>
+          <p className="text-xs text-purple-400">{logs.length} fill-up{logs.length !== 1 ? 's' : ''}</p>
+        </div>
+      </div>
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Fill-up History</p>
+        <Button size="sm" onClick={openAdd} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+          <Plus size={13} /> Add Fill-up
+        </Button>
+      </div>
+
+      {/* ── Table ── */}
+      {isLoading ? (
+        <div className="py-8 text-center text-gray-400 text-sm animate-pulse">Loading…</div>
+      ) : logs.length === 0 ? (
+        <div className="py-10 text-center text-gray-400">
+          <Droplets size={32} className="mx-auto mb-3 text-gray-200" />
+          <p className="text-sm font-medium text-gray-500">No fuel logs yet</p>
+          <p className="text-xs mt-1">Add the first fill-up to start tracking mileage and costs.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-gray-100">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-left">
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Litres</th>
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Odometer</th>
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cost/L</th>
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Mileage</th>
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Payment</th>
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Station</th>
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {logs.map(log => (
+                <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-3 py-2.5">
+                    <div className="font-medium text-gray-800">{fmtDate(log.fillDate)}</div>
+                    {log.isFullTank && (
+                      <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">Full</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 font-semibold text-blue-700">{log.litresFilled} L</td>
+                  <td className="px-3 py-2.5 text-gray-600">{log.odometerReading?.toLocaleString('en-IN')} km</td>
+                  <td className="px-3 py-2.5 text-gray-600">₹{log.costPerLitre}</td>
+                  <td className="px-3 py-2.5 font-semibold text-gray-800">₹{log.totalCost?.toLocaleString('en-IN')}</td>
+                  <td className="px-3 py-2.5">
+                    {log.mileageKmPerLitre ? (
+                      <span className="text-green-700 font-semibold">{log.mileageKmPerLitre} km/L</span>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-gray-500 text-xs">{PAYMENT_MODE_LABELS[log.paymentMode]}</td>
+                  <td className="px-3 py-2.5 text-gray-500 text-xs">
+                    {[log.fuelStationName, log.fuelStationCity].filter(Boolean).join(', ') || '—'}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-1">
+                      {log.receiptUrl && (
+                        <a href={log.receiptUrl} target="_blank" rel="noreferrer"
+                          className="text-blue-500 hover:text-blue-700 p-1 rounded" title="View receipt">
+                          <ExternalLink size={13} />
+                        </a>
+                      )}
+                      <button onClick={() => openEdit(log)}
+                        className="text-gray-400 hover:text-feros-navy p-1 rounded">
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => { if (confirm('Delete this fuel log?')) deleteMutation.mutate(log.id) }}
+                        className="text-gray-400 hover:text-red-500 p-1 rounded">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Add / Edit Dialog ── */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editLog ? 'Edit Fuel Log' : 'Add Fuel Fill-up'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(d => saveMutation.mutate(d))} className="space-y-4 pt-1">
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Date *</Label>
+                <Input type="date" {...register('fillDate')} />
+                {errors.fillDate && <p className="text-xs text-red-500">{errors.fillDate.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Odometer (km) *</Label>
+                <Input type="number" placeholder="48200" {...register('odometerReading')} />
+                {errors.odometerReading && <p className="text-xs text-red-500">{errors.odometerReading.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Litres Filled *</Label>
+                <Input type="number" step="0.01" placeholder="150" {...register('litresFilled')} />
+                {errors.litresFilled && <p className="text-xs text-red-500">{errors.litresFilled.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cost per Litre (₹) *</Label>
+                <Input type="number" step="0.01" placeholder="105.50" {...register('costPerLitre')} />
+                {errors.costPerLitre && <p className="text-xs text-red-500">{errors.costPerLitre.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Total Cost (₹)</Label>
+                <Input type="number" step="0.01" placeholder={autoTotal || 'Auto calculated'} {...register('totalCost')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Payment Mode *</Label>
+                <select {...register('paymentMode')}
+                  className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-feros-navy/20">
+                  <option value="CASH">Cash</option>
+                  <option value="COMPANY_ACCOUNT">Company Account</option>
+                  <option value="REIMBURSEMENT">Reimbursement</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fuel Station Name</Label>
+                <Input placeholder="Indian Oil, HP Petrol..." {...register('fuelStationName')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fuel Station City</Label>
+                <Input placeholder="Vizianagaram" {...register('fuelStationCity')} />
+              </div>
+            </div>
+
+            {/* Full Tank toggle */}
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" {...register('isFullTank')}
+                className="w-4 h-4 rounded accent-feros-navy" />
+              <span className="text-sm font-medium text-gray-700">Full tank fill-up</span>
+              <span className="text-xs text-gray-400">(enables accurate mileage calculation)</span>
+            </label>
+
+            {/* Receipt upload */}
+            <div className="space-y-1.5">
+              <Label>Receipt Photo</Label>
+              <div className="flex items-center gap-2">
+                <label className={cn(
+                  'flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-gray-300 cursor-pointer text-sm text-gray-500 hover:border-feros-navy hover:text-feros-navy transition-colors',
+                  uploading && 'opacity-50 pointer-events-none'
+                )}>
+                  <Paperclip size={14} />
+                  {uploading ? 'Uploading…' : 'Upload Receipt'}
+                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleReceiptUpload} />
+                </label>
+                {receiptUrl && (
+                  <a href={receiptUrl} target="_blank" rel="noreferrer"
+                    className="text-xs text-blue-500 underline flex items-center gap-1">
+                    <ExternalLink size={12} /> View
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Input placeholder="Any notes about this fill-up" {...register('notes')} />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1 border-t">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saveMutation.isPending || uploading}
+                className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+                {saveMutation.isPending ? 'Saving…' : editLog ? 'Update' : 'Add Fill-up'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }
@@ -1162,7 +1665,7 @@ export function VehicleDetailPage() {
               <ArrowLeft size={15} /> Fleet
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               {/* Status select */}
               <div className="flex flex-col items-end gap-1">
                 {v.isAssigned && (
@@ -1182,10 +1685,11 @@ export function VehicleDetailPage() {
                         setConfirmStatusName(selected?.name ?? '')
                       }
                     }}
-                    disabled={updateStatusMutation.isPending || !!v.isAssigned}
+                    disabled={updateStatusMutation.isPending || !!v.isAssigned || !v.isActive}
+                    showSearch={false}
                     options={
                       v.isAssigned
-                        ? [{ value: 'assigned', label: 'Assigned to Order' }]
+                        ? [{ value: 'assigned', label: 'Assigned to Order', color: 'text-blue-400 font-medium' }]
                         : [
                             ...(!v.currentStatusId ? [{ value: '', label: '— Set Status —' }] : []),
                             ...(statusRes?.data ?? [])
@@ -1195,16 +1699,23 @@ export function VehicleDetailPage() {
                                 if (cur === 'IN_REPAIR')  return s.statusType === 'IN_REPAIR'  || s.statusType === 'AVAILABLE'
                                 return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
                               })
-                              .map(s => ({ value: String(s.id), label: s.name })),
+                              .map(s => ({
+                                value: String(s.id),
+                                label: s.name,
+                                color: vehicleStatusOptionColor[s.statusType as VehicleStatusType],
+                              })),
                           ]
                     }
                     className="h-8 w-44"
                     triggerClassName="h-8 text-xs"
                   />
                 </div>
-                {v.isAssigned && (
-                  <span className="text-xs text-blue-300/70">Unassign from order to change</span>
-                )}
+                <span className={cn(
+                  'text-xs',
+                  v.isAssigned ? 'text-blue-300/70 visible' : !v.isActive ? 'text-gray-400/70 visible' : 'invisible'
+                )}>
+                  {v.isAssigned ? 'Unassign from order to change' : 'Activate vehicle to change status'}
+                </span>
               </div>
 
               {/* Active toggle */}
@@ -1313,13 +1824,18 @@ export function VehicleDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Vehicle Details</p>
-                <InfoRow label="Brand"         value={v.brandName} />
-                <InfoRow label="Vehicle Type"  value={v.vehicleTypeName} />
-                <InfoRow label="Fuel Type"     value={v.fuelTypeName} />
-                <InfoRow label="Ownership"     value={v.ownershipTypeName} />
-                <InfoRow label="Capacity"      value={v.capacityInTons ? `${v.capacityInTons} tons` : null} />
-                <InfoRow label="Mfg. Year"     value={v.manufactureYear} />
-                <InfoRow label="Color"         value={v.color} />
+                <InfoRow label="Brand"           value={v.brandName} />
+                <InfoRow label="Vehicle Type"    value={v.vehicleTypeName} />
+                <InfoRow label="Fuel Type"       value={v.fuelTypeName} />
+                <InfoRow label="Ownership"       value={v.ownershipTypeName} />
+                <InfoRow label="Capacity"        value={v.capacityInTons ? `${v.capacityInTons} tons` : null} />
+                <InfoRow label="Mfg. Year"       value={v.manufactureYear} />
+                <InfoRow label="Color"           value={v.color} />
+                <InfoRow label="Odometer"        value={v.currentOdometerReading ? `${Number(v.currentOdometerReading).toLocaleString('en-IN')} km` : null} />
+                <InfoRow label="Tank Capacity"   value={v.fuelTankCapacity ? `${v.fuelTankCapacity} L` : null} />
+                <InfoRow label="Current Fuel"    value={v.currentFuelLevel != null && v.fuelTankCapacity
+                  ? `${v.currentFuelLevel} L (${Math.round((Number(v.currentFuelLevel) / Number(v.fuelTankCapacity)) * 100)}%)`
+                  : v.currentFuelLevel ? `${v.currentFuelLevel} L` : null} />
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Identification</p>
@@ -1397,12 +1913,8 @@ export function VehicleDetailPage() {
           )}
 
           {/* ── Fuel ── */}
-          {tab === 'Fuel' && (
-            <div className="py-10 text-center text-gray-400">
-              <Droplets size={32} className="mx-auto mb-3 text-gray-200" />
-              <p className="text-sm font-medium text-gray-500">Fuel Log</p>
-              <p className="text-xs mt-1">Fuel fill-ups, quantity, cost, and mileage tracking will appear here.</p>
-            </div>
+          {tab === 'Fuel' && v && (
+            <FuelTabContent vehicle={v} />
           )}
 
           {/* ── GPS & Notes ── */}

@@ -13,6 +13,8 @@ import ClientAdvancesPage from '@/pages/clients/ClientAdvancesPage'
 import { VehiclesPage }        from '@/pages/vehicles/VehiclesPage'
 import { VehicleDetailPage }   from '@/pages/vehicles/VehicleDetailPage'
 import VehicleServicesPage     from '@/pages/vehicles/VehicleServicesPage'
+import FuelLogsPage            from '@/pages/vehicles/FuelLogsPage'
+import MeterReadingsPage       from '@/pages/vehicles/MeterReadingsPage'
 import { OrdersPage }       from '@/pages/orders/OrdersPage'
 import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
 import AssignmentsPage      from '@/pages/orders/AssignmentsPage'
@@ -70,6 +72,8 @@ export default function App() {
           <Route path="vehicles"            element={<VehiclesPage />} />
           <Route path="vehicles/:vehicleId" element={<VehicleDetailPage />} />
           <Route path="vehicle-services"    element={<VehicleServicesPage />} />
+          <Route path="fuel-logs"           element={<FuelLogsPage />} />
+          <Route path="meter-readings"      element={<MeterReadingsPage />} />
           <Route path="orders"          element={<OrdersPage />} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="assignments"     element={<AssignmentsPage />} />

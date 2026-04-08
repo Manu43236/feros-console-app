@@ -26,9 +26,21 @@ function statusChip(s: ServiceDisplayStatus) {
 }
 
 function triggeredByChip(t: string) {
-  return t === 'BREAKDOWN'
-    ? <span className="px-2 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-700">Breakdown</span>
-    : <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700">Scheduled</span>
+  const map: Record<string, { label: string; cls: string }> = {
+    SCHEDULED:  { label: 'Scheduled',  cls: 'bg-purple-50 text-purple-700' },
+    BREAKDOWN:  { label: 'Breakdown',  cls: 'bg-orange-50 text-orange-700' },
+    ACCIDENT:   { label: 'Accident',   cls: 'bg-red-50 text-red-700' },
+    COMPLIANCE: { label: 'Compliance', cls: 'bg-blue-50 text-blue-700' },
+    WARRANTY:   { label: 'Warranty',   cls: 'bg-green-50 text-green-700' },
+  }
+  const { label, cls } = map[t] ?? map.SCHEDULED
+  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${cls}`}>{label}</span>
+}
+
+function serviceTypeLabel(s: string, vendorName?: string) {
+  if (s === 'INTERNAL')   return 'Internal (Self)'
+  if (s === 'OEM_CENTER') return `OEM: ${vendorName ?? 'Service Center'}`
+  return vendorName ?? '3rd Party'
 }
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
@@ -227,11 +239,17 @@ function ServiceCard({ record, onDelete }: { record: VehicleServiceRecord; onDel
               {triggeredByChip(record.triggeredBy)}
             </div>
             <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
-              {record.serviceType === 'EXTERNAL' && record.vendorName && (
-                <span>Vendor: <span className="text-gray-700">{record.vendorName}</span></span>
+              <span className="text-gray-700">{serviceTypeLabel(record.serviceType, record.vendorName)}</span>
+              {record.payerType && record.payerType !== 'OWN_EXPENSE' && (
+                <span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
+                  {record.payerType === 'WARRANTY_OEM' ? 'OEM Warranty' :
+                   record.payerType === 'WARRANTY_ANC' ? 'ANC Warranty' :
+                   record.payerType === 'INSURANCE'    ? 'Insurance' :
+                   record.payerType === 'AMC'          ? 'AMC' : ''}
+                </span>
               )}
-              {record.serviceType === 'INTERNAL' && (
-                <span className="text-gray-700">Internal (Self)</span>
+              {record.isEscalated && (
+                <span className="px-1.5 py-0.5 rounded text-xs bg-yellow-50 text-yellow-700">Escalated</span>
               )}
               {record.serviceDate && (
                 <span>Date: <span className="text-gray-700">{record.serviceDate}</span></span>
