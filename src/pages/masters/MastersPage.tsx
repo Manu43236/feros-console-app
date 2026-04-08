@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
 import { sparePartsApi } from '@/api/inventory'
@@ -123,16 +123,13 @@ function VehicleStatusSection({
             </div>
             <div>
               <Label>Status Type *</Label>
-              <Select value={selectedType} onValueChange={v => setValue('statusType', v as VehicleStatusType)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {VEHICLE_STATUS_TYPES.map(t => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={selectedType}
+                onValueChange={v => setValue('statusType', v as VehicleStatusType)}
+                options={VEHICLE_STATUS_TYPES.map(t => ({ value: t.value, label: t.label }))}
+                placeholder="Select type"
+                className="mt-1"
+              />
               {errors.statusType && <p className="text-xs text-red-500 mt-1">Required</p>}
             </div>
             <div className="flex justify-end gap-2 pt-2">
@@ -386,12 +383,13 @@ function DesignationsSection() {
             </div>
             <div>
               <Label>Role Type *</Label>
-              <Select value={roleType} onValueChange={v => { setRoleType(v); setRoleError(false) }}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select role" /></SelectTrigger>
-                <SelectContent>
-                  {ROLE_TYPES.map(r => <SelectItem key={r} value={r}>{r.replace('_', ' ')}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={roleType}
+                onValueChange={v => { setRoleType(v); setRoleError(false) }}
+                options={ROLE_TYPES.map(r => ({ value: r, label: r.replace('_', ' ') }))}
+                placeholder="Select role"
+                className="mt-1"
+              />
               {roleError && <p className="text-xs text-red-500 mt-1">Required</p>}
             </div>
             <div className="flex justify-end gap-2 pt-2">
@@ -514,31 +512,43 @@ function RoutesSection() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Source State</Label>
-                <Select value={String(srcState ?? '')} onValueChange={v => { setSrcState(Number(v)); setSrcCity('') }}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="State" /></SelectTrigger>
-                  <SelectContent>{states.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={String(srcState ?? '')}
+                  onValueChange={v => { setSrcState(Number(v)); setSrcCity('') }}
+                  options={states.map(s => ({ value: String(s.id), label: s.name }))}
+                  placeholder="State"
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Source City *</Label>
-                <Select value={srcCity} onValueChange={v => { setSrcCity(v); setCityError(false) }}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="City" /></SelectTrigger>
-                  <SelectContent>{srcCities.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={srcCity}
+                  onValueChange={v => { setSrcCity(v); setCityError(false) }}
+                  options={srcCities.map(c => ({ value: String(c.id), label: c.name }))}
+                  placeholder="City"
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Destination State</Label>
-                <Select value={String(dstState ?? '')} onValueChange={v => { setDstState(Number(v)); setDstCity('') }}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="State" /></SelectTrigger>
-                  <SelectContent>{states.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={String(dstState ?? '')}
+                  onValueChange={v => { setDstState(Number(v)); setDstCity('') }}
+                  options={states.map(s => ({ value: String(s.id), label: s.name }))}
+                  placeholder="State"
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Destination City *</Label>
-                <Select value={dstCity} onValueChange={v => { setDstCity(v); setCityError(false) }}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="City" /></SelectTrigger>
-                  <SelectContent>{dstCities.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={dstCity}
+                  onValueChange={v => { setDstCity(v); setCityError(false) }}
+                  options={dstCities.map(c => ({ value: String(c.id), label: c.name }))}
+                  placeholder="City"
+                  className="mt-1"
+                />
               </div>
             </div>
             {cityError && <p className="text-xs text-red-500">Source and destination cities are required</p>}
@@ -655,21 +665,24 @@ function PayRatesSection() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <div>
               <Label>Designation *</Label>
-              <Select value={designationId} onValueChange={v => { setDesignationId(v); setDesignationError(false) }}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select designation" /></SelectTrigger>
-                <SelectContent>{designations.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <SearchableSelect
+                value={designationId}
+                onValueChange={v => { setDesignationId(v); setDesignationError(false) }}
+                options={designations.map(d => ({ value: String(d.id), label: d.name }))}
+                placeholder="Select designation"
+                className="mt-1"
+              />
               {designationError && <p className="text-xs text-red-500 mt-1">Required</p>}
             </div>
             <div>
               <Label>Vehicle Type (optional)</Label>
-              <Select value={vehicleTypeId} onValueChange={setVehicleTypeId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Any vehicle type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Any</SelectItem>
-                  {vehicleTypes.map(v => <SelectItem key={v.id} value={String(v.id)}>{v.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={vehicleTypeId}
+                onValueChange={setVehicleTypeId}
+                options={[{ value: 'none', label: 'Any' }, ...vehicleTypes.map(v => ({ value: String(v.id), label: v.name }))]}
+                placeholder="Any vehicle type"
+                className="mt-1"
+              />
             </div>
             <div>
               <Label>Pay Per Day (₹) *</Label>
@@ -751,10 +764,12 @@ function SettingsSection() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-w-lg">
         <div>
           <Label>Pay Cycle</Label>
-          <Select value={payCycle} onValueChange={setPayCycle}>
-            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-            <SelectContent>{PAY_CYCLES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-          </Select>
+          <SearchableSelect
+            value={payCycle}
+            onValueChange={setPayCycle}
+            options={PAY_CYCLES.map(c => ({ value: c, label: c }))}
+            className="mt-1"
+          />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { globalMastersApi } from '@/api/masters'
 import { globalMastersWriteApi } from '@/api/superadmin'
@@ -212,13 +212,13 @@ function CitiesSection({ states }: { states: StateItem[] }) {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-700">Cities</h3>
         <div className="flex gap-2">
-          <Select value={filterState} onValueChange={setFilterState}>
-            <SelectTrigger className="h-7 text-xs w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All States</SelectItem>
-              {states.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={filterState}
+            onValueChange={setFilterState}
+            options={[{ value: 'all', label: 'All States' }, ...states.map(s => ({ value: String(s.id), label: s.name }))]}
+            className="w-32"
+            triggerClassName="h-7 text-xs"
+          />
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
         </div>
       </div>
@@ -246,12 +246,14 @@ function CitiesSection({ states }: { states: StateItem[] }) {
             </div>
             <div>
               <Label>State <span className="text-red-500">*</span></Label>
-              <Select value={stateId} onValueChange={v => { setStateId(v); setErrs(e => ({ ...e, stateId: '' })) }}>
-                <SelectTrigger className={`mt-1 ${errs.stateId ? 'border-red-400' : ''}`}><SelectValue placeholder="Select state" /></SelectTrigger>
-                <SelectContent>
-                  {states.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={stateId}
+                onValueChange={v => { setStateId(v); setErrs(e => ({ ...e, stateId: '' })) }}
+                options={states.map(s => ({ value: String(s.id), label: s.name }))}
+                placeholder="Select state"
+                className="mt-1"
+                triggerClassName={errs.stateId ? 'border-red-400' : undefined}
+              />
               {errs.stateId && <p className="text-red-500 text-xs mt-1">{errs.stateId}</p>}
             </div>
             <div className="flex justify-end gap-2">
@@ -414,14 +416,16 @@ function DocumentTypesSection() {
             </div>
             <div>
               <Label>Applicable For <span className="text-red-500">*</span></Label>
-              <Select value={applicableFor} onValueChange={v => setApplicableFor(v as 'VEHICLE' | 'DRIVER' | 'BOTH')}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="VEHICLE">Vehicle</SelectItem>
-                  <SelectItem value="DRIVER">Driver</SelectItem>
-                  <SelectItem value="BOTH">Both</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={applicableFor}
+                onValueChange={v => setApplicableFor(v as 'VEHICLE' | 'DRIVER' | 'BOTH')}
+                options={[
+                  { value: 'VEHICLE', label: 'Vehicle' },
+                  { value: 'DRIVER', label: 'Driver' },
+                  { value: 'BOTH', label: 'Both' },
+                ]}
+                className="mt-1"
+              />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>

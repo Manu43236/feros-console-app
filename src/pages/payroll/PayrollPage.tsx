@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { payrollApi } from '@/api/payroll'
 import { staffApi } from '@/api/staff'
@@ -229,12 +229,12 @@ function ApproveDialog({ open, onClose, payroll }: {
           </div>
           <div>
             <Label>Payment Mode <span className="text-red-500">*</span></Label>
-            <Select value={paymentMode} onValueChange={v => setPaymentMode(v as PaymentMode)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(['CASH','CHEQUE','NEFT','UPI','RTGS'] as PaymentMode[]).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={paymentMode}
+              onValueChange={v => setPaymentMode(v as PaymentMode)}
+              options={(['CASH','CHEQUE','NEFT','UPI','RTGS'] as PaymentMode[]).map(m => ({ value: m, label: m }))}
+              className="mt-1"
+            />
           </div>
           <div>
             <Label>Reference Number</Label>

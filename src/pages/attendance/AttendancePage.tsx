@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { attendanceApi, type AttendanceRequest, type BulkAttendanceEntry } from '@/api/attendance'
 import { globalMastersApi } from '@/api/masters'
@@ -120,37 +120,40 @@ function AttendanceDialog({
           </div>
           <div>
             <Label>Staff <span className="text-red-500">*</span></Label>
-            <Select value={userId} onValueChange={v => { setUserId(v); setSelectErrors(e => ({ ...e, userId: '' })) }} disabled={isEdit}>
-              <SelectTrigger className={`mt-1 ${selectErrors.userId ? 'border-red-400' : ''}`}><SelectValue placeholder="Select staff" /></SelectTrigger>
-              <SelectContent>
-                {users.map(u => (
-                  <SelectItem key={u.id} value={String(u.id)}>{u.name} — {u.role}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={userId}
+              onValueChange={v => { setUserId(v); setSelectErrors(e => ({ ...e, userId: '' })) }}
+              disabled={isEdit}
+              options={users.map(u => ({ value: String(u.id), label: `${u.name} — ${u.role}` }))}
+              placeholder="Select staff"
+              className="mt-1"
+              triggerClassName={selectErrors.userId ? 'border-red-400' : undefined}
+            />
             {selectErrors.userId && <p className="text-red-500 text-xs mt-1">{selectErrors.userId}</p>}
           </div>
           <div>
             <Label>Attendance Type <span className="text-red-500">*</span></Label>
-            <Select value={attendanceTypeId} onValueChange={v => { setAttendanceTypeId(v); setSelectErrors(e => ({ ...e, attendanceTypeId: '' })) }}>
-              <SelectTrigger className={`mt-1 ${selectErrors.attendanceTypeId ? 'border-red-400' : ''}`}><SelectValue placeholder="Select type" /></SelectTrigger>
-              <SelectContent>
-                {attendanceTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={attendanceTypeId}
+              onValueChange={v => { setAttendanceTypeId(v); setSelectErrors(e => ({ ...e, attendanceTypeId: '' })) }}
+              options={attendanceTypes.map(t => ({ value: String(t.id), label: t.name }))}
+              placeholder="Select type"
+              className="mt-1"
+              triggerClassName={selectErrors.attendanceTypeId ? 'border-red-400' : undefined}
+            />
             {selectErrors.attendanceTypeId && <p className="text-red-500 text-xs mt-1">{selectErrors.attendanceTypeId}</p>}
           </div>
           {isLeave && (
             <>
               <div>
                 <Label>Leave Type</Label>
-                <Select value={leaveTypeId} onValueChange={setLeaveTypeId}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select leave type" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Not specified</SelectItem>
-                    {leaveTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={leaveTypeId}
+                  onValueChange={setLeaveTypeId}
+                  options={[{ value: 'none', label: 'Not specified' }, ...leaveTypes.map(t => ({ value: String(t.id), label: t.name }))]}
+                  placeholder="Select leave type"
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Leave Reason</Label>
@@ -266,26 +269,23 @@ function BulkMarkDialog({
                     <p className="text-sm font-medium text-gray-800 truncate">{u.name}</p>
                     <p className="text-xs text-gray-400">{u.role}</p>
                   </div>
-                  <Select
+                  <SearchableSelect
                     value={entry.typeId}
                     onValueChange={v => setEntries(prev => ({ ...prev, [u.id]: { ...prev[u.id], typeId: v } }))}
-                  >
-                    <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Select type" /></SelectTrigger>
-                    <SelectContent>
-                      {attendanceTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                    options={attendanceTypes.map(t => ({ value: String(t.id), label: t.name }))}
+                    placeholder="Select type"
+                    className="w-36"
+                    triggerClassName="h-8 text-xs"
+                  />
                   {isLeave && (
-                    <Select
+                    <SearchableSelect
                       value={entry.leaveTypeId}
                       onValueChange={v => setEntries(prev => ({ ...prev, [u.id]: { ...prev[u.id], leaveTypeId: v } }))}
-                    >
-                      <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Leave type" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Not specified</SelectItem>
-                        {leaveTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                      options={[{ value: 'none', label: 'Not specified' }, ...leaveTypes.map(t => ({ value: String(t.id), label: t.name }))]}
+                      placeholder="Leave type"
+                      className="w-36"
+                      triggerClassName="h-8 text-xs"
+                    />
                   )}
                 </div>
               )

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { staffApi } from '@/api/staff'
 import { tenantsApi } from '@/api/superadmin'
@@ -170,14 +170,13 @@ function BulkUploadUsersDialog({ open, onClose, tenants }: {
           {!result && (
             <div>
               <Label>Tenant *</Label>
-              <Select value={tenantId} onValueChange={setTenantId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select tenant" /></SelectTrigger>
-                <SelectContent>
-                  {sorted.map(t => (
-                    <SelectItem key={t.id} value={String(t.id)}>{t.companyName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={tenantId}
+                onValueChange={setTenantId}
+                options={sorted.map(t => ({ value: String(t.id), label: t.companyName }))}
+                placeholder="Select tenant"
+                className="mt-1"
+              />
             </div>
           )}
 
@@ -375,40 +374,33 @@ export function SAUsersPage() {
           className="w-52"
         />
 
-        <Select value={tenantFilter} onValueChange={setTenant}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="All Tenants" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Tenants</SelectItem>
-            {tenantOptions.map(t => (
-              <SelectItem key={t.id} value={String(t.id)}>{t.companyName}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={tenantFilter}
+          onValueChange={setTenant}
+          options={[{ value: 'all', label: 'All Tenants' }, ...tenantOptions.map(t => ({ value: String(t.id), label: t.companyName }))]}
+          placeholder="All Tenants"
+          className="w-52"
+        />
 
-        <Select value={roleFilter} onValueChange={setRole}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="All Roles" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            {roleOptions.map(r => (
-              <SelectItem key={r} value={r}>{r}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={roleFilter}
+          onValueChange={setRole}
+          options={[{ value: 'all', label: 'All Roles' }, ...roleOptions.map(r => ({ value: r, label: r }))]}
+          placeholder="All Roles"
+          className="w-44"
+        />
 
-        <Select value={statusFilter} onValueChange={setStatus}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="true">Active</SelectItem>
-            <SelectItem value="false">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={statusFilter}
+          onValueChange={setStatus}
+          options={[
+            { value: 'all', label: 'All Status' },
+            { value: 'true', label: 'Active' },
+            { value: 'false', label: 'Inactive' },
+          ]}
+          placeholder="All Status"
+          className="w-36"
+        />
 
         {hasFilters && (
           <Button variant="ghost" size="sm" className="text-gray-500 h-9" onClick={clearFilters}>

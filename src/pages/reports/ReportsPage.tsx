@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { reportsApi } from '@/api/reports'
 import { clientsApi } from '@/api/clients'
 import type {
@@ -90,15 +90,14 @@ function ClientSelect({ value, onChange }: { value: string; onChange: (v: string
   return (
     <div>
       <Label className="text-xs text-gray-500">Client</Label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-8 text-sm w-48">
-          <SelectValue placeholder="All Clients" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Clients</SelectItem>
-          {clients.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.clientName}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        value={value}
+        onValueChange={onChange}
+        options={[{ value: 'all', label: 'All Clients' }, ...clients.map(c => ({ value: String(c.id), label: c.clientName }))]}
+        placeholder="All Clients"
+        className="w-48"
+        triggerClassName="h-8 text-sm"
+      />
     </div>
   )
 }
@@ -518,15 +517,14 @@ function OrderStatusTab() {
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
         <div>
           <Label className="text-xs text-gray-500">Status</Label>
-          <Select value={status} onValueChange={v => { setStatus(v); setEnabled(false) }}>
-            <SelectTrigger className="h-8 text-sm w-40">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {ORDER_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={status}
+            onValueChange={v => { setStatus(v); setEnabled(false) }}
+            options={[{ value: 'all', label: 'All Statuses' }, ...ORDER_STATUSES.map(s => ({ value: s, label: s }))]}
+            placeholder="All Statuses"
+            className="w-40"
+            triggerClassName="h-8 text-sm"
+          />
         </div>
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
           {isFetching ? 'Loading...' : 'Fetch Report'}

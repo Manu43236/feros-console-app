@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Calendar, CheckCircle, XCircle, Clock, Umbrella, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -93,27 +93,27 @@ function MarkTodayDialog({ open, onClose, attendanceTypes, leaveTypes }: {
           </div>
           <div>
             <Label>Attendance Type <span className="text-red-500">*</span></Label>
-            <Select value={attendanceTypeId} onValueChange={v => { setAttendanceTypeId(v); setTypeError('') }}>
-              <SelectTrigger className={cn('mt-1', typeError && 'border-red-400')}>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {attendanceTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={attendanceTypeId}
+              onValueChange={v => { setAttendanceTypeId(v); setTypeError('') }}
+              options={attendanceTypes.map(t => ({ value: String(t.id), label: t.name }))}
+              placeholder="Select type"
+              className="mt-1"
+              triggerClassName={cn(typeError && 'border-red-400')}
+            />
             {typeError && <p className="text-red-500 text-xs mt-1">{typeError}</p>}
           </div>
           {isLeave && (
             <>
               <div>
                 <Label>Leave Type</Label>
-                <Select value={leaveTypeId} onValueChange={setLeaveTypeId}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select leave type" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Not specified</SelectItem>
-                    {leaveTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={leaveTypeId}
+                  onValueChange={setLeaveTypeId}
+                  options={[{ value: 'none', label: 'Not specified' }, ...leaveTypes.map(t => ({ value: String(t.id), label: t.name }))]}
+                  placeholder="Select leave type"
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Leave Reason</Label>

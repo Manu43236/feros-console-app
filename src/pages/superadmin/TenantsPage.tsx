@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import apiClient from '@/api/client'
 import type { ApiResponse } from '@/types'
@@ -386,14 +386,12 @@ function SubscriptionDialog({ open, onClose, tenant }: {
           {tenant && <p className="text-sm font-semibold text-gray-700">{tenant.companyName}</p>}
           <div>
             <Label>Status *</Label>
-            <Select value={status} onValueChange={v => setStatus(v as SubscriptionStatus)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(['TRIAL', 'ACTIVE', 'EXPIRED', 'SUSPENDED'] as SubscriptionStatus[]).map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={status}
+              onValueChange={v => setStatus(v as SubscriptionStatus)}
+              options={(['TRIAL', 'ACTIVE', 'EXPIRED', 'SUSPENDED'] as SubscriptionStatus[]).map(s => ({ value: s, label: s }))}
+              className="mt-1"
+            />
           </div>
           {status === 'TRIAL' && (
             <div className="grid grid-cols-2 gap-3">
