@@ -9,30 +9,104 @@ import {
   Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
-  Boxes, Fuel, Gauge,
+  Boxes, Fuel, Gauge, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const ADMIN_NAV = [
-  { to: '/dashboard',                  label: 'Dashboard',    icon: LayoutDashboard },
-  { to: '/clients',                    label: 'Clients',      icon: Users },
-  { to: '/vehicles',                   label: 'Vehicles',     icon: Truck },
-  { to: '/orders',                     label: 'Orders',       icon: ClipboardList },
-  { to: '/assignments',                label: 'Assignments',  icon: ClipboardCheck },
-  { to: '/lrs',                        label: 'LR Register',  icon: FileText },
-  { to: '/invoices',                   label: 'Invoices',     icon: Receipt },
-  { to: '/credit-notes',               label: 'Credit Notes', icon: FileMinus },
-  { to: '/staff',                      label: 'Staff',        icon: UserCheck },
-  { to: '/attendance',                 label: 'Attendance',   icon: Calendar },
-  { to: '/payroll',                    label: 'Payroll',      icon: Wallet },
-  { to: '/reports',                    label: 'Reports',      icon: BarChart3 },
-  { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
-  { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
-  { to: '/masters',        label: 'Masters',        icon: Settings },
-  { to: '/inventory', label: 'Inventory', icon: Boxes },
-]
+// ─── Types ─────────────────────────────────────────────────────────────────────
+type NavItem = { to: string; label: string; icon: React.ElementType }
+type NavSection = { section: string; items: NavItem[] }
+type FlatNav = NavItem[]
+type SectionedNav = { dashboard: NavItem; sections: NavSection[] }
 
-const SUPER_ADMIN_NAV = [
+// ─── Admin nav (sectioned) ──────────────────────────────────────────────────────
+const ADMIN_NAV: SectionedNav = {
+  dashboard: { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  sections: [
+    {
+      section: 'Operations',
+      items: [
+        { to: '/clients',     label: 'Clients',      icon: Users },
+        { to: '/orders',      label: 'Orders',       icon: ClipboardList },
+        { to: '/assignments', label: 'Assignments',  icon: ClipboardCheck },
+        { to: '/lrs',         label: 'LR Register',  icon: FileText },
+      ],
+    },
+    {
+      section: 'Finance',
+      items: [
+        { to: '/invoices',     label: 'Invoices',     icon: Receipt },
+        { to: '/credit-notes', label: 'Credit Notes', icon: FileMinus },
+      ],
+    },
+    {
+      section: 'Fleet',
+      items: [
+        { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
+        { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
+        { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
+      ],
+    },
+    {
+      section: 'HR',
+      items: [
+        { to: '/staff',      label: 'Staff',      icon: UserCheck },
+        { to: '/attendance', label: 'Attendance', icon: Calendar },
+        { to: '/payroll',    label: 'Payroll',    icon: Wallet },
+      ],
+    },
+    {
+      section: 'Inventory',
+      items: [
+        { to: '/inventory', label: 'Inventory', icon: Boxes },
+      ],
+    },
+    {
+      section: 'More',
+      items: [
+        { to: '/reports', label: 'Reports', icon: BarChart3 },
+        { to: '/masters', label: 'Masters', icon: Settings },
+      ],
+    },
+  ],
+}
+
+// ─── Office staff nav (sectioned) ───────────────────────────────────────────────
+const OFFICE_STAFF_NAV: SectionedNav = {
+  dashboard: { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  sections: [
+    {
+      section: 'Operations',
+      items: [
+        { to: '/clients',     label: 'Clients',      icon: Users },
+        { to: '/orders',      label: 'Orders',       icon: ClipboardList },
+        { to: '/lrs',         label: 'LR Register',  icon: FileText },
+      ],
+    },
+    {
+      section: 'Finance',
+      items: [
+        { to: '/invoices',     label: 'Invoices',     icon: Receipt },
+        { to: '/credit-notes', label: 'Credit Notes', icon: FileMinus },
+      ],
+    },
+    {
+      section: 'HR',
+      items: [
+        { to: '/attendance', label: 'Attendance', icon: Calendar },
+      ],
+    },
+    {
+      section: 'More',
+      items: [
+        { to: '/reports', label: 'Reports', icon: BarChart3 },
+      ],
+    },
+  ],
+}
+
+// ─── Flat navs (few items — no sections needed) ─────────────────────────────────
+const SUPER_ADMIN_NAV: FlatNav = [
   { to: '/sa/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
   { to: '/sa/tenants',        label: 'Tenants',        icon: Building2 },
   { to: '/sa/subscriptions',  label: 'Subscriptions',  icon: BadgeCheck },
@@ -41,19 +115,7 @@ const SUPER_ADMIN_NAV = [
   { to: '/sa/settings',       label: 'Settings',       icon: Settings },
 ]
 
-const OFFICE_STAFF_NAV = [
-  { to: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
-  { to: '/clients',      label: 'Clients',      icon: Users },
-  { to: '/vehicles',     label: 'Vehicles',     icon: Truck },
-  { to: '/orders',       label: 'Orders',       icon: ClipboardList },
-  { to: '/lrs',          label: 'LR Register',  icon: FileText },
-  { to: '/invoices',     label: 'Invoices',     icon: Receipt },
-  { to: '/credit-notes', label: 'Credit Notes', icon: FileMinus },
-  { to: '/attendance',   label: 'Attendance',   icon: Calendar },
-  { to: '/reports',      label: 'Reports',      icon: BarChart3 },
-]
-
-const SUPERVISOR_NAV = [
+const SUPERVISOR_NAV: FlatNav = [
   { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
   { to: '/orders',        label: 'Orders',        icon: ClipboardList },
   { to: '/assignments',   label: 'Assignments',   icon: ClipboardCheck },
@@ -61,25 +123,30 @@ const SUPERVISOR_NAV = [
   { to: '/my/payslip',    label: 'My Payslip',    icon: Wallet },
 ]
 
-const DRIVER_CLEANER_NAV = [
+const DRIVER_CLEANER_NAV: FlatNav = [
   { to: '/my/trips',      label: 'My Trips',      icon: Truck },
   { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
   { to: '/my/payslip',    label: 'My Payslip',    icon: Wallet },
 ]
 
-const STORE_KEEPER_NAV = [
+const STORE_KEEPER_NAV: FlatNav = [
   { to: '/inventory',     label: 'Inventory',     icon: Boxes },
   { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
   { to: '/my/payslip',    label: 'My Payslip',    icon: Wallet },
 ]
 
-const SERVICE_MEN_NAV = [
+const SERVICE_MEN_NAV: FlatNav = [
   { to: '/vehicle-services', label: 'Vehicle Services', icon: Truck },
   { to: '/my/attendance',    label: 'My Attendance',    icon: Calendar },
   { to: '/my/payslip',       label: 'My Payslip',       icon: Wallet },
 ]
 
-// ─── Notification Nav Link ─────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────────
+function isSectionedNav(nav: SectionedNav | FlatNav): nav is SectionedNav {
+  return !Array.isArray(nav)
+}
+
+// ─── Notification Nav Link ───────────────────────────────────────────────────────
 function NotifNavLink() {
   const { data: countRes } = useQuery({
     queryKey: ['notif-count'],
@@ -109,6 +176,52 @@ function NotifNavLink() {
   )
 }
 
+// ─── Nav item ────────────────────────────────────────────────────────────────────
+function NavItemLink({ to, label, icon: Icon, onClick }: NavItem & { onClick?: () => void }) {
+  return (
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={({ isActive }) => cn(
+        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+        isActive
+          ? 'bg-feros-orange text-white'
+          : 'text-gray-300 hover:bg-white/10 hover:text-white'
+      )}
+    >
+      <Icon size={18} className="shrink-0" />
+      {label}
+    </NavLink>
+  )
+}
+
+// ─── Collapsible section ─────────────────────────────────────────────────────────
+function NavSectionGroup({
+  section, items, open, onToggle, onNavClick,
+}: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void }) {
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className="flex items-center justify-between w-full px-3 py-1.5 mt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-300 hover:text-white transition-colors"
+      >
+        {section}
+        {open
+          ? <ChevronDown size={12} className="shrink-0" />
+          : <ChevronRight size={12} className="shrink-0" />
+        }
+      </button>
+      {open && (
+        <div className="space-y-0.5 mt-0.5">
+          {items.map(item => (
+            <NavItemLink key={item.to} {...item} onClick={onNavClick} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function getRoleLabel(role: string | null) {
   if (role === 'SUPER_ADMIN') return 'Super Admin'
   if (role === 'ADMIN') return 'Admin'
@@ -130,7 +243,6 @@ export function AppLayout() {
   const isImpersonating = !!saSession
   const tenantId = useAuthStore(s => s.tenantId)
 
-  // Fetch subscription status for tenant users (not SUPER_ADMIN)
   const { data: mySubRes } = useQuery({
     queryKey: ['my-subscription', tenantId],
     queryFn: () => subscriptionsApi.getMy(),
@@ -139,7 +251,7 @@ export function AppLayout() {
   })
   const subStatus = mySubRes?.data?.status
 
-  const navItems =
+  const nav: SectionedNav | FlatNav =
     role === 'SUPER_ADMIN'  ? SUPER_ADMIN_NAV :
     role === 'OFFICE_STAFF' ? OFFICE_STAFF_NAV :
     role === 'SUPERVISOR'   ? SUPERVISOR_NAV :
@@ -148,6 +260,18 @@ export function AppLayout() {
     role === 'STORE_KEEPER' ? STORE_KEEPER_NAV :
     role === 'SERVICE_MEN'  ? SERVICE_MEN_NAV :
     ADMIN_NAV
+
+  // Track which sections are open — all open by default
+  const allSections = isSectionedNav(nav) ? nav.sections.map(s => s.section) : []
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(allSections))
+
+  function toggleSection(section: string) {
+    setOpenSections(prev => {
+      const next = new Set(prev)
+      next.has(section) ? next.delete(section) : next.add(section)
+      return next
+    })
+  }
 
   function handleLogout() {
     logout()
@@ -159,55 +283,67 @@ export function AppLayout() {
     navigate('/sa/tenants', { replace: true })
   }
 
-  const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
-    <aside className={cn('flex flex-col h-full bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
-      {/* Logo */}
-      <div className="flex items-center justify-center h-16 px-5 border-b border-white/10 shrink-0 relative">
-        {logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Logo'} className="h-9 w-auto object-contain max-w-[160px]" />
-        ) : (
-          <img src={leftMenuLogo} alt="FEROS" className="h-9 w-auto object-contain" />
-        )}
-        {mobile && (
-          <button onClick={() => setSidebarOpen(false)} className="absolute right-4 text-gray-400 hover:text-white">
-            <X size={20} />
-          </button>
-        )}
-      </div>
+  const Sidebar = ({ mobile = false }: { mobile?: boolean }) => {
+    const closeMobile = mobile ? () => setSidebarOpen(false) : undefined
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-        {navItems.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            onClick={() => mobile && setSidebarOpen(false)}
-            className={({ isActive }) => cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-feros-orange text-white'
-                : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            )}
+    return (
+      <aside className={cn('flex flex-col h-full bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
+        {/* Logo */}
+        <div className="flex items-center justify-center h-16 px-5 border-b border-white/10 shrink-0 relative">
+          {logoUrl ? (
+            <img src={logoUrl} alt={companyName ?? 'Logo'} className="h-9 w-auto object-contain max-w-[160px]" />
+          ) : (
+            <img src={leftMenuLogo} alt="FEROS" className="h-9 w-auto object-contain" />
+          )}
+          {mobile && (
+            <button onClick={closeMobile} className="absolute right-4 text-gray-400 hover:text-white">
+              <X size={20} />
+            </button>
+          )}
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3">
+          {isSectionedNav(nav) ? (
+            <>
+              {/* Dashboard — always visible, no section */}
+              <NavItemLink {...nav.dashboard} onClick={closeMobile} />
+
+              {/* Sections */}
+              {nav.sections.map(({ section, items }) => (
+                <NavSectionGroup
+                  key={section}
+                  section={section}
+                  items={items}
+                  open={openSections.has(section)}
+                  onToggle={() => toggleSection(section)}
+                  onNavClick={closeMobile}
+                />
+              ))}
+            </>
+          ) : (
+            <div className="space-y-0.5">
+              {nav.map(item => (
+                <NavItemLink key={item.to} {...item} onClick={closeMobile} />
+              ))}
+            </div>
+          )}
+        </nav>
+
+        {/* Footer */}
+        <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
+          <NotifNavLink />
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
           >
-            <Icon size={18} />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* Footer */}
-      <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
-        <NotifNavLink />
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
-        >
-          <LogOut size={18} />
-          Sign Out
-        </button>
-      </div>
-    </aside>
-  )
+            <LogOut size={18} />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+    )
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
@@ -238,7 +374,7 @@ export function AppLayout() {
           </button>
           <div className="flex-1" />
 
-          {/* User menu — navigate to profile */}
+          {/* User menu */}
           <button
             onClick={() => navigate('/profile')}
             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
