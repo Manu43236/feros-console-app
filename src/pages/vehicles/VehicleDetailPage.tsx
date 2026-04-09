@@ -230,14 +230,6 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
   )
 }
 
-const vehicleStatusBadge: Record<VehicleStatusType, string> = {
-  AVAILABLE:  'bg-green-500/20 border-green-400/40 text-green-300',
-  ASSIGNED:   'bg-blue-500/20 border-blue-400/40 text-blue-300',
-  ON_TRIP:    'bg-orange-500/20 border-orange-400/40 text-orange-300',
-  IN_REPAIR:  'bg-yellow-500/20 border-yellow-400/40 text-yellow-300',
-  BREAKDOWN:  'bg-red-500/20 border-red-400/40 text-red-300',
-  OTHER:      'bg-white/10 border-white/20 text-white',
-}
 
 const vehicleStatusOptionColor: Partial<Record<VehicleStatusType, string>> = {
   AVAILABLE: 'text-green-600 font-medium',
@@ -894,7 +886,7 @@ function ServicePartsSection({ record }: { record: VehicleServiceRecord }) {
 }
 
 // ── service tab content ────────────────────────────────────────────────────────
-function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehicleReg: string }) {
+function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicleId: number; vehicleReg: string; currentOdometer?: number }) {
   const qc = useQueryClient()
   const [subTab, setSubTab]         = useState<'general' | 'breakdown'>('general')
   const [filter, setFilter]         = useState<'all' | 'open' | 'in_progress' | 'due_soon' | 'overdue' | 'completed'>('all')
@@ -1178,13 +1170,13 @@ function ServiceTabContent({ vehicleId, vehicleReg }: { vehicleId: number; vehic
         vehicleId={vehicleId}
         vehicleReg={vehicleReg}
         breakdownId={createBreakdownId}
-        currentOdometer={v.currentOdometerReading ? Number(v.currentOdometerReading) : undefined}
+        currentOdometer={currentOdometer}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
       />
       <CompleteServiceDialog
         service={completeService}
-        currentOdometer={v.currentOdometerReading ? Number(v.currentOdometerReading) : undefined}
+        currentOdometer={currentOdometer}
         open={!!completeService}
         onClose={() => setCompleteService(null)}
       />
@@ -1245,7 +1237,6 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
 
   const litres      = watch('litresFilled')
   const costPerL    = watch('costPerLitre')
-  const isFullTank  = watch('isFullTank')
 
   // Auto-calculate total cost
   const autoTotal = litres && costPerL ? (Number(litres) * Number(costPerL)).toFixed(2) : ''
@@ -1909,7 +1900,7 @@ export function VehicleDetailPage() {
 
           {/* ── Service ── */}
           {tab === 'Service' && v && (
-            <ServiceTabContent vehicleId={v.id} vehicleReg={v.registrationNumber} />
+            <ServiceTabContent vehicleId={v.id} vehicleReg={v.registrationNumber} currentOdometer={v.currentOdometerReading ? Number(v.currentOdometerReading) : undefined} />
           )}
 
           {/* ── Fuel ── */}

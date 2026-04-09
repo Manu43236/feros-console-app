@@ -234,7 +234,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               <Label>Client *</Label>
               <SearchableSelect
                 value={watchedClientId ? String(watchedClientId) : ''}
-                onValueChange={v => setValue('clientId', v ? Number(v) : undefined)}
+                onValueChange={v => setValue('clientId', Number(v))}
                 options={(clientsRes?.data ?? []).filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))}
                 placeholder="Select client"
                 className="mt-1"
@@ -246,7 +246,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               <Label>Material Type *</Label>
               <SearchableSelect
                 value={watchedMaterialId != null ? String(watchedMaterialId) : ''}
-                onValueChange={v => setValue('materialTypeId', v !== '' ? Number(v) : undefined)}
+                onValueChange={v => setValue('materialTypeId', Number(v))}
                 options={[
                   ...materials.map(m => ({ value: String(m.id), label: m.name })),
                   { value: String(MATERIAL_OTHER_SENTINEL), label: 'Other (specify manually)' },
