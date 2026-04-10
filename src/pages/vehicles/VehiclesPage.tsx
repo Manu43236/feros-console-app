@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
@@ -190,13 +190,13 @@ function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: ()
 
 // ── form schema ───────────────────────────────────────────────────────────────
 const schema = z.object({
-  registrationNumber:       z.string().min(1, 'Registration number is required'),
+  registrationNumber:       z.string().min(1, 'Registration number is required').max(10, 'Max 10 characters allowed'),
   brandId:                  z.coerce.number().optional(),
   vehicleTypeId:            z.coerce.number().optional(),
   fuelTypeId:               z.coerce.number().optional(),
   ownershipTypeId:          z.coerce.number().optional(),
   currentStatusId:          z.coerce.number().optional(),
-  capacityInTons:           z.coerce.number().optional(),
+  capacityInTons:           z.coerce.number().min(0, 'Capacity cannot be negative').optional(),
   manufactureYear:          z.coerce.number().optional(),
   color:                    z.string().optional(),
   chassisNumber:            z.string().optional(),
@@ -220,7 +220,7 @@ const schema = z.object({
   roadTaxExpiryDate:        z.string().optional(),
   // Owner / hired info
   ownerName:                z.string().optional(),
-  ownerPhone:               z.string().optional(),
+  ownerPhone:               z.string().regex(/^[6-9]\d{9}$/, 'Enter valid 10-digit phone number').optional().or(z.literal('')),
   ownerPan:                 z.string().optional(),
   ownerAddress:             z.string().optional(),
   agreementStartDate:       z.string().optional(),
@@ -289,6 +289,43 @@ export function VehicleForm({
       notes: vehicle.notes ?? '',
     } : {},
   })
+
+  useEffect(() => {
+    if (open && vehicle) {
+      reset({
+        registrationNumber: vehicle.registrationNumber,
+        brandId: vehicle.brandId, vehicleTypeId: vehicle.vehicleTypeId,
+        fuelTypeId: vehicle.fuelTypeId, ownershipTypeId: vehicle.ownershipTypeId,
+        currentStatusId: vehicle.currentStatusId, capacityInTons: vehicle.capacityInTons,
+        manufactureYear: vehicle.manufactureYear, color: vehicle.color ?? '',
+        chassisNumber: vehicle.chassisNumber ?? '', engineNumber: vehicle.engineNumber ?? '',
+        rcNumber: vehicle.rcNumber ?? '', rcExpiryDate: vehicle.rcExpiryDate ?? '',
+        insuranceCompanyName: vehicle.insuranceCompanyName ?? '',
+        insurancePolicyNumber: vehicle.insurancePolicyNumber ?? '',
+        insuranceStartDate: vehicle.insuranceStartDate ?? '',
+        insuranceExpiryDate: vehicle.insuranceExpiryDate ?? '',
+        permitNumber: vehicle.permitNumber ?? '', permitType: vehicle.permitType ?? '',
+        permitStartDate: vehicle.permitStartDate ?? '', permitExpiryDate: vehicle.permitExpiryDate ?? '',
+        fitnessCertificateNumber: vehicle.fitnessCertificateNumber ?? '',
+        fitnessExpiryDate: vehicle.fitnessExpiryDate ?? '',
+        pucNumber: vehicle.pucNumber ?? '', pollutionExpiryDate: vehicle.pollutionExpiryDate ?? '',
+        roadTaxPaidDate: vehicle.roadTaxPaidDate ?? '', roadTaxExpiryDate: vehicle.roadTaxExpiryDate ?? '',
+        ownerName: vehicle.ownerName ?? '', ownerPhone: vehicle.ownerPhone ?? '',
+        ownerPan: vehicle.ownerPan ?? '', ownerAddress: vehicle.ownerAddress ?? '',
+        agreementStartDate: vehicle.agreementStartDate ?? '',
+        agreementEndDate: vehicle.agreementEndDate ?? '',
+        agreementAmount: vehicle.agreementAmount,
+        gpsDeviceNumber: vehicle.gpsDeviceNumber ?? '',
+        gpsDeviceImei: vehicle.gpsDeviceImei ?? '', gpsProvider: vehicle.gpsProvider ?? '',
+        currentOdometerReading: vehicle.currentOdometerReading,
+        fuelTankCapacity: vehicle.fuelTankCapacity,
+        currentFuelLevel: vehicle.currentFuelLevel,
+        notes: vehicle.notes ?? '',
+      })
+      setOwnershipTypeId(vehicle.ownershipTypeId)
+    }
+    if (!open) reset({})
+  }, [open])
 
   const mutation = useMutation({
     mutationFn: (data: FormData) => {
@@ -411,7 +448,12 @@ export function VehicleForm({
             </div>
             <div className="space-y-1.5">
               <Label>Capacity (tons)</Label>
-              <Input type="number" step="0.1" placeholder="10" {...register('capacityInTons')} />
+              <Input type="number" step="0.1" min="0" placeholder="10" {...register('capacityInTons')} />
+              {errors.capacityInTons && <p className="text-red-500 text-xs">{errors.capacityInTons.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Current Odometer (km)</Label>
+              <Input type="number" placeholder="45000" {...register('currentOdometerReading')} />
             </div>
             <div className="space-y-1.5">
               <Label>Manufacture Year</Label>
@@ -441,7 +483,7 @@ export function VehicleForm({
               </div>
               <div className="space-y-1.5">
                 <Label>RC Expiry Date</Label>
-                <Input type="date" {...register('rcExpiryDate')} />
+                <Input type="date" min={new Date().toISOString().split('T')[0]} {...register('rcExpiryDate')} />
               </div>
 
               <div className="space-y-1.5">
@@ -458,7 +500,7 @@ export function VehicleForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Insurance Expiry</Label>
-                <Input type="date" {...register('insuranceExpiryDate')} />
+                <Input type="date" min={new Date().toISOString().split('T')[0]} {...register('insuranceExpiryDate')} />
               </div>
 
               <div className="space-y-1.5">
@@ -490,7 +532,7 @@ export function VehicleForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Permit Expiry</Label>
-                <Input type="date" {...register('permitExpiryDate')} />
+                <Input type="date" min={new Date().toISOString().split('T')[0]} {...register('permitExpiryDate')} />
               </div>
 
               <div className="space-y-1.5">
@@ -499,7 +541,7 @@ export function VehicleForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Fitness Expiry</Label>
-                <Input type="date" {...register('fitnessExpiryDate')} />
+                <Input type="date" min={new Date().toISOString().split('T')[0]} {...register('fitnessExpiryDate')} />
               </div>
 
               <div className="space-y-1.5">
@@ -508,7 +550,7 @@ export function VehicleForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Pollution Expiry</Label>
-                <Input type="date" {...register('pollutionExpiryDate')} />
+                <Input type="date" min={new Date().toISOString().split('T')[0]} {...register('pollutionExpiryDate')} />
               </div>
 
               <div className="space-y-1.5">
@@ -517,7 +559,7 @@ export function VehicleForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Road Tax Expiry</Label>
-                <Input type="date" {...register('roadTaxExpiryDate')} />
+                <Input type="date" min={new Date().toISOString().split('T')[0]} {...register('roadTaxExpiryDate')} />
               </div>
             </div>
           </div>
@@ -533,7 +575,8 @@ export function VehicleForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label>Owner Phone</Label>
-                  <Input placeholder="9876543210" {...register('ownerPhone')} />
+                  <Input placeholder="9876543210" maxLength={10} {...register('ownerPhone')} />
+                  {errors.ownerPhone && <p className="text-red-500 text-xs">{errors.ownerPhone.message}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label>PAN Number</Label>
@@ -574,10 +617,6 @@ export function VehicleForm({
               <div className="space-y-1.5">
                 <Label>GPS IMEI</Label>
                 <Input placeholder="359012345678901" {...register('gpsDeviceImei')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Current Odometer (km)</Label>
-                <Input type="number" placeholder="45000" {...register('currentOdometerReading')} />
               </div>
               <div className="space-y-1.5">
                 <Label>Tank Capacity (litres)</Label>
@@ -634,7 +673,7 @@ export function VehiclesPage() {
   const { data: typesRes }        = useQuery({ queryKey: ['vehicle-types'],    queryFn: globalMastersApi.getVehicleTypes })
   const { data: ownershipRes }    = useQuery({ queryKey: ['ownership-types'],  queryFn: globalMastersApi.getOwnershipTypes })
 
-  const allVehicles = [...(res?.data ?? [])].sort((a, b) => b.id - a.id)
+  const allVehicles = [...(res?.data ?? [])].sort((a, b) => a.registrationNumber.localeCompare(b.registrationNumber))
 
   const vehicles = allVehicles.filter(v => {
     const q = search.toLowerCase()

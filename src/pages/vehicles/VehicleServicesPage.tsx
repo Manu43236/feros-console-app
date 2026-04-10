@@ -399,22 +399,35 @@ export default function VehicleServicesPage() {
         </div>
       </div>
 
-      {/* Filters + Search */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* Search */}
+      <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-2 max-w-sm">
+        <Search size={14} className="text-gray-400" />
+        <Input
+          placeholder="Search vehicle, service no…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="border-0 shadow-none focus-visible:ring-0 p-0 h-auto text-sm w-52"
+        />
+      </div>
+
+      {/* Layout: left filter + records */}
+      <div className="flex gap-6 items-start">
+        {/* Left filter panel */}
+        <div className="w-44 shrink-0 bg-white border rounded-xl p-3 space-y-1">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 pb-1">Status</p>
           {filterPills.map(p => (
             <button
               key={p.value}
               onClick={() => setFilter(p.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === p.value
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white border text-gray-600 hover:border-gray-400'
+                  ? 'bg-feros-navy text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {p.label}
+              <span>{p.label}</span>
               {p.count != null && (
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                   filter === p.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
                 }`}>
                   {p.count}
@@ -423,34 +436,27 @@ export default function VehicleServicesPage() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-2">
-          <Search size={14} className="text-gray-400" />
-          <Input
-            placeholder="Search vehicle, service no…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="border-0 shadow-none focus-visible:ring-0 p-0 h-auto text-sm w-52"
-          />
+
+        {/* Records */}
+        <div className="flex-1 min-w-0">
+          {isLoading ? (
+            <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16">
+              <Wrench size={40} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-400 text-sm">
+                {search || filter !== 'ALL' ? 'No records match your filters' : 'No service records yet'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map(r => (
+                <ServiceCard key={r.id} record={r} onDelete={() => setToDelete(r)} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Records */}
-      {isLoading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <Wrench size={40} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-400 text-sm">
-            {search || filter !== 'ALL' ? 'No records match your filters' : 'No service records yet'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(r => (
-            <ServiceCard key={r.id} record={r} onDelete={() => setToDelete(r)} />
-          ))}
-        </div>
-      )}
 
       <DeleteDialog record={toDelete} onClose={() => setToDelete(null)} />
     </div>

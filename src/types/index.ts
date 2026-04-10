@@ -146,6 +146,7 @@ export interface Order {
   freightRateType: FreightRateType; freightRate: number; billingOn: BillingOn
   totalFreightAmount?: number; orderStatus: OrderStatus; orderPaymentStatus: OrderPaymentStatus
   specialInstructions?: string; remarks?: string
+  ewayBillNumber?: string; ewayBillDate?: string; ewayBillValidUpto?: string
   vehicleAllocations?: VehicleAllocation[]
   isActive: boolean; createdAt: string; updatedAt: string
 }

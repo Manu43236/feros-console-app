@@ -35,6 +35,9 @@ function today() { return new Date().toISOString().slice(0, 10) }
 function monthStart() {
   const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10)
 }
+function monthEnd() {
+  const d = new Date(); d.setMonth(d.getMonth() + 1); d.setDate(0); return d.toISOString().slice(0, 10)
+}
 
 function statusBadge(s: string) {
   const map: Record<string, string> = {
@@ -496,7 +499,15 @@ function VehicleTripTab() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Tab 6 — Order Status Report
 // ═══════════════════════════════════════════════════════════════════════════════
-const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'DISPATCHED', 'DELIVERED', 'INVOICED', 'CANCELLED']
+const ORDER_STATUSES = [
+  'PENDING', 'PARTIALLY_ASSIGNED', 'FULLY_ASSIGNED',
+  'IN_TRANSIT', 'PARTIALLY_DELIVERED', 'DELIVERED', 'CANCELLED', 'COMPLETED',
+]
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pending', PARTIALLY_ASSIGNED: 'Partially Assigned', FULLY_ASSIGNED: 'Fully Assigned',
+  IN_TRANSIT: 'In Transit', PARTIALLY_DELIVERED: 'Partially Delivered',
+  DELIVERED: 'Delivered', CANCELLED: 'Cancelled', COMPLETED: 'Completed',
+}
 
 function OrderStatusTab() {
   const [from, setFrom] = useState(monthStart())
@@ -520,7 +531,7 @@ function OrderStatusTab() {
           <SearchableSelect
             value={status}
             onValueChange={v => { setStatus(v); setEnabled(false) }}
-            options={[{ value: 'all', label: 'All Statuses' }, ...ORDER_STATUSES.map(s => ({ value: s, label: s }))]}
+            options={[{ value: 'all', label: 'All Statuses' }, ...ORDER_STATUSES.map(s => ({ value: s, label: ORDER_STATUS_LABELS[s] ?? s }))]}
             placeholder="All Statuses"
             className="w-40"
             triggerClassName="h-8 text-sm"
@@ -538,7 +549,7 @@ function OrderStatusTab() {
           <SummaryCard label="Total Freight" value={fmtRs(rows.reduce((s, r) => s + (r.totalFreightAmount ?? 0), 0))} />
           {ORDER_STATUSES.map(s => {
             const cnt = rows.filter(r => r.orderStatus === s).length
-            return cnt > 0 ? <SummaryCard key={s} label={s} value={String(cnt)} /> : null
+            return cnt > 0 ? <SummaryCard key={s} label={ORDER_STATUS_LABELS[s] ?? s} value={String(cnt)} /> : null
           })}
         </div>
       )}
@@ -582,7 +593,7 @@ function OrderStatusTab() {
 // ═══════════════════════════════════════════════════════════════════════════════
 function PayrollSummaryTab() {
   const [from, setFrom] = useState(monthStart())
-  const [to, setTo] = useState(today())
+  const [to, setTo] = useState(monthEnd())
   const [enabled, setEnabled] = useState(false)
 
   const { data, isFetching } = useQuery({

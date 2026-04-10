@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import { Plus, Search, Truck, FileText, ChevronRight } from 'lucide-react'
+import { toast } from 'sonner'
 import { lrsApi } from '@/api/lrs'
 import { ordersApi } from '@/api/orders'
 import type { LrStatus } from '@/types'
@@ -64,18 +65,24 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
       remarks:      data.remarks || undefined,
     }),
     onSuccess: () => {
+      toast.success('LR created successfully')
       qc.invalidateQueries({ queryKey: ['lrs'] })
       reset(); setSelectedOrderId(null); onClose()
     },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to create LR')
+    },
   })
 
-  const activeOrders = orders.filter(o => !['CANCELLED', 'DELIVERED'].includes(o.orderStatus))
+  const activeOrders = orders.filter(o => !['CANCELLED', 'DELIVERED', 'COMPLETED'].includes(o.orderStatus))
   const selectedOrder = orders.find(o => o.id === selectedOrderId)
-  const allocations = selectedOrder?.vehicleAllocations ?? []
+  // Only show allocations not yet LR'd (ALLOCATED status)
+  const allocations = (selectedOrder?.vehicleAllocations ?? []).filter(a => a.allocationStatus === 'ALLOCATED')
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Create LR</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
           <div className="space-y-1.5">
@@ -85,7 +92,7 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
               onValueChange={v => setSelectedOrderId(v ? parseInt(v) : null)}
               options={activeOrders.map(o => ({
                 value: String(o.id),
-                label: `${o.orderNumber} — ${o.clientName} (${o.sourceCityName} → ${o.destinationCityName})`,
+                label: `${o.clientName} — ${o.sourceCityName} → ${o.destinationCityName}`,
               }))}
               placeholder={ordersLoading ? 'Loading orders…' : activeOrders.length === 0 ? 'No active orders available' : 'Select order…'}
               disabled={ordersLoading}
@@ -98,7 +105,9 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
               <Label>Vehicle Allocation *</Label>
               {allocations.length === 0 ? (
                 <p className="text-sm text-amber-600 italic">
-                  No vehicle allocations found. Assign a vehicle to this order first.
+                  {(selectedOrder?.vehicleAllocations ?? []).length > 0
+                    ? 'All vehicle allocations already have LRs created.'
+                    : 'No vehicle allocations found. Assign a vehicle to this order first.'}
                 </p>
               ) : (
                 <>
@@ -141,8 +150,6 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
             <Label>Remarks</Label>
             <textarea {...register('remarks')} rows={2} className="w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background" />
           </div>
-
-          {mutation.isError && <p className="text-sm text-red-600">Failed to create LR. Please try again.</p>}
 
           <div className="flex justify-end gap-3 pt-2 border-t">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

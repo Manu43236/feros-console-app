@@ -885,6 +885,28 @@ function ServicePartsSection({ record }: { record: VehicleServiceRecord }) {
   )
 }
 
+// ── in-progress notes section ─────────────────────────────────────────────────
+function InProgressNotesSection({ service, onSave, saving }: { service: VehicleServiceRecord; onSave: (notes: string) => void; saving: boolean }) {
+  const [notes, setNotes] = useState(service.notes ?? '')
+  return (
+    <div className="border-t px-4 py-3">
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Repair Notes</p>
+      <textarea
+        className="w-full text-sm border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-feros-navy"
+        rows={2}
+        placeholder="Add notes about the repair progress…"
+        value={notes}
+        onChange={e => setNotes(e.target.value)}
+      />
+      <div className="flex justify-end mt-1">
+        <Button size="sm" variant="outline" className="h-7 text-xs" disabled={saving} onClick={() => onSave(notes)}>
+          {saving ? 'Saving…' : 'Save Notes'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 // ── service tab content ────────────────────────────────────────────────────────
 function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicleId: number; vehicleReg: string; currentOdometer?: number }) {
   const qc = useQueryClient()
@@ -915,6 +937,26 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
       qc.invalidateQueries({ queryKey: ['vehicles'] })
     },
     onError: () => toast.error('Failed to start service'),
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: number) => vehicleServicesApi.cancel(id),
+    onSuccess: () => {
+      toast.success('Service reverted to Open')
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+      qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
+    },
+    onError: () => toast.error('Failed to undo service'),
+  })
+
+  const notesMutation = useMutation({
+    mutationFn: ({ id, notes }: { id: number; notes: string }) => vehicleServicesApi.updateNotes(id, notes),
+    onSuccess: () => {
+      toast.success('Notes saved')
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+    },
+    onError: () => toast.error('Failed to save notes'),
   })
 
   const deleteMutation = useMutation({
@@ -1083,10 +1125,18 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
                           </Button>
                         )}
                         {s.status === 'IN_PROGRESS' && (
-                          <Button size="sm" onClick={() => setCompleteService(s)}
-                            className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1">
-                            <Check size={12} /> Done
-                          </Button>
+                          <>
+                            <Button size="sm" onClick={() => cancelMutation.mutate(s.id)}
+                              disabled={cancelMutation.isPending}
+                              variant="outline"
+                              className="h-7 text-xs gap-1 text-orange-600 border-orange-200 hover:bg-orange-50">
+                              Undo
+                            </Button>
+                            <Button size="sm" onClick={() => setCompleteService(s)}
+                              className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1">
+                              <Check size={12} /> Done
+                            </Button>
+                          </>
                         )}
                         <button onClick={() => setDetailService(s)}
                           className="p-1.5 text-gray-300 hover:text-feros-navy rounded transition-colors"
@@ -1101,6 +1151,9 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
                     </div>
                   </div>
                   <ServicePartsSection record={s} />
+                  {s.status === 'IN_PROGRESS' && (
+                    <InProgressNotesSection service={s} onSave={(notes) => notesMutation.mutate({ id: s.id, notes })} saving={notesMutation.isPending} />
+                  )}
                 </div>
               ))}
             </div>

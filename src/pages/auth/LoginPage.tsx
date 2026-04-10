@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 
 const schema = z.object({
-  phone: z.string().min(10, 'Enter a valid mobile number'),
+  phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number'),
   pin:   z.string().length(4, 'PIN must be 4 digits'),
 })
 type FormData = z.infer<typeof schema>
@@ -72,6 +72,7 @@ export function LoginPage() {
               type="tel"
               placeholder="9876543210"
               inputMode="numeric"
+              maxLength={10}
               {...register('phone')}
               className={`h-11 ${errors.phone ? 'border-red-500 focus-visible:ring-red-200' : ''}`}
             />

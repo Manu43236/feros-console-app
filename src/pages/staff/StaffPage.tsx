@@ -49,7 +49,7 @@ function PinCell({ pin }: { pin: string | null }) {
 // ── add staff form ────────────────────────────────────────────────────────────
 const addStaffSchema = z.object({
   name:  z.string().min(2, 'Name is required'),
-  phone: z.string().min(10, 'Enter valid phone'),
+  phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter valid 10-digit phone number'),
   role:  z.string().min(1, 'Select role'),
 })
 type AddStaffForm = z.infer<typeof addStaffSchema>
@@ -131,7 +131,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
             <div className="space-y-1.5">
               <Label>Mobile Number *</Label>
-              <Input placeholder="9876543210" inputMode="numeric" {...register('phone')} />
+              <Input placeholder="9876543210" inputMode="numeric" maxLength={10} {...register('phone')} />
               {errors.phone && <p className="text-red-500 text-xs">{errors.phone.message}</p>}
             </div>
             <div className="space-y-1.5">
@@ -316,7 +316,7 @@ export function StaffPage() {
     (profilesRes?.data ?? []).map(p => [p.userId, p])
   )
 
-  const allStaff: MergedStaff[] = [...(usersRes?.data ?? [])].sort((a, b) => b.id - a.id).map(u => ({
+  const allStaff: MergedStaff[] = [...(usersRes?.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)).map(u => ({
     userId:             u.id,
     userName:           u.name,
     userPhone:          u.phone,

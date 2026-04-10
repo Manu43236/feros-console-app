@@ -20,16 +20,16 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 const schema = z.object({
   clientName:           z.string().min(1, 'Name is required'),
   clientTypeId:         z.coerce.number().min(1, 'Select client type'),
-  phone:                z.string().min(10, 'Enter valid phone'),
+  phone:                z.string().regex(/^[6-9]\d{9}$/, 'Enter valid 10-digit phone number'),
   email:                z.string().email('Invalid email').optional().or(z.literal('')),
   address:              z.string().optional(),
   stateId:              z.coerce.number().optional(),
   cityId:               z.coerce.number().optional(),
-  pincode:              z.string().optional(),
-  gstin:                z.string().optional(),
-  panNumber:            z.string().optional(),
+  pincode:              z.string().regex(/^\d{6}$/, 'Pincode must be exactly 6 digits').optional().or(z.literal('')),
+  gstin:                z.string().regex(/^([0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]|99[0-9]{13})$/, 'Invalid GSTIN (must be 15 characters)').optional().or(z.literal('')),
+  panNumber:            z.string().regex(/^[A-Z]{3}[PCFHATBLJG][A-Z][0-9]{4}[A-Z]$/, 'Invalid PAN (must be 10 characters)').optional().or(z.literal('')),
   contactPersonName:    z.string().optional(),
-  contactPersonPhone:   z.string().optional(),
+  contactPersonPhone:   z.string().regex(/^[6-9]\d{9}$/, 'Enter valid 10-digit phone number').optional().or(z.literal('')),
   paymentTermsId:       z.coerce.number().optional(),
   creditLimit:          z.coerce.number().optional(),
   openingBalance:       z.coerce.number().optional(),
@@ -187,7 +187,7 @@ function ClientForm({
     enabled: !!selectedState,
   })
 
-  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, control, setValue, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: client ? {
       clientName: client.clientName, clientTypeId: client.clientTypeId,
@@ -249,7 +249,7 @@ function ClientForm({
 
             <div className="space-y-1.5">
               <Label>Phone *</Label>
-              <Input placeholder="9876543210" {...register('phone')} />
+              <Input placeholder="9876543210" maxLength={10} {...register('phone')} />
               {errors.phone && <p className="text-red-500 text-xs">{errors.phone.message}</p>}
             </div>
 
@@ -279,6 +279,7 @@ function ClientForm({
                       onValueChange={v => {
                         field.onChange(v ? Number(v) : undefined)
                         setSelectedState(Number(v) || undefined)
+                        setValue('cityId', undefined)
                       }}
                       options={(statesRes?.data ?? []).map(s => ({ value: String(s.id), label: s.name }))}
                       placeholder="Select state"
@@ -305,7 +306,8 @@ function ClientForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Pincode</Label>
-                <Input placeholder="400001" {...register('pincode')} />
+                <Input placeholder="400001" maxLength={6} {...register('pincode')} />
+                {errors.pincode && <p className="text-red-500 text-xs">{errors.pincode.message}</p>}
               </div>
             </div>
           </div>
@@ -316,11 +318,13 @@ function ClientForm({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>GSTIN</Label>
-                <Input placeholder="22AAAAA0000A1Z5" {...register('gstin')} />
+                <Input placeholder="22AAAAA0000A1Z5" maxLength={15} className="uppercase" {...register('gstin')} />
+                {errors.gstin && <p className="text-red-500 text-xs">{errors.gstin.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>PAN Number</Label>
-                <Input placeholder="AAAAA0000A" {...register('panNumber')} />
+                <Input placeholder="AAAAA0000A" maxLength={10} className="uppercase" {...register('panNumber')} />
+                {errors.panNumber && <p className="text-red-500 text-xs">{errors.panNumber.message}</p>}
               </div>
             </div>
           </div>
@@ -335,7 +339,8 @@ function ClientForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Phone</Label>
-                <Input placeholder="9876543210" {...register('contactPersonPhone')} />
+                <Input placeholder="9876543210" maxLength={10} {...register('contactPersonPhone')} />
+                {errors.contactPersonPhone && <p className="text-red-500 text-xs">{errors.contactPersonPhone.message}</p>}
               </div>
             </div>
           </div>
@@ -403,7 +408,7 @@ export function ClientsPage() {
     onError: () => toast.error('Failed to update client status'),
   })
 
-  const clients = [...(res?.data ?? [])].sort((a, b) => b.id - a.id).filter(c =>
+  const clients = [...(res?.data ?? [])].sort((a, b) => a.clientName.localeCompare(b.clientName)).filter(c =>
     c.clientName.toLowerCase().includes(search.toLowerCase()) ||
     c.phone.includes(search)
   )

@@ -204,7 +204,7 @@ function AccountTab({ userId, role }: { userId: number; role: string | null }) {
             </div>
             <div>
               <Label>Date of Birth</Label>
-              <Input type="date" {...register('dateOfBirth')} />
+              <Input type="date" max={new Date().toISOString().split('T')[0]} {...register('dateOfBirth')} />
             </div>
             <div>
               <Label>Joining Date</Label>
@@ -601,7 +601,7 @@ function CompanyTab({ role }: { role: string | null }) {
             </div>
             <div>
               <Label>Phone *</Label>
-              <Input {...register('phone')} placeholder="10-digit number" />
+              <Input {...register('phone')} placeholder="10-digit number" maxLength={10} />
               {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
             </div>
           </div>
@@ -668,7 +668,7 @@ function CompanyTab({ role }: { role: string | null }) {
             </div>
             <div>
               <Label>Owner Phone *</Label>
-              <Input {...register('ownerPhone')} placeholder="10-digit number" />
+              <Input {...register('ownerPhone')} placeholder="10-digit number" maxLength={10} />
               {errors.ownerPhone && <p className="text-xs text-red-500 mt-1">{errors.ownerPhone.message}</p>}
             </div>
             <div>

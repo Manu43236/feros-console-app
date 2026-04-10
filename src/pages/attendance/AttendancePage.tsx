@@ -508,7 +508,8 @@ export function AttendancePage() {
   function shiftDay(delta: number) {
     const d = new Date(selectedDate)
     d.setDate(d.getDate() + delta)
-    setSelectedDate(format(d, 'yyyy-MM-dd'))
+    const newDate = format(d, 'yyyy-MM-dd')
+    if (newDate <= todayStr()) setSelectedDate(newDate)
   }
 
   return (
@@ -564,7 +565,8 @@ export function AttendancePage() {
               <input
                 type="date"
                 value={selectedDate}
-                onChange={e => setSelectedDate(e.target.value)}
+                max={todayStr()}
+                onChange={e => { if (e.target.value <= todayStr()) setSelectedDate(e.target.value) }}
                 className="text-sm font-medium text-gray-800 border-none outline-none bg-transparent"
               />
             </div>

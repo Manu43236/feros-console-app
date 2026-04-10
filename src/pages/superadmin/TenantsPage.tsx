@@ -537,7 +537,7 @@ export function TenantsPage() {
   const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['tenants'], queryFn: tenantsApi.getAll })
-  const tenants: Tenant[] = [...(data?.data ?? [])].sort((a, b) => b.id - a.id)
+  const tenants: Tenant[] = [...(data?.data ?? [])].sort((a, b) => a.companyName.localeCompare(b.companyName))
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => tenantsApi.delete(id),

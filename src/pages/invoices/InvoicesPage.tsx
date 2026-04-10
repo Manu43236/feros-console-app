@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -249,8 +249,11 @@ const ALL_STATUSES: InvoiceStatus[] = ['DRAFT','SENT','PARTIALLY_PAID','PAID','O
 
 export function InvoicesPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [search, setSearch]         = useState('')
-  const [statusFilter, setStatus]   = useState<InvoiceStatus | 'ALL'>('ALL')
+  const [statusFilter, setStatus]   = useState<InvoiceStatus | 'ALL'>(
+    (searchParams.get('status') as InvoiceStatus) || 'ALL'
+  )
   const [createOpen, setCreateOpen] = useState(false)
 
   const { data: invoicesRes, isLoading } = useQuery({

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ordersApi } from '@/api/orders'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi } from '@/api/masters'
@@ -93,6 +93,9 @@ const schema = z.object({
   billingOn:            z.enum(['LOADED_WEIGHT', 'DELIVERED_WEIGHT']).optional(),
   specialInstructions:  z.string().optional(),
   remarks:              z.string().optional(),
+  ewayBillNumber:       z.string().optional(),
+  ewayBillDate:         z.string().optional(),
+  ewayBillValidUpto:    z.string().optional(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -162,6 +165,9 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
         billingOn:            order.billingOn,
         specialInstructions:  order.specialInstructions ?? '',
         remarks:              order.remarks ?? '',
+        ewayBillNumber:       order.ewayBillNumber ?? '',
+        ewayBillDate:         order.ewayBillDate ?? '',
+        ewayBillValidUpto:    order.ewayBillValidUpto ?? '',
       })
       setSrcState(order.sourceStateId)
       setDstState(order.destinationStateId)
@@ -267,7 +273,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
 
             <div className="space-y-1.5">
               <Label>Total Weight (tons) *</Label>
-              <Input type="number" step="0.01" placeholder="25.00" {...register('totalWeight')} />
+              <Input type="number" step="0.01" min="0.01" placeholder="25.00" {...register('totalWeight')} />
               {errors.totalWeight && <p className="text-red-500 text-xs">{errors.totalWeight.message}</p>}
             </div>
 
@@ -388,18 +394,20 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
                 <Input type="number" step="0.01" placeholder="1500.00" {...register('freightRate')} />
                 {errors.freightRate && <p className="text-red-500 text-xs">{errors.freightRate.message}</p>}
               </div>
-              <div className="space-y-1.5">
-                <Label>Bill On</Label>
-                <SearchableSelect
-                  value={watchedBillingOn ?? 'LOADED_WEIGHT'}
-                  onValueChange={v => setValue('billingOn', v as 'LOADED_WEIGHT' | 'DELIVERED_WEIGHT')}
-                  options={[
-                    { value: 'LOADED_WEIGHT', label: 'Loaded Weight' },
-                    { value: 'DELIVERED_WEIGHT', label: 'Delivered Weight' },
-                  ]}
-                  className="mt-1"
-                />
-              </div>
+              {watchedFreightType === 'PER_TON' && (
+                <div className="space-y-1.5">
+                  <Label>Bill On</Label>
+                  <SearchableSelect
+                    value={watchedBillingOn ?? 'LOADED_WEIGHT'}
+                    onValueChange={v => setValue('billingOn', v as 'LOADED_WEIGHT' | 'DELIVERED_WEIGHT')}
+                    options={[
+                      { value: 'LOADED_WEIGHT', label: 'Loaded Weight' },
+                      { value: 'DELIVERED_WEIGHT', label: 'Delivered Weight' },
+                    ]}
+                    className="mt-1"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -413,6 +421,25 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               <div className="space-y-1.5">
                 <Label>Remarks</Label>
                 <Input placeholder="Internal notes…" {...register('remarks')} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── E-way Bill ── */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-gray-700 mb-3">E-way Bill (optional)</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label>E-way Bill No.</Label>
+                <Input placeholder="EWB123456789" {...register('ewayBillNumber')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>E-way Bill Date</Label>
+                <Input type="date" {...register('ewayBillDate')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Valid Upto</Label>
+                <Input type="date" {...register('ewayBillValidUpto')} />
               </div>
             </div>
           </div>
@@ -438,8 +465,11 @@ const ALL_STATUSES: OrderStatus[] = [
 export function OrdersPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const [searchParams] = useSearchParams()
   const [search, setSearch]       = useState('')
-  const [statusFilter, setStatus] = useState<OrderStatus | 'ALL'>('ALL')
+  const [statusFilter, setStatus] = useState<OrderStatus | 'ALL'>(
+    (searchParams.get('status') as OrderStatus) || 'ALL'
+  )
   const [formOpen, setFormOpen]   = useState(false)
   const [editing, setEditing]     = useState<Order | undefined>()
   const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)

@@ -548,7 +548,7 @@ export function StaffDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Date of Birth</Label>
-                <Input type="date" {...register('dateOfBirth')} />
+                <Input type="date" max={new Date().toISOString().split('T')[0]} {...register('dateOfBirth')} />
               </div>
               <div className="space-y-1.5">
                 <Label>Joining Date</Label>

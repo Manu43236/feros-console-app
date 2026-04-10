@@ -238,10 +238,20 @@ function DeleteDialog({ cn: note, onClose }: { cn: CreditNote | null; onClose: (
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CreditNotesPage() {
+  const qc = useQueryClient()
   const [search, setSearch]       = useState('')
   const [addOpen, setAddOpen]     = useState(false)
   const [toStatus, setToStatus]   = useState<CreditNote | null>(null)
   const [toDelete, setToDelete]   = useState<CreditNote | null>(null)
+
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => creditNotesApi.updateStatus(id, 'APPROVED'),
+    onSuccess: () => { toast.success('Credit note approved'); qc.invalidateQueries({ queryKey: ['credit-notes'] }) },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to approve')
+    },
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['credit-notes'],
@@ -351,6 +361,16 @@ export default function CreditNotesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        {n.creditNoteStatus === 'DRAFT' && (
+                          <button
+                            onClick={() => approveMutation.mutate(n.id)}
+                            disabled={approveMutation.isPending}
+                            className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded transition-colors"
+                            title="Approve"
+                          >
+                            Approve
+                          </button>
+                        )}
                         {n.creditNoteStatus !== 'ADJUSTED' && n.creditNoteStatus !== 'CANCELLED' && (
                           <button
                             onClick={() => setToStatus(n)}

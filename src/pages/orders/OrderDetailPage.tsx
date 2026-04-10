@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { StatusBadge, PaymentStatusBadge, OrderForm } from './OrdersPage'
 import { cn } from '@/lib/utils'
 import type { OrderPaymentStatus, VehicleAllocation } from '@/types'
@@ -57,10 +58,14 @@ function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
   const qc = useQueryClient()
   const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehiclesApi.getAll() })
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<AssignVehicleForm>({
+  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<AssignVehicleForm>({
     resolver: zodResolver(assignVehicleSchema) as Resolver<AssignVehicleForm>,
-    defaultValues: { allocatedWeight: remainingWeight },
   })
+  const watchedVehicleId = watch('vehicleId')
+
+  useEffect(() => {
+    if (open) reset({ allocatedWeight: remainingWeight })
+  }, [open])
 
   const mutation = useMutation({
     mutationFn: (data: AssignVehicleForm) => ordersApi.assignVehicle(orderId, data),
@@ -75,7 +80,10 @@ function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
     },
   })
 
-  const activeVehicles = (vehiclesRes?.data ?? []).filter(v => v.isActive && !v.isAssigned)
+  // Show all active vehicles; sort unassigned ones first so they're easy to find
+  const activeVehicles = [...(vehiclesRes?.data ?? [])]
+    .filter(v => v.isActive)
+    .sort((a, b) => (a.isAssigned === b.isAssigned ? 0 : a.isAssigned ? 1 : -1))
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -84,16 +92,15 @@ function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Vehicle *</Label>
-            <select {...register('vehicleId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-              <option value="">Select vehicle</option>
-              {activeVehicles.map(v => (
-                <option key={v.id} value={v.id}>
-                  {v.registrationNumber}
-                  {v.vehicleTypeName ? ` · ${v.vehicleTypeName}` : ''}
-                  {v.capacityInTons  ? ` · ${v.capacityInTons}T` : ''}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={watchedVehicleId ? String(watchedVehicleId) : ''}
+              onValueChange={v => setValue('vehicleId', Number(v), { shouldValidate: true })}
+              options={activeVehicles.map(v => ({
+                value: String(v.id),
+                label: `${v.registrationNumber}${v.vehicleTypeName ? ` · ${v.vehicleTypeName}` : ''}${v.capacityInTons ? ` · ${v.capacityInTons}T` : ''}${v.isAssigned ? ` (On Trip: ${v.assignedOrderNumber ?? '—'})` : ''}`,
+              }))}
+              placeholder="Search vehicle…"
+            />
             {errors.vehicleId && <p className="text-red-500 text-xs">{errors.vehicleId.message}</p>}
           </div>
 
@@ -1193,6 +1200,27 @@ export function OrderDetailPage() {
                 <p className="text-gray-700">{order.remarks}</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── E-way Bill ── */}
+      {(order.ewayBillNumber || order.ewayBillDate || order.ewayBillValidUpto) && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">E-way Bill</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">E-way Bill No.</p>
+              <p className="font-medium text-gray-800">{order.ewayBillNumber ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Bill Date</p>
+              <p className="font-medium text-gray-800">{fmt(order.ewayBillDate)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Valid Upto</p>
+              <p className="font-medium text-gray-800">{fmt(order.ewayBillValidUpto)}</p>
+            </div>
           </div>
         </div>
       )}

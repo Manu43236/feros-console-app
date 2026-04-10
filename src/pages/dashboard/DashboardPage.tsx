@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { dashboardApi } from '@/api/dashboard'
 import { format } from 'date-fns'
 import {
@@ -28,13 +29,20 @@ function alertBadge(days: number, expired: boolean) {
 }
 
 function StatCard({
-  label, value, sub, icon: Icon, iconBg,
+  label, value, sub, icon: Icon, iconBg, href,
 }: {
   label: string; value: string; sub?: string
-  icon: React.ElementType; iconBg: string
+  icon: React.ElementType; iconBg: string; href?: string
 }) {
+  const navigate = useNavigate()
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+    <div
+      onClick={() => href && navigate(href)}
+      className={cn(
+        'bg-white rounded-xl p-5 shadow-sm border border-gray-100 transition-all duration-200',
+        href && 'cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-blue-200'
+      )}
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-500">{label}</p>
@@ -80,6 +88,7 @@ function StaffAlertRow({ a }: { a: StaffDocumentAlert }) {
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate()
   const { data: summaryRes, isLoading: loadingSummary } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: dashboardApi.getSummary,
@@ -100,6 +109,7 @@ export function DashboardPage() {
       sub: `${fmt(s?.orders.inTransit)} in transit · ${fmt(s?.orders.pending)} pending`,
       icon: ClipboardList,
       iconBg: 'bg-blue-50 text-feros-navy',
+      href: '/orders',
     },
     {
       label: 'Fleet Size',
@@ -107,6 +117,7 @@ export function DashboardPage() {
       sub: `${fmt(s?.vehicles.onTrip)} on trip · ${fmt(s?.vehicles.available)} available`,
       icon: Truck,
       iconBg: 'bg-orange-50 text-feros-orange',
+      href: '/vehicles',
     },
     {
       label: 'Outstanding',
@@ -114,6 +125,7 @@ export function DashboardPage() {
       sub: `${fmt(s?.invoices.overdue)} overdue invoices`,
       icon: Receipt,
       iconBg: 'bg-red-50 text-red-600',
+      href: '/invoices',
     },
     {
       label: "Today's Attendance",
@@ -121,6 +133,7 @@ export function DashboardPage() {
       sub: `of ${fmt(s?.todayAttendance.total)} staff · ${fmt(s?.todayAttendance.absent)} absent`,
       icon: UserCheck,
       iconBg: 'bg-green-50 text-green-600',
+      href: '/attendance',
     },
   ]
 
@@ -159,14 +172,18 @@ export function DashboardPage() {
           <h2 className="font-semibold text-gray-800 mb-4">Order Status Breakdown</h2>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
             {[
-              { label: 'Pending',    value: s.orders.pending,            color: 'text-gray-600   bg-gray-50' },
-              { label: 'Assigned',   value: s.orders.fullyAssigned,      color: 'text-blue-600   bg-blue-50' },
-              { label: 'In Transit', value: s.orders.inTransit,          color: 'text-orange-600 bg-orange-50' },
-              { label: 'Part. Del.', value: s.orders.partiallyDelivered, color: 'text-yellow-700 bg-yellow-50' },
-              { label: 'Delivered',  value: s.orders.delivered,          color: 'text-green-600  bg-green-50' },
-              { label: 'Cancelled',  value: s.orders.cancelled,          color: 'text-red-600    bg-red-50' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className={cn('rounded-lg p-3 text-center', color)}>
+              { label: 'Pending',    value: s.orders.pending,            color: 'text-gray-600   bg-gray-50',   status: 'PENDING' },
+              { label: 'Assigned',   value: s.orders.fullyAssigned,      color: 'text-blue-600   bg-blue-50',   status: 'FULLY_ASSIGNED' },
+              { label: 'In Transit', value: s.orders.inTransit,          color: 'text-orange-600 bg-orange-50', status: 'IN_TRANSIT' },
+              { label: 'Part. Del.', value: s.orders.partiallyDelivered, color: 'text-yellow-700 bg-yellow-50', status: 'PARTIALLY_DELIVERED' },
+              { label: 'Delivered',  value: s.orders.delivered,          color: 'text-green-600  bg-green-50',  status: 'DELIVERED' },
+              { label: 'Cancelled',  value: s.orders.cancelled,          color: 'text-red-600    bg-red-50',    status: 'CANCELLED' },
+            ].map(({ label, value, color, status }) => (
+              <div
+                key={label}
+                onClick={() => navigate(`/orders?status=${status}`)}
+                className={cn('rounded-lg p-3 text-center cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md', color)}
+              >
                 <p className="text-2xl font-bold">{fmt(value)}</p>
                 <p className="text-xs mt-1 opacity-80">{label}</p>
               </div>
@@ -181,13 +198,13 @@ export function DashboardPage() {
           <h2 className="font-semibold text-gray-800 mb-4">Invoice Summary</h2>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {[
-              { label: 'Draft',      value: s.invoices.draft,         color: 'text-gray-600   bg-gray-50' },
-              { label: 'Sent',       value: s.invoices.sent,          color: 'text-blue-600   bg-blue-50' },
-              { label: 'Part. Paid', value: s.invoices.partiallyPaid, color: 'text-yellow-700 bg-yellow-50' },
-              { label: 'Overdue',    value: s.invoices.overdue,       color: 'text-red-600    bg-red-50' },
-              { label: 'Paid',       value: s.invoices.paid,          color: 'text-green-600  bg-green-50' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className={cn('rounded-lg p-3 text-center', color)}>
+              { label: 'Draft',      value: s.invoices.draft,         color: 'text-gray-600   bg-gray-50',   status: 'DRAFT' },
+              { label: 'Sent',       value: s.invoices.sent,          color: 'text-blue-600   bg-blue-50',   status: 'SENT' },
+              { label: 'Part. Paid', value: s.invoices.partiallyPaid, color: 'text-yellow-700 bg-yellow-50', status: 'PARTIALLY_PAID' },
+              { label: 'Overdue',    value: s.invoices.overdue,       color: 'text-red-600    bg-red-50',    status: 'OVERDUE' },
+              { label: 'Paid',       value: s.invoices.paid,          color: 'text-green-600  bg-green-50',  status: 'PAID' },
+            ].map(({ label, value, color, status }) => (
+              <div key={label} onClick={() => navigate(`/invoices?status=${status}`)} className={cn('rounded-lg p-3 text-center cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md', color)}>
                 <p className="text-2xl font-bold">{fmt(value)}</p>
                 <p className="text-xs mt-1 opacity-80">{label}</p>
               </div>
