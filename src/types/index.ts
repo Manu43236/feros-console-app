@@ -707,3 +707,94 @@ export interface MeterReading {
   createdAt: string
   serviceAlerts: MeterReadingServiceAlert[]
 }
+
+// ─── Tires ────────────────────────────────────────────────────────────────────
+export type TireStatus = 'IN_STOCK' | 'FITTED' | 'RETREADING' | 'SCRAPPED' | 'DISPOSED'
+export type TireType = 'RADIAL' | 'BIAS' | 'TUBELESS' | 'TUBE_TYPE'
+export type TirePositionType = 'STEER' | 'DRIVE' | 'TRAILER' | 'SPARE'
+export type TireRemovalReason = 'ROTATION' | 'WORN' | 'PUNCTURE' | 'DAMAGE' | 'RETREAD' | 'SCRAP' | 'OTHER'
+
+export interface Tire {
+  id: number
+  tenantId: number
+  serialNumber: string
+  brand: string
+  size: string
+  tireType: TireType
+  plyRating?: string
+  purchaseDate?: string
+  purchaseCost?: number
+  status: TireStatus
+  retreadCount: number
+  totalLifetimeKm: number
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TirePosition {
+  id: number
+  tenantId: number
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  positionCode: string
+  positionType: TirePositionType
+  displayOrder: number
+  currentFitting?: TireFitting
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TireFitting {
+  id: number
+  tenantId: number
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  tireId: number
+  tireSerialNumber: string
+  tireBrand: string
+  tireSize: string
+  positionId: number
+  positionCode: string
+  fittedAtKm: number
+  fittedDate: string
+  fittedById: number
+  fittedByName: string
+  removedAtKm?: number
+  removedDate?: string
+  removalReason?: TireRemovalReason
+  removedById?: number
+  removedByName?: string
+  rotationLogId?: number
+  kmDriven?: number
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TireRotationItem {
+  id: number
+  tireId: number
+  tireSerialNumber: string
+  fromPositionId: number
+  fromPositionCode: string
+  toPositionId: number
+  toPositionCode: string
+  oldFittingId: number
+  newFittingId: number
+}
+
+export interface TireRotationLog {
+  id: number
+  tenantId: number
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  rotationDate: string
+  odometerKm: number
+  performedById: number
+  performedByName: string
+  notes?: string
+  items: TireRotationItem[]
+  createdAt: string
+  updatedAt: string
+}

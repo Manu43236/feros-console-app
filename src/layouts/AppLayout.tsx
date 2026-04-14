@@ -9,7 +9,7 @@ import {
   Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
-  Boxes, Fuel, Gauge, ChevronDown, ChevronRight,
+  Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -43,6 +43,7 @@ const ADMIN_NAV: SectionedNav = {
       section: 'Fleet',
       items: [
         { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
+        { to: '/tires',          label: 'Tires',          icon: CircleDot },
         { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
       ],
