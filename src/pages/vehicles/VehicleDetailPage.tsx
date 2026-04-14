@@ -1582,12 +1582,13 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
 
 type TiresSubTab = 'Current' | 'Rotation History' | 'Fitting History'
 
-function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerReading?: number } }) {
+function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerReading?: number; tyreCount?: number } }) {
   const [subTab, setSubTab] = useState<TiresSubTab>('Current')
   const [fitDialog, setFitDialog] = useState<{ positionId: number } | null>(null)
   const [removeDialog, setRemoveDialog] = useState<TireFitting | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
   const [rotateOpen, setRotateOpen] = useState(false)
+  const qc = useQueryClient()
 
   const { data: posRes } = useQuery({
     queryKey: ['tire-positions-current', vehicle.id],
@@ -1610,6 +1611,15 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
   const fittingHistory: TireFitting[] = fittingRes?.data ?? []
   const rotationHistory: TireRotationLog[] = rotRes?.data ?? []
   const currentKm = vehicle.currentOdometerReading ? Number(vehicle.currentOdometerReading) : undefined
+
+  const autoSetupMutation = useMutation({
+    mutationFn: () => tiresApi.autoSetup(vehicle.id),
+    onSuccess: () => {
+      toast.success('Tire positions configured')
+      qc.invalidateQueries({ queryKey: ['tire-positions-current', vehicle.id] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Auto setup failed'),
+  })
 
   const grouped = POSITION_TYPE_ORDER.reduce((acc, type) => {
     acc[type] = positions.filter(p => p.positionType === type)
@@ -1644,9 +1654,24 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
             <Button size="sm" variant="outline" onClick={() => setRotateOpen(true)}>Rotate</Button>
           </div>
           {positions.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 text-sm">
-              No positions configured.
-              <button className="ml-1 text-feros-navy underline" onClick={() => setManageOpen(true)}>Add positions</button>
+            <div className="text-center py-10 space-y-3">
+              <p className="text-sm text-gray-500">No tire positions configured for this vehicle.</p>
+              {vehicle.tyreCount ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400">Vehicle type has <strong>{vehicle.tyreCount} tires</strong> — standard positions will be created automatically.</p>
+                  <Button
+                    size="sm"
+                    className="bg-feros-navy hover:bg-feros-navy/90 text-white"
+                    disabled={autoSetupMutation.isPending}
+                    onClick={() => autoSetupMutation.mutate()}
+                  >
+                    {autoSetupMutation.isPending ? 'Setting up…' : `Auto Setup ${vehicle.tyreCount}-Tire Positions`}
+                  </Button>
+                  <p className="text-xs text-gray-400">or <button className="text-feros-navy underline" onClick={() => setManageOpen(true)}>add manually</button></p>
+                </div>
+              ) : (
+                <button className="text-sm text-feros-navy underline" onClick={() => setManageOpen(true)}>Add positions manually</button>
+              )}
             </div>
           ) : (
             POSITION_TYPE_ORDER.map(type => {
@@ -2288,7 +2313,7 @@ export function VehicleDetailPage() {
               )}
             </div>
             <p className="text-blue-200 text-sm mt-1.5">
-              {[v.brandName, v.vehicleTypeName, v.capacityInTons ? `${v.capacityInTons}T` : null, v.fuelTypeName, v.color]
+              {[v.brandName, v.vehicleModelName, v.vehicleTypeName, v.capacityInTons ? `${v.capacityInTons}T` : null, v.fuelTypeName, v.color]
                 .filter(Boolean).join(' · ')}
             </p>
           </div>
@@ -2363,6 +2388,7 @@ export function VehicleDetailPage() {
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Vehicle Details</p>
                 <InfoRow label="Brand"           value={v.brandName} />
+                <InfoRow label="Model"           value={v.vehicleModelName} />
                 <InfoRow label="Vehicle Type"    value={v.vehicleTypeName} />
                 <InfoRow label="Fuel Type"       value={v.fuelTypeName} />
                 <InfoRow label="Ownership"       value={v.ownershipTypeName} />

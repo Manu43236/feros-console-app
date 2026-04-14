@@ -10,7 +10,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { globalMastersApi } from '@/api/masters'
 import { globalMastersWriteApi } from '@/api/superadmin'
-import type { MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem } from '@/types'
+import type { MasterItem, StateItem, CityItem, VehicleTypeItem, VehicleModelItem, TaxItem, DocumentTypeItem } from '@/types'
 
 // ── Generic simple CRUD section (name only) ───────────────────────────────────
 function SimpleSection({
@@ -357,6 +357,141 @@ function VehicleTypesSection() {
   )
 }
 
+// ── Vehicle Models section ────────────────────────────────────────────────────
+function VehicleModelsSection() {
+  const qc = useQueryClient()
+  const { data: brandsData } = useQuery({ queryKey: ['g-vehicle-brands'], queryFn: globalMastersApi.getVehicleBrands })
+  const { data: typesData }  = useQuery({ queryKey: ['g-vehicle-types'],  queryFn: globalMastersApi.getVehicleTypes })
+  const { data, isLoading }  = useQuery({ queryKey: ['g-vehicle-models'], queryFn: () => globalMastersApi.getVehicleModels() })
+  const items = (data?.data ?? []) as VehicleModelItem[]
+  const brands = brandsData?.data ?? []
+  const types  = typesData?.data  ?? []
+
+  const [open, setOpen]         = useState(false)
+  const [editItem, setEditItem] = useState<VehicleModelItem | null>(null)
+  const [name, setName]         = useState('')
+  const [brandId, setBrandId]   = useState('')
+  const [typeId, setTypeId]     = useState('')
+  const [tyres, setTyres]       = useState('')
+  const [capacity, setCapacity] = useState('')
+  const [nameErr, setNameErr]   = useState('')
+  const [brandErr, setBrandErr] = useState('')
+  const [dlg, setDlg]           = useState<{ name: string; id: number } | null>(null)
+  const [filterBrand, setFilterBrand] = useState('all')
+
+  const err = (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed')
+  const mutAdd  = useMutation({ mutationFn: (d: { brandId: number; vehicleTypeId?: number; name: string; tyreCount?: number; capacityInTons?: number }) => globalMastersApi.createVehicleModel(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-vehicle-models'] }); setOpen(false) }, onError: err })
+  const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { brandId: number; vehicleTypeId?: number; name: string; tyreCount?: number; capacityInTons?: number } }) => globalMastersApi.updateVehicleModel(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-vehicle-models'] }); setOpen(false) }, onError: err })
+  const mutDel  = useMutation({ mutationFn: (id: number) => globalMastersApi.deleteVehicleModel(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-vehicle-models'] }), onError: err })
+
+  function openAdd() { setEditItem(null); setName(''); setBrandId(''); setTypeId(''); setTyres(''); setCapacity(''); setNameErr(''); setBrandErr(''); setOpen(true) }
+  function openEdit(it: VehicleModelItem) { setEditItem(it); setName(it.name); setBrandId(String(it.brandId)); setTypeId(it.vehicleTypeId ? String(it.vehicleTypeId) : ''); setTyres(it.tyreCount ? String(it.tyreCount) : ''); setCapacity(it.capacityInTons ? String(it.capacityInTons) : ''); setNameErr(''); setBrandErr(''); setOpen(true) }
+  function submit(e: React.FormEvent) {
+    e.preventDefault()
+    let hasErr = false
+    if (!name.trim()) { setNameErr('Name is required'); hasErr = true }
+    if (!brandId) { setBrandErr('Brand is required'); hasErr = true }
+    if (hasErr) return
+    const d = {
+      brandId: Number(brandId),
+      vehicleTypeId: typeId ? Number(typeId) : undefined,
+      name: name.trim(),
+      tyreCount: tyres ? Number(tyres) : undefined,
+      capacityInTons: capacity ? Number(capacity) : undefined,
+    }
+    if (editItem) mutEdit.mutate({ id: editItem.id, d })
+    else mutAdd.mutate(d)
+  }
+
+  const displayed = filterBrand === 'all' ? items : items.filter(m => String(m.brandId) === filterBrand)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-700">Vehicle Models</h3>
+        <div className="flex gap-2">
+          <SearchableSelect
+            value={filterBrand}
+            onValueChange={setFilterBrand}
+            options={[{ value: 'all', label: 'All Brands' }, ...brands.map(b => ({ value: String(b.id), label: b.name }))]}
+            className="w-32"
+            triggerClassName="h-7 text-xs"
+          />
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
+        </div>
+      </div>
+      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : displayed.length === 0 ? <div className="text-xs text-gray-400 py-3">No models yet</div> : (
+        <div className="divide-y border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+          {displayed.map(it => (
+            <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
+              <div>
+                <span className="text-sm text-gray-700">{it.name}</span>
+                <span className="ml-2 text-xs text-gray-400">{it.brandName}</span>
+                {it.vehicleTypeName && <span className="ml-1 text-xs text-gray-400">· {it.vehicleTypeName}</span>}
+                {it.tyreCount && <span className="ml-1 text-xs text-gray-400">· {it.tyreCount}T</span>}
+                {it.capacityInTons && <span className="ml-1 text-xs text-gray-400">· {it.capacityInTons}T</span>}
+              </div>
+              <div className="flex gap-1">
+                <button onClick={() => openEdit(it)} className="p-1 text-gray-400 hover:text-gray-600"><Pencil size={11} /></button>
+                <button onClick={() => setDlg({ name: it.name, id: it.id })} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={11} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{editItem ? 'Edit Vehicle Model' : 'Add Vehicle Model'}</DialogTitle></DialogHeader>
+          <form onSubmit={submit} className="space-y-3 mt-2">
+            <div>
+              <Label>Brand <span className="text-red-500">*</span></Label>
+              <SearchableSelect
+                value={brandId}
+                onValueChange={v => { setBrandId(v); setBrandErr('') }}
+                options={brands.map(b => ({ value: String(b.id), label: b.name }))}
+                placeholder="Select brand"
+                className={`mt-1 ${brandErr ? 'border-red-400' : ''}`}
+              />
+              {brandErr && <p className="text-red-500 text-xs mt-1">{brandErr}</p>}
+            </div>
+            <div>
+              <Label>Model Name <span className="text-red-500">*</span></Label>
+              <Input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} className={`mt-1 ${nameErr ? 'border-red-400' : ''}`} autoFocus />
+              {nameErr && <p className="text-red-500 text-xs mt-1">{nameErr}</p>}
+            </div>
+            <div>
+              <Label>Vehicle Type</Label>
+              <SearchableSelect
+                value={typeId}
+                onValueChange={setTypeId}
+                options={[{ value: '', label: 'None' }, ...types.map(t => ({ value: String(t.id), label: t.name }))]}
+                placeholder="Select type (optional)"
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label>Tyre Count</Label><Input type="number" value={tyres} onChange={e => setTyres(e.target.value)} className="mt-1" placeholder="e.g. 10" /></div>
+              <div><Label>Capacity (tons)</Label><Input type="number" value={capacity} onChange={e => setCapacity(e.target.value)} className="mt-1" placeholder="e.g. 20" /></div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" size="sm">{editItem ? 'Update' : 'Add'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <ConfirmDialog
+        open={!!dlg}
+        title="Delete Vehicle Model"
+        description={`Delete "${dlg?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (dlg) mutDel.mutate(dlg.id); setDlg(null) }}
+        onCancel={() => setDlg(null)}
+      />
+    </div>
+  )
+}
+
 // ── Document Types section ────────────────────────────────────────────────────
 function DocumentTypesSection() {
   const qc = useQueryClient()
@@ -577,7 +712,7 @@ const PaymentStatusesSection  = makeSimpleSection('Payment Statuses',  'g-paymen
 
 // ── Section registry ──────────────────────────────────────────────────────────
 type SectionId =
-  | 'states' | 'cities' | 'vehicleBrands' | 'vehicleTypes' | 'fuelTypes'
+  | 'states' | 'cities' | 'vehicleBrands' | 'vehicleTypes' | 'vehicleModels' | 'fuelTypes'
   | 'materialTypes' | 'documentTypes' | 'attendanceTypes' | 'leaveTypes'
   | 'employmentTypes' | 'ownershipTypes' | 'deductionTypes' | 'taxes' | 'paymentStatuses'
 
@@ -586,6 +721,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'cities',          label: 'Cities' },
   { id: 'vehicleBrands',   label: 'Vehicle Brands' },
   { id: 'vehicleTypes',    label: 'Vehicle Types' },
+  { id: 'vehicleModels',   label: 'Vehicle Models' },
   { id: 'fuelTypes',       label: 'Fuel Types' },
   { id: 'materialTypes',   label: 'Material Types' },
   { id: 'documentTypes',   label: 'Document Types' },
@@ -610,6 +746,7 @@ export function GlobalMastersPage() {
     cities:          <CitiesSection states={states} />,
     vehicleBrands:   <VehicleBrandsSection />,
     vehicleTypes:    <VehicleTypesSection />,
+    vehicleModels:   <VehicleModelsSection />,
     fuelTypes:       <FuelTypesSection />,
     materialTypes:   <MaterialTypesSection />,
     documentTypes:   <DocumentTypesSection />,

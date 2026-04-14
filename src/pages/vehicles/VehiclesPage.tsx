@@ -192,6 +192,7 @@ function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: ()
 const schema = z.object({
   registrationNumber:       z.string().min(1, 'Registration number is required').max(10, 'Max 10 characters allowed'),
   brandId:                  z.coerce.number().optional(),
+  vehicleModelId:           z.coerce.number().optional(),
   vehicleTypeId:            z.coerce.number().optional(),
   fuelTypeId:               z.coerce.number().optional(),
   ownershipTypeId:          z.coerce.number().optional(),
@@ -246,6 +247,7 @@ export function VehicleForm({
   const qc = useQueryClient()
   const isEdit = !!vehicle
   const [ownershipTypeId, setOwnershipTypeId] = useState<number | undefined>(vehicle?.ownershipTypeId)
+  const [selectedBrandId, setSelectedBrandId] = useState<number | undefined>(vehicle?.brandId)
 
   const { data: brandsRes }        = useQuery({ queryKey: ['vehicle-brands'],    queryFn: globalMastersApi.getVehicleBrands })
   const { data: typesRes }         = useQuery({ queryKey: ['vehicle-types'],     queryFn: globalMastersApi.getVehicleTypes })
@@ -256,11 +258,11 @@ export function VehicleForm({
   const selectedOwnershipName = ownershipRes?.data?.find(o => o.id === ownershipTypeId)?.name ?? ''
   const showOwnerSection = !!ownershipTypeId && !selectedOwnershipName.toUpperCase().includes('OWN')
 
-  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, control, setValue, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: vehicle ? {
       registrationNumber: vehicle.registrationNumber,
-      brandId: vehicle.brandId, vehicleTypeId: vehicle.vehicleTypeId,
+      brandId: vehicle.brandId, vehicleModelId: vehicle.vehicleModelId, vehicleTypeId: vehicle.vehicleTypeId,
       fuelTypeId: vehicle.fuelTypeId, ownershipTypeId: vehicle.ownershipTypeId,
       currentStatusId: vehicle.currentStatusId, capacityInTons: vehicle.capacityInTons,
       manufactureYear: vehicle.manufactureYear, color: vehicle.color ?? '',
@@ -290,11 +292,18 @@ export function VehicleForm({
     } : {},
   })
 
+  const { data: modelsRes } = useQuery({
+    queryKey: ['vehicle-models', selectedBrandId],
+    queryFn: () => globalMastersApi.getVehicleModels(selectedBrandId),
+    enabled: !!selectedBrandId,
+  })
+  const models = modelsRes?.data ?? []
+
   useEffect(() => {
     if (open && vehicle) {
       reset({
         registrationNumber: vehicle.registrationNumber,
-        brandId: vehicle.brandId, vehicleTypeId: vehicle.vehicleTypeId,
+        brandId: vehicle.brandId, vehicleModelId: vehicle.vehicleModelId, vehicleTypeId: vehicle.vehicleTypeId,
         fuelTypeId: vehicle.fuelTypeId, ownershipTypeId: vehicle.ownershipTypeId,
         currentStatusId: vehicle.currentStatusId, capacityInTons: vehicle.capacityInTons,
         manufactureYear: vehicle.manufactureYear, color: vehicle.color ?? '',
@@ -323,8 +332,9 @@ export function VehicleForm({
         notes: vehicle.notes ?? '',
       })
       setOwnershipTypeId(vehicle.ownershipTypeId)
+      setSelectedBrandId(vehicle.brandId)
     }
-    if (!open) reset({})
+    if (!open) { reset({}); setSelectedBrandId(undefined) }
   }, [open])
 
   const mutation = useMutation({
@@ -371,9 +381,40 @@ export function VehicleForm({
                 render={({ field }) => (
                   <SearchableSelect
                     value={field.value ? String(field.value) : ''}
-                    onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                    onValueChange={v => {
+                      const id = v ? Number(v) : undefined
+                      field.onChange(id)
+                      setSelectedBrandId(id)
+                      setValue('vehicleModelId', undefined)
+                    }}
                     options={(brandsRes?.data ?? []).map(b => ({ value: String(b.id), label: b.name }))}
                     placeholder="Select brand"
+                    className="mt-1"
+                  />
+                )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Model</Label>
+              <Controller
+                name="vehicleModelId"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={v => {
+                      const modelId = v ? Number(v) : undefined
+                      field.onChange(modelId)
+                      if (modelId) {
+                        const selected = models.find(m => m.id === modelId)
+                        if (selected) {
+                          if (selected.vehicleTypeId) setValue('vehicleTypeId', selected.vehicleTypeId)
+                          if (selected.capacityInTons) setValue('capacityInTons', selected.capacityInTons)
+                        }
+                      }
+                    }}
+                    options={models.map(m => ({ value: String(m.id), label: m.name }))}
+                    placeholder={selectedBrandId ? 'Select model' : 'Select brand first'}
                     className="mt-1"
                   />
                 )}

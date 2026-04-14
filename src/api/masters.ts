@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem, TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
+import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, VehicleModelItem, TaxItem, DocumentTypeItem, TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
 
 // Global Masters
 export const globalMastersApi = {
@@ -18,6 +18,10 @@ export const globalMastersApi = {
   getTaxes:            () => apiClient.get<ApiResponse<TaxItem[]>>('/masters/global/taxes').then(r => r.data),
   getPaymentStatuses:  () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/payment-statuses').then(r => r.data),
   getServiceTaskTypes: () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/service-task-types').then(r => r.data),
+  getVehicleModels:    (brandId?: number) => apiClient.get<ApiResponse<VehicleModelItem[]>>(`/masters/global/vehicle-models${brandId ? `?brandId=${brandId}` : ''}`).then(r => r.data),
+  createVehicleModel:  (data: { brandId: number; vehicleTypeId?: number; name: string; tyreCount?: number; capacityInTons?: number }) => apiClient.post<ApiResponse<VehicleModelItem>>('/masters/global/vehicle-models', data).then(r => r.data),
+  updateVehicleModel:  (id: number, data: { brandId: number; vehicleTypeId?: number; name: string; tyreCount?: number; capacityInTons?: number }) => apiClient.put<ApiResponse<VehicleModelItem>>(`/masters/global/vehicle-models/${id}`, data).then(r => r.data),
+  deleteVehicleModel:  (id: number) => apiClient.delete(`/masters/global/vehicle-models/${id}`),
 }
 
 // Tenant Masters

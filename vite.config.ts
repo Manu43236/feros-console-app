@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   resolve: {
     alias: {
@@ -13,9 +13,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http:///16.112.184.73',
+        target: mode === 'production' ? 'http://16.112.184.73' : 'http://localhost:8080',
         changeOrigin: true,
       },
     },
   },
-})
+}))

@@ -15,6 +15,8 @@ export const tiresApi = {
     apiClient.get<ApiResponse<TireFitting[]>>(`/tires/${id}/history`).then(r => r.data),
 
   // Positions
+  autoSetup: (vehicleId: number) =>
+    apiClient.post<ApiResponse<TirePosition[]>>('/tire-positions/auto-setup', null, { params: { vehicleId } }).then(r => r.data),
   getPositions: (vehicleId: number) =>
     apiClient.get<ApiResponse<TirePosition[]>>('/tire-positions', { params: { vehicleId } }).then(r => r.data),
   getCurrentPositions: (vehicleId: number) =>

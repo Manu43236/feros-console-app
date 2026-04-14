@@ -30,6 +30,12 @@ export interface MasterItem {
 export interface StateItem extends MasterItem { code: string }
 export interface CityItem  extends MasterItem { stateId: number; stateName: string }
 export interface VehicleTypeItem extends MasterItem { capacityInTons: number; tyreCount: number }
+export interface VehicleModelItem {
+  id: number; brandId: number; brandName: string
+  vehicleTypeId?: number; vehicleTypeName?: string
+  name: string; tyreCount?: number; capacityInTons?: number
+  isActive?: boolean
+}
 export interface DocumentTypeItem extends MasterItem { applicableFor: 'VEHICLE' | 'DRIVER' | 'BOTH'; applicableRoles: string[] | null }
 export interface TaxItem extends MasterItem { rate: number; taxType: string }
 
@@ -90,7 +96,8 @@ export interface Vehicle {
   id: number; tenantId: number
   registrationNumber: string
   brandId?: number; brandName?: string
-  vehicleTypeId?: number; vehicleTypeName?: string
+  vehicleTypeId?: number; vehicleTypeName?: string; tyreCount?: number
+  vehicleModelId?: number; vehicleModelName?: string
   fuelTypeId?: number; fuelTypeName?: string
   ownershipTypeId?: number; ownershipTypeName?: string
   currentStatusId?: number; currentStatusName?: string; currentStatusType?: VehicleStatusType
