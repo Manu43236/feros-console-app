@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { format, parseISO } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 function fmtDate(d?: string) {
   if (!d) return '—'
@@ -183,14 +184,12 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
         <div className="space-y-4 pt-1">
           <div className="space-y-1.5">
             <Label>Vehicle *</Label>
-            <select
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              value={vehicleId}
-              onChange={e => { setVehicleId(Number(e.target.value)); setForm(f => ({ ...f, positionId: 0 })) }}
-            >
-              <option value={0}>Select vehicle…</option>
-              {vehicles.map(v => <option key={v.id} value={v.id}>{v.registrationNumber} — {v.vehicleTypeName}</option>)}
-            </select>
+            <SearchableSelect
+              value={vehicleId === 0 ? '' : String(vehicleId)}
+              onValueChange={val => { setVehicleId(Number(val)); setForm(f => ({ ...f, positionId: 0 })) }}
+              options={vehicles.map(v => ({ value: String(v.id), label: `${v.registrationNumber} — ${v.vehicleTypeName}` }))}
+              placeholder="Select vehicle…"
+            />
           </div>
 
           {vehicleId > 0 && (
@@ -201,14 +200,12 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
                   All positions on this vehicle are occupied.
                 </p>
               ) : (
-                <select
-                  className="w-full border rounded-md px-3 py-2 text-sm"
-                  value={form.positionId}
-                  onChange={e => setForm(f => ({ ...f, positionId: Number(e.target.value) }))}
-                >
-                  <option value={0}>Select position…</option>
-                  {emptyPositions.map(p => <option key={p.id} value={p.id}>{p.positionCode} ({p.positionType})</option>)}
-                </select>
+                <SearchableSelect
+                  value={form.positionId === 0 ? '' : String(form.positionId)}
+                  onValueChange={val => setForm(f => ({ ...f, positionId: Number(val) }))}
+                  options={emptyPositions.map(p => ({ value: String(p.id), label: `${p.positionCode} (${p.positionType})` }))}
+                  placeholder="Select position…"
+                />
               )}
             </div>
           )}
