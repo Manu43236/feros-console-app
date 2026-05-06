@@ -43,7 +43,6 @@ const ADMIN_NAV: SectionedNav = {
       section: 'Fleet',
       items: [
         { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
-        { to: '/tires',          label: 'Tires',          icon: CircleDot },
         { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
       ],
@@ -59,7 +58,8 @@ const ADMIN_NAV: SectionedNav = {
     {
       section: 'Inventory',
       items: [
-        { to: '/inventory', label: 'Inventory', icon: Boxes },
+        { to: '/inventory',       label: 'Spare Parts', icon: Boxes },
+        { to: '/inventory/tires', label: 'Tires',       icon: CircleDot },
       ],
     },
     {
@@ -131,9 +131,10 @@ const DRIVER_CLEANER_NAV: FlatNav = [
 ]
 
 const STORE_KEEPER_NAV: FlatNav = [
-  { to: '/inventory',     label: 'Inventory',     icon: Boxes },
-  { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
-  { to: '/my/payslip',    label: 'My Payslip',    icon: Wallet },
+  { to: '/inventory',       label: 'Spare Parts',   icon: Boxes },
+  { to: '/inventory/tires', label: 'Tires',         icon: CircleDot },
+  { to: '/my/attendance',   label: 'My Attendance', icon: Calendar },
+  { to: '/my/payslip',      label: 'My Payslip',    icon: Wallet },
 ]
 
 const SERVICE_MEN_NAV: FlatNav = [
