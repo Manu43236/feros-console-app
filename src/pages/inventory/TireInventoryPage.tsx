@@ -155,7 +155,8 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
     queryFn:  () => tiresApi.getCurrentPositions(vehicleId),
     enabled:  vehicleId > 0,
   })
-  const emptyPositions: TirePosition[] = (positionsData?.data ?? []).filter(p => !p.currentFitting)
+  const allPositions: TirePosition[]   = positionsData?.data ?? []
+  const emptyPositions: TirePosition[] = allPositions.filter(p => !p.currentFitting)
 
   const mutation = useMutation({
     mutationFn: () => tiresApi.fitTire({
@@ -195,7 +196,11 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
           {vehicleId > 0 && (
             <div className="space-y-1.5">
               <Label>Position *</Label>
-              {emptyPositions.length === 0 ? (
+              {allPositions.length === 0 ? (
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-md">
+                  No tyre positions configured for this vehicle. Please set up positions in the Vehicle detail page first.
+                </p>
+              ) : emptyPositions.length === 0 ? (
                 <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-md">
                   All positions on this vehicle are occupied.
                 </p>
