@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tiresApi } from '@/api/tires'
 import { vehiclesApi } from '@/api/vehicles'
+import { meterReadingsApi } from '@/api/meterReadings'
 import type { Tire, TireStatus, TireType, TireFitting, TirePosition, TireRemovalReason } from '@/types'
 import { toast } from 'sonner'
 import { Plus, Search, RefreshCw, History } from 'lucide-react'
@@ -63,6 +64,7 @@ function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: ()
     purchaseCost: tire?.purchaseCost?.toString() ?? '',
     notes:        tire?.notes ?? '',
   })
+
 
   const mutation = useMutation({
     mutationFn: (data: unknown) => isEdit ? tiresApi.update(tire!.id, data) : tiresApi.create(data),
@@ -157,6 +159,22 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
   })
   const allPositions: TirePosition[]   = positionsData?.data ?? []
   const emptyPositions: TirePosition[] = allPositions.filter(p => !p.currentFitting)
+
+  const { data: meterData } = useQuery({
+    queryKey: ['meter-readings', vehicleId],
+    queryFn:  () => meterReadingsApi.getAll(vehicleId),
+    enabled:  vehicleId > 0,
+  })
+
+  // Auto-fill odometer from latest meter reading when vehicle is selected
+  useEffect(() => {
+    const readings = meterData?.data ?? []
+    if (readings.length > 0) {
+      setForm(f => ({ ...f, fittedAtKm: String(readings[0].readingKm) }))
+    } else {
+      setForm(f => ({ ...f, fittedAtKm: '' }))
+    }
+  }, [meterData])
 
   const mutation = useMutation({
     mutationFn: () => tiresApi.fitTire({
