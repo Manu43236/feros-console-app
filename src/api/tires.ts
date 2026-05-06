@@ -13,6 +13,8 @@ export const tiresApi = {
     apiClient.put<ApiResponse<Tire>>(`/tires/${id}`, data).then(r => r.data),
   getTireHistory: (id: number) =>
     apiClient.get<ApiResponse<TireFitting[]>>(`/tires/${id}/history`).then(r => r.data),
+  backToStock: (id: number) =>
+    apiClient.patch<ApiResponse<Tire>>(`/tires/${id}/back-to-stock`).then(r => r.data),
 
   // Positions
   getPositions: (vehicleId: number) =>
