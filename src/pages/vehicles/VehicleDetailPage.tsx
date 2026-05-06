@@ -1281,12 +1281,28 @@ function FitTireDialog({ open, onClose, vehicleId, positionId, availableTires, c
   open: boolean; onClose: () => void; vehicleId: number; positionId: number; availableTires: Tire[]; currentKm?: number
 }) {
   const qc = useQueryClient()
-  const [tireId, setTireId] = useState('')
+  const [selectedGroup, setSelectedGroup] = useState('')
   const [km, setKm] = useState(currentKm?.toString() ?? '')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
 
+  // Group available tires by brand + size
+  const groupedTires = availableTires.reduce<Record<string, Tire[]>>((acc, t) => {
+    const key = `${t.brand} ${t.size}`
+    if (!acc[key]) acc[key] = []
+    acc[key].push(t)
+    return acc
+  }, {})
+
+  const groupOptions = Object.entries(groupedTires).map(([key, tires]) => ({
+    value: key,
+    label: `${key} (${tires.length} available)`,
+  }))
+
+  // Auto-pick first tire from selected group
+  const selectedTireId = selectedGroup ? groupedTires[selectedGroup]?.[0]?.id : undefined
+
   const mutation = useMutation({
-    mutationFn: () => tiresApi.fitTire({ vehicleId, tireId: Number(tireId), positionId, fittedAtKm: Number(km), fittedDate: date }),
+    mutationFn: () => tiresApi.fitTire({ vehicleId, tireId: selectedTireId!, positionId, fittedAtKm: Number(km), fittedDate: date }),
     onSuccess: () => {
       toast.success('Tire fitted')
       qc.invalidateQueries({ queryKey: ['tire-positions-current', vehicleId] })
@@ -1303,12 +1319,17 @@ function FitTireDialog({ open, onClose, vehicleId, positionId, availableTires, c
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Select Tire *</Label>
-            <select className="w-full border rounded-md px-3 py-2 text-sm" value={tireId} onChange={e => setTireId(e.target.value)}>
-              <option value="">-- Choose available tire --</option>
-              {availableTires.map(t => (
-                <option key={t.id} value={t.id}>{t.serialNumber} — {t.brand} {t.size}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={selectedGroup}
+              onValueChange={setSelectedGroup}
+              options={groupOptions}
+              placeholder="Choose tire size…"
+            />
+            {selectedGroup && groupedTires[selectedGroup] && (
+              <p className="text-xs text-muted-foreground">
+                Will assign: <span className="font-medium">{groupedTires[selectedGroup][0].serialNumber}</span>
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Odometer at Fitting (km) *</Label>
@@ -1320,7 +1341,7 @@ function FitTireDialog({ open, onClose, vehicleId, positionId, availableTires, c
           </div>
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button disabled={!tireId || !km || mutation.isPending} onClick={() => mutation.mutate()} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+            <Button disabled={!selectedTireId || !km || mutation.isPending} onClick={() => mutation.mutate()} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
               {mutation.isPending ? 'Fitting…' : 'Fit Tire'}
             </Button>
           </div>
