@@ -763,6 +763,8 @@ export interface TireFitting {
   tireSerialNumber: string
   tireBrand: string
   tireSize: string
+  tireMaxLifetimeKm?: number
+  tireTotalLifetimeKm?: number
   positionId: number
   positionCode: string
   fittedAtKm: number

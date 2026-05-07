@@ -1603,7 +1603,7 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
 
 type TiresSubTab = 'Current' | 'Rotation History' | 'Fitting History'
 
-function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerReading?: number } }) {
+function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerReading?: number; tyreRotationIntervalKm?: number } }) {
   const [subTab, setSubTab] = useState<TiresSubTab>('Current')
   const [fitDialog, setFitDialog] = useState<{ positionId: number } | null>(null)
   const [removeDialog, setRemoveDialog] = useState<TireFitting | null>(null)
@@ -1679,15 +1679,34 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {group.map(pos => {
                       const f = pos.currentFitting
+                      const kmSinceFitted = (currentKm != null && f) ? currentKm - f.fittedAtKm : null
+                      const rotInterval = vehicle.tyreRotationIntervalKm
+                      const rotationBadge = (() => {
+                        if (kmSinceFitted == null || !rotInterval) return null
+                        if (kmSinceFitted >= rotInterval) return <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium">Rotation Due</span>
+                        if (kmSinceFitted >= rotInterval * 0.9) return <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">Rotation Soon</span>
+                        return null
+                      })()
+                      const maxKm = f?.tireMaxLifetimeKm
+                      const totalKm = f ? (f.tireTotalLifetimeKm ?? 0) + (kmSinceFitted ?? 0) : 0
+                      const replaceBadge = (maxKm && totalKm >= maxKm * 0.85)
+                        ? <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium">Replace Soon</span>
+                        : null
                       return (
-                        <div key={pos.id} className={cn('border rounded-xl p-3 text-sm', f ? 'bg-white border-gray-200' : 'border-dashed border-gray-200 bg-gray-50')}>
-                          <p className="font-mono font-semibold text-xs text-gray-500 mb-1">{pos.positionCode}</p>
+                        <div key={pos.id} className={cn('border rounded-xl p-3 text-sm relative', f ? 'bg-white border-gray-200' : 'border-dashed border-gray-200 bg-gray-50')}>
+                          <div className="flex items-start justify-between mb-1">
+                            <p className="font-mono font-semibold text-xs text-gray-500">{pos.positionCode}</p>
+                            <div className="flex flex-col items-end gap-0.5">
+                              {rotationBadge}
+                              {replaceBadge}
+                            </div>
+                          </div>
                           {f ? (
                             <>
                               <p className="font-medium text-gray-800 truncate">{f.tireSerialNumber}</p>
                               <p className="text-xs text-gray-400 truncate">{f.tireBrand} · {f.tireSize}</p>
-                              {currentKm != null && (
-                                <p className="text-xs text-blue-600 mt-1">{(currentKm - f.fittedAtKm).toLocaleString('en-IN')} km since fitted</p>
+                              {kmSinceFitted != null && (
+                                <p className="text-xs text-blue-600 mt-1">{kmSinceFitted.toLocaleString('en-IN')} km since fitted</p>
                               )}
                               <Button size="sm" variant="ghost" className="mt-2 h-6 text-xs text-red-500 hover:text-red-600 px-2 w-full" onClick={() => setRemoveDialog(f)}>
                                 Remove
