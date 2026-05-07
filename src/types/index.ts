@@ -728,6 +728,9 @@ export interface Tire {
   retreadCount: number
   totalLifetimeKm: number
   notes?: string
+  tyreLifeYears?: number
+  expiryDate?: string
+  maxLifetimeKm?: number
   retreaderName?: string
   expectedReturnDate?: string
   currentFittingId?: number

@@ -55,14 +55,16 @@ function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: ()
   const isEdit = !!tire
 
   const [form, setForm] = useState({
-    serialNumber: tire?.serialNumber ?? '',
-    brand:        tire?.brand ?? '',
-    size:         tire?.size ?? '',
-    tireType:     (tire?.tireType ?? 'RADIAL') as TireType,
-    plyRating:    tire?.plyRating ?? '',
-    purchaseDate: tire?.purchaseDate ?? '',
-    purchaseCost: tire?.purchaseCost?.toString() ?? '',
-    notes:        tire?.notes ?? '',
+    serialNumber:  tire?.serialNumber ?? '',
+    brand:         tire?.brand ?? '',
+    size:          tire?.size ?? '',
+    tireType:      (tire?.tireType ?? 'RADIAL') as TireType,
+    plyRating:     tire?.plyRating ?? '',
+    purchaseDate:  tire?.purchaseDate ?? '',
+    purchaseCost:  tire?.purchaseCost?.toString() ?? '',
+    tyreLifeYears: tire?.tyreLifeYears?.toString() ?? '',
+    maxLifetimeKm: tire?.maxLifetimeKm?.toString() ?? '',
+    notes:         tire?.notes ?? '',
   })
 
 
@@ -80,8 +82,10 @@ function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: ()
     e.preventDefault()
     mutation.mutate({
       ...form,
-      purchaseCost: form.purchaseCost ? Number(form.purchaseCost) : undefined,
-      purchaseDate: form.purchaseDate || undefined,
+      purchaseCost:  form.purchaseCost  ? Number(form.purchaseCost)  : undefined,
+      purchaseDate:  form.purchaseDate  || undefined,
+      tyreLifeYears: form.tyreLifeYears ? Number(form.tyreLifeYears) : undefined,
+      maxLifetimeKm: form.maxLifetimeKm ? Number(form.maxLifetimeKm) : undefined,
     })
   }
 
@@ -120,6 +124,14 @@ function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: ()
             <div className="space-y-1.5">
               <Label>Purchase Cost (₹)</Label>
               <Input type="number" value={form.purchaseCost} onChange={e => setForm(f => ({ ...f, purchaseCost: e.target.value }))} placeholder="12000" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tyre Life (Years)</Label>
+              <Input type="number" value={form.tyreLifeYears} onChange={e => setForm(f => ({ ...f, tyreLifeYears: e.target.value }))} placeholder="5" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Max Lifetime KM</Label>
+              <Input type="number" value={form.maxLifetimeKm} onChange={e => setForm(f => ({ ...f, maxLifetimeKm: e.target.value }))} placeholder="100000" />
             </div>
             <div className="space-y-1.5 col-span-2">
               <Label>Notes</Label>
@@ -560,7 +572,17 @@ export default function TireInventoryPage() {
               <tbody className="divide-y divide-gray-50">
                 {filtered.map(tire => (
                   <tr key={tire.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono font-medium text-gray-800">{tire.serialNumber}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-mono font-medium text-gray-800">{tire.serialNumber}</p>
+                      {tire.expiryDate && (() => {
+                        const daysLeft = Math.ceil((new Date(tire.expiryDate).getTime() - Date.now()) / 86400000)
+                        if (daysLeft < 0)
+                          return <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Expired</span>
+                        if (daysLeft <= 15)
+                          return <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Expiring in {daysLeft}d</span>
+                        return null
+                      })()}
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-800">{tire.brand}</p>
                       <p className="text-xs text-gray-400">{tire.size}</p>

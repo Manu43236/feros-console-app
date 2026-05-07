@@ -232,6 +232,7 @@ const schema = z.object({
   gpsProvider:              z.string().optional(),
   currentOdometerReading:   z.coerce.number().optional(),
   fuelTankCapacity:         z.coerce.number().optional(),
+  tyreRotationIntervalKm:   z.coerce.number().optional(),
   currentFuelLevel:         z.coerce.number().optional(),
   notes:                    z.string().optional(),
 })
@@ -286,6 +287,7 @@ export function VehicleForm({
       currentOdometerReading: vehicle.currentOdometerReading,
       fuelTankCapacity: vehicle.fuelTankCapacity,
       currentFuelLevel: vehicle.currentFuelLevel,
+      tyreRotationIntervalKm: vehicle.tyreRotationIntervalKm,
       notes: vehicle.notes ?? '',
     } : {},
   })
@@ -320,6 +322,7 @@ export function VehicleForm({
         currentOdometerReading: vehicle.currentOdometerReading,
         fuelTankCapacity: vehicle.fuelTankCapacity,
         currentFuelLevel: vehicle.currentFuelLevel,
+        tyreRotationIntervalKm: vehicle.tyreRotationIntervalKm,
         notes: vehicle.notes ?? '',
       })
       setOwnershipTypeId(vehicle.ownershipTypeId)
@@ -625,6 +628,10 @@ export function VehicleForm({
               <div className="space-y-1.5">
                 <Label>Current Fuel Level (litres)</Label>
                 <Input type="number" placeholder="120" {...register('currentFuelLevel')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tyre Rotation Interval (km)</Label>
+                <Input type="number" placeholder="20000" {...register('tyreRotationIntervalKm')} />
               </div>
               <div className="col-span-2 space-y-1.5">
                 <Label>Notes</Label>
