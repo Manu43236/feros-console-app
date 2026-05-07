@@ -108,6 +108,7 @@ export interface Vehicle {
   agreementStartDate?: string; agreementEndDate?: string; agreementAmount?: number
   gpsDeviceNumber?: string; gpsDeviceImei?: string; gpsProvider?: string
   currentOdometerReading?: number; fuelTankCapacity?: number; currentFuelLevel?: number; notes?: string
+  tyreRotationIntervalKm?: number
   isActive: boolean; createdAt: string; updatedAt: string
   isAssigned?: boolean; assignedOrderId?: number; assignedOrderNumber?: string
 }
