@@ -267,18 +267,22 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
 function RemoveTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => void; tire: Tire }) {
   const qc = useQueryClient()
   const [form, setForm] = useState({
-    removedAtKm:   '',
-    removedDate:   new Date().toISOString().split('T')[0],
-    removalReason: '' as TireRemovalReason | '',
-    notes:         '',
+    removedAtKm:        '',
+    removedDate:        new Date().toISOString().split('T')[0],
+    removalReason:      '' as TireRemovalReason | '',
+    retreaderName:      '',
+    expectedReturnDate: '',
+    notes:              '',
   })
 
   const mutation = useMutation({
     mutationFn: () => tiresApi.removeTire(tire.currentFittingId!, {
-      removedAtKm:   Number(form.removedAtKm),
-      removedDate:   form.removedDate || undefined,
-      removalReason: form.removalReason as TireRemovalReason,
-      notes:         form.notes || undefined,
+      removedAtKm:        Number(form.removedAtKm),
+      removedDate:        form.removedDate || undefined,
+      removalReason:      form.removalReason as TireRemovalReason,
+      retreaderName:      form.retreaderName || undefined,
+      expectedReturnDate: form.expectedReturnDate || undefined,
+      notes:              form.notes || undefined,
     }),
     onSuccess: () => {
       toast.success('Tire removed successfully')
@@ -310,15 +314,26 @@ function RemoveTireDialog({ open, onClose, tire }: { open: boolean; onClose: () 
           )}
           <div className="space-y-1.5">
             <Label>Removal Reason *</Label>
-            <select
-              className="w-full border rounded-md px-3 py-2 text-sm"
+            <SearchableSelect
               value={form.removalReason}
-              onChange={e => setForm(f => ({ ...f, removalReason: e.target.value as TireRemovalReason }))}
-            >
-              <option value="">Select reason…</option>
-              {REMOVAL_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
+              onValueChange={val => setForm(f => ({ ...f, removalReason: val as TireRemovalReason, retreaderName: '', expectedReturnDate: '' }))}
+              options={REMOVAL_REASONS.map(r => ({ value: r.value, label: r.label }))}
+              placeholder="Select reason…"
+              showSearch={false}
+            />
           </div>
+          {isRetread && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Retreader Name</Label>
+                <Input value={form.retreaderName} onChange={e => setForm(f => ({ ...f, retreaderName: e.target.value }))} placeholder="e.g. MRF Retread Centre" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Expected Return Date</Label>
+                <Input type="date" value={form.expectedReturnDate} onChange={e => setForm(f => ({ ...f, expectedReturnDate: e.target.value }))} />
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Odometer at Removal (km) *</Label>
@@ -536,7 +551,7 @@ export default function TireInventoryPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Serial No.</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Brand & Size</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle / Retreader</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Lifetime KM</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Retreads</th>
                   <th className="px-4 py-3" />
@@ -560,6 +575,13 @@ export default function TireInventoryPage() {
                         <div>
                           <p className="font-medium text-gray-800">{tire.currentVehicleRegistrationNumber}</p>
                           <p className="text-xs text-gray-400">{tire.currentPositionCode}</p>
+                        </div>
+                      ) : tire.status === 'RETREADING' ? (
+                        <div>
+                          <p className="font-medium text-gray-700">{tire.retreaderName ?? '—'}</p>
+                          {tire.expectedReturnDate && (
+                            <p className="text-xs text-gray-400">Due {fmtDate(tire.expectedReturnDate)}</p>
+                          )}
                         </div>
                       ) : (
                         <span className="text-gray-300">—</span>
