@@ -420,14 +420,32 @@ function ChargesTab({ lrId, charges, canDelete }: { lrId: number; charges: LrCha
 }
 
 // ─── Edit LR Dialog ────────────────────────────────────────────────────────
-function EditLrDialog({ lrId, currentRemarks, open, onClose }: { lrId: number; currentRemarks?: string; open: boolean; onClose: () => void }) {
+function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, currentDeliveredWeight, open, onClose }: {
+  lrId: number
+  lrStatus: LrStatus
+  currentRemarks?: string
+  currentLoadedWeight?: number
+  currentDeliveredWeight?: number
+  open: boolean
+  onClose: () => void
+}) {
   const qc = useQueryClient()
-  const [remarks, setRemarks] = useState(currentRemarks ?? '')
+  const [remarks, setRemarks]               = useState(currentRemarks ?? '')
+  const [loadedWeight, setLoadedWeight]     = useState(currentLoadedWeight?.toString() ?? '')
+  const [deliveredWeight, setDeliveredWeight] = useState(currentDeliveredWeight?.toString() ?? '')
+
+  const canEditLoaded    = lrStatus === 'IN_TRANSIT'
+  const canEditDelivered = lrStatus === 'DELIVERED'
 
   const mutation = useMutation({
-    mutationFn: () => lrsApi.update(lrId, { remarks: remarks || undefined }),
+    mutationFn: () => {
+      const payload: Record<string, unknown> = { remarks: remarks || undefined }
+      if (canEditLoaded && loadedWeight)    payload.loadedWeight    = parseFloat(loadedWeight)
+      if (canEditDelivered && deliveredWeight) payload.deliveredWeight = parseFloat(deliveredWeight)
+      return lrsApi.update(lrId, payload)
+    },
     onSuccess: () => { toast.success('LR updated'); qc.invalidateQueries({ queryKey: ['lr', lrId] }); onClose() },
-    onError: () => toast.error('Failed to update LR'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to update LR'),
   })
 
   return (
@@ -435,12 +453,38 @@ function EditLrDialog({ lrId, currentRemarks, open, onClose }: { lrId: number; c
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Edit LR</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
+          {canEditLoaded && (
+            <div>
+              <Label>Correct Loaded Weight (tons)</Label>
+              <Input
+                type="number" step="0.01" min="0"
+                value={loadedWeight}
+                onChange={e => setLoadedWeight(e.target.value)}
+                placeholder="e.g. 10"
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-400 mt-1">Current: {currentLoadedWeight ?? '—'}T</p>
+            </div>
+          )}
+          {canEditDelivered && (
+            <div>
+              <Label>Correct Delivered Weight (tons)</Label>
+              <Input
+                type="number" step="0.01" min="0"
+                value={deliveredWeight}
+                onChange={e => setDeliveredWeight(e.target.value)}
+                placeholder="e.g. 9.5"
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-400 mt-1">Current: {currentDeliveredWeight ?? '—'}T · Cannot exceed loaded weight</p>
+            </div>
+          )}
           <div>
             <Label>Remarks</Label>
             <textarea
               value={remarks}
               onChange={e => setRemarks(e.target.value)}
-              rows={3}
+              rows={2}
               className="mt-1 w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background"
               placeholder="Optional notes…"
             />
@@ -775,7 +819,7 @@ export function LrDetailPage() {
       <MarkDeliveredDialog  lrId={id} open={dialog === 'deliver'}   onClose={() => setDialog(null)} />
       <AddCheckpostDialog   lrId={id} open={dialog === 'checkpost'} onClose={() => setDialog(null)} />
       <AddChargeDialog      lrId={id} open={dialog === 'charge'}    onClose={() => setDialog(null)} />
-      <EditLrDialog         lrId={id} currentRemarks={lr.remarks}   open={dialog === 'edit'}    onClose={() => setDialog(null)} />
+      <EditLrDialog         lrId={id} lrStatus={lr.lrStatus} currentRemarks={lr.remarks} currentLoadedWeight={lr.loadedWeight} currentDeliveredWeight={lr.deliveredWeight} open={dialog === 'edit'} onClose={() => setDialog(null)} />
       <CancelLrDialog       lrId={id} open={dialog === 'cancel'}    onClose={() => setDialog(null)} />
     </div>
   )
