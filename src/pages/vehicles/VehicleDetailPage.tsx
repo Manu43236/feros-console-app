@@ -10,15 +10,16 @@ import { tenantMastersApi, globalMastersApi } from '@/api/masters'
 import { breakdownsApi } from '@/api/breakdowns'
 import { fuelLogsApi } from '@/api/fuelLogs'
 import { tiresApi } from '@/api/tires'
+import { meterReadingsApi } from '@/api/meterReadings'
 import { compressIfNeeded } from '@/lib/imageCompressor'
-import type { FuelLog, FuelPaymentMode, Tire, TirePosition, TireFitting, TireRotationLog, TireRemovalReason, TirePositionType } from '@/types'
+import type { FuelLog, FuelPaymentMode, Tire, TirePosition, TireFitting, TireRotationLog, TireRemovalReason, TirePositionType, MeterReading } from '@/types'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, CheckCircle, Clock, Pencil, Power,
   ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ChevronUp, ExternalLink, Paperclip, Trash2,
-  Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot,
+  Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -100,7 +101,7 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 }
 
 // ── tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tires', 'GPS & Notes', 'Order History', 'Trip History'] as const
+const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tires', 'Meter Readings', 'GPS & Notes', 'Order History', 'Trip History'] as const
 type Tab = typeof TABS[number]
 
 // ── add document form ─────────────────────────────────────────────────────────
@@ -1273,6 +1274,126 @@ const PAYMENT_MODE_LABELS: Record<FuelPaymentMode, string> = {
   REIMBURSEMENT:   'Reimbursement',
 }
 
+// ── Meter Readings tab ────────────────────────────────────────────────────────
+function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: number; latestOdometer?: number }) {
+  const qc = useQueryClient()
+  const [addOpen, setAddOpen] = useState(false)
+  const [km, setKm] = useState('')
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [notes, setNotes] = useState('')
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['meter-readings', vehicleId],
+    queryFn: () => meterReadingsApi.getAll(vehicleId),
+  })
+  const readings: MeterReading[] = (data?.data ?? []).sort((a, b) => b.readingKm - a.readingKm)
+  const lastKm = readings.length > 0 ? readings[0].readingKm : (latestOdometer ?? 0)
+
+  const mutation = useMutation({
+    mutationFn: () => meterReadingsApi.create({ vehicleId, readingKm: Number(km), readingType: 'GENERAL', recordedAt: date, notes: notes || undefined }),
+    onSuccess: () => {
+      toast.success('Reading added')
+      qc.invalidateQueries({ queryKey: ['meter-readings', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle', vehicleId] })
+      setAddOpen(false)
+      setKm('')
+      setNotes('')
+      setDate(format(new Date(), 'yyyy-MM-dd'))
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to add reading'),
+  })
+
+  const handleSubmit = () => {
+    if (!km || Number(km) <= 0) return toast.error('Enter a valid KM reading')
+    if (Number(km) <= lastKm) return toast.error(`Reading must be greater than last reading (${lastKm.toLocaleString('en-IN')} km)`)
+    mutation.mutate()
+  }
+
+  const fmtD = (d?: string) => { if (!d) return '—'; try { return format(parseISO(d), 'dd MMM yyyy') } catch { return d } }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-50 rounded-lg p-2"><Gauge size={16} className="text-blue-600" /></div>
+          <div>
+            <p className="text-xs text-gray-400">Current Odometer</p>
+            <p className="text-lg font-bold text-gray-800">{lastKm.toLocaleString('en-IN')} km</p>
+          </div>
+        </div>
+        <Button size="sm" className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs" onClick={() => setAddOpen(true)}>
+          <Plus size={13} /> Add Reading
+        </Button>
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+      ) : readings.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-8">No readings recorded</p>
+      ) : (
+        <div className="border rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Date</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Odometer (km)</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Type</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Recorded By</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500">Notes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {readings.map(r => (
+                <tr key={r.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-gray-700">{fmtD(r.recordedAt)}</td>
+                  <td className="px-4 py-3 font-medium text-gray-800">{Number(r.readingKm).toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded capitalize">
+                      {r.readingType.replace(/_/g, ' ').toLowerCase()}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500">{r.recordedByName}</td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">{r.notes ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Add Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add Meter Reading</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Odometer Reading (km) *</Label>
+              <Input type="number" value={km} onChange={e => setKm(e.target.value)}
+                placeholder={`Must be > ${lastKm.toLocaleString('en-IN')}`} className="mt-1" />
+            </div>
+            <div>
+              <Label>Date *</Label>
+              <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label>Notes</Label>
+              <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" className="mt-1" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
+              <Button className="flex-1 bg-feros-navy hover:bg-feros-navy/90" onClick={handleSubmit} disabled={mutation.isPending}>
+                {mutation.isPending ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 // ── Tire tab ──────────────────────────────────────────────────────────────────
 const POSITION_TYPE_ORDER: TirePositionType[] = ['STEER', 'DRIVE', 'TRAILER', 'SPARE']
 const REMOVAL_REASONS: TireRemovalReason[] = ['ROTATION', 'WORN', 'PUNCTURE', 'DAMAGE', 'RETREAD', 'SCRAP', 'OTHER']
@@ -2375,6 +2496,7 @@ export function VehicleDetailPage() {
               {t === 'Service'        && <Wrench size={14} />}
               {t === 'Fuel'           && <Droplets size={14} />}
               {t === 'Tires'          && <CircleDot size={14} />}
+              {t === 'Meter Readings' && <Gauge size={14} />}
               {t === 'Order History'  && <ClipboardList size={14} />}
               {t === 'Trip History'   && <Route size={14} />}
               {t}
@@ -2498,6 +2620,11 @@ export function VehicleDetailPage() {
           {/* ── Tires ── */}
           {tab === 'Tires' && v && (
             <TiresTabContent vehicle={v} />
+          )}
+
+          {/* ── Meter Readings ── */}
+          {tab === 'Meter Readings' && v && (
+            <MeterReadingsTabContent vehicleId={v.id} latestOdometer={v.currentOdometerReading ? Number(v.currentOdometerReading) : undefined} />
           )}
 
           {/* ── GPS & Notes ── */}
