@@ -7,8 +7,9 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   ArrowLeft, Truck, Package, AlertTriangle, CheckCircle2,
-  MapPin, DollarSign, Plus, Activity, Scale, FileText,
+  MapPin, DollarSign, Plus, Activity, Scale, FileText, Pencil, Trash2, XCircle,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { lrsApi } from '@/api/lrs'
 import { ordersApi } from '@/api/orders'
 import { tenantMastersApi } from '@/api/masters'
@@ -317,7 +318,14 @@ function StatCard({ icon, label, value, sub, accent }: {
 }
 
 // ─── Checkposts Tab ────────────────────────────────────────────────────────
-function CheckpostsTab({ checkposts }: { checkposts: LrCheckpost[] }) {
+function CheckpostsTab({ lrId, checkposts, canDelete }: { lrId: number; checkposts: LrCheckpost[]; canDelete: boolean }) {
+  const qc = useQueryClient()
+  const deleteMutation = useMutation({
+    mutationFn: (checkpostId: number) => lrsApi.deleteCheckpost(lrId, checkpostId),
+    onSuccess: () => { toast.success('Checkpost deleted'); qc.invalidateQueries({ queryKey: ['lr-checkposts', lrId] }) },
+    onError: () => toast.error('Failed to delete checkpost'),
+  })
+
   if (checkposts.length === 0) {
     return (
       <div className="text-center py-12">
@@ -346,6 +354,15 @@ function CheckpostsTab({ checkposts }: { checkposts: LrCheckpost[] }) {
             )}
             {cp.remarks && <p className="text-xs text-gray-500 mt-1">{cp.remarks}</p>}
           </div>
+          {canDelete && cp.id && (
+            <button
+              onClick={() => deleteMutation.mutate(cp.id!)}
+              className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+              title="Delete checkpost"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       ))}
     </div>
@@ -353,8 +370,15 @@ function CheckpostsTab({ checkposts }: { checkposts: LrCheckpost[] }) {
 }
 
 // ─── Charges Tab ───────────────────────────────────────────────────────────
-function ChargesTab({ charges }: { charges: LrCharge[] }) {
-  const total = charges.filter(c => c.isActive !== false).reduce((s, c) => s + c.amount, 0)
+function ChargesTab({ lrId, charges, canDelete }: { lrId: number; charges: LrCharge[]; canDelete: boolean }) {
+  const qc = useQueryClient()
+  const total = charges.reduce((s, c) => s + c.amount, 0)
+
+  const deleteMutation = useMutation({
+    mutationFn: (chargeId: number) => lrsApi.deleteCharge(lrId, chargeId),
+    onSuccess: () => { toast.success('Charge deleted'); qc.invalidateQueries({ queryKey: ['lr-charges', lrId] }) },
+    onError: () => toast.error('Failed to delete charge'),
+  })
 
   if (charges.length === 0) {
     return (
@@ -367,12 +391,21 @@ function ChargesTab({ charges }: { charges: LrCharge[] }) {
   return (
     <div className="space-y-3">
       {charges.map((ch, i) => (
-        <div key={ch.id ?? i} className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between">
-          <div>
+        <div key={ch.id ?? i} className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <p className="font-medium text-gray-900">{ch.chargeTypeName}</p>
             {ch.remarks && <p className="text-xs text-gray-500 mt-0.5">{ch.remarks}</p>}
           </div>
           <p className="text-base font-bold text-gray-800">₹{ch.amount.toLocaleString()}</p>
+          {canDelete && ch.id && (
+            <button
+              onClick={() => deleteMutation.mutate(ch.id!)}
+              className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+              title="Delete charge"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       ))}
       {charges.length > 1 && (
@@ -385,8 +418,81 @@ function ChargesTab({ charges }: { charges: LrCharge[] }) {
   )
 }
 
+// ─── Edit LR Dialog ────────────────────────────────────────────────────────
+function EditLrDialog({ lrId, currentRemarks, open, onClose }: { lrId: number; currentRemarks?: string; open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [remarks, setRemarks] = useState(currentRemarks ?? '')
+
+  const mutation = useMutation({
+    mutationFn: () => lrsApi.update(lrId, { remarks: remarks || undefined }),
+    onSuccess: () => { toast.success('LR updated'); qc.invalidateQueries({ queryKey: ['lr', lrId] }); onClose() },
+    onError: () => toast.error('Failed to update LR'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Edit LR</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div>
+            <Label>Remarks</Label>
+            <textarea
+              value={remarks}
+              onChange={e => setRemarks(e.target.value)}
+              rows={3}
+              className="mt-1 w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background"
+              placeholder="Optional notes…"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1 bg-feros-navy hover:bg-feros-navy/90" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+              {mutation.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ─── Cancel LR Dialog ──────────────────────────────────────────────────────
+function CancelLrDialog({ lrId, open, onClose }: { lrId: number; open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const navigate = useNavigate()
+
+  const mutation = useMutation({
+    mutationFn: () => lrsApi.cancel(lrId),
+    onSuccess: () => {
+      toast.success('LR cancelled')
+      qc.invalidateQueries({ queryKey: ['lr', lrId] })
+      qc.invalidateQueries({ queryKey: ['lrs'] })
+      onClose()
+      navigate('/lrs')
+    },
+    onError: () => toast.error('Failed to cancel LR'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Cancel LR</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-2">
+          <p className="text-sm text-gray-600">Are you sure you want to cancel this LR? The vehicle allocation will revert to <strong>Allocated</strong> status.</p>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Keep LR</Button>
+            <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+              {mutation.isPending ? 'Cancelling…' : 'Yes, Cancel LR'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────
-type ActiveDialog = 'load' | 'deliver' | 'checkpost' | 'charge' | null
+type ActiveDialog = 'load' | 'deliver' | 'checkpost' | 'charge' | 'cancel' | 'edit' | null
 
 export function LrDetailPage() {
   const { lrId } = useParams<{ lrId: string }>()
@@ -493,7 +599,7 @@ export function LrDetailPage() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex flex-shrink-0 gap-2">
+            <div className="flex flex-shrink-0 gap-2 flex-wrap">
               <button
                 onClick={handlePdf}
                 disabled={pdfLoading}
@@ -502,6 +608,16 @@ export function LrDetailPage() {
                 <FileText className="h-4 w-4" />
                 {pdfLoading ? 'Generating…' : 'PDF'}
               </button>
+
+              {isActive && (
+                <button
+                  onClick={() => setDialog('edit')}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </button>
+              )}
 
               {lr.lrStatus === 'CREATED' && (
                 <button
@@ -526,6 +642,15 @@ export function LrDetailPage() {
                   <CheckCircle2 className="h-4 w-4" />
                   Delivered
                 </div>
+              )}
+              {isActive && (
+                <button
+                  onClick={() => setDialog('cancel')}
+                  className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancel LR
+                </button>
               )}
             </div>
           </div>
@@ -560,6 +685,14 @@ export function LrDetailPage() {
           accent={!!lr.isOverloaded}
         />
       </div>
+
+      {/* ── Remarks ── */}
+      {lr.remarks && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1">Remarks</p>
+          <p className="text-sm text-amber-900">{lr.remarks}</p>
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -602,7 +735,7 @@ export function LrDetailPage() {
         <div className="p-5">
           {tab === 'checkposts' && (
             <>
-              <CheckpostsTab checkposts={checkposts} />
+              <CheckpostsTab lrId={id} checkposts={checkposts} canDelete={canAdd} />
               {totalFines > 0 && (
                 <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
                   <span className="text-sm font-medium text-red-700">Total Fines</span>
@@ -611,7 +744,7 @@ export function LrDetailPage() {
               )}
             </>
           )}
-          {tab === 'charges' && <ChargesTab charges={charges} />}
+          {tab === 'charges' && <ChargesTab lrId={id} charges={charges} canDelete={canAdd} />}
         </div>
       </div>
 
@@ -624,6 +757,8 @@ export function LrDetailPage() {
       <MarkDeliveredDialog  lrId={id} open={dialog === 'deliver'}   onClose={() => setDialog(null)} />
       <AddCheckpostDialog   lrId={id} open={dialog === 'checkpost'} onClose={() => setDialog(null)} />
       <AddChargeDialog      lrId={id} open={dialog === 'charge'}    onClose={() => setDialog(null)} />
+      <EditLrDialog         lrId={id} currentRemarks={lr.remarks}   open={dialog === 'edit'}    onClose={() => setDialog(null)} />
+      <CancelLrDialog       lrId={id} open={dialog === 'cancel'}    onClose={() => setDialog(null)} />
     </div>
   )
 }
