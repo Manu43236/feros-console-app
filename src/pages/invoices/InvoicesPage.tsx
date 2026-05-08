@@ -48,10 +48,12 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
 
 // ── Create Invoice Dialog ─────────────────────────────────────────────────
 const createSchema = z.object({
-  clientId:    z.coerce.number().min(1, 'Select a client'),
-  invoiceDate: z.string().optional(),
-  dueDate:     z.string().optional(),
-  remarks:     z.string().optional(),
+  clientId:       z.coerce.number().min(1, 'Select a client'),
+  invoiceDate:    z.string().optional(),
+  dueDate:        z.string().optional(),
+  cgstPercentage: z.coerce.number().min(0).max(50).optional(),
+  sgstPercentage: z.coerce.number().min(0).max(50).optional(),
+  remarks:        z.string().optional(),
 })
 type CreateForm = z.infer<typeof createSchema>
 
@@ -89,10 +91,12 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const mutation = useMutation({
     mutationFn: (data: CreateForm) => invoicesApi.create({
       clientId,
-      lrIds:       Array.from(selectedLrIds),
-      invoiceDate: data.invoiceDate || undefined,
-      dueDate:     data.dueDate || undefined,
-      remarks:     data.remarks || undefined,
+      lrIds:          Array.from(selectedLrIds),
+      invoiceDate:    data.invoiceDate || undefined,
+      dueDate:        data.dueDate || undefined,
+      cgstPercentage: data.cgstPercentage || undefined,
+      sgstPercentage: data.sgstPercentage || undefined,
+      remarks:        data.remarks || undefined,
     }),
     onSuccess: (res) => {
       toast.success('Invoice created successfully')
@@ -142,6 +146,14 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
             <div className="space-y-1.5">
               <Label>Due Date</Label>
               <Input type="date" {...register('dueDate')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CGST %</Label>
+              <Input type="number" step="0.01" min="0" max="50" placeholder="9" {...register('cgstPercentage')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>SGST %</Label>
+              <Input type="number" step="0.01" min="0" max="50" placeholder="9" {...register('sgstPercentage')} />
             </div>
             <div className="space-y-1.5 col-span-2">
               <Label>Remarks</Label>

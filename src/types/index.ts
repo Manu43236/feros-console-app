@@ -236,9 +236,10 @@ export type PaymentMode = 'CASH'|'CHEQUE'|'NEFT'|'UPI'|'RTGS'
 
 export interface InvoiceLrItem {
   id: number
-  lrId: number; lrNumber: string
+  lrId: number; lrNumber: string; lrDate?: string
   orderId: number; orderNumber: string
   vehicleRegistrationNumber: string
+  billingWeight?: number; freightRateType?: string; freightRate?: number
   freightAmount: number; chargesAmount: number; checkpostFineAmount: number; totalAmount: number
   remarks?: string; createdAt: string
 }
@@ -247,10 +248,21 @@ export interface Invoice {
   id: number; tenantId: number; invoiceNumber: string
   clientId: number; clientName: string
   invoiceDate: string; dueDate?: string
-  subtotal: number; taxAmount: number; totalAmount: number
+  subtotal: number
+  cgstPercentage: number; sgstPercentage: number
+  cgstAmount: number; sgstAmount: number
+  taxAmount: number; totalAmount: number
   advanceAdjusted: number; creditNoteAdjusted: number
   amountPaid: number; balanceDue: number
   invoiceStatus: InvoiceStatus; remarks?: string
+  // Tenant (for print)
+  tenantLogoUrl?: string; tenantGstin?: string; tenantPan?: string
+  tenantAddress?: string; tenantCity?: string; tenantState?: string; tenantPincode?: string
+  tenantBankName?: string; tenantAccountNumber?: string; tenantIfscCode?: string
+  tenantBranchName?: string; tenantAccountHolderName?: string; transportHsnSac?: string
+  // Client (for print)
+  clientGstin?: string; clientAddress?: string; clientCity?: string
+  clientState?: string; clientPincode?: string
   lrItems?: InvoiceLrItem[]
   payments?: InvoicePayment[]
   createdById: number; createdByName: string

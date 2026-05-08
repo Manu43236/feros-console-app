@@ -344,7 +344,9 @@ export function InvoiceDetailPage() {
           icon={<CreditCard className="h-4 w-4" />}
           label="Total Amount"
           value={`₹${Number(invoice.totalAmount).toLocaleString('en-IN')}`}
-          sub={Number(invoice.taxAmount) > 0 ? `incl. ₹${Number(invoice.taxAmount).toLocaleString('en-IN')} tax` : undefined}
+          sub={Number(invoice.taxAmount) > 0
+            ? `CGST ${invoice.cgstPercentage}% + SGST ${invoice.sgstPercentage}% = ₹${Number(invoice.taxAmount).toLocaleString('en-IN')}`
+            : undefined}
         />
         <StatCard
           icon={<CheckCircle2 className="h-4 w-4" />}
