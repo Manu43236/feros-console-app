@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 // ─── Status helpers ────────────────────────────────────────────────────────
 const STATUS_CFG: Record<LrStatus, { label: string; bg: string; text: string; dot: string }> = {
@@ -599,35 +600,44 @@ export function LrDetailPage() {
             </div>
 
             {/* Action buttons */}
+            <TooltipProvider delayDuration={300}>
             <div className="flex flex-shrink-0 items-center gap-2">
-              {/* Icon-only: PDF, Edit, Cancel */}
-              <button
-                onClick={handlePdf}
-                disabled={pdfLoading}
-                title={pdfLoading ? 'Generating…' : 'Download PDF'}
-                className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <FileText className="h-4 w-4" />
-              </button>
+              {/* Icon-only buttons with tooltips */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handlePdf}
+                    disabled={pdfLoading}
+                    className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{pdfLoading ? 'Generating…' : 'Download PDF'}</TooltipContent>
+              </Tooltip>
 
               {isActive && (
-                <button
-                  onClick={() => setDialog('edit')}
-                  title="Edit remarks"
-                  className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-lg transition-colors"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setDialog('edit')}
+                      className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-lg transition-colors"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit remarks</TooltipContent>
+                </Tooltip>
               )}
 
-              {/* Primary action: text label kept for clarity */}
+              {/* Primary actions — keep text for clarity */}
               {lr.lrStatus === 'CREATED' && (
                 <button
                   onClick={() => setDialog('load')}
                   className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                   <Package className="h-4 w-4" />
-                  Record Loading
+                  Loaded & Dispatched
                 </button>
               )}
               {lr.lrStatus === 'IN_TRANSIT' && (
@@ -647,15 +657,20 @@ export function LrDetailPage() {
               )}
 
               {isActive && (
-                <button
-                  onClick={() => setDialog('cancel')}
-                  title="Cancel LR"
-                  className="w-9 h-9 flex items-center justify-center bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-400/30 rounded-lg transition-colors"
-                >
-                  <XCircle className="h-4 w-4" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setDialog('cancel')}
+                      className="w-9 h-9 flex items-center justify-center bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-400/30 rounded-lg transition-colors"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Cancel this LR</TooltipContent>
+                </Tooltip>
               )}
             </div>
+            </TooltipProvider>
           </div>
         </div>
       </div>
