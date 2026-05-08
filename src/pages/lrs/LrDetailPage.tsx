@@ -599,26 +599,28 @@ export function LrDetailPage() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex flex-shrink-0 gap-2 flex-wrap">
+            <div className="flex flex-shrink-0 items-center gap-2">
+              {/* Icon-only: PDF, Edit, Cancel */}
               <button
                 onClick={handlePdf}
                 disabled={pdfLoading}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                title={pdfLoading ? 'Generating…' : 'Download PDF'}
+                className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-lg transition-colors disabled:opacity-50"
               >
                 <FileText className="h-4 w-4" />
-                {pdfLoading ? 'Generating…' : 'PDF'}
               </button>
 
               {isActive && (
                 <button
                   onClick={() => setDialog('edit')}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  title="Edit remarks"
+                  className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-lg transition-colors"
                 >
                   <Pencil className="h-4 w-4" />
-                  Edit
                 </button>
               )}
 
+              {/* Primary action: text label kept for clarity */}
               {lr.lrStatus === 'CREATED' && (
                 <button
                   onClick={() => setDialog('load')}
@@ -638,18 +640,19 @@ export function LrDetailPage() {
                 </button>
               )}
               {lr.lrStatus === 'DELIVERED' && (
-                <div className="flex items-center gap-2 bg-green-500/20 text-green-300 px-4 py-2 rounded-lg text-sm font-medium">
+                <div className="flex items-center gap-2 bg-green-500/20 text-green-300 px-3 py-2 rounded-lg text-sm font-medium">
                   <CheckCircle2 className="h-4 w-4" />
                   Delivered
                 </div>
               )}
+
               {isActive && (
                 <button
                   onClick={() => setDialog('cancel')}
-                  className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  title="Cancel LR"
+                  className="w-9 h-9 flex items-center justify-center bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-400/30 rounded-lg transition-colors"
                 >
                   <XCircle className="h-4 w-4" />
-                  Cancel LR
                 </button>
               )}
             </div>
