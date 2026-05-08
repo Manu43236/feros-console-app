@@ -2,13 +2,16 @@ import apiClient from './client'
 import type { ApiResponse, Invoice, InvoicePayment, CreditNote } from '@/types'
 
 export const invoicesApi = {
-  getAll:       ()           => apiClient.get<ApiResponse<Invoice[]>>('/invoices').then(r => r.data),
-  getById:      (id: number) => apiClient.get<ApiResponse<Invoice>>(`/invoices/${id}`).then(r => r.data),
-  getByClient:  (clientId: number) => apiClient.get<ApiResponse<Invoice[]>>(`/invoices/client/${clientId}`).then(r => r.data),
-  create:       (data: unknown) => apiClient.post<ApiResponse<Invoice>>('/invoices', data).then(r => r.data),
-  updateStatus: (id: number, data: unknown) => apiClient.put<ApiResponse<Invoice>>(`/invoices/${id}/status`, data).then(r => r.data),
-  addPayment:   (id: number, data: unknown) => apiClient.post<ApiResponse<InvoicePayment>>(`/invoices/${id}/payments`, data).then(r => r.data),
-  getPayments:  (id: number) => apiClient.get<ApiResponse<InvoicePayment[]>>(`/invoices/${id}/payments`).then(r => r.data),
+  getAll:           ()           => apiClient.get<ApiResponse<Invoice[]>>('/invoices').then(r => r.data),
+  getById:          (id: number) => apiClient.get<ApiResponse<Invoice>>(`/invoices/${id}`).then(r => r.data),
+  getByClient:      (clientId: number) => apiClient.get<ApiResponse<Invoice[]>>(`/invoices/client/${clientId}`).then(r => r.data),
+  create:           (data: unknown) => apiClient.post<ApiResponse<Invoice>>('/invoices', data).then(r => r.data),
+  update:           (id: number, data: { dueDate?: string; remarks?: string }) => apiClient.put<ApiResponse<Invoice>>(`/invoices/${id}`, data).then(r => r.data),
+  updateStatus:     (id: number, data: unknown) => apiClient.put<ApiResponse<Invoice>>(`/invoices/${id}/status`, data).then(r => r.data),
+  addPayment:       (id: number, data: unknown) => apiClient.post<ApiResponse<InvoicePayment>>(`/invoices/${id}/payments`, data).then(r => r.data),
+  getPayments:      (id: number) => apiClient.get<ApiResponse<InvoicePayment[]>>(`/invoices/${id}/payments`).then(r => r.data),
+  deletePayment:    (id: number, paymentId: number) => apiClient.delete<ApiResponse<void>>(`/invoices/${id}/payments/${paymentId}`).then(r => r.data),
+  getInvoicedLrIds: () => apiClient.get<ApiResponse<number[]>>('/invoices/invoiced-lr-ids').then(r => r.data),
 }
 
 export const creditNotesApi = {

@@ -7,7 +7,7 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   ArrowLeft, FileText, CheckCircle2, Send,
-  DollarSign, Truck, CreditCard, X,
+  DollarSign, Truck, CreditCard, X, Pencil, Trash2,
 } from 'lucide-react'
 import { invoicesApi } from '@/api/invoices'
 import { toast } from 'sonner'
@@ -19,6 +19,66 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+
+// ── Edit Invoice Dialog ───────────────────────────────────────────────────
+function EditInvoiceDialog({ invoiceId, currentDueDate, currentRemarks, open, onClose }: {
+  invoiceId: number; currentDueDate?: string; currentRemarks?: string; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [dueDate, setDueDate]   = useState(currentDueDate ?? '')
+  const [remarks, setRemarks]   = useState(currentRemarks ?? '')
+
+  const mutation = useMutation({
+    mutationFn: () => invoicesApi.update(invoiceId, {
+      dueDate:  dueDate || undefined,
+      remarks:  remarks || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Invoice updated')
+      qc.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to update invoice')
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Edit Invoice</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Due Date</Label>
+            <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Remarks</Label>
+            <textarea
+              value={remarks}
+              onChange={e => setRemarks(e.target.value)}
+              rows={3}
+              className="w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background"
+              placeholder="Optional note…"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button
+              onClick={() => mutation.mutate()}
+              disabled={mutation.isPending}
+              className="bg-feros-navy hover:bg-feros-navy/90 text-white"
+            >
+              {mutation.isPending ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // ── Record Payment Dialog ─────────────────────────────────────────────────
 const paymentSchema = z.object({
@@ -137,6 +197,7 @@ export function InvoiceDetailPage() {
 
   const [tab, setTab]             = useState<'lrs' | 'payments'>('lrs')
   const [showPayment, setShowPay] = useState(false)
+  const [showEdit, setShowEdit]   = useState(false)
   const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: invoice, isLoading } = useQuery({
@@ -161,6 +222,17 @@ export function InvoiceDetailPage() {
     onError: () => toast.error('Failed to update status'),
   })
 
+  const deletePaymentMutation = useMutation({
+    mutationFn: (paymentId: number) => invoicesApi.deletePayment(id, paymentId),
+    onSuccess: () => {
+      toast.success('Payment removed')
+      qc.invalidateQueries({ queryKey: ['invoice', id] })
+      qc.invalidateQueries({ queryKey: ['invoice-payments', id] })
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+    },
+    onError: () => toast.error('Failed to remove payment'),
+  })
+
   if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading…</div>
   if (!invoice)  return <div className="p-8 text-center text-gray-500">Invoice not found.</div>
 
@@ -169,6 +241,7 @@ export function InvoiceDetailPage() {
   const canSend    = invoice.invoiceStatus === 'DRAFT'
   const canPay     = ['SENT','PARTIALLY_PAID','OVERDUE'].includes(invoice.invoiceStatus)
   const canCancel  = ['DRAFT','SENT'].includes(invoice.invoiceStatus)
+  const canEdit    = ['DRAFT','SENT','PARTIALLY_PAID','OVERDUE'].includes(invoice.invoiceStatus)
 
   return (
     <div className="space-y-5">
@@ -210,14 +283,23 @@ export function InvoiceDetailPage() {
             {/* Action buttons */}
             <div className="flex flex-wrap gap-2 flex-shrink-0">
               <a
-                href="https://www.africau.edu/images/default/sample.pdf"
+                href={`/invoices/${id}/print`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 <FileText className="h-4 w-4" />
-                PDF
+                Print / PDF
               </a>
+              {canEdit && (
+                <button
+                  onClick={() => setShowEdit(true)}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </button>
+              )}
               {canSend && (
                 <button
                   onClick={() => statusMutation.mutate('SENT')}
@@ -402,6 +484,7 @@ export function InvoiceDetailPage() {
                       <th className="text-left py-2.5 px-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Reference</th>
                       <th className="text-right py-2.5 px-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Amount</th>
                       <th className="text-left py-2.5 px-3 text-xs font-medium text-gray-500 uppercase tracking-wide">By</th>
+                      <th className="py-2.5 px-3" />
                     </tr>
                   </thead>
                   <tbody>
@@ -422,6 +505,19 @@ export function InvoiceDetailPage() {
                           ₹{Number(p.amount).toLocaleString('en-IN')}
                         </td>
                         <td className="py-3 px-3 text-gray-500 text-xs">{p.createdByName}</td>
+                        <td className="py-3 px-3">
+                          <button
+                            onClick={() => setDlg({
+                              title: 'Remove Payment',
+                              desc: `Remove payment of ₹${Number(p.amount).toLocaleString('en-IN')}? This will reduce the amount paid and revert the invoice status.`,
+                              onOk: () => deletePaymentMutation.mutate(p.id),
+                            })}
+                            className="p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title="Remove payment"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -432,7 +528,7 @@ export function InvoiceDetailPage() {
                         <td className="py-2.5 px-3 text-right font-bold text-green-600">
                           ₹{payments.reduce((s, p) => s + Number(p.amount), 0).toLocaleString('en-IN')}
                         </td>
-                        <td />
+                        <td /><td />
                       </tr>
                     </tfoot>
                   )}
@@ -454,7 +550,14 @@ export function InvoiceDetailPage() {
         Created by {invoice.createdByName} · {new Date(invoice.createdAt).toLocaleString()}
       </p>
 
-      {/* ── Dialog ── */}
+      {/* ── Dialogs ── */}
+      <EditInvoiceDialog
+        invoiceId={id}
+        currentDueDate={invoice.dueDate ?? undefined}
+        currentRemarks={invoice.remarks ?? undefined}
+        open={showEdit}
+        onClose={() => setShowEdit(false)}
+      />
       <RecordPaymentDialog
         invoiceId={id}
         balanceDue={balanceDue}

@@ -61,11 +61,10 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const [selectedLrIds, setSelectedLrIds] = useState<Set<number>>(new Set())
 
   const { data: clientsRes } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
-  const { data: lrsRes } = useQuery({
-    queryKey: ['lrs'],
-    queryFn: lrsApi.getAll,
-  })
-  const allLrs = lrsRes?.data ?? []
+  const { data: lrsRes } = useQuery({ queryKey: ['lrs'], queryFn: lrsApi.getAll })
+  const { data: invoicedIdsRes } = useQuery({ queryKey: ['invoiced-lr-ids'], queryFn: invoicesApi.getInvoicedLrIds })
+  const allLrs       = lrsRes?.data ?? []
+  const invoicedLrIds = new Set(invoicedIdsRes?.data ?? [])
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,
@@ -76,7 +75,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const clientId = Number(watchedClientId)
 
   const eligibleLrs = allLrs.filter(
-    lr => lr.clientId === clientId && lr.lrStatus === 'DELIVERED'
+    lr => lr.clientId === clientId && lr.lrStatus === 'DELIVERED' && !invoicedLrIds.has(lr.id)
   )
 
   function toggleLr(id: number) {

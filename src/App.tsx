@@ -23,6 +23,7 @@ import { LrsPage }        from '@/pages/lrs/LrsPage'
 import { LrDetailPage }  from '@/pages/lrs/LrDetailPage'
 import { InvoicesPage }       from '@/pages/invoices/InvoicesPage'
 import { InvoiceDetailPage } from '@/pages/invoices/InvoiceDetailPage'
+import { InvoicePrintPage }  from '@/pages/invoices/InvoicePrintPage'
 import CreditNotesPage       from '@/pages/invoices/CreditNotesPage'
 import { StaffPage }       from '@/pages/staff/StaffPage'
 import { StaffDetailPage } from '@/pages/staff/StaffDetailPage'
@@ -56,6 +57,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/invoices/:invoiceId/print" element={<InvoicePrintPage />} />
 
         <Route
           element={
