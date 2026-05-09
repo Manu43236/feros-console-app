@@ -120,7 +120,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">Create Invoice</DialogTitle>
         </DialogHeader>
@@ -267,7 +267,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
                             )}
                           </div>
                         </td>
-                        <td className="py-2.5 px-3 font-semibold text-feros-navy text-xs">{lr.lrNumber}</td>
+                        <td className="py-2.5 px-3 font-semibold text-feros-navy text-xs max-w-[180px] truncate">{lr.lrNumber}</td>
                         <td className="py-2.5 px-3 text-gray-600 text-xs">{lr.vehicleRegistrationNumber}</td>
                         <td className="py-2.5 px-3 text-gray-500 text-xs">
                           {lr.lrDate
