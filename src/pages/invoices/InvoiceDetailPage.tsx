@@ -577,7 +577,7 @@ export function InvoiceDetailPage() {
 
       {/* ── Invoice Preview Dialog ── */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-[95vw] w-[1000px] p-0 gap-0 overflow-hidden" style={{ height: '90vh' }}>
+        <DialogContent className="max-w-[95vw] w-[1000px] p-0 gap-0 flex flex-col [&>button]:hidden" style={{ height: '90vh' }}>
           <div className="flex items-center justify-between px-4 py-2.5 border-b bg-gray-50 flex-shrink-0">
             <span className="font-semibold text-gray-800 text-sm">
               Invoice — {invoice.invoiceNumber}
@@ -599,12 +599,14 @@ export function InvoiceDetailPage() {
               </button>
             </div>
           </div>
-          <iframe
-            ref={previewIframeRef}
-            src={`/invoices/${id}/print?preview=true`}
-            style={{ width: '100%', height: 'calc(90vh - 45px)', border: 'none', display: 'block' }}
-            title="Invoice Preview"
-          />
+          <div className="flex-1 relative overflow-hidden">
+            <iframe
+              ref={previewIframeRef}
+              src={`/invoices/${id}/print?preview=true`}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+              title="Invoice Preview"
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </div>
