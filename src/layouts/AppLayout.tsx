@@ -10,12 +10,13 @@ import {
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
+  Activity, Banknote, Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type NavItem = { to: string; label: string; icon: React.ElementType }
-type NavSection = { section: string; items: NavItem[] }
+type NavSection = { section: string; icon?: React.ElementType; items: NavItem[] }
 type FlatNav = NavItem[]
 type SectionedNav = { dashboard: NavItem; sections: NavSection[] }
 
@@ -25,6 +26,7 @@ const ADMIN_NAV: SectionedNav = {
   sections: [
     {
       section: 'Operations',
+      icon: Activity,
       items: [
         { to: '/clients',     label: 'Clients',      icon: Users },
         { to: '/orders',      label: 'Orders',       icon: ClipboardList },
@@ -34,6 +36,7 @@ const ADMIN_NAV: SectionedNav = {
     },
     {
       section: 'Finance',
+      icon: Banknote,
       items: [
         { to: '/invoices',     label: 'Invoices',     icon: Receipt },
         { to: '/credit-notes', label: 'Credit Notes', icon: FileMinus },
@@ -41,6 +44,7 @@ const ADMIN_NAV: SectionedNav = {
     },
     {
       section: 'Fleet',
+      icon: Truck,
       items: [
         { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
         { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
@@ -49,6 +53,7 @@ const ADMIN_NAV: SectionedNav = {
     },
     {
       section: 'HR',
+      icon: Users,
       items: [
         { to: '/staff',      label: 'Staff',      icon: UserCheck },
         { to: '/attendance', label: 'Attendance', icon: Calendar },
@@ -57,6 +62,7 @@ const ADMIN_NAV: SectionedNav = {
     },
     {
       section: 'Inventory',
+      icon: Package,
       items: [
         { to: '/inventory',       label: 'Spare Parts', icon: Boxes },
         { to: '/inventory/tires', label: 'Tires',       icon: CircleDot },
@@ -78,6 +84,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
   sections: [
     {
       section: 'Operations',
+      icon: Activity,
       items: [
         { to: '/clients',     label: 'Clients',      icon: Users },
         { to: '/orders',      label: 'Orders',       icon: ClipboardList },
@@ -86,6 +93,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
     },
     {
       section: 'Finance',
+      icon: Banknote,
       items: [
         { to: '/invoices',     label: 'Invoices',     icon: Receipt },
         { to: '/credit-notes', label: 'Credit Notes', icon: FileMinus },
@@ -93,6 +101,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
     },
     {
       section: 'HR',
+      icon: Users,
       items: [
         { to: '/attendance', label: 'Attendance', icon: Calendar },
       ],
@@ -199,7 +208,7 @@ function NavItemLink({ to, label, icon: Icon, onClick }: NavItem & { onClick?: (
 
 // ─── Collapsible section ─────────────────────────────────────────────────────────
 function NavSectionGroup({
-  section, items, open, onToggle, onNavClick,
+  section, icon: SectionIcon, items, open, onToggle, onNavClick,
 }: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void }) {
   if (section === '') {
     return (
@@ -219,7 +228,10 @@ function NavSectionGroup({
         onClick={onToggle}
         className="flex items-center justify-between w-full px-3 py-1.5 mt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-300 hover:text-white transition-colors"
       >
-        {section}
+        <span className="flex items-center gap-1.5">
+          {SectionIcon && <SectionIcon size={13} className="shrink-0" />}
+          {section}
+        </span>
         {open
           ? <ChevronDown size={12} className="shrink-0" />
           : <ChevronRight size={12} className="shrink-0" />
