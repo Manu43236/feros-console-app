@@ -248,7 +248,7 @@ function DailyVehicleActivityTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-daily-vehicles'],
     queryFn: reportsApi.getDailyVehicleActivity,
-    enabled: false,
+
   })
   const d: DailyVehicleActivityResponse | undefined = data?.data
   const [section, setSection] = useState<'on-road' | 'started' | 'delivered' | 'idle'>('on-road')
@@ -301,7 +301,7 @@ function LocalLongTripsTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-local-long'],
     queryFn: reportsApi.getLocalLongTripSummary,
-    enabled: false,
+
   })
   const d: LocalLongTripSummaryResponse | undefined = data?.data
 
@@ -361,7 +361,7 @@ function IdleDriversTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-idle-drivers'],
     queryFn: reportsApi.getIdleDrivers,
-    enabled: false,
+
   })
   const rows: IdleDriverResponse[] = data?.data ?? []
 
@@ -409,7 +409,7 @@ function DocumentExpiryTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-doc-expiry', daysAhead],
     queryFn: () => reportsApi.getDocumentExpiryAlerts(Number(daysAhead)),
-    enabled: false,
+
   })
   const rows: DocumentExpiryAlertResponse[] = data?.data ?? []
   const expired = rows.filter(r => r.expired)
@@ -481,7 +481,7 @@ function TodayAttendanceTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-today-attendance'],
     queryFn: reportsApi.getTodayAttendance,
-    enabled: false,
+
   })
   const d: TodayAttendanceSummaryResponse | undefined = data?.data
   const [filter, setFilter] = useState('ALL')
@@ -546,7 +546,7 @@ function DelayedTripsTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-delayed-trips'],
     queryFn: reportsApi.getDelayedTrips,
-    enabled: false,
+
   })
   const rows: DelayedTripResponse[] = data?.data ?? []
 
@@ -600,7 +600,7 @@ function OrdersBacklogTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-orders-backlog'],
     queryFn: reportsApi.getOrdersBacklog,
-    enabled: false,
+
   })
   const rows: OrdersBacklogResponse[] = data?.data ?? []
 
@@ -663,17 +663,17 @@ function OrdersBacklogTab() {
 function OrderFulfillmentTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-order-fulfillment', from, to],
     queryFn: () => reportsApi.getOrderFulfillmentRate(from, to),
-    enabled,
+
   })
   const d: OrderFulfillmentRateResponse | undefined = data?.data
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {d && (
@@ -710,7 +710,7 @@ function OrderFulfillmentTab() {
           </div>
         </>
       )}
-      {!d && !isFetching && <EmptyState msg="Select date range and click Fetch Report" />}
+      {!d && !isFetching && <EmptyState msg="No data found for the selected period" />}
     </div>
   )
 }
@@ -718,17 +718,17 @@ function OrderFulfillmentTab() {
 function OrderLeadTimeTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-order-lead-time', from, to],
     queryFn: () => reportsApi.getOrderLeadTime(from, to),
-    enabled,
+
   })
   const rows: OrderLeadTimeResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -761,7 +761,7 @@ function UnassignedVehiclesTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-unassigned-vehicles'],
     queryFn: reportsApi.getUnassignedVehicles,
-    enabled: false,
+
   })
   const rows: UnassignedVehiclesResponse[] = data?.data ?? []
   return (
@@ -811,17 +811,17 @@ function UnassignedVehiclesTab() {
 function DriverAssignmentsTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-driver-assignments', from, to],
     queryFn: () => reportsApi.getDriverAssignmentHistory(from, to),
-    enabled,
+
   })
   const rows: DriverAssignmentHistoryResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && <SummaryCard label="Total Assignments" value={String(rows.length)} />}
@@ -831,7 +831,7 @@ function DriverAssignmentsTab() {
             <tr>{['Driver', 'Phone', 'Role', 'Vehicle', 'Order #', 'Client', 'Route', 'Start Date', 'End Date', 'Status'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={10}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={10}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map(r => (
               <tr key={r.allocationId} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.driverName}</td>
@@ -861,7 +861,7 @@ function TripsInProgressTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-trips-in-progress'],
     queryFn: reportsApi.getTripsInProgress,
-    enabled: false,
+
   })
   const rows: TripInProgressResponse[] = data?.data ?? []
   return (
@@ -905,17 +905,17 @@ function TripsInProgressTab() {
 function LrStatusFunnelTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-lr-funnel', from, to],
     queryFn: () => reportsApi.getLrStatusFunnel(from, to),
-    enabled,
+
   })
   const d: LrStatusFunnelResponse | undefined = data?.data
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {d && (
@@ -937,7 +937,7 @@ function LrStatusFunnelTab() {
           ))}
         </div>
       )}
-      {!d && !isFetching && <EmptyState msg="Select date range and click Fetch Report" />}
+      {!d && !isFetching && <EmptyState msg="No data found for the selected period" />}
     </div>
   )
 }
@@ -946,7 +946,7 @@ function UnbilledLrsTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-unbilled-lrs'],
     queryFn: reportsApi.getUnbilledLrs,
-    enabled: false,
+
   })
   const rows: UnbilledLrResponse[] = data?.data ?? []
   return (
@@ -994,17 +994,17 @@ function UnbilledLrsTab() {
 function InvoiceTurnaroundTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-invoice-turnaround', from, to],
     queryFn: () => reportsApi.getInvoiceTurnaround(from, to),
-    enabled,
+
   })
   const rows: InvoiceTurnaroundResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -1016,7 +1016,7 @@ function InvoiceTurnaroundTab() {
             <tr>{['Client', 'LR Count', 'Avg Days', 'Max Days'].map(h => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={4}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={4}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map((r, i) => (
               <tr key={i} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.clientName}</td>
@@ -1035,17 +1035,17 @@ function InvoiceTurnaroundTab() {
 function TripDurationTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-trip-duration', from, to],
     queryFn: () => reportsApi.getTripDurationAnalysis(from, to),
-    enabled,
+
   })
   const rows: TripDurationResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       <div className="overflow-x-auto">
@@ -1054,7 +1054,7 @@ function TripDurationTab() {
             <tr>{['Route', 'Trips', 'Avg Duration', 'Min', 'Max'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map((r, i) => (
               <tr key={i} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.fromCity} → {r.toCity}</td>
@@ -1074,17 +1074,17 @@ function TripDurationTab() {
 function WeightVarianceTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-weight-variance', from, to],
     queryFn: () => reportsApi.getWeightVarianceReport(from, to),
-    enabled,
+
   })
   const rows: WeightVarianceReportResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -1100,7 +1100,7 @@ function WeightVarianceTab() {
             <tr>{['Client', 'LRs', 'Loaded (T)', 'Delivered (T)', 'Variance (T)', 'Variance %'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map(r => (
               <tr key={r.clientId} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.clientName}</td>
@@ -1121,17 +1121,17 @@ function WeightVarianceTab() {
 function OverloadingTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-overloading', from, to],
     queryFn: () => reportsApi.getOverloadingIncidents(from, to),
-    enabled,
+
   })
   const rows: OverloadingIncidentResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && <SummaryCard label="Overloading Incidents" value={String(rows.length)} sub="LRs exceeding allocated weight" />}
@@ -1388,20 +1388,20 @@ function LrRegisterTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
   const [clientId, setClientId] = useState('all')
-  const [enabled, setEnabled] = useState(false)
+
 
   const { data, isFetching } = useQuery({
     queryKey: ['report-lr-register', from, to, clientId],
     queryFn: () => reportsApi.getLrRegister(from, to, clientId !== 'all' ? Number(clientId) : undefined),
-    enabled,
+
   })
   const rows: LrRegisterRow[] = data?.data ?? []
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
-        <ClientSelect value={clientId} onChange={v => { setClientId(v); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
+        <ClientSelect value={clientId} onChange={v => { setClientId(v) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
           {isFetching ? 'Loading...' : 'Fetch Report'}
         </Button>
@@ -1464,12 +1464,12 @@ function LrRegisterTab() {
 // ═══════════════════════════════════════════════════════════════════════════════
 function InvoiceOutstandingTab() {
   const [clientId, setClientId] = useState('all')
-  const [enabled, setEnabled] = useState(false)
+
 
   const { data, isFetching } = useQuery({
     queryKey: ['report-invoice-outstanding', clientId],
     queryFn: () => reportsApi.getInvoiceOutstanding(clientId !== 'all' ? Number(clientId) : undefined),
-    enabled,
+
   })
   const rows: InvoiceOutstandingRow[] = data?.data ?? []
   const totalOutstanding = rows.reduce((s, r) => s + r.balanceDue, 0)
@@ -1478,7 +1478,7 @@ function InvoiceOutstandingTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <ClientSelect value={clientId} onChange={v => { setClientId(v); setEnabled(false) }} />
+        <ClientSelect value={clientId} onChange={v => { setClientId(v) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
           {isFetching ? 'Loading...' : 'Fetch Report'}
         </Button>
@@ -1545,12 +1545,12 @@ function CollectionReportTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
   const [clientId, setClientId] = useState('all')
-  const [enabled, setEnabled] = useState(false)
+
 
   const { data, isFetching } = useQuery({
     queryKey: ['report-collections', from, to, clientId],
     queryFn: () => reportsApi.getCollectionReport(from, to, clientId !== 'all' ? Number(clientId) : undefined),
-    enabled,
+
   })
   const rows: CollectionReportRow[] = data?.data ?? []
   const totalCollected = rows.reduce((s, r) => s + r.amount, 0)
@@ -1558,8 +1558,8 @@ function CollectionReportTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
-        <ClientSelect value={clientId} onChange={v => { setClientId(v); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
+        <ClientSelect value={clientId} onChange={v => { setClientId(v) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
           {isFetching ? 'Loading...' : 'Fetch Report'}
         </Button>
@@ -1621,7 +1621,7 @@ function ClientStatementTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
   const [clientId, setClientId] = useState('all')
-  const [enabled, setEnabled] = useState(false)
+
 
   const canFetch = clientId !== 'all'
 
@@ -1635,8 +1635,8 @@ function ClientStatementTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
-        <ClientSelect value={clientId} onChange={v => { setClientId(v); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
+        <ClientSelect value={clientId} onChange={v => { setClientId(v) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching || !canFetch}>
           {isFetching ? 'Loading...' : 'Fetch Statement'}
         </Button>
@@ -1710,19 +1710,19 @@ function ClientStatementTab() {
 function VehicleTripTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
 
   const { data, isFetching } = useQuery({
     queryKey: ['report-vehicle-trips', from, to],
     queryFn: () => reportsApi.getVehicleTripReport(from, to),
-    enabled,
+
   })
   const rows: VehicleTripRow[] = data?.data ?? []
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
           {isFetching ? 'Loading...' : 'Fetch Report'}
         </Button>
@@ -1748,7 +1748,7 @@ function VehicleTripTab() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && (
-              <tr><td colSpan={7}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>
+              <tr><td colSpan={7}><EmptyState msg="No data found for the selected period" /></td></tr>
             )}
             {rows.map(r => (
               <tr key={r.vehicleId} className="hover:bg-gray-50">
@@ -1789,24 +1789,24 @@ function OrderStatusTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
   const [status, setStatus] = useState('all')
-  const [enabled, setEnabled] = useState(false)
+
 
   const { data, isFetching } = useQuery({
     queryKey: ['report-order-status', from, to, status],
     queryFn: () => reportsApi.getOrderStatusReport(from, to, status !== 'all' ? status : undefined),
-    enabled,
+
   })
   const rows: OrderStatusRow[] = data?.data ?? []
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <div>
           <Label className="text-xs text-gray-500">Status</Label>
           <SearchableSelect
             value={status}
-            onValueChange={v => { setStatus(v); setEnabled(false) }}
+            onValueChange={v => { setStatus(v) }}
             options={[{ value: 'all', label: 'All Statuses' }, ...ORDER_STATUSES.map(s => ({ value: s, label: ORDER_STATUS_LABELS[s] ?? s }))]}
             placeholder="All Statuses"
             className="w-40"
@@ -1870,19 +1870,19 @@ function OrderStatusTab() {
 function PayrollSummaryTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(monthEnd())
-  const [enabled, setEnabled] = useState(false)
+
 
   const { data, isFetching } = useQuery({
     queryKey: ['report-payroll-summary', from, to],
     queryFn: () => reportsApi.getPayrollSummary(from, to),
-    enabled,
+
   })
   const rows: PayrollSummaryRow[] = data?.data ?? []
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
           {isFetching ? 'Loading...' : 'Fetch Report'}
         </Button>
@@ -1909,7 +1909,7 @@ function PayrollSummaryTab() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && (
-              <tr><td colSpan={16}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>
+              <tr><td colSpan={16}><EmptyState msg="No data found for the selected period" /></td></tr>
             )}
             {rows.map(r => (
               <tr key={r.payrollId} className="hover:bg-gray-50">
@@ -1953,19 +1953,19 @@ function PayrollSummaryTab() {
 function AttendanceReportTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
 
   const { data, isFetching } = useQuery({
     queryKey: ['report-attendance', from, to],
     queryFn: () => reportsApi.getAttendanceReport(from, to),
-    enabled,
+
   })
   const rows: AttendanceReportRow[] = data?.data ?? []
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
           {isFetching ? 'Loading...' : 'Fetch Report'}
         </Button>
@@ -1991,7 +1991,7 @@ function AttendanceReportTab() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && (
-              <tr><td colSpan={9}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>
+              <tr><td colSpan={9}><EmptyState msg="No data found for the selected period" /></td></tr>
             )}
             {rows.map(r => (
               <tr key={r.userId} className="hover:bg-gray-50">
@@ -2031,18 +2031,18 @@ function AttendanceReportTab() {
 function VehicleRevenueTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-vehicle-revenue', from, to],
     queryFn: () => reportsApi.getVehicleRevenue(from, to),
-    enabled,
+
   })
   const rows: VehicleRevenueResponse[] = data?.data ?? []
   const totalRevenue = rows.reduce((s, r) => s + r.estimatedRevenue, 0)
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2059,7 +2059,7 @@ function VehicleRevenueTab() {
             <tr>{['Vehicle', 'Type', 'Trips', 'Loaded (T)', 'Est. Revenue'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map(r => (
               <tr key={r.vehicleId} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.registrationNumber}</td>
@@ -2079,17 +2079,17 @@ function VehicleRevenueTab() {
 function VehicleIdleDaysTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-vehicle-idle', from, to],
     queryFn: () => reportsApi.getVehicleIdleDays(from, to),
-    enabled,
+
   })
   const rows: VehicleIdleDaysResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2105,7 +2105,7 @@ function VehicleIdleDaysTab() {
             <tr>{['Vehicle', 'Type', 'Total Days', 'Active Days', 'Idle Days', 'Idle %'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map(r => (
               <tr key={r.vehicleId} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.registrationNumber}</td>
@@ -2133,17 +2133,17 @@ function VehicleIdleDaysTab() {
 function VehicleTripCountTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-vehicle-trip-count', from, to],
     queryFn: () => reportsApi.getVehicleTripCount(from, to),
-    enabled,
+
   })
   const rows: VehicleTripCountResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2160,7 +2160,7 @@ function VehicleTripCountTab() {
             <tr>{['Vehicle', 'Type', 'Trips', 'Loaded (T)', 'Delivered (T)'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map(r => (
               <tr key={r.vehicleId} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.registrationNumber}</td>
@@ -2180,17 +2180,17 @@ function VehicleTripCountTab() {
 function BreakdownFrequencyTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-breakdown-freq', from, to],
     queryFn: () => reportsApi.getBreakdownFrequency(from, to),
-    enabled,
+
   })
   const rows: BreakdownFrequencyResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2226,17 +2226,17 @@ function BreakdownFrequencyTab() {
 function VehicleServiceCostTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-vehicle-service-cost', from, to],
     queryFn: () => reportsApi.getVehicleServiceCost(from, to),
-    enabled,
+
   })
   const rows: VehicleServiceCostResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2275,17 +2275,17 @@ function VehicleServiceCostTab() {
 function DriverPerformanceTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-driver-perf', from, to],
     queryFn: () => reportsApi.getDriverPerformance(from, to),
-    enabled,
+
   })
   const rows: DriverPerformanceResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2322,17 +2322,17 @@ function DriverPerformanceTab() {
 function AttendanceGapsTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-att-gaps', from, to],
     queryFn: () => reportsApi.getAttendanceGaps(from, to),
-    enabled,
+
   })
   const rows: AttendanceGapsResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2363,17 +2363,17 @@ function AttendanceGapsTab() {
 function AttendanceTrendTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-att-trend', from, to],
     queryFn: () => reportsApi.getAttendanceTrend(from, to),
-    enabled,
+
   })
   const rows: AttendanceTrendResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       <div className="overflow-x-auto">
@@ -2382,7 +2382,7 @@ function AttendanceTrendTab() {
             <tr>{['Date', 'Total Staff', 'Present', 'Absent', 'Leave', 'Not Marked'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map(r => (
               <tr key={r.date} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium whitespace-nowrap">{r.date}</td>
@@ -2500,7 +2500,7 @@ function InvoiceAgingTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-invoice-aging'],
     queryFn: reportsApi.getInvoiceAging,
-    enabled: false,
+
   })
   const d: InvoiceAgingResponse | undefined = data?.data
   const [bucket, setBucket] = useState<'0-30' | '31-60' | '61-90' | '90+'>('0-30')
@@ -2621,17 +2621,17 @@ function RevenueTrendTab() {
 function RouteProfitabilityTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-route-profit', from, to],
     queryFn: () => reportsApi.getRouteProfitability(from, to),
-    enabled,
+
   })
   const rows: RouteProfitabilityResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2648,7 +2648,7 @@ function RouteProfitabilityTab() {
             <tr>{['Route', 'Trips', 'Revenue', 'Charges', 'Net Profit', 'Margin %'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map((r, i) => (
               <tr key={i} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium whitespace-nowrap">{r.fromCity} → {r.toCity}</td>
@@ -2669,17 +2669,17 @@ function RouteProfitabilityTab() {
 function GstSummaryTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-gst', from, to],
     queryFn: () => reportsApi.getGstSummary(from, to),
-    enabled,
+
   })
   const rows: GstSummaryResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2696,7 +2696,7 @@ function GstSummaryTab() {
             <tr>{['Period', 'Invoices', 'Taxable Value', 'CGST', 'SGST', 'Total Tax', 'Total Amount'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={7}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={7}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map(r => (
               <tr key={r.period} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.period}</td>
@@ -2728,17 +2728,17 @@ function GstSummaryTab() {
 function CreditNotesTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-credit-notes', from, to],
     queryFn: () => reportsApi.getCreditNotesSummary(from, to),
-    enabled,
+
   })
   const rows: CreditNoteSummaryResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {rows.length > 0 && (
@@ -2776,7 +2776,7 @@ function ClientPendingBillingTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['report-client-pending'],
     queryFn: reportsApi.getClientPendingBilling,
-    enabled: false,
+
   })
   const rows: ClientPendingBillingResponse[] = data?.data ?? []
   return (
@@ -2823,17 +2823,17 @@ function ClientPendingBillingTab() {
 function TopClientsTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-top-clients', from, to],
     queryFn: () => reportsApi.getTopClients(from, to),
-    enabled,
+
   })
   const rows: TopClientResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       <div className="overflow-x-auto">
@@ -2842,7 +2842,7 @@ function TopClientsTab() {
             <tr>{['#', 'Client', 'Orders', 'Trips', 'Tonnage (T)', 'Revenue'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map((r, i) => (
               <tr key={r.clientId} className={`hover:bg-gray-50 ${i === 0 ? 'bg-yellow-50' : ''}`}>
                 <td className="px-3 py-2 font-semibold text-gray-400">{i + 1}</td>
@@ -2863,17 +2863,17 @@ function TopClientsTab() {
 function TopMaterialsTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-top-materials', from, to],
     queryFn: () => reportsApi.getTopMaterials(from, to),
-    enabled,
+
   })
   const rows: TopMaterialResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       <div className="overflow-x-auto">
@@ -2882,7 +2882,7 @@ function TopMaterialsTab() {
             <tr>{['Material', 'Orders', 'Total Weight (T)', 'Share %'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={4}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={4}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map((r, i) => (
               <tr key={i} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.materialType}</td>
@@ -2908,17 +2908,17 @@ function TopMaterialsTab() {
 function TopRoutesTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-top-routes', from, to],
     queryFn: () => reportsApi.getTopRoutes(from, to),
-    enabled,
+
   })
   const rows: TopRouteResponse[] = data?.data ?? []
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       <div className="overflow-x-auto">
@@ -2927,7 +2927,7 @@ function TopRoutesTab() {
             <tr>{['#', 'Route', 'Orders', 'Total Weight (T)'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={4}><EmptyState msg="Select date range and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={4}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map((r, i) => (
               <tr key={i} className={`hover:bg-gray-50 ${i === 0 ? 'bg-yellow-50' : ''}`}>
                 <td className="px-3 py-2 font-semibold text-gray-400">{i + 1}</td>
@@ -2946,17 +2946,17 @@ function TopRoutesTab() {
 function OnTimeDeliveryTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-on-time', from, to],
     queryFn: () => reportsApi.getOnTimeDeliveryRate(from, to),
-    enabled,
+
   })
   const d: OnTimeDeliveryResponse | undefined = data?.data
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {d && (
@@ -2986,7 +2986,7 @@ function OnTimeDeliveryTab() {
           <p className="text-xs text-gray-500">Based on LRs delivered vs. order expected delivery date.</p>
         </>
       )}
-      {!d && !isFetching && <EmptyState msg="Select date range and click Fetch Report" />}
+      {!d && !isFetching && <EmptyState msg="No data found for the selected period" />}
     </div>
   )
 }
@@ -2994,17 +2994,17 @@ function OnTimeDeliveryTab() {
 function CancellationRateTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['report-cancellation', from, to],
     queryFn: () => reportsApi.getOrderCancellationRate(from, to),
-    enabled,
+
   })
   const d: OrderCancellationRateResponse | undefined = data?.data
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
       </div>
       {d && (
@@ -3027,7 +3027,7 @@ function CancellationRateTab() {
           </div>
         </div>
       )}
-      {!d && !isFetching && <EmptyState msg="Select date range and click Fetch Report" />}
+      {!d && !isFetching && <EmptyState msg="No data found for the selected period" />}
     </div>
   )
 }
@@ -3038,16 +3038,16 @@ function StockLevelsTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['stock-levels'],
     queryFn: reportsApi.getStockLevels,
-    enabled: false,
+
   })
   const rows = (data?.data ?? []) as StockLevelResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">Stock Levels &amp; Low Stock Alerts</h2>
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading…' : 'Fetch Report'}
-        </Button>
+        {isFetching
+          ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
+          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
@@ -3077,7 +3077,7 @@ function StockLevelsTab() {
           </table>
         </div>
       )}
-      {!rows.length && !isFetching && <EmptyState msg="Click Fetch Report to load stock levels" />}
+      {!rows.length && !isFetching && <EmptyState msg="No data available — stock levels" />}
     </div>
   )
 }
@@ -3085,21 +3085,19 @@ function StockLevelsTab() {
 function StockMovementTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['stock-movement', from, to],
     queryFn: () => reportsApi.getStockMovement(from, to),
-    enabled,
+
   })
   const rows = (data?.data ?? []) as StockMovementResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4 flex-wrap">
         <h2 className="text-lg font-semibold text-gray-800">Stock Movement</h2>
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading…' : 'Fetch Report'}
-        </Button>
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
@@ -3135,7 +3133,7 @@ function StockMovementTab() {
           </table>
         </div>
       )}
-      {!rows.length && !isFetching && <EmptyState msg="Select date range and click Fetch Report" />}
+      {!rows.length && !isFetching && <EmptyState msg="No data found for the selected period" />}
     </div>
   )
 }
@@ -3143,21 +3141,19 @@ function StockMovementTab() {
 function PartsByVehicleTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['parts-by-vehicle', from, to],
     queryFn: () => reportsApi.getPartsByVehicle(from, to),
-    enabled,
+
   })
   const rows = (data?.data ?? []) as VehiclePartConsumptionResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4 flex-wrap">
         <h2 className="text-lg font-semibold text-gray-800">Parts Consumption by Vehicle</h2>
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading…' : 'Fetch Report'}
-        </Button>
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
@@ -3181,7 +3177,7 @@ function PartsByVehicleTab() {
           </table>
         </div>
       )}
-      {!rows.length && !isFetching && <EmptyState msg="Select date range and click Fetch Report" />}
+      {!rows.length && !isFetching && <EmptyState msg="No data found for the selected period" />}
     </div>
   )
 }
@@ -3189,21 +3185,19 @@ function PartsByVehicleTab() {
 function PartsByTypeTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['parts-by-type', from, to],
     queryFn: () => reportsApi.getPartsByType(from, to),
-    enabled,
+
   })
   const rows = (data?.data ?? []) as PartConsumptionByTypeResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4 flex-wrap">
         <h2 className="text-lg font-semibold text-gray-800">Parts Consumption by Type</h2>
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading…' : 'Fetch Report'}
-        </Button>
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
@@ -3229,7 +3223,7 @@ function PartsByTypeTab() {
           </table>
         </div>
       )}
-      {!rows.length && !isFetching && <EmptyState msg="Select date range and click Fetch Report" />}
+      {!rows.length && !isFetching && <EmptyState msg="No data found for the selected period" />}
     </div>
   )
 }
@@ -3237,11 +3231,11 @@ function PartsByTypeTab() {
 function ServiceCostBreakdownTab() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo] = useState(today())
-  const [enabled, setEnabled] = useState(false)
+
   const { data, isFetching } = useQuery({
     queryKey: ['service-cost-breakdown', from, to],
     queryFn: () => reportsApi.getServiceCostBreakdown(from, to),
-    enabled,
+
   })
   const rows = (data?.data ?? []) as ServiceCostBreakdownResponse[]
   const totalCost = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
@@ -3249,10 +3243,8 @@ function ServiceCostBreakdownTab() {
     <div className="space-y-4">
       <div className="flex items-center gap-4 flex-wrap">
         <h2 className="text-lg font-semibold text-gray-800">Service Cost Breakdown</h2>
-        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setEnabled(false) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading…' : 'Fetch Report'}
-        </Button>
+        <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <>
@@ -3287,7 +3279,7 @@ function ServiceCostBreakdownTab() {
           </div>
         </>
       )}
-      {!rows.length && !isFetching && <EmptyState msg="Select date range and click Fetch Report" />}
+      {!rows.length && !isFetching && <EmptyState msg="No data found for the selected period" />}
     </div>
   )
 }
@@ -3298,16 +3290,16 @@ function TiresByVehicleTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['tires-by-vehicle'],
     queryFn: reportsApi.getTiresByVehicle,
-    enabled: false,
+
   })
   const vehicles = (data?.data ?? []) as TiresByVehicleResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">Tires per Vehicle</h2>
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading…' : 'Fetch Report'}
-        </Button>
+        {isFetching
+          ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
+          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
       </div>
       {vehicles.length > 0 && (
         <div className="space-y-4">
@@ -3345,7 +3337,7 @@ function TiresByVehicleTab() {
           ))}
         </div>
       )}
-      {!vehicles.length && !isFetching && <EmptyState msg="Click Fetch Report to load tire data" />}
+      {!vehicles.length && !isFetching && <EmptyState msg="No data available — tire data" />}
     </div>
   )
 }
@@ -3354,16 +3346,16 @@ function KmPerTireTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['km-per-tire'],
     queryFn: reportsApi.getKmPerTire,
-    enabled: false,
+
   })
   const rows = (data?.data ?? []) as KmPerTireResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">Km Run per Tire</h2>
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading…' : 'Fetch Report'}
-        </Button>
+        {isFetching
+          ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
+          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
@@ -3401,7 +3393,7 @@ function KmPerTireTab() {
           </table>
         </div>
       )}
-      {!rows.length && !isFetching && <EmptyState msg="Click Fetch Report to load km data" />}
+      {!rows.length && !isFetching && <EmptyState msg="No data available — km data" />}
     </div>
   )
 }
@@ -3410,7 +3402,7 @@ function TireReplacementTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['tire-replacement'],
     queryFn: reportsApi.getTireReplacementProjection,
-    enabled: false,
+
   })
   const rows = (data?.data ?? []) as TireReplacementProjectionResponse[]
   const urgencyColor = (u: string) =>
@@ -3419,9 +3411,9 @@ function TireReplacementTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">Tire Replacement Projection</h2>
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading…' : 'Fetch Report'}
-        </Button>
+        {isFetching
+          ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
+          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
       </div>
       {rows.length > 0 && (
         <>
@@ -3460,7 +3452,7 @@ function TireReplacementTab() {
           </div>
         </>
       )}
-      {!rows.length && !isFetching && <EmptyState msg="Click Fetch Report to load projection data" />}
+      {!rows.length && !isFetching && <EmptyState msg="No data available — projection data" />}
     </div>
   )
 }
@@ -3469,16 +3461,16 @@ function TireCostPerKmTab() {
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['tire-cost-per-km'],
     queryFn: reportsApi.getTireCostPerKm,
-    enabled: false,
+
   })
   const rows = (data?.data ?? []) as TireCostPerKmResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">Tire Cost per Km</h2>
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading…' : 'Fetch Report'}
-        </Button>
+        {isFetching
+          ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
+          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">

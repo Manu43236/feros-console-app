@@ -63,7 +63,7 @@ const ADMIN_NAV: SectionedNav = {
       ],
     },
     {
-      section: 'More',
+      section: '',
       items: [
         { to: '/reports', label: 'Reports', icon: BarChart3 },
         { to: '/masters', label: 'Masters', icon: Settings },
@@ -98,7 +98,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       ],
     },
     {
-      section: 'More',
+      section: '',
       items: [
         { to: '/reports', label: 'Reports', icon: BarChart3 },
       ],
@@ -201,6 +201,18 @@ function NavItemLink({ to, label, icon: Icon, onClick }: NavItem & { onClick?: (
 function NavSectionGroup({
   section, items, open, onToggle, onNavClick,
 }: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void }) {
+  if (section === '') {
+    return (
+      <div className="space-y-0.5 mt-2">
+        {items.map(item =>
+          item.to === '/reports'
+            ? <ReportsNavGroup key="reports" onNavClick={onNavClick} />
+            : <NavItemLink key={item.to} {...item} onClick={onNavClick} />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div>
       <button
