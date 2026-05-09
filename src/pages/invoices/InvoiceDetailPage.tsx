@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -199,6 +199,7 @@ export function InvoiceDetailPage() {
   const [showPayment, setShowPay] = useState(false)
   const [showEdit, setShowEdit]   = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const previewIframeRef = useRef<HTMLIFrameElement>(null)
   const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: invoice, isLoading } = useQuery({
@@ -576,16 +577,18 @@ export function InvoiceDetailPage() {
 
       {/* ── Invoice Preview Dialog ── */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-[95vw] w-[1000px] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50 flex-shrink-0">
-            <span className="font-semibold text-gray-800">Invoice Preview</span>
+        <DialogContent className="max-w-[95vw] w-[1000px] p-0 gap-0 overflow-hidden" style={{ height: '90vh' }}>
+          <div className="flex items-center justify-between px-4 py-2.5 border-b bg-gray-50 flex-shrink-0">
+            <span className="font-semibold text-gray-800 text-sm">
+              Invoice — {invoice.invoiceNumber}
+            </span>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                onClick={() => window.open(`/invoices/${id}/print`, '_blank')}
-                className="flex items-center gap-2"
+                onClick={() => previewIframeRef.current?.contentWindow?.print()}
+                className="flex items-center gap-2 h-8 text-xs"
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-3.5 w-3.5" />
                 Download PDF
               </Button>
               <button
@@ -597,8 +600,9 @@ export function InvoiceDetailPage() {
             </div>
           </div>
           <iframe
+            ref={previewIframeRef}
             src={`/invoices/${id}/print?preview=true`}
-            className="flex-1 w-full border-0"
+            style={{ width: '100%', height: 'calc(90vh - 45px)', border: 'none', display: 'block' }}
             title="Invoice Preview"
           />
         </DialogContent>

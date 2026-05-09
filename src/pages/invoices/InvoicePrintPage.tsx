@@ -122,15 +122,17 @@ export function InvoicePrintPage() {
         }
       `}</style>
 
-      {/* Print toolbar */}
-      <div className="no-print" style={{ padding: '10px 20px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', gap: 10 }}>
-        <button onClick={() => window.print()} style={{ background: '#1e3a5f', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
-          Print / Save as PDF
-        </button>
-        <button onClick={() => window.close()} style={{ background: '#fff', color: '#555', border: '1px solid #d1d5db', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
-          Close
-        </button>
-      </div>
+      {/* Print toolbar — hidden in preview mode and during print */}
+      {!isPreview && (
+        <div className="no-print" style={{ padding: '10px 20px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', gap: 10 }}>
+          <button onClick={() => window.print()} style={{ background: '#1e3a5f', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
+            Print / Save as PDF
+          </button>
+          <button onClick={() => window.close()} style={{ background: '#fff', color: '#555', border: '1px solid #d1d5db', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
+            Close
+          </button>
+        </div>
+      )}
 
       {/* ── Invoice ──────────────────────────────────────────────────────── */}
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px 28px' }}>
