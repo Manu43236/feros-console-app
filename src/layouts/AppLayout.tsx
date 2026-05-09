@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import leftMenuLogo from '@/assets/left_menu_logo.png'
 import { useAuthStore } from '@/store/authStore'
@@ -210,9 +210,12 @@ function NavItemLink({ to, label, icon: Icon, onClick }: NavItem & { onClick?: (
 function NavSectionGroup({
   section, icon: SectionIcon, items, open, onToggle, onNavClick,
 }: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void }) {
+  const { pathname } = useLocation()
+  const isSectionActive = items.some(item => pathname === item.to || pathname.startsWith(item.to + '/'))
+
   if (section === '') {
     return (
-      <div className="space-y-0.5 mt-2">
+      <div className="space-y-0.5 mt-1">
         {items.map(item =>
           item.to === '/reports'
             ? <ReportsNavGroup key="reports" onNavClick={onNavClick} />
@@ -223,22 +226,25 @@ function NavSectionGroup({
   }
 
   return (
-    <div>
+    <div className="mt-1">
       <button
         onClick={onToggle}
-        className="flex items-center justify-between w-full px-3 py-1.5 mt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-300 hover:text-white transition-colors"
+        className={cn(
+          'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+          isSectionActive
+            ? 'bg-white/10 text-white'
+            : 'text-gray-300 hover:bg-white/10 hover:text-white'
+        )}
       >
-        <span className="flex items-center gap-1.5">
-          {SectionIcon && <SectionIcon size={13} className="shrink-0" />}
-          {section}
-        </span>
+        {SectionIcon && <SectionIcon size={18} className="shrink-0" />}
+        <span className="flex-1 text-left">{section}</span>
         {open
-          ? <ChevronDown size={12} className="shrink-0" />
-          : <ChevronRight size={12} className="shrink-0" />
+          ? <ChevronDown size={14} className="shrink-0" />
+          : <ChevronRight size={14} className="shrink-0" />
         }
       </button>
       {open && (
-        <div className="space-y-0.5 mt-0.5">
+        <div className="ml-7 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
           {items.map(item =>
             item.to === '/reports'
               ? <ReportsNavGroup key="reports" onNavClick={onNavClick} />
@@ -342,9 +348,28 @@ export function AppLayout() {
     role === 'SERVICE_MEN'  ? SERVICE_MEN_NAV :
     ADMIN_NAV
 
-  // Track which sections are open — all open by default
-  const allSections = isSectionedNav(nav) ? nav.sections.map(s => s.section) : []
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(allSections))
+  const location = useLocation()
+
+  // Collapsed by default — open only the section containing the current route
+  function getActiveSection(): string | null {
+    if (!isSectionedNav(nav)) return null
+    for (const { section, items } of nav.sections) {
+      if (section && items.some(i => location.pathname === i.to || location.pathname.startsWith(i.to + '/')))
+        return section
+    }
+    return null
+  }
+
+  const [openSections, setOpenSections] = useState<Set<string>>(() => {
+    const active = getActiveSection()
+    return active ? new Set([active]) : new Set()
+  })
+
+  // Auto-expand section when navigating into it
+  useEffect(() => {
+    const active = getActiveSection()
+    if (active) setOpenSections(prev => prev.has(active) ? prev : new Set([...prev, active]))
+  }, [location.pathname])
 
   function toggleSection(section: string) {
     setOpenSections(prev => {
