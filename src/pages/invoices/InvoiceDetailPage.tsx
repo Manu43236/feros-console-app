@@ -208,21 +208,28 @@ export function InvoiceDetailPage() {
     // Convert logo to base64 via server proxy (avoids S3 CORS restriction)
     const img = invoicePrintRef.current.querySelector('img') as HTMLImageElement | null
     let originalSrc: string | null = null
+    let originalOnError: ((e: Event) => void) | null = null
     if (img?.src) {
       try {
         originalSrc = img.src
-        // Extract S3 key from the public URL: everything after amazonaws.com/
+        originalOnError = img.onerror as ((e: Event) => void) | null
+        img.onerror = null // prevent onError from hiding the img during PDF gen
+        img.style.display = 'block'
+
         const keyMatch = img.src.match(/amazonaws\.com\/(.+)/)
         const key = keyMatch?.[1]
         if (key) {
-          const blob = await fetch(`/api/v1/upload/proxy?key=${encodeURIComponent(key)}`).then(r => r.blob())
+          const token = localStorage.getItem('feros_token')
+          const blob = await fetch(`/api/v1/upload/proxy?key=${encodeURIComponent(key)}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }).then(r => r.blob())
           const base64 = await new Promise<string>(resolve => {
             const reader = new FileReader()
             reader.onload = () => resolve(reader.result as string)
             reader.readAsDataURL(blob)
           })
           img.src = base64
-          await new Promise(r => setTimeout(r, 100))
+          await new Promise(r => setTimeout(r, 150))
         }
       } catch {
         // continue without logo if proxy fails
@@ -241,8 +248,11 @@ export function InvoiceDetailPage() {
       .from(invoicePrintRef.current)
       .save()
 
-    // Restore original src
-    if (img && originalSrc) img.src = originalSrc
+    // Restore original img state
+    if (img && originalSrc) {
+      img.src = originalSrc
+      img.onerror = originalOnError as OnErrorEventHandler
+    }
   }
   const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
