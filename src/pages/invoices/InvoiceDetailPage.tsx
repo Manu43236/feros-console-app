@@ -599,12 +599,20 @@ export function InvoiceDetailPage() {
               </button>
             </div>
           </div>
-          <div className="flex-1 relative overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
             <iframe
               ref={previewIframeRef}
               src={`/invoices/${id}/print?preview=true`}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+              scrolling="no"
+              style={{ width: '100%', height: '600px', border: 'none', display: 'block' }}
               title="Invoice Preview"
+              onLoad={() => {
+                const iframe = previewIframeRef.current
+                if (iframe?.contentDocument) {
+                  const h = iframe.contentDocument.documentElement.scrollHeight
+                  iframe.style.height = h + 'px'
+                }
+              }}
             />
           </div>
         </DialogContent>
