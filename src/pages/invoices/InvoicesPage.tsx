@@ -12,12 +12,14 @@ import { toast } from 'sonner'
 import {
   Plus, Search, Eye, FileText,
   Receipt, TrendingUp, AlertCircle, CheckCircle2,
+  Percent, CalendarDays, StickyNote, Truck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import type { InvoiceStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -65,16 +67,22 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const { data: clientsRes } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
   const { data: lrsRes } = useQuery({ queryKey: ['lrs'], queryFn: lrsApi.getAll })
   const { data: invoicedIdsRes } = useQuery({ queryKey: ['invoiced-lr-ids'], queryFn: invoicesApi.getInvoicedLrIds })
-  const allLrs       = lrsRes?.data ?? []
+  const allLrs        = lrsRes?.data ?? []
   const invoicedLrIds = new Set(invoicedIdsRes?.data ?? [])
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<CreateForm>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,
-    defaultValues: { invoiceDate: new Date().toISOString().split('T')[0] },
+    defaultValues: { invoiceDate: new Date().toISOString().split('T')[0], cgstPercentage: 9, sgstPercentage: 9 },
   })
 
   const watchedClientId = watch('clientId')
+  const cgstVal = Number(watch('cgstPercentage') ?? 0)
+  const sgstVal = Number(watch('sgstPercentage') ?? 0)
   const clientId = Number(watchedClientId)
+
+  const clientOptions = (clientsRes?.data ?? [])
+    .filter(c => c.isActive)
+    .map(c => ({ value: String(c.id), label: c.clientName }))
 
   const eligibleLrs = allLrs.filter(
     lr => lr.clientId === clientId && lr.lrStatus === 'DELIVERED' && !invoicedLrIds.has(lr.id)
@@ -114,7 +122,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Invoice</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">Create Invoice</DialogTitle>
         </DialogHeader>
 
         <form
@@ -122,65 +130,90 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
             if (selectedLrIds.size === 0) { toast.error('Select at least one LR'); return }
             mutation.mutate(d)
           })}
-          className="space-y-5 pt-2"
+          className="space-y-4 pt-1"
         >
-          {/* Client + Dates */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5 col-span-2">
-              <Label>Client *</Label>
-              <select
-                {...register('clientId')}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-              >
-                <option value="">Select client…</option>
-                {clientsRes?.data?.filter(c => c.isActive).map(c => (
-                  <option key={c.id} value={c.id}>{c.clientName}</option>
-                ))}
-              </select>
-              {errors.clientId && <p className="text-red-500 text-xs">{errors.clientId.message}</p>}
+          {/* ── Client ── */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Client *</Label>
+            <SearchableSelect
+              value={String(watchedClientId ?? '')}
+              onValueChange={val => setValue('clientId', Number(val), { shouldValidate: true })}
+              options={clientOptions}
+              placeholder="Search and select client…"
+            />
+            {errors.clientId && <p className="text-red-500 text-xs mt-1">{errors.clientId.message}</p>}
+          </div>
+
+          {/* ── Dates ── */}
+          <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <CalendarDays className="h-3.5 w-3.5" /> Dates
             </div>
-            <div className="space-y-1.5">
-              <Label>Invoice Date</Label>
-              <Input type="date" {...register('invoiceDate')} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Due Date</Label>
-              <Input type="date" {...register('dueDate')} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>CGST %</Label>
-              <Input type="number" step="0.01" min="0" max="50" placeholder="9" {...register('cgstPercentage')} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>SGST %</Label>
-              <Input type="number" step="0.01" min="0" max="50" placeholder="9" {...register('sgstPercentage')} />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label>Remarks</Label>
-              <Input placeholder="Optional note…" {...register('remarks')} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-600">Invoice Date</Label>
+                <Input type="date" {...register('invoiceDate')} className="bg-white" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-600">Due Date</Label>
+                <Input type="date" {...register('dueDate')} className="bg-white" />
+              </div>
             </div>
           </div>
 
-          {/* LR Selection */}
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-gray-700">
-                Select Delivered LRs
+          {/* ── GST ── */}
+          <div className="bg-blue-50/60 rounded-lg p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                <Percent className="h-3.5 w-3.5" /> GST
+              </div>
+              {(cgstVal + sgstVal) > 0 && (
+                <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                  Total GST: {cgstVal + sgstVal}%
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-600">CGST %</Label>
+                <Input type="number" step="0.01" min="0" max="50" className="bg-white" {...register('cgstPercentage')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-600">SGST %</Label>
+                <Input type="number" step="0.01" min="0" max="50" className="bg-white" {...register('sgstPercentage')} />
+              </div>
+            </div>
+            <p className="text-xs text-blue-600/70">Leave 0 for non-GST invoices. Standard: CGST 9% + SGST 9% = 18%</p>
+          </div>
+
+          {/* ── Remarks ── */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              <StickyNote className="h-3.5 w-3.5" /> Remarks
+            </div>
+            <Input placeholder="Optional note…" {...register('remarks')} />
+          </div>
+
+          {/* ── LR Selection ── */}
+          <div className="border-t pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <Truck className="h-3.5 w-3.5" /> Select Delivered LRs
                 {selectedLrIds.size > 0 && (
-                  <span className="ml-2 text-blue-600 font-normal">({selectedLrIds.size} selected)</span>
+                  <span className="ml-1 bg-feros-navy text-white text-xs rounded-full px-2 py-0.5 font-medium normal-case">
+                    {selectedLrIds.size} selected
+                  </span>
                 )}
-              </p>
+              </div>
               {eligibleLrs.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (selectedLrIds.size === eligibleLrs.length) {
-                      setSelectedLrIds(new Set())
-                    } else {
-                      setSelectedLrIds(new Set(eligibleLrs.map(lr => lr.id)))
-                    }
-                  }}
-                  className="text-xs text-blue-600 hover:underline"
+                  onClick={() => setSelectedLrIds(
+                    selectedLrIds.size === eligibleLrs.length
+                      ? new Set()
+                      : new Set(eligibleLrs.map(lr => lr.id))
+                  )}
+                  className="text-xs text-feros-navy hover:underline font-medium"
                 >
                   {selectedLrIds.size === eligibleLrs.length ? 'Deselect all' : 'Select all'}
                 </button>
@@ -188,19 +221,24 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
             </div>
 
             {!clientId ? (
-              <p className="text-sm text-gray-400 py-6 text-center">Select a client to see delivered LRs</p>
+              <div className="flex flex-col items-center justify-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
+                <Truck className="h-8 w-8 mb-2 opacity-30" />
+                <p className="text-sm">Select a client to see available LRs</p>
+              </div>
             ) : eligibleLrs.length === 0 ? (
-              <p className="text-sm text-gray-400 py-6 text-center">No delivered LRs found for this client</p>
+              <div className="flex flex-col items-center justify-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
+                <CheckCircle2 className="h-8 w-8 mb-2 opacity-30" />
+                <p className="text-sm">No uninvoiced delivered LRs for this client</p>
+              </div>
             ) : (
               <div className="border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b">
                     <tr>
-                      <th className="w-10 py-2 px-3" />
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">LR #</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Vehicle</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Order #</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">LR Date</th>
+                      <th className="w-10 py-2.5 px-3" />
+                      <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">LR #</th>
+                      <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle</th>
+                      <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -210,21 +248,28 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
                         onClick={() => toggleLr(lr.id)}
                         className={cn(
                           'border-b last:border-0 cursor-pointer transition-colors',
-                          selectedLrIds.has(lr.id) ? 'bg-blue-50' : 'hover:bg-gray-50'
+                          selectedLrIds.has(lr.id)
+                            ? 'bg-blue-50 hover:bg-blue-100'
+                            : 'hover:bg-gray-50'
                         )}
                       >
-                        <td className="py-2 px-3">
-                          <input
-                            type="checkbox"
-                            readOnly
-                            checked={selectedLrIds.has(lr.id)}
-                            className="rounded border-gray-300"
-                          />
+                        <td className="py-2.5 px-3">
+                          <div className={cn(
+                            'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
+                            selectedLrIds.has(lr.id)
+                              ? 'bg-feros-navy border-feros-navy'
+                              : 'border-gray-300'
+                          )}>
+                            {selectedLrIds.has(lr.id) && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
                         </td>
-                        <td className="py-2 px-3 font-medium text-feros-navy">{lr.lrNumber}</td>
-                        <td className="py-2 px-3 text-gray-600">{lr.vehicleRegistrationNumber}</td>
-                        <td className="py-2 px-3 text-gray-600">{lr.orderNumber}</td>
-                        <td className="py-2 px-3 text-gray-500">
+                        <td className="py-2.5 px-3 font-semibold text-feros-navy text-xs">{lr.lrNumber}</td>
+                        <td className="py-2.5 px-3 text-gray-600 text-xs">{lr.vehicleRegistrationNumber}</td>
+                        <td className="py-2.5 px-3 text-gray-500 text-xs">
                           {lr.lrDate
                             ? new Date(lr.lrDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                             : '—'}
@@ -242,7 +287,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
             <Button
               type="submit"
               disabled={mutation.isPending || selectedLrIds.size === 0}
-              className="bg-feros-navy hover:bg-feros-navy/90 text-white"
+              className="bg-feros-navy hover:bg-feros-navy/90 text-white min-w-[140px]"
             >
               {mutation.isPending
                 ? 'Creating…'
