@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -200,6 +200,22 @@ export function InvoiceDetailPage() {
   const [showPayment, setShowPay] = useState(false)
   const [showEdit, setShowEdit]   = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const invoicePrintRef = useRef<HTMLDivElement>(null)
+
+  const handleDownloadPdf = async () => {
+    if (!invoicePrintRef.current) return
+    const html2pdf = (await import('html2pdf.js')).default
+    html2pdf()
+      .set({
+        margin: 10,
+        filename: `${invoice.invoiceNumber}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      })
+      .from(invoicePrintRef.current)
+      .save()
+  }
   const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: invoice, isLoading } = useQuery({
@@ -585,7 +601,7 @@ export function InvoiceDetailPage() {
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                onClick={() => window.open(`/invoices/${id}/print`, '_blank')}
+                onClick={handleDownloadPdf}
                 className="flex items-center gap-2 h-8 text-xs"
               >
                 <Download className="h-3.5 w-3.5" />
@@ -600,7 +616,9 @@ export function InvoiceDetailPage() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto bg-white">
-            <InvoiceDocument invoice={invoice} />
+            <div ref={invoicePrintRef}>
+              <InvoiceDocument invoice={invoice} />
+            </div>
           </div>
         </DialogContent>
       </Dialog>
