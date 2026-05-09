@@ -141,12 +141,15 @@ export function InvoicePrintPage() {
               <td style={{ width: '55%', verticalAlign: 'top', paddingRight: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
                   {invoice.tenantLogoUrl && (
-                    <img src={invoice.tenantLogoUrl} alt="logo" style={{ height: 48, maxWidth: 100, objectFit: 'contain' }} />
+                    <img
+                      src={invoice.tenantLogoUrl}
+                      alt="logo"
+                      style={{ height: 56, maxWidth: 120, objectFit: 'contain' }}
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                    />
                   )}
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase' }}>
-                      {invoice.tenantLogoUrl ? '' : invoice.createdByName /* fallback if no logo */}
-                    </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    {invoice.tenantCompanyName || ''}
                   </div>
                 </div>
                 <div style={{ fontSize: 11, color: '#333', lineHeight: 1.6 }}>

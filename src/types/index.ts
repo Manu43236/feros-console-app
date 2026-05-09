@@ -256,7 +256,7 @@ export interface Invoice {
   amountPaid: number; balanceDue: number
   invoiceStatus: InvoiceStatus; remarks?: string
   // Tenant (for print)
-  tenantLogoUrl?: string; tenantGstin?: string; tenantPan?: string
+  tenantCompanyName?: string; tenantLogoUrl?: string; tenantGstin?: string; tenantPan?: string
   tenantAddress?: string; tenantCity?: string; tenantState?: string; tenantPincode?: string
   tenantBankName?: string; tenantAccountNumber?: string; tenantIfscCode?: string
   tenantBranchName?: string; tenantAccountHolderName?: string; transportHsnSac?: string
