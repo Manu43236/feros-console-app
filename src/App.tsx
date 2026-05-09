@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate} from 'react-router-dom'
 import { AppLayout } from '@/layouts/AppLayout'
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
 import { RoleRedirect } from '@/components/shared/RoleRedirect'
@@ -90,7 +90,8 @@ export default function App() {
           <Route path="staff/:userId"   element={<StaffDetailPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="payroll"    element={<PayrollPage />} />
-          <Route path="reports"    element={<ReportsPage />} />
+          <Route path="reports" element={<Navigate to="/reports/daily-operations" replace />} />
+          <Route path="reports/:section" element={<ReportsPage />} />
           <Route path="masters"    element={<MastersPage />} />
           <Route path="inventory" element={<InventoryPage />} />
 

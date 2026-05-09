@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useParams, Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -3511,44 +3512,53 @@ function TireCostPerKmTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Section config
+// ═══════════════════════════════════════════════════════════════════════════════
+const SECTION_CONFIG: Record<string, { label: string; tabs: { id: ReportTab; label: string }[]; defaultTab: ReportTab }> = {
+  'daily-operations':      { label: 'Daily Operations',       tabs: DAILY_OPS_TABS,   defaultTab: 'daily-vehicles' },
+  'orders':                { label: 'Orders & Assignments',   tabs: ORDERS_TABS,      defaultTab: 'order-fulfillment' },
+  'trips':                 { label: 'Trips & LRs',            tabs: TRIPS_TABS,       defaultTab: 'trips-in-progress' },
+  'vehicle-performance':   { label: 'Vehicle Performance',    tabs: VEHICLE_PERF_TABS, defaultTab: 'vehicle-revenue' },
+  'driver-staff':          { label: 'Driver & Staff',         tabs: DRIVER_TABS,      defaultTab: 'driver-performance' },
+  'financial':             { label: 'Financial Intelligence', tabs: FINANCIAL_TABS,   defaultTab: 'invoice-aging' },
+  'business-intelligence': { label: 'Business Intelligence',  tabs: BI_TABS,          defaultTab: 'top-clients' },
+  'inventory':             { label: 'Inventory Reports',      tabs: INVENTORY_TABS,   defaultTab: 'stock-levels' },
+  'tires':                 { label: 'Tire Reports',           tabs: TIRE_TABS,        defaultTab: 'tires-by-vehicle' },
+  'periodic':              { label: 'Periodic Reports',       tabs: TABS,             defaultTab: 'targets' },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Main Page
 // ═══════════════════════════════════════════════════════════════════════════════
 export function ReportsPage() {
-  const [tab, setTab] = useState<ReportTab>('daily-vehicles')
+  const { section = 'daily-operations' } = useParams<{ section: string }>()
+  const config = SECTION_CONFIG[section]
+
+  const [tab, setTab] = useState<ReportTab>(config?.defaultTab ?? 'daily-vehicles')
+
+  useEffect(() => {
+    if (config) setTab(config.defaultTab)
+  }, [section])
+
+  if (!config) return <Navigate to="/reports/daily-operations" replace />
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{config.label}</h1>
         <p className="text-gray-500 text-sm mt-1">Business analytics and operational insights</p>
       </div>
 
-      {[
-        { label: 'Daily Operations', tabs: DAILY_OPS_TABS },
-        { label: 'Orders & Assignments', tabs: ORDERS_TABS },
-        { label: 'Trips & LRs', tabs: TRIPS_TABS },
-        { label: 'Vehicle Performance', tabs: VEHICLE_PERF_TABS },
-        { label: 'Driver & Staff', tabs: DRIVER_TABS },
-        { label: 'Financial Intelligence', tabs: FINANCIAL_TABS },
-        { label: 'Business Intelligence', tabs: BI_TABS },
-        { label: 'Inventory', tabs: INVENTORY_TABS },
-        { label: 'Tires', tabs: TIRE_TABS },
-        { label: 'Periodic Reports', tabs: TABS },
-      ].map(group => (
-        <div key={group.label} className="space-y-2">
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">{group.label}</div>
-          <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 w-fit">
-            {group.tabs.map(({ id, label }) => (
-              <button key={id} onClick={() => setTab(id)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  tab === id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
+      <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        {config.tabs.map(({ id, label }) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              tab === id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         {tab === 'daily-vehicles'    && <DailyVehicleActivityTab />}
