@@ -1402,9 +1402,7 @@ function LrRegisterTab() {
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <ClientSelect value={clientId} onChange={v => { setClientId(v) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Report'}
-        </Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
 
       {rows.length > 0 && (
@@ -1479,9 +1477,7 @@ function InvoiceOutstandingTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <ClientSelect value={clientId} onChange={v => { setClientId(v) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Report'}
-        </Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
 
       {rows.length > 0 && (
@@ -1560,9 +1556,7 @@ function CollectionReportTab() {
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <ClientSelect value={clientId} onChange={v => { setClientId(v) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Report'}
-        </Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
 
       {rows.length > 0 && (
@@ -1721,9 +1715,7 @@ function VehicleTripTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Report'}
-        </Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
 
       {rows.length > 0 && (
@@ -1811,9 +1803,7 @@ function OrderStatusTab() {
             triggerClassName="h-8 text-sm"
           />
         </div>
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Report'}
-        </Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
 
       {rows.length > 0 && (
@@ -1881,9 +1871,7 @@ function PayrollSummaryTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Report'}
-        </Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
 
       {rows.length > 0 && (
@@ -1964,9 +1952,7 @@ function AttendanceReportTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Report'}
-        </Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
 
       {rows.length > 0 && (
