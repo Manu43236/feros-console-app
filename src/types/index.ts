@@ -429,6 +429,248 @@ export interface AttendanceReportRow {
   totalDays: number; presentDays: number; absentDays: number; halfDays: number; leaveDays: number
   attendancePercentage: number
 }
+export interface TenantTargetResponse {
+  id?: number; year: number; month: number
+  targetTrips?: number; targetTons?: number
+  actualTrips: number; actualTons: number
+  tripsProgressPct?: number; tonsProgressPct?: number
+}
+
+// ─── Daily Ops Reports ────────────────────────────────────────────────────────
+export interface VehicleActivityRow {
+  vehicleId: number; registrationNumber: string; vehicleType?: string
+  clientName?: string; fromCity?: string; toCity?: string
+  lrNumber?: string; loadedAt?: string; deliveredAt?: string
+}
+export interface DailyVehicleActivityResponse {
+  onRoadCount: number; startedTodayCount: number; deliveredTodayCount: number; idleCount: number
+  onRoad: VehicleActivityRow[]; startedToday: VehicleActivityRow[]
+  deliveredToday: VehicleActivityRow[]; idle: VehicleActivityRow[]
+}
+export interface LocalLongTripRow {
+  tripType: string; lrNumber: string; registrationNumber: string
+  clientName: string; fromCity: string; fromState: string; toCity: string; toState: string
+}
+export interface LocalLongTripSummaryResponse {
+  localCount: number; longDistanceCount: number; totalToday: number
+  trips: LocalLongTripRow[]
+}
+export interface IdleDriverResponse {
+  userId: number; userName: string; phone: string; roleName?: string
+}
+export interface DocumentExpiryAlertResponse {
+  vehicleId: number; registrationNumber: string; documentType: string
+  documentNumber?: string; expiryDate: string; daysUntilExpiry: number; expired: boolean
+}
+export interface TodayAttendanceRow {
+  userId: number; userName: string; phone: string; roleName?: string; attendanceStatus: string
+}
+export interface TodayAttendanceSummaryResponse {
+  presentCount: number; absentCount: number; leaveCount: number; notMarkedCount: number; totalStaff: number
+  records: TodayAttendanceRow[]
+}
+export interface DelayedTripResponse {
+  lrId: number; lrNumber: string; registrationNumber: string
+  clientName: string; fromCity: string; toCity: string
+  expectedDeliveryDate: string; daysDelayed: number; loadedAt?: string
+}
+export interface OrdersBacklogResponse {
+  orderId: number; orderNumber: string; orderDate: string
+  clientName: string; fromCity: string; toCity: string
+  materialType: string; totalWeight: number; orderStatus: string; daysWaiting: number
+}
+
+// ─── Section C — Orders & Assignments ────────────────────────────────────────
+export interface OrderFulfillmentRateResponse {
+  totalOrders: number; pending: number; partiallyAssigned: number; fullyAssigned: number
+  inTransit: number; delivered: number; completed: number; cancelled: number; fulfillmentRate: number
+}
+export interface OrderLeadTimeResponse {
+  fromCity: string; toCity: string; orderCount: number
+  avgLeadTimeDays: number; minLeadTimeDays: number; maxLeadTimeDays: number
+}
+export interface UnassignedVehiclesResponse {
+  orderId: number; orderNumber: string; orderDate: string
+  clientName: string; fromCity: string; toCity: string
+  materialType: string; totalWeight: number; vehiclesAssigned: number; orderStatus: string; daysWaiting: number
+}
+export interface DriverAssignmentHistoryResponse {
+  allocationId: number; driverName: string; driverPhone: string; roleName?: string
+  registrationNumber: string; orderNumber: string; clientName: string
+  fromCity: string; toCity: string
+  expectedStartDate?: string; expectedEndDate?: string; allocationStatus: string
+}
+
+// ─── Section D — Trips & LRs ─────────────────────────────────────────────────
+export interface TripInProgressResponse {
+  lrId: number; lrNumber: string; registrationNumber: string
+  clientName: string; fromCity: string; toCity: string
+  loadedAt?: string; expectedDeliveryDate?: string; daysInTransit: number; loadedWeight?: number
+}
+export interface LrStatusFunnelResponse {
+  created: number; inTransit: number; delivered: number; cancelled: number; total: number
+}
+export interface UnbilledLrResponse {
+  lrId: number; lrNumber: string; registrationNumber: string
+  clientName: string; fromCity: string; toCity: string
+  deliveredAt?: string; deliveredWeight?: number; daysSinceDelivery: number
+}
+export interface InvoiceTurnaroundResponse {
+  clientName: string; lrCount: number; avgTurnaroundDays: number; maxTurnaroundDays: number
+}
+export interface TripDurationResponse {
+  fromCity: string; toCity: string; tripCount: number
+  avgDurationHours: number; minDurationHours: number; maxDurationHours: number
+}
+export interface WeightVarianceReportResponse {
+  clientId: number; clientName: string; lrCount: number
+  totalLoadedWeight: number; totalDeliveredWeight: number; totalVariance: number; avgVariancePct: number
+}
+export interface OverloadingIncidentResponse {
+  lrId: number; lrNumber: string; registrationNumber: string
+  clientName: string; fromCity: string; toCity: string
+  lrDate: string; allocatedWeight: number; loadedWeight: number; overloadWeight: number
+}
+
+// ─── Section E — Vehicle Performance ──────────────────────────────────────────
+export interface VehicleRevenueResponse {
+  vehicleId: number; registrationNumber: string; vehicleType?: string
+  tripCount: number; totalLoadedTons: number; estimatedRevenue: number
+}
+export interface VehicleIdleDaysResponse {
+  vehicleId: number; registrationNumber: string; vehicleType?: string
+  totalDays: number; activeDays: number; idleDays: number; idlePct: number
+}
+export interface VehicleTripCountResponse {
+  vehicleId: number; registrationNumber: string; vehicleType?: string
+  tripCount: number; totalLoadedTons: number; totalDeliveredTons: number
+}
+export interface BreakdownFrequencyResponse {
+  vehicleId: number; registrationNumber: string; vehicleType?: string
+  breakdownCount: number; breakdownTypes: string[]; lastBreakdownDate?: string
+}
+export interface VehicleServiceCostResponse {
+  vehicleId: number; registrationNumber: string; vehicleType?: string
+  serviceCount: number; totalServiceCost: number; lastServiceDate?: string
+}
+
+// ─── Section F — Driver & Staff Performance ────────────────────────────────────
+export interface DriverPerformanceResponse {
+  userId: number; driverName: string; phone: string; roleName?: string
+  tripCount: number; totalLoadedTons: number; totalDeliveredTons: number
+}
+export interface AttendanceGapsResponse {
+  userId: number; userName: string; roleName?: string
+  totalGapDays: number; gapDates: string[]
+}
+export interface AttendanceTrendResponse {
+  date: string; presentCount: number; absentCount: number
+  leaveCount: number; notMarkedCount: number; totalStaff: number
+}
+export interface AttendanceCalendarResponse {
+  year: number; month: number; daysInMonth: number
+  users: {
+    userId: number; userName: string; roleName?: string
+    dailyStatus: Record<number, string>  // day (1-31) -> status
+  }[]
+}
+
+// ─── Section G — Financial Intelligence ───────────────────────────────────────
+export interface InvoiceAgingRow {
+  invoiceId: number; invoiceNumber: string; clientName: string
+  invoiceDate: string; balanceDue: number; ageInDays: number
+}
+export interface AgingBucket { count: number; amount: number; invoices: InvoiceAgingRow[] }
+export interface InvoiceAgingResponse {
+  totalOutstanding: number; totalAmount: number
+  bucket0to30: AgingBucket; bucket31to60: AgingBucket
+  bucket61to90: AgingBucket; bucket90plus: AgingBucket
+}
+export interface RevenueTrendResponse {
+  period: string; year: number; month: number; invoiceCount: number
+  subtotal: number; taxAmount: number; totalRevenue: number
+}
+export interface RouteProfitabilityResponse {
+  fromCity: string; toCity: string; tripCount: number
+  totalRevenue: number; totalCharges: number; netProfit: number; profitMarginPct: number
+}
+export interface GstSummaryResponse {
+  period: string; year: number; month: number; invoiceCount: number
+  subtotal: number; cgstAmount: number; sgstAmount: number; totalTax: number; totalAmount: number
+}
+export interface CreditNoteSummaryResponse {
+  creditNoteId: number; creditNoteNumber: string; clientName: string
+  creditNoteDate: string; amount: number; reason: string; status: string; invoiceNumber?: string
+}
+export interface ClientPendingBillingResponse {
+  clientId: number; clientName: string; pendingLrCount: number
+  totalDeliveredTons: number; oldestDeliveryDate?: string; daysPending: number
+}
+
+// ─── Section H — Monthly Business Intelligence ─────────────────────────────────
+export interface TopClientResponse {
+  clientId: number; clientName: string
+  orderCount: number; tripCount: number; totalTonnage: number; totalRevenue: number
+}
+export interface TopMaterialResponse {
+  materialType: string; orderCount: number; totalWeight: number; pct: number
+}
+export interface TopRouteResponse {
+  fromCity: string; toCity: string; orderCount: number; totalWeight: number
+}
+export interface OnTimeDeliveryResponse {
+  totalDelivered: number; onTime: number; delayed: number; onTimeRate: number
+}
+export interface OrderCancellationRateResponse {
+  totalOrders: number; cancelled: number; active: number; cancellationRate: number
+}
+
+// ─── Section I — Inventory Reports ───────────────────────────────────────────
+export interface StockLevelResponse {
+  partId: number; partName: string; partNumber: string; category: string; unit: string
+  currentStock: number; minStockLevel: number; isLowStock: boolean
+}
+export interface StockMovementResponse {
+  transactionId: number; date: string; partId: number; partName: string
+  partNumber: string; category: string; transactionType: string
+  quantity: number; unitCost: number; totalCost: number; supplierName: string; notes: string
+}
+export interface VehiclePartConsumptionResponse {
+  vehicleId: number; regNo: string; vehicleType: string
+  partName: string; partNumber: string; category: string; totalQuantity: number
+}
+export interface PartConsumptionByTypeResponse {
+  partId: number; partName: string; partNumber: string; category: string; unit: string
+  totalQuantity: number; serviceCount: number
+}
+export interface ServiceCostBreakdownResponse {
+  serviceId: number; vehicleId: number; regNo: string; vehicleType: string
+  serviceDate: string; serviceType: string; status: string; totalCost: number; partsUsedCount: number
+}
+
+// ─── Section J — Tire Reports ─────────────────────────────────────────────────
+export interface TireFittingItem {
+  fittingId: number; tireId: number; serialNumber: string; brand: string; size: string
+  tireType: string; positionCode: string; fittedDate: string; fittedAtKm: number; kmDriven: number
+}
+export interface TiresByVehicleResponse {
+  vehicleId: number; regNo: string; vehicleType: string; activeTireCount: number
+  tires: TireFittingItem[]
+}
+export interface KmPerTireResponse {
+  fittingId: number; tireId: number; serialNumber: string; brand: string; size: string
+  tireType: string; vehicleId: number; vehicleRegNo: string; positionCode: string
+  fittedDate: string; fittedAtKm: number; removedAtKm: number; kmDriven: number; active: boolean
+}
+export interface TireReplacementProjectionResponse {
+  tireId: number; serialNumber: string; brand: string; size: string
+  vehicleId: number; vehicleRegNo: string; positionCode: string; fittedDate: string
+  totalLifetimeKm: number; maxLifetimeKm: number; remainingKm: number; urgency: string
+}
+export interface TireCostPerKmResponse {
+  tireId: number; serialNumber: string; brand: string; size: string; tireType: string
+  purchaseCost: number; totalLifetimeKm: number; costPerKm: number
+}
 
 // ─── Tenant ───────────────────────────────────────────────────────────────────
 export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED'
