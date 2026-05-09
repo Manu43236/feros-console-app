@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { invoicesApi } from '@/api/invoices'
 import type { InvoiceLrItem } from '@/types'
@@ -53,29 +53,8 @@ const td = (extra?: React.CSSProperties): React.CSSProperties => ({
   borderRight: '1px solid #e5e7eb', verticalAlign: 'top', ...extra,
 })
 
-// ── Print Page ────────────────────────────────────────────────────────────
-export function InvoicePrintPage() {
-  const { invoiceId } = useParams<{ invoiceId: string }>()
-  const [searchParams] = useSearchParams()
-  const isPreview = searchParams.get('preview') === 'true'
-  const id = parseInt(invoiceId!)
-
-  const { data: invoice, isLoading } = useQuery({
-    queryKey: ['invoice', id],
-    queryFn:  () => invoicesApi.getById(id).then(r => r.data),
-    enabled:  !isNaN(id),
-  })
-
-  useEffect(() => {
-    if (invoice) {
-      document.title = `Invoice ${invoice.invoiceNumber}`
-      if (!isPreview) setTimeout(() => window.print(), 500)
-    }
-  }, [invoice, isPreview])
-
-  if (isLoading) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Loading…</div>
-  if (!invoice)  return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Invoice not found.</div>
-
+// ── Shared Invoice Document ───────────────────────────────────────────────
+export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoice }) {
   const lrItems      = invoice.lrItems ?? []
   const hasTax       = Number(invoice.taxAmount) > 0
   const cgstPct      = Number(invoice.cgstPercentage ?? 0)
@@ -86,24 +65,20 @@ export function InvoicePrintPage() {
   const subtotal     = Number(invoice.subtotal ?? 0)
   const hsn          = invoice.transportHsnSac || '996791'
 
-  // Calculate round off: difference between displayed total and raw total
   const rawTotal    = subtotal + cgstAmt + sgstAmt
   const roundOff    = totalAmt - rawTotal
 
-  // Group taxable value by HSN for the tax table
   const totalFreight = lrItems.reduce((s, i) => s + Number(i.freightAmount ?? 0), 0)
   const totalCharges = lrItems.reduce((s, i) => s + Number(i.chargesAmount ?? 0), 0)
   const totalFines   = lrItems.reduce((s, i) => s + Number(i.checkpostFineAmount ?? 0), 0)
-  const taxableValue = totalFreight + totalCharges + totalFines // = subtotal
+  const taxableValue = totalFreight + totalCharges + totalFines
 
-  // Client address block
   const clientAddrParts = [
     invoice.clientAddress,
     invoice.clientCity,
     [invoice.clientState, invoice.clientPincode].filter(Boolean).join(' - '),
   ].filter(Boolean).join(', ')
 
-  // Tenant address block
   const tenantAddrParts = [
     invoice.tenantAddress,
     invoice.tenantCity,
@@ -111,31 +86,7 @@ export function InvoicePrintPage() {
   ].filter(Boolean).join(', ')
 
   return (
-    <>
-      <style>{`
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; background: #fff; }
-        @media print {
-          .no-print { display: none !important; }
-          body { margin: 0; }
-          @page { margin: 10mm; size: A4; }
-        }
-      `}</style>
-
-      {/* Print toolbar — hidden in preview mode and during print */}
-      {!isPreview && (
-        <div className="no-print" style={{ padding: '10px 20px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', gap: 10 }}>
-          <button onClick={() => window.print()} style={{ background: '#1e3a5f', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
-            Print / Save as PDF
-          </button>
-          <button onClick={() => window.close()} style={{ background: '#fff', color: '#555', border: '1px solid #d1d5db', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
-            Close
-          </button>
-        </div>
-      )}
-
-      {/* ── Invoice ──────────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px 28px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px 28px', fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#111' }}>
 
         {/* ── Header ── */}
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 0 }}>
@@ -449,6 +400,50 @@ export function InvoicePrintPage() {
           This is a Computer Generated Invoice
         </div>
       </div>
+  )
+}
+
+// ── Print Page (standalone route) ────────────────────────────────────────
+export function InvoicePrintPage() {
+  const { invoiceId } = useParams<{ invoiceId: string }>()
+  const id = parseInt(invoiceId!)
+
+  const { data: invoice, isLoading } = useQuery({
+    queryKey: ['invoice', id],
+    queryFn:  () => invoicesApi.getById(id).then(r => r.data),
+    enabled:  !isNaN(id),
+  })
+
+  useEffect(() => {
+    if (invoice) {
+      document.title = `Invoice ${invoice.invoiceNumber}`
+      setTimeout(() => window.print(), 500)
+    }
+  }, [invoice])
+
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Loading…</div>
+  if (!invoice)  return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Invoice not found.</div>
+
+  return (
+    <>
+      <style>{`
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; background: #fff; }
+        @media print {
+          .no-print { display: none !important; }
+          body { margin: 0; }
+          @page { margin: 10mm; size: A4; }
+        }
+      `}</style>
+      <div className="no-print" style={{ padding: '10px 20px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', gap: 10 }}>
+        <button onClick={() => window.print()} style={{ background: '#1e3a5f', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
+          Print / Save as PDF
+        </button>
+        <button onClick={() => window.close()} style={{ background: '#fff', color: '#555', border: '1px solid #d1d5db', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
+          Close
+        </button>
+      </div>
+      <InvoiceDocument invoice={invoice} />
     </>
   )
 }

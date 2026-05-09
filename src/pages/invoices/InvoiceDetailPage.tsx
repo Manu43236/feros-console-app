@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -12,6 +12,7 @@ import {
 import { invoicesApi } from '@/api/invoices'
 import { toast } from 'sonner'
 import { InvoiceStatusBadge } from './InvoicesPage'
+import { InvoiceDocument } from './InvoicePrintPage'
 import type { PaymentMode } from '@/types'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -199,7 +200,6 @@ export function InvoiceDetailPage() {
   const [showPayment, setShowPay] = useState(false)
   const [showEdit, setShowEdit]   = useState(false)
   const [showPreview, setShowPreview] = useState(false)
-  const previewIframeRef = useRef<HTMLIFrameElement>(null)
   const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: invoice, isLoading } = useQuery({
@@ -585,7 +585,7 @@ export function InvoiceDetailPage() {
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                onClick={() => previewIframeRef.current?.contentWindow?.print()}
+                onClick={() => window.open(`/invoices/${id}/print`, '_blank')}
                 className="flex items-center gap-2 h-8 text-xs"
               >
                 <Download className="h-3.5 w-3.5" />
@@ -599,21 +599,8 @@ export function InvoiceDetailPage() {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            <iframe
-              ref={previewIframeRef}
-              src={`/invoices/${id}/print?preview=true`}
-              scrolling="no"
-              style={{ width: '100%', height: '600px', border: 'none', display: 'block' }}
-              title="Invoice Preview"
-              onLoad={() => {
-                const iframe = previewIframeRef.current
-                if (iframe?.contentDocument) {
-                  const h = iframe.contentDocument.documentElement.scrollHeight
-                  iframe.style.height = h + 'px'
-                }
-              }}
-            />
+          <div className="flex-1 overflow-y-auto bg-white">
+            <InvoiceDocument invoice={invoice} />
           </div>
         </DialogContent>
       </Dialog>
