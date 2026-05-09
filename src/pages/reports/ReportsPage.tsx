@@ -564,8 +564,8 @@ function DelayedTripsTab() {
             <table className="w-full text-xs border rounded-lg overflow-hidden">
               <thead className="bg-gray-50 text-gray-600 uppercase">
                 <tr>
-                  {['LR #', 'Vehicle', 'Client', 'From', 'To', 'Expected By', 'Days Delayed', 'Loaded At'].map(h => (
-                    <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+                  {[['LR #','left'],['Vehicle','left'],['Client','left'],['From','left'],['To','left'],['Expected By','left'],['Days Delayed','center'],['Loaded At','left']].map(([h,a])=>(
+                    <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -624,8 +624,8 @@ function OrdersBacklogTab() {
             <table className="w-full text-xs border rounded-lg overflow-hidden">
               <thead className="bg-gray-50 text-gray-600 uppercase">
                 <tr>
-                  {['Order #', 'Date', 'Client', 'From', 'To', 'Material', 'Weight (T)', 'Status', 'Waiting Days'].map(h => (
-                    <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+                  {[['Order #','left'],['Date','left'],['Client','left'],['From','left'],['To','left'],['Material','left'],['Weight (T)','right'],['Status','left'],['Waiting Days','center']].map(([h,a])=>(
+                    <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -737,7 +737,7 @@ function OrderLeadTimeTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Route', 'Orders', 'Avg Days', 'Min Days', 'Max Days'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Route','left'],['Orders','center'],['Avg Days','center'],['Min Days','center'],['Max Days','center']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="Select filters and click Fetch Report" /></td></tr>}
@@ -781,7 +781,7 @@ function UnassignedVehiclesTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs border rounded-lg overflow-hidden">
               <thead className="bg-gray-50 text-gray-600 uppercase">
-                <tr>{['Order #', 'Date', 'Client', 'Route', 'Material', 'Weight (T)', 'Vehicles Assigned', 'Status', 'Waiting'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+                <tr>{[['Order #','left'],['Date','left'],['Client','left'],['Route','left'],['Material','left'],['Weight (T)','right'],['Vehicles Assigned','center'],['Status','left'],['Waiting','center']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rows.length === 0 && <tr><td colSpan={9}><EmptyState msg="No unassigned orders" /></td></tr>}
@@ -875,7 +875,7 @@ function TripsInProgressTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs border rounded-lg overflow-hidden">
               <thead className="bg-gray-50 text-gray-600 uppercase">
-                <tr>{['LR #', 'Vehicle', 'Client', 'From', 'To', 'Loaded At', 'Expected Delivery', 'Days In Transit', 'Weight (T)'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+                <tr>{[['LR #','left'],['Vehicle','left'],['Client','left'],['From','left'],['To','left'],['Loaded At','left'],['Expected Delivery','left'],['Days In Transit','center'],['Weight (T)','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rows.length === 0 && <tr><td colSpan={9}><EmptyState msg="No trips currently in transit" /></td></tr>}
@@ -965,7 +965,7 @@ function UnbilledLrsTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs border rounded-lg overflow-hidden">
               <thead className="bg-gray-50 text-gray-600 uppercase">
-                <tr>{['LR #', 'Vehicle', 'Client', 'From', 'To', 'Delivered At', 'Delivered Wt (T)', 'Days Pending'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+                <tr>{[['LR #','left'],['Vehicle','left'],['Client','left'],['From','left'],['To','left'],['Delivered At','left'],['Delivered Wt (T)','right'],['Days Pending','center']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rows.length === 0 && <tr><td colSpan={8}><EmptyState msg="All delivered LRs are invoiced" /></td></tr>}
@@ -1051,7 +1051,7 @@ function TripDurationTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Route', 'Trips', 'Avg Duration', 'Min', 'Max'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Route','left'],['Trips','center'],['Avg Duration','center'],['Min','center'],['Max','center']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -1097,7 +1097,7 @@ function WeightVarianceTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Client', 'LRs', 'Loaded (T)', 'Delivered (T)', 'Variance (T)', 'Variance %'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Client','left'],['LRs','center'],['Loaded (T)','right'],['Delivered (T)','right'],['Variance (T)','right'],['Variance %','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -1138,7 +1138,7 @@ function OverloadingTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['LR #', 'Date', 'Vehicle', 'Client', 'Route', 'Allocated (T)', 'Loaded (T)', 'Excess (T)'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['LR #','left'],['Date','left'],['Vehicle','left'],['Client','left'],['Route','left'],['Allocated (T)','right'],['Loaded (T)','right'],['Excess (T)','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={8}><EmptyState msg="No overloading incidents in this period" /></td></tr>}
@@ -1343,8 +1343,8 @@ function TargetsTab() {
             <table className="w-full text-xs border rounded-lg overflow-hidden">
               <thead className="bg-gray-50 text-gray-600 uppercase">
                 <tr>
-                  {['Period', 'Target Trips', 'Actual Trips', 'Trips %', 'Target Tons', 'Actual Tons', 'Tons %'].map(h => (
-                    <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+                  {[['Period','left'],['Target Trips','center'],['Actual Trips','center'],['Trips %','left'],['Target Tons','center'],['Actual Tons','center'],['Tons %','left']].map(([h,a])=>(
+                    <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -1419,9 +1419,9 @@ function LrRegisterTab() {
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
             <tr>
-              {['LR #', 'Date', 'Order #', 'Client', 'Vehicle', 'From', 'To', 'Material',
-                'Allocated', 'Loaded', 'Delivered', 'Variance', 'Rate Type', 'Rate', 'Status'].map(h => (
-                <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+              {[['LR #','left'],['Date','left'],['Order #','left'],['Client','left'],['Vehicle','left'],['From','left'],['To','left'],['Material','left'],
+                ['Allocated','right'],['Loaded','right'],['Delivered','right'],['Variance','right'],['Rate Type','left'],['Rate','right'],['Status','left']].map(([h,a])=>(
+                <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -1494,8 +1494,8 @@ function InvoiceOutstandingTab() {
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
             <tr>
-              {['Invoice #', 'Date', 'Due Date', 'Client', 'Total', 'Paid', 'Balance Due', 'Status', 'Days Overdue'].map(h => (
-                <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+              {[['Invoice #','left'],['Date','left'],['Due Date','left'],['Client','left'],['Total','right'],['Paid','right'],['Balance Due','right'],['Status','left'],['Days Overdue','right']].map(([h,a])=>(
+                <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -1574,8 +1574,8 @@ function CollectionReportTab() {
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
             <tr>
-              {['Date', 'Client', 'Invoice #', 'Amount', 'Mode', 'Reference', 'Remarks'].map(h => (
-                <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+              {[['Date','left'],['Client','left'],['Invoice #','left'],['Amount','right'],['Mode','left'],['Reference','left'],['Remarks','left']].map(([h,a])=>(
+                <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -1657,8 +1657,8 @@ function ClientStatementTab() {
             <table className="w-full text-xs border rounded-lg overflow-hidden">
               <thead className="bg-gray-50 text-gray-600 uppercase">
                 <tr>
-                  {['Date', 'Type', 'Reference', 'Description', 'Debit (Dr)', 'Credit (Cr)', 'Balance'].map(h => (
-                    <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+                  {[['Date','left'],['Type','left'],['Reference','left'],['Description','left'],['Debit (Dr)','right'],['Credit (Cr)','right'],['Balance','right']].map(([h,a])=>(
+                    <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -1731,8 +1731,8 @@ function VehicleTripTab() {
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
             <tr>
-              {['Vehicle', 'Type', 'Brand', 'Total Trips', 'Allocated (T)', 'Loaded (T)', 'Delivered (T)'].map(h => (
-                <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+              {[['Vehicle','left'],['Type','left'],['Brand','left'],['Total Trips','center'],['Allocated (T)','right'],['Loaded (T)','right'],['Delivered (T)','right']].map(([h,a])=>(
+                <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -1822,8 +1822,8 @@ function OrderStatusTab() {
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
             <tr>
-              {['Order #', 'Date', 'Client', 'From', 'To', 'Material', 'Weight (T)', 'Freight', 'Status', 'Payment'].map(h => (
-                <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+              {[['Order #','left'],['Date','left'],['Client','left'],['From','left'],['To','left'],['Material','left'],['Weight (T)','right'],['Freight','right'],['Status','left'],['Payment','left']].map(([h,a])=>(
+                <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -1887,9 +1887,9 @@ function PayrollSummaryTab() {
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
             <tr>
-              {['Staff', 'Phone', 'Role', 'Pay Cycle', 'Days', 'Present', 'Absent', 'Half Day',
-                'Daily Rate', 'Basic', 'OT', 'Bonus', 'Gross', 'Deductions', 'Net Pay', 'Status'].map(h => (
-                <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+              {[['Staff','left'],['Phone','left'],['Role','left'],['Pay Cycle','left'],['Days','center'],['Present','center'],['Absent','center'],['Half Day','center'],
+                ['Daily Rate','right'],['Basic','right'],['OT','right'],['Bonus','right'],['Gross','right'],['Deductions','right'],['Net Pay','right'],['Status','left']].map(([h,a])=>(
+                <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -1968,8 +1968,8 @@ function AttendanceReportTab() {
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
             <tr>
-              {['Staff', 'Phone', 'Role', 'Total Days', 'Present', 'Absent', 'Half Day', 'Leave', 'Attendance %'].map(h => (
-                <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>
+              {[['Staff','left'],['Phone','left'],['Role','left'],['Total Days','center'],['Present','center'],['Absent','center'],['Half Day','center'],['Leave','center'],['Attendance %','left']].map(([h,a])=>(
+                <th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -2040,7 +2040,7 @@ function VehicleRevenueTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Vehicle', 'Type', 'Trips', 'Loaded (T)', 'Est. Revenue'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Vehicle','left'],['Type','left'],['Trips','center'],['Loaded (T)','right'],['Est. Revenue','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -2086,7 +2086,7 @@ function VehicleIdleDaysTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Vehicle', 'Type', 'Total Days', 'Active Days', 'Idle Days', 'Idle %'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Vehicle','left'],['Type','left'],['Total Days','center'],['Active Days','center'],['Idle Days','center'],['Idle %','left']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -2141,7 +2141,7 @@ function VehicleTripCountTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Vehicle', 'Type', 'Trips', 'Loaded (T)', 'Delivered (T)'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Vehicle','left'],['Type','left'],['Trips','center'],['Loaded (T)','right'],['Delivered (T)','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -2183,7 +2183,7 @@ function BreakdownFrequencyTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Vehicle', 'Type', 'Breakdowns', 'Types', 'Last Breakdown'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Vehicle','left'],['Type','left'],['Breakdowns','center'],['Types','left'],['Last Breakdown','left']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="No breakdowns in this period" /></td></tr>}
@@ -2233,7 +2233,7 @@ function VehicleServiceCostTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Vehicle', 'Type', 'Services', 'Total Cost', 'Last Service'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Vehicle','left'],['Type','left'],['Services','center'],['Total Cost','right'],['Last Service','left']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="No services in this period" /></td></tr>}
@@ -2282,7 +2282,7 @@ function DriverPerformanceTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Driver', 'Phone', 'Role', 'Trips', 'Loaded (T)', 'Delivered (T)'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Driver','left'],['Phone','left'],['Role','left'],['Trips','center'],['Loaded (T)','right'],['Delivered (T)','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No driver trips in this period" /></td></tr>}
@@ -2325,7 +2325,7 @@ function AttendanceGapsTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Staff', 'Role', 'Gap Days', 'Missing Dates (first 5)'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Staff','left'],['Role','left'],['Gap Days','center'],['Missing Dates (first 5)','left']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={4}><EmptyState msg="No attendance gaps in this period" /></td></tr>}
@@ -2363,7 +2363,7 @@ function AttendanceTrendTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Date', 'Total Staff', 'Present', 'Absent', 'Leave', 'Not Marked'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Date','left'],['Total Staff','center'],['Present','center'],['Absent','center'],['Leave','center'],['Not Marked','center']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -2523,7 +2523,7 @@ function InvoiceAgingTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-xs border rounded-lg overflow-hidden">
                 <thead className="bg-gray-50 text-gray-600 uppercase">
-                  <tr>{['Invoice #', 'Client', 'Invoice Date', 'Balance Due', 'Age (Days)'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+                  <tr>{[['Invoice #','left'],['Client','left'],['Invoice Date','left'],['Balance Due','right'],['Age (Days)','center']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {activeBucket.data.invoices.length === 0 && <tr><td colSpan={5}><EmptyState msg="No invoices in this bucket" /></td></tr>}
@@ -2580,7 +2580,7 @@ function RevenueTrendTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs border rounded-lg overflow-hidden">
               <thead className="bg-gray-50 text-gray-600 uppercase">
-                <tr>{['Period', 'Invoices', 'Subtotal', 'Tax', 'Total Revenue'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+                <tr>{[['Period','left'],['Invoices','center'],['Subtotal','right'],['Tax','right'],['Total Revenue','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rows.map(r => (
@@ -2629,7 +2629,7 @@ function RouteProfitabilityTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Route', 'Trips', 'Revenue', 'Charges', 'Net Profit', 'Margin %'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Route','left'],['Trips','center'],['Revenue','right'],['Charges','right'],['Net Profit','right'],['Margin %','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -2677,7 +2677,7 @@ function GstSummaryTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Period', 'Invoices', 'Taxable Value', 'CGST', 'SGST', 'Total Tax', 'Total Amount'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Period','left'],['Invoices','center'],['Taxable Value','right'],['CGST','right'],['SGST','right'],['Total Tax','right'],['Total Amount','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={7}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -2734,7 +2734,7 @@ function CreditNotesTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Credit Note #', 'Client', 'Date', 'Amount', 'Invoice #', 'Status', 'Reason'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Credit Note #','left'],['Client','left'],['Date','left'],['Amount','right'],['Invoice #','left'],['Status','left'],['Reason','left']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={7}><EmptyState msg="No credit notes in this period" /></td></tr>}
@@ -2778,7 +2778,7 @@ function ClientPendingBillingTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs border rounded-lg overflow-hidden">
               <thead className="bg-gray-50 text-gray-600 uppercase">
-                <tr>{['Client', 'Pending LRs', 'Total Tons', 'Oldest Delivery', 'Days Pending'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+                <tr>{[['Client','left'],['Pending LRs','center'],['Total Tons','right'],['Oldest Delivery','left'],['Days Pending','center']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rows.length === 0 && <tr><td colSpan={5}><EmptyState msg="All delivered LRs are invoiced" /></td></tr>}
@@ -2823,7 +2823,7 @@ function TopClientsTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['#', 'Client', 'Orders', 'Trips', 'Tonnage (T)', 'Revenue'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['#','left'],['Client','left'],['Orders','center'],['Trips','center'],['Tonnage (T)','right'],['Revenue','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={6}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -2863,7 +2863,7 @@ function TopMaterialsTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['Material', 'Orders', 'Total Weight (T)', 'Share %'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['Material','left'],['Orders','center'],['Total Weight (T)','right'],['Share %','left']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={4}><EmptyState msg="No data found for the selected period" /></td></tr>}
@@ -2908,7 +2908,7 @@ function TopRoutesTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-gray-600 uppercase">
-            <tr>{['#', 'Route', 'Orders', 'Total Weight (T)'].map(h => <th key={h} className="px-3 py-2 text-left whitespace-nowrap font-medium">{h}</th>)}</tr>
+            <tr>{[['#','left'],['Route','left'],['Orders','center'],['Total Weight (T)','right']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && <tr><td colSpan={4}><EmptyState msg="No data found for the selected period" /></td></tr>}
