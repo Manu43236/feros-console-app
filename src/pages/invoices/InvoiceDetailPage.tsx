@@ -576,7 +576,7 @@ export function InvoiceDetailPage() {
 
       {/* ── Invoice Preview Dialog ── */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-[95vw] w-[1000px] h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-[95vw] w-[1000px] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50 flex-shrink-0">
             <span className="font-semibold text-gray-800">Invoice Preview</span>
             <div className="flex items-center gap-2">
