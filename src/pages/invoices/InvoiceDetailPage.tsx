@@ -205,22 +205,27 @@ export function InvoiceDetailPage() {
   const handleDownloadPdf = async () => {
     if (!invoicePrintRef.current) return
 
-    // Convert logo to base64 so html2canvas can render cross-origin S3 images
+    // Convert logo to base64 via server proxy (avoids S3 CORS restriction)
     const img = invoicePrintRef.current.querySelector('img') as HTMLImageElement | null
     let originalSrc: string | null = null
     if (img?.src) {
       try {
         originalSrc = img.src
-        const blob = await fetch(img.src).then(r => r.blob())
-        const base64 = await new Promise<string>(resolve => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result as string)
-          reader.readAsDataURL(blob)
-        })
-        img.src = base64
-        await new Promise(r => setTimeout(r, 100))
+        // Extract S3 key from the public URL: everything after amazonaws.com/
+        const keyMatch = img.src.match(/amazonaws\.com\/(.+)/)
+        const key = keyMatch?.[1]
+        if (key) {
+          const blob = await fetch(`/api/v1/upload/proxy?key=${encodeURIComponent(key)}`).then(r => r.blob())
+          const base64 = await new Promise<string>(resolve => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(reader.result as string)
+            reader.readAsDataURL(blob)
+          })
+          img.src = base64
+          await new Promise(r => setTimeout(r, 100))
+        }
       } catch {
-        // S3 CORS blocked — continue without logo
+        // continue without logo if proxy fails
       }
     }
 
