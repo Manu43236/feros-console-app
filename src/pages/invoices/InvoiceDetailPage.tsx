@@ -204,17 +204,40 @@ export function InvoiceDetailPage() {
 
   const handleDownloadPdf = async () => {
     if (!invoicePrintRef.current) return
+
+    // Convert logo to base64 so html2canvas can render cross-origin S3 images
+    const img = invoicePrintRef.current.querySelector('img') as HTMLImageElement | null
+    let originalSrc: string | null = null
+    if (img?.src) {
+      try {
+        originalSrc = img.src
+        const blob = await fetch(img.src).then(r => r.blob())
+        const base64 = await new Promise<string>(resolve => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+        img.src = base64
+        await new Promise(r => setTimeout(r, 100))
+      } catch {
+        // S3 CORS blocked — continue without logo
+      }
+    }
+
     const html2pdf = (await import('html2pdf.js')).default
-    html2pdf()
+    await html2pdf()
       .set({
         margin: 10,
         filename: `${invoice?.invoiceNumber ?? 'invoice'}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       })
       .from(invoicePrintRef.current)
       .save()
+
+    // Restore original src
+    if (img && originalSrc) img.src = originalSrc
   }
   const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
