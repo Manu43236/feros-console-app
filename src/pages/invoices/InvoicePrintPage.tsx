@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { invoicesApi } from '@/api/invoices'
 import type { InvoiceLrItem } from '@/types'
@@ -56,6 +56,8 @@ const td = (extra?: React.CSSProperties): React.CSSProperties => ({
 // ── Print Page ────────────────────────────────────────────────────────────
 export function InvoicePrintPage() {
   const { invoiceId } = useParams<{ invoiceId: string }>()
+  const [searchParams] = useSearchParams()
+  const isPreview = searchParams.get('preview') === 'true'
   const id = parseInt(invoiceId!)
 
   const { data: invoice, isLoading } = useQuery({
@@ -67,9 +69,9 @@ export function InvoicePrintPage() {
   useEffect(() => {
     if (invoice) {
       document.title = `Invoice ${invoice.invoiceNumber}`
-      setTimeout(() => window.print(), 500)
+      if (!isPreview) setTimeout(() => window.print(), 500)
     }
-  }, [invoice])
+  }, [invoice, isPreview])
 
   if (isLoading) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Loading…</div>
   if (!invoice)  return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Invoice not found.</div>

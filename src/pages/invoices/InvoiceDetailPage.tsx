@@ -7,7 +7,7 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   ArrowLeft, FileText, CheckCircle2, Send,
-  DollarSign, Truck, CreditCard, X, Pencil, Trash2,
+  DollarSign, Truck, CreditCard, X, Pencil, Trash2, Download,
 } from 'lucide-react'
 import { invoicesApi } from '@/api/invoices'
 import { toast } from 'sonner'
@@ -198,6 +198,7 @@ export function InvoiceDetailPage() {
   const [tab, setTab]             = useState<'lrs' | 'payments'>('lrs')
   const [showPayment, setShowPay] = useState(false)
   const [showEdit, setShowEdit]   = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   const { data: invoice, isLoading } = useQuery({
@@ -282,15 +283,13 @@ export function InvoiceDetailPage() {
 
             {/* Action buttons */}
             <div className="flex flex-wrap gap-2 flex-shrink-0">
-              <a
-                href={`/invoices/${id}/print`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => setShowPreview(true)}
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 <FileText className="h-4 w-4" />
-                Print / PDF
-              </a>
+                View Invoice
+              </button>
               {canEdit && (
                 <button
                   onClick={() => setShowEdit(true)}
@@ -574,6 +573,36 @@ export function InvoiceDetailPage() {
         onConfirm={() => { dlg?.onOk(); setDlg(null) }}
         onCancel={() => setDlg(null)}
       />
+
+      {/* ── Invoice Preview Dialog ── */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-[95vw] w-[1000px] h-[90vh] flex flex-col p-0 gap-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50 flex-shrink-0">
+            <span className="font-semibold text-gray-800">Invoice Preview</span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => window.open(`/invoices/${id}/print`, '_blank')}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download PDF
+              </Button>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="p-1.5 rounded hover:bg-gray-200 text-gray-500"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <iframe
+            src={`/invoices/${id}/print?preview=true`}
+            className="flex-1 w-full border-0"
+            title="Invoice Preview"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
