@@ -416,10 +416,11 @@ export function AppLayout() {
               <NavItemLink {...nav.dashboard} onClick={closeMobile} />
 
               {/* Sections */}
-              {nav.sections.map(({ section, items }) => (
+              {nav.sections.map(({ section, icon, items }) => (
                 <NavSectionGroup
                   key={section}
                   section={section}
+                  icon={icon}
                   items={items}
                   open={openSections.has(section)}
                   onToggle={() => toggleSection(section)}
