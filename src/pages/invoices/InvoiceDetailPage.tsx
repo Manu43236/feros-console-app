@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -200,59 +200,22 @@ export function InvoiceDetailPage() {
   const [showPayment, setShowPay] = useState(false)
   const [showEdit, setShowEdit]   = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
   const invoicePrintRef = useRef<HTMLDivElement>(null)
 
   const handleDownloadPdf = async () => {
     if (!invoicePrintRef.current) return
-
-    // Convert logo to base64 via server proxy (avoids S3 CORS restriction)
-    const img = invoicePrintRef.current.querySelector('img') as HTMLImageElement | null
-    let originalSrc: string | null = null
-    let originalOnError: ((e: Event) => void) | null = null
-    if (img?.src) {
-      try {
-        originalSrc = img.src
-        originalOnError = img.onerror as ((e: Event) => void) | null
-        img.onerror = null // prevent onError from hiding the img during PDF gen
-        img.style.display = 'block'
-
-        const keyMatch = img.src.match(/amazonaws\.com\/(.+)/)
-        const key = keyMatch?.[1]
-        if (key) {
-          const token = localStorage.getItem('feros_token')
-          const blob = await fetch(`/api/v1/upload/proxy?key=${encodeURIComponent(key)}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          }).then(r => r.blob())
-          const base64 = await new Promise<string>(resolve => {
-            const reader = new FileReader()
-            reader.onload = () => resolve(reader.result as string)
-            reader.readAsDataURL(blob)
-          })
-          img.src = base64
-          await new Promise(r => setTimeout(r, 150))
-        }
-      } catch {
-        // continue without logo if proxy fails
-      }
-    }
-
     const html2pdf = (await import('html2pdf.js')).default
     await html2pdf()
       .set({
         margin: 10,
         filename: `${invoice?.invoiceNumber ?? 'invoice'}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+        html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       })
       .from(invoicePrintRef.current)
       .save()
-
-    // Restore original img state
-    if (img && originalSrc) {
-      img.src = originalSrc
-      img.onerror = originalOnError as OnErrorEventHandler
-    }
   }
   const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
@@ -261,6 +224,26 @@ export function InvoiceDetailPage() {
     queryFn:  () => invoicesApi.getById(id).then(r => r.data),
     enabled:  !isNaN(id),
   })
+
+  // Pre-load logo as base64 via server proxy so html2canvas can embed it in PDF
+  useEffect(() => {
+    if (!invoice?.tenantLogoUrl) return
+    const keyMatch = invoice.tenantLogoUrl.match(/amazonaws\.com\/(.+)/)
+    const key = keyMatch?.[1]
+    if (!key) return
+    const token = localStorage.getItem('feros_token')
+    fetch(`/api/v1/upload/proxy?key=${encodeURIComponent(key)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then(r => r.blob())
+      .then(blob => new Promise<string>(resolve => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.readAsDataURL(blob)
+      }))
+      .then(setLogoDataUrl)
+      .catch(() => {})
+  }, [invoice?.tenantLogoUrl])
 
   const { data: payments = [] } = useQuery({
     queryKey: ['invoice-payments', id],
@@ -655,7 +638,7 @@ export function InvoiceDetailPage() {
           </div>
           <div className="flex-1 overflow-y-auto bg-white">
             <div ref={invoicePrintRef}>
-              <InvoiceDocument invoice={invoice} />
+              <InvoiceDocument invoice={invoice} logoDataUrl={logoDataUrl} />
             </div>
           </div>
         </DialogContent>

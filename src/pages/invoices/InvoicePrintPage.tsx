@@ -54,7 +54,7 @@ const td = (extra?: React.CSSProperties): React.CSSProperties => ({
 })
 
 // ── Shared Invoice Document ───────────────────────────────────────────────
-export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoice }) {
+export function InvoiceDocument({ invoice, logoDataUrl }: { invoice: import('@/types').Invoice; logoDataUrl?: string | null }) {
   const lrItems      = invoice.lrItems ?? []
   const hasTax       = Number(invoice.taxAmount) > 0
   const cgstPct      = Number(invoice.cgstPercentage ?? 0)
@@ -95,9 +95,9 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
               {/* Left: company */}
               <td style={{ width: '55%', verticalAlign: 'top', paddingRight: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-                  {invoice.tenantLogoUrl && (
+                  {(logoDataUrl || invoice.tenantLogoUrl) && (
                     <img
-                      src={invoice.tenantLogoUrl}
+                      src={logoDataUrl || invoice.tenantLogoUrl!}
                       alt="logo"
                       style={{ height: 56, maxWidth: 120, objectFit: 'contain' }}
                       onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
