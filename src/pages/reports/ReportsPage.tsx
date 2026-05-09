@@ -674,7 +674,7 @@ function OrderFulfillmentTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {d && (
         <>
@@ -729,7 +729,7 @@ function OrderLeadTimeTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <SummaryCard label="Overall Avg Lead Time" value={`${(rows.reduce((s, r) => s + r.avgLeadTimeDays * r.orderCount, 0) / rows.reduce((s, r) => s + r.orderCount, 0)).toFixed(1)} days`} />
@@ -822,7 +822,7 @@ function DriverAssignmentsTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && <SummaryCard label="Total Assignments" value={String(rows.length)} />}
       <div className="overflow-x-auto">
@@ -916,7 +916,7 @@ function LrStatusFunnelTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {d && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -1005,7 +1005,7 @@ function InvoiceTurnaroundTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <SummaryCard label="Overall Avg Turnaround" value={`${(rows.reduce((s, r) => s + r.avgTurnaroundDays * r.lrCount, 0) / rows.reduce((s, r) => s + r.lrCount, 0)).toFixed(1)} days`} sub="Delivery to invoice" />
@@ -1046,7 +1046,7 @@ function TripDurationTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
@@ -1085,7 +1085,7 @@ function WeightVarianceTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -1132,7 +1132,7 @@ function OverloadingTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && <SummaryCard label="Overloading Incidents" value={String(rows.length)} sub="LRs exceeding allocated weight" />}
       <div className="overflow-x-auto">
@@ -1628,7 +1628,7 @@ function ClientStatementTab() {
   const { data, isFetching } = useQuery({
     queryKey: ['report-client-statement', clientId, from, to],
     queryFn: () => reportsApi.getClientStatement(Number(clientId), from, to),
-    enabled: enabled && canFetch,
+    enabled: canFetch,
   })
   const stmt: ClientStatementResponse | undefined = data?.data
 
@@ -1637,9 +1637,7 @@ function ClientStatementTab() {
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         <ClientSelect value={clientId} onChange={v => { setClientId(v) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching || !canFetch}>
-          {isFetching ? 'Loading...' : 'Fetch Statement'}
-        </Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
         {!canFetch && <span className="text-xs text-amber-600 self-center">Select a client first</span>}
       </div>
 
@@ -1696,10 +1694,10 @@ function ClientStatementTab() {
           </div>
         </>
       )}
-      {!stmt && !isFetching && enabled && canFetch && (
+      {!stmt && !isFetching && canFetch && (
         <EmptyState msg="No data found for selected period" />
       )}
-      {!enabled && <EmptyState msg="Select a client and date range, then click Fetch Statement" />}
+      {!canFetch && <EmptyState msg="Select a client and date range to view statement" />}
     </div>
   )
 }
@@ -2043,7 +2041,7 @@ function VehicleRevenueTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -2090,7 +2088,7 @@ function VehicleIdleDaysTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -2144,7 +2142,7 @@ function VehicleTripCountTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -2191,7 +2189,7 @@ function BreakdownFrequencyTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <SummaryCard label="Total Breakdowns" value={String(rows.reduce((s, r) => s + r.breakdownCount, 0))} sub={`Across ${rows.length} vehicles`} />
@@ -2237,7 +2235,7 @@ function VehicleServiceCostTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -2286,7 +2284,7 @@ function DriverPerformanceTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -2333,7 +2331,7 @@ function AttendanceGapsTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <SummaryCard label="Staff with Gaps" value={String(rows.length)} sub="Unmarked attendance days" />
@@ -2374,7 +2372,7 @@ function AttendanceTrendTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
@@ -2632,7 +2630,7 @@ function RouteProfitabilityTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -2680,7 +2678,7 @@ function GstSummaryTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -2739,7 +2737,7 @@ function CreditNotesTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {rows.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -2834,7 +2832,7 @@ function TopClientsTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
@@ -2874,7 +2872,7 @@ function TopMaterialsTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
@@ -2919,7 +2917,7 @@ function TopRoutesTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs border rounded-lg overflow-hidden">
@@ -2957,7 +2955,7 @@ function OnTimeDeliveryTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {d && (
         <>
@@ -3005,7 +3003,7 @@ function CancellationRateTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end bg-gray-50 border rounded-lg p-3">
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
-        <Button size="sm" onClick={() => setEnabled(true)} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
       {d && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
