@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import leftMenuLogo from '@/assets/left_menu_logo.png'
 import { useAuthStore } from '@/store/authStore'
 import { useQuery } from '@tanstack/react-query'
@@ -71,8 +71,9 @@ const ADMIN_NAV: SectionedNav = {
     {
       section: '',
       items: [
-        { to: '/reports', label: 'Reports', icon: BarChart3 },
-        { to: '/masters', label: 'Masters', icon: Settings },
+        { to: '/reports',       label: 'Reports',      icon: BarChart3 },
+        { to: '/masters',       label: 'Masters',      icon: Settings },
+        { to: '/subscription',  label: 'Subscription', icon: BadgeCheck },
       ],
     },
   ],
@@ -109,7 +110,8 @@ const OFFICE_STAFF_NAV: SectionedNav = {
     {
       section: '',
       items: [
-        { to: '/reports', label: 'Reports', icon: BarChart3 },
+        { to: '/reports',      label: 'Reports',      icon: BarChart3 },
+        { to: '/subscription', label: 'Subscription', icon: BadgeCheck },
       ],
     },
   ],
@@ -389,6 +391,8 @@ export function AppLayout() {
     navigate('/sa/tenants', { replace: true })
   }
 
+  const locked = subStatus === 'EXPIRED' || subStatus === 'SUSPENDED'
+
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => {
     const closeMobile = mobile ? () => setSidebarOpen(false) : undefined
 
@@ -409,7 +413,7 @@ export function AppLayout() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <nav className={cn('flex-1 overflow-y-auto py-4 px-3', locked && 'pointer-events-none opacity-40')}>
           {isSectionedNav(nav) ? (
             <>
               {/* Dashboard — always visible, no section */}
@@ -520,11 +524,17 @@ export function AppLayout() {
             subStatus === 'EXPIRED' ? 'bg-red-600 text-white' : 'bg-yellow-500 text-white'
           )}>
             <AlertTriangle size={16} className="shrink-0" />
-            <span>
+            <span className="flex-1">
               {subStatus === 'EXPIRED'
-                ? 'Your subscription has expired. All actions are disabled. Please contact FEROS support to renew.'
-                : 'Your account has been suspended. Please contact FEROS support for assistance.'}
+                ? 'Your subscription has expired. All features are disabled.'
+                : 'Your account has been suspended. Please contact FEROS support.'}
             </span>
+            <Link
+              to="/subscription"
+              className="shrink-0 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-md text-xs font-semibold transition-colors"
+            >
+              View Subscription
+            </Link>
           </div>
         )}
 

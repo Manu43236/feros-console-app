@@ -8,13 +8,12 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   Plus, Building2, CheckCircle, XCircle, Users, Pencil, Trash2,
-  ChevronDown, ChevronRight, LogIn, Upload, Download, AlertCircle,
+  ChevronDown, ChevronRight, LogIn, Upload, Download, AlertCircle, BadgeCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import apiClient from '@/api/client'
 import type { ApiResponse } from '@/types'
@@ -350,82 +349,15 @@ function TenantDialog({ open, onClose, tenant }: {
   )
 }
 
-// ── Subscription Edit Dialog ──────────────────────────────────────────────────
-function SubscriptionDialog({ open, onClose, tenant }: {
-  open: boolean; onClose: () => void; tenant: Tenant | null
-}) {
-  const qc = useQueryClient()
-  const [status, setStatus]       = useState<SubscriptionStatus>(tenant?.subscriptionStatus ?? 'TRIAL')
-  const [subStart, setSubStart]   = useState(tenant?.subscriptionStartDate ?? '')
-  const [subEnd, setSubEnd]       = useState(tenant?.subscriptionEndDate ?? '')
-  const [trialStart, setTrialStart] = useState(tenant?.trialStartDate ?? '')
-  const [trialEnd, setTrialEnd]     = useState(tenant?.trialEndDate ?? '')
-
-  const mutation = useMutation({
-    mutationFn: () => tenantsApi.update(tenant!.id, {
-      ...toForm(tenant!),
-      subscriptionStatus: status,
-      subscriptionStartDate: subStart || undefined,
-      subscriptionEndDate: subEnd || undefined,
-      trialStartDate: trialStart || undefined,
-      trialEndDate: trialEnd || undefined,
-    }),
-    onSuccess: () => {
-      toast.success('Subscription updated')
-      qc.invalidateQueries({ queryKey: ['tenants'] })
-      onClose()
-    },
-    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
-  })
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Manage Subscription</DialogTitle></DialogHeader>
-        <div className="space-y-4 mt-2">
-          {tenant && <p className="text-sm font-semibold text-gray-700">{tenant.companyName}</p>}
-          <div>
-            <Label>Status *</Label>
-            <SearchableSelect
-              value={status}
-              onValueChange={v => setStatus(v as SubscriptionStatus)}
-              options={(['TRIAL', 'ACTIVE', 'EXPIRED', 'SUSPENDED'] as SubscriptionStatus[]).map(s => ({ value: s, label: s }))}
-              className="mt-1"
-            />
-          </div>
-          {status === 'TRIAL' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Trial Start</Label><Input type="date" value={trialStart} onChange={e => setTrialStart(e.target.value)} className="mt-1" /></div>
-              <div><Label>Trial End</Label><Input type="date" value={trialEnd} onChange={e => setTrialEnd(e.target.value)} className="mt-1" /></div>
-            </div>
-          )}
-          {(status === 'ACTIVE' || status === 'EXPIRED') && (
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Sub Start</Label><Input type="date" value={subStart} onChange={e => setSubStart(e.target.value)} className="mt-1" /></div>
-              <div><Label>Sub End</Label><Input type="date" value={subEnd} onChange={e => setSubEnd(e.target.value)} className="mt-1" /></div>
-            </div>
-          )}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-              {mutation.isPending ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 // ── Tenant Row ────────────────────────────────────────────────────────────────
-function TenantRow({ tenant, onEdit, onSubscription, onDelete, onImpersonate }: {
+function TenantRow({ tenant, onEdit, onDelete, onImpersonate }: {
   tenant: Tenant
   onEdit: (t: Tenant) => void
-  onSubscription: (t: Tenant) => void
   onDelete: (t: Tenant) => void
   onImpersonate: (t: Tenant) => void
 }) {
   const [expanded, setExpanded] = useState(false)
+  const navigate = useNavigate()
   const t = tenant
   const endDate = t.subscriptionEndDate || t.trialEndDate
   const daysLeft = endDate
@@ -475,8 +407,12 @@ function TenantRow({ tenant, onEdit, onSubscription, onDelete, onImpersonate }: 
             <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit" onClick={() => onEdit(t)}>
               <Pencil size={12} />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500" title="Subscription" onClick={() => onSubscription(t)}>
-              <CheckCircle size={12} />
+            <Button
+              variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
+              title="Manage Subscription"
+              onClick={() => navigate(`/sa/subscriptions?tenantId=${t.id}`)}
+            >
+              <BadgeCheck size={12} />
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" title="Delete" onClick={() => onDelete(t)}>
               <Trash2 size={12} />
@@ -532,7 +468,6 @@ export function TenantsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [bulkOpen, setBulkOpen]     = useState(false)
   const [editTarget, setEditTarget] = useState<Tenant | undefined>()
-  const [subTarget, setSubTarget]   = useState<Tenant | null>(null)
   const [search, setSearch]         = useState('')
   const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
@@ -634,7 +569,6 @@ export function TenantsPage() {
                   key={t.id}
                   tenant={t}
                   onEdit={setEditTarget}
-                  onSubscription={setSubTarget}
                   onDelete={tr => setDlg({ title: 'Delete Tenant', desc: `Delete ${tr.companyName}? This cannot be undone.`, onOk: () => deleteMutation.mutate(tr.id) })}
                   onImpersonate={tr => impersonateMutation.mutate(tr.id)}
                 />
@@ -649,7 +583,6 @@ export function TenantsPage() {
       {editTarget && (
         <TenantDialog open={!!editTarget} onClose={() => setEditTarget(undefined)} tenant={editTarget} />
       )}
-      <SubscriptionDialog open={!!subTarget} onClose={() => setSubTarget(null)} tenant={subTarget} />
       <ConfirmDialog
         open={!!dlg}
         title={dlg?.title ?? ''}

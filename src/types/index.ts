@@ -715,6 +715,8 @@ export interface SubscriptionHistory {
   tenantId: number
   companyName: string
   planName: string
+  maxLorries?: number
+  maxUsers?: number
   status: SubscriptionStatus
   billingCycle?: string
   startDate: string

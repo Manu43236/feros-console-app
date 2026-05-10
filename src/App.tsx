@@ -41,6 +41,9 @@ import { SAUsersPage }       from '@/pages/superadmin/SAUsersPage'
 import { GlobalMastersPage } from '@/pages/superadmin/GlobalMastersPage'
 import { SASettingsPage }    from '@/pages/superadmin/SASettingsPage'
 
+// Subscription
+import { SubscriptionPage } from '@/pages/subscription/SubscriptionPage'
+
 // Profile
 import { ProfilePage } from '@/pages/profile/ProfilePage'
 
@@ -102,6 +105,9 @@ export default function App() {
           <Route path="sa/users"          element={<SAUsersPage />} />
           <Route path="sa/global-masters" element={<GlobalMastersPage />} />
           <Route path="sa/settings"       element={<SASettingsPage />} />
+
+          {/* Subscription */}
+          <Route path="subscription" element={<SubscriptionPage />} />
 
           {/* Profile */}
           <Route path="profile" element={<ProfilePage />} />

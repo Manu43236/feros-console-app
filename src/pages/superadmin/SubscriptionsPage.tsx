@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { BadgeCheck, Plus, ToggleLeft, ToggleRight, History, FileText, Megaphone } from 'lucide-react'
 import { tenantsApi, subscriptionPlansApi, subscriptionsApi, notificationsApi } from '@/api/superadmin'
 import type { SubscriptionPlan, SubscriptionHistory, SubscriptionInvoice } from '@/types'
@@ -160,9 +161,18 @@ function PlansTab() {
 // ─── History Tab ──────────────────────────────────────────────────────────────
 function HistoryTab() {
   const qc = useQueryClient()
-  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null)
+  const [searchParams] = useSearchParams()
+  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(() => {
+    const p = searchParams.get('tenantId')
+    return p ? Number(p) : null
+  })
+
+  useEffect(() => {
+    const p = searchParams.get('tenantId')
+    if (p) setSelectedTenantId(Number(p))
+  }, [searchParams])
   const [actionDialog, setActionDialog] = useState<{ type: 'activate' | 'extend-trial' | 'extend' | 'suspend' | 'reactivate'; tenantId: number } | null>(null)
-  const [actionForm, setActionForm] = useState({ planId: '', billingCycle: 'MONTHLY', startDate: '', endDate: '', newEndDate: '', amount: '', paymentRef: '', notes: '' })
+  const [actionForm, setActionForm] = useState({ planId: '', billingCycle: 'MONTHLY', startDate: '', endDate: '', newEndDate: '', amount: '', paymentRef: '', notes: '', extendAmount: '', extendPaymentRef: '' })
   const [actionErrs, setActionErrs] = useState({ planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' })
 
   const { data: tenantsRes } = useQuery({ queryKey: ['sa-tenants'], queryFn: () => tenantsApi.getAll() })
@@ -183,7 +193,7 @@ function HistoryTab() {
       const { type, tenantId } = actionDialog
       if (type === 'activate') return subscriptionsApi.activate(tenantId, { planId: Number(actionForm.planId), billingCycle: actionForm.billingCycle, startDate: actionForm.startDate, endDate: actionForm.endDate, amount: actionForm.amount ? Number(actionForm.amount) : undefined, paymentRef: actionForm.paymentRef, notes: actionForm.notes })
       if (type === 'extend-trial') return subscriptionsApi.extendTrial(tenantId, { newEndDate: actionForm.newEndDate, notes: actionForm.notes })
-      if (type === 'extend') return subscriptionsApi.extend(tenantId, { newEndDate: actionForm.newEndDate, notes: actionForm.notes })
+      if (type === 'extend') return subscriptionsApi.extend(tenantId, { newEndDate: actionForm.newEndDate, amount: actionForm.extendAmount ? Number(actionForm.extendAmount) : undefined, paymentRef: actionForm.extendPaymentRef || undefined, notes: actionForm.notes })
       if (type === 'suspend') return subscriptionsApi.suspend(tenantId, { notes: actionForm.notes })
       return subscriptionsApi.reactivate(tenantId)
     },
@@ -226,7 +236,7 @@ function HistoryTab() {
               </button>
             )}
             {selectedTenant.subscriptionStatus === 'ACTIVE' && (
-              <button onClick={() => { setActionForm(f => ({ ...f, newEndDate: '', notes: '' })); setActionErrs({ planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' }); setActionDialog({ type: 'extend', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
+              <button onClick={() => { setActionForm(f => ({ ...f, newEndDate: '', notes: '', extendAmount: '', extendPaymentRef: '' })); setActionErrs({ planId: '', startDate: '', endDate: '', newEndDate: '', notes: '' }); setActionDialog({ type: 'extend', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
                 Extend
               </button>
             )}
@@ -289,10 +299,24 @@ function HistoryTab() {
               </div>
             )}
             {(actionDialog.type === 'extend-trial' || actionDialog.type === 'extend') && (
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">New End Date <span className="text-red-500">*</span></label>
-                <input type="date" className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.newEndDate ? 'border-red-400' : ''}`} value={actionForm.newEndDate} onChange={e => { setActionForm(f => ({ ...f, newEndDate: e.target.value })); setActionErrs(v => ({ ...v, newEndDate: '' })) }} />
-                {actionErrs.newEndDate && <p className="text-red-500 text-xs mt-1">{actionErrs.newEndDate}</p>}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">New End Date <span className="text-red-500">*</span></label>
+                  <input type="date" className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.newEndDate ? 'border-red-400' : ''}`} value={actionForm.newEndDate} onChange={e => { setActionForm(f => ({ ...f, newEndDate: e.target.value })); setActionErrs(v => ({ ...v, newEndDate: '' })) }} />
+                  {actionErrs.newEndDate && <p className="text-red-500 text-xs mt-1">{actionErrs.newEndDate}</p>}
+                </div>
+                {actionDialog.type === 'extend' && (
+                  <>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Amount (₹, optional override)</label>
+                      <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm" value={actionForm.extendAmount} onChange={e => setActionForm(f => ({ ...f, extendAmount: e.target.value }))} placeholder="Leave blank to use plan price" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Payment Reference</label>
+                      <input className="w-full border rounded-lg px-3 py-2 text-sm" value={actionForm.extendPaymentRef} onChange={e => setActionForm(f => ({ ...f, extendPaymentRef: e.target.value }))} placeholder="Transaction ID / reference" />
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {actionDialog.type !== 'reactivate' && (
@@ -498,7 +522,8 @@ const TABS: { id: Tab; label: string; icon: typeof BadgeCheck }[] = [
 ]
 
 export function SubscriptionsPage() {
-  const [tab, setTab] = useState<Tab>('plans')
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(() => searchParams.get('tenantId') ? 'history' : 'plans')
 
   return (
     <div className="space-y-6">
