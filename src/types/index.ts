@@ -702,10 +702,21 @@ export interface Tenant {
 export interface SubscriptionPlan {
   id: number
   name: string
+  pricePerVehicle?: number
+  minVehicles?: number
+  maxVehicles?: number
   maxLorries: number
   maxUsers: number
   priceMonthly: number
   priceYearly: number
+  hasFuelLogs?: boolean
+  hasMeterReadings?: boolean
+  hasVehicleServices?: boolean
+  hasAttendance?: boolean
+  hasPayroll?: boolean
+  hasInventory?: boolean
+  hasReports?: boolean
+  hasCreditNotes?: boolean
   features?: string
   isActive: boolean
 }
@@ -715,12 +726,22 @@ export interface SubscriptionHistory {
   tenantId: number
   companyName: string
   planName: string
+  vehicleCount?: number
+  pricePerVehicle?: number
   maxLorries?: number
   maxUsers?: number
+  hasFuelLogs?: boolean
+  hasMeterReadings?: boolean
+  hasVehicleServices?: boolean
+  hasAttendance?: boolean
+  hasPayroll?: boolean
+  hasInventory?: boolean
+  hasReports?: boolean
+  hasCreditNotes?: boolean
   status: SubscriptionStatus
   billingCycle?: string
   startDate: string
-  endDate: string
+  endDate?: string
   amount?: number
   gstAmount?: number
   totalAmount?: number
@@ -736,6 +757,8 @@ export interface SubscriptionInvoice {
   companyName: string
   planName?: string
   billingCycle?: string
+  vehicleCount?: number
+  pricePerVehicle?: number
   periodStart?: string
   periodEnd?: string
   amount?: number

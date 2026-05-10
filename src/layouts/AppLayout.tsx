@@ -339,6 +339,7 @@ export function AppLayout() {
     retry: false,
   })
   const subStatus = mySubRes?.data?.status
+  const subFeatures = mySubRes?.data
 
   const nav: SectionedNav | FlatNav =
     role === 'SUPER_ADMIN'  ? SUPER_ADMIN_NAV :
@@ -393,6 +394,25 @@ export function AppLayout() {
 
   const locked = subStatus === 'EXPIRED' || subStatus === 'SUSPENDED'
 
+  // Routes that require a specific plan feature (free plan = false)
+  const FEATURE_ROUTES: Record<string, boolean | undefined> = {
+    '/fuel-logs':        subFeatures?.hasFuelLogs,
+    '/meter-readings':   subFeatures?.hasMeterReadings,
+    '/vehicle-services': subFeatures?.hasVehicleServices,
+    '/attendance':       subFeatures?.hasAttendance,
+    '/payroll':          subFeatures?.hasPayroll,
+    '/inventory':        subFeatures?.hasInventory,
+    '/inventory/tires':  subFeatures?.hasInventory,
+    '/reports':          subFeatures?.hasReports,
+    '/credit-notes':     subFeatures?.hasCreditNotes,
+  }
+
+  function isRouteAllowed(to: string) {
+    if (role === 'SUPER_ADMIN' || subFeatures === undefined) return true
+    const flag = FEATURE_ROUTES[to]
+    return flag === undefined ? true : Boolean(flag)
+  }
+
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => {
     const closeMobile = mobile ? () => setSidebarOpen(false) : undefined
 
@@ -420,17 +440,21 @@ export function AppLayout() {
               <NavItemLink {...nav.dashboard} onClick={closeMobile} />
 
               {/* Sections */}
-              {nav.sections.map(({ section, icon, items }) => (
-                <NavSectionGroup
-                  key={section}
-                  section={section}
-                  icon={icon}
-                  items={items}
-                  open={openSections.has(section)}
-                  onToggle={() => toggleSection(section)}
-                  onNavClick={closeMobile}
-                />
-              ))}
+              {nav.sections.map(({ section, icon, items }) => {
+                const allowed = items.filter(i => isRouteAllowed(i.to))
+                if (allowed.length === 0) return null
+                return (
+                  <NavSectionGroup
+                    key={section}
+                    section={section}
+                    icon={icon}
+                    items={allowed}
+                    open={openSections.has(section)}
+                    onToggle={() => toggleSection(section)}
+                    onNavClick={closeMobile}
+                  />
+                )
+              })}
             </>
           ) : (
             <div className="space-y-0.5">
