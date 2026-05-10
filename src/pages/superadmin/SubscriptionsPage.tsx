@@ -254,7 +254,7 @@ function HistoryTab() {
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId)
 
-  function openDialog(type: typeof actionDialog['type']) {
+  function openDialog(type: 'activate' | 'extend-trial' | 'extend' | 'suspend' | 'reactivate') {
     setActionForm(emptyForm)
     setActionErrs(emptyErrs)
     setActionDialog({ type, tenantId: selectedTenantId! })
