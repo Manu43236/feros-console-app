@@ -87,6 +87,11 @@ const FEATURE_LABELS: { key: keyof SubscriptionPlan; label: string }[] = [
 
 function PlansTab() {
   const qc = useQueryClient()
+  const [editPlan, setEditPlan] = useState<SubscriptionPlan | null>(null)
+  const emptyForm = { pricePerVehicle: '', minVehicles: '', maxVehicles: '', maxUsers: '',
+    hasFuelLogs: true, hasMeterReadings: true, hasVehicleServices: true,
+    hasAttendance: true, hasPayroll: true, hasInventory: true, hasReports: true, hasCreditNotes: true }
+  const [editForm, setEditForm] = useState(emptyForm)
 
   const { data: plansRes, isLoading } = useQuery({
     queryKey: ['sa-plans-all'],
@@ -99,11 +104,93 @@ function PlansTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-plans-all'] }),
   })
 
+  const updateMutation = useMutation({
+    mutationFn: (data: typeof editForm) => subscriptionPlansApi.update(editPlan!.id, {
+      name: editPlan!.name,
+      pricePerVehicle: data.pricePerVehicle ? Number(data.pricePerVehicle) : undefined,
+      minVehicles: data.minVehicles ? Number(data.minVehicles) : undefined,
+      maxVehicles: data.maxVehicles ? Number(data.maxVehicles) : undefined,
+      maxUsers: data.maxUsers ? Number(data.maxUsers) : undefined,
+      hasFuelLogs: data.hasFuelLogs, hasMeterReadings: data.hasMeterReadings,
+      hasVehicleServices: data.hasVehicleServices, hasAttendance: data.hasAttendance,
+      hasPayroll: data.hasPayroll, hasInventory: data.hasInventory,
+      hasReports: data.hasReports, hasCreditNotes: data.hasCreditNotes,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['sa-plans-all'] }); setEditPlan(null) },
+  })
+
+  function openEdit(p: SubscriptionPlan) {
+    setEditPlan(p)
+    setEditForm({
+      pricePerVehicle: String(p.pricePerVehicle ?? ''),
+      minVehicles: String(p.minVehicles ?? ''),
+      maxVehicles: String(p.maxVehicles ?? ''),
+      maxUsers: String(p.maxUsers ?? ''),
+      hasFuelLogs: p.hasFuelLogs ?? true, hasMeterReadings: p.hasMeterReadings ?? true,
+      hasVehicleServices: p.hasVehicleServices ?? true, hasAttendance: p.hasAttendance ?? true,
+      hasPayroll: p.hasPayroll ?? true, hasInventory: p.hasInventory ?? true,
+      hasReports: p.hasReports ?? true, hasCreditNotes: p.hasCreditNotes ?? true,
+    })
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{plans.filter(p => p.isActive).length} active plans</p>
-      </div>
+      <p className="text-sm text-gray-500">{plans.filter(p => p.isActive).length} active plans</p>
+
+      {/* Edit dialog */}
+      {editPlan && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 className="font-semibold text-lg">Edit — {editPlan.name}</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">₹/vehicle/month</label>
+                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                  value={editForm.pricePerVehicle}
+                  onChange={e => setEditForm(f => ({ ...f, pricePerVehicle: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Max Users (-1 = unlimited)</label>
+                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                  value={editForm.maxUsers}
+                  onChange={e => setEditForm(f => ({ ...f, maxUsers: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Min Vehicles</label>
+                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                  value={editForm.minVehicles}
+                  onChange={e => setEditForm(f => ({ ...f, minVehicles: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Max Vehicles (-1 = unlimited)</label>
+                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                  value={editForm.maxVehicles}
+                  onChange={e => setEditForm(f => ({ ...f, maxVehicles: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-600 mb-2 block">Features</label>
+              <div className="grid grid-cols-2 gap-2">
+                {FEATURE_LABELS.map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox"
+                      checked={Boolean(editForm[key as keyof typeof editForm])}
+                      onChange={e => setEditForm(f => ({ ...f, [key]: e.target.checked }))} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => updateMutation.mutate(editForm)} disabled={updateMutation.isPending}
+                className="flex-1 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {updateMutation.isPending ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={() => setEditPlan(null)} className="flex-1 py-2 border rounded-lg text-sm">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="py-12 text-center text-gray-400 text-sm">Loading plans…</div>
@@ -134,11 +221,8 @@ function PlansTab() {
                   <p>
                     <Truck size={11} className="inline mr-1" />
                     {plan.minVehicles ?? 1}–{plan.maxVehicles === -1 ? '∞' : plan.maxVehicles} vehicles
-                    {plan.maxLorries === 2 ? ' (limit: 2)' : ''}
                   </p>
-                  <p>
-                    Users: {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers}
-                  </p>
+                  <p>Users: {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers}</p>
                   {!isFree && (
                     <p className="text-blue-600">Annual: {fmt((plan.pricePerVehicle ?? 0) * ANNUAL_MTHS)}/vehicle (2 months free)</p>
                   )}
@@ -147,17 +231,16 @@ function PlansTab() {
                 {/* Feature flags */}
                 <div className="flex flex-wrap gap-1">
                   {FEATURE_LABELS.map(({ key, label }) => (
-                    <span
-                      key={key}
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${
-                        plan[key] ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
-                      }`}
-                    >
+                    <span key={key} className={`text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${
+                      plan[key] ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
+                    }`}>
                       {plan[key] ? <CheckCircle size={9} /> : <Lock size={9} />}
                       {label}
                     </span>
                   ))}
                 </div>
+
+                <button onClick={() => openEdit(plan)} className="text-xs text-feros-navy hover:underline">Edit</button>
               </div>
             )
           })}
