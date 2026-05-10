@@ -262,7 +262,7 @@ function HistoryTab() {
 
   function validate() {
     const e = { ...emptyErrs }
-    const t = actionDialog?.type
+    const t = actionDialog ? actionDialog.type : null
     if (t === 'activate') {
       if (!actionForm.planId) e.planId = 'Select a plan'
       if (!isFreeSelected && !actionForm.vehicleCount) e.vehicleCount = 'Vehicle count is required'
