@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
-  BadgeCheck, Plus, ToggleLeft, ToggleRight, History, FileText,
+  BadgeCheck, ToggleLeft, ToggleRight, History, FileText,
   Megaphone, CheckCircle, Lock, Calculator, Truck,
 } from 'lucide-react'
 import { tenantsApi, subscriptionPlansApi, subscriptionsApi, notificationsApi } from '@/api/superadmin'
@@ -214,7 +214,8 @@ function HistoryTab() {
   const actionMutation = useMutation({
     mutationFn: () => {
       if (!actionDialog) throw new Error()
-      const { type, tenantId } = actionDialog
+      const type     = actionDialog.type
+      const tenantId = actionDialog.tenantId
       if (type === 'activate') {
         return subscriptionsApi.activate(tenantId, {
           planId: Number(actionForm.planId),
