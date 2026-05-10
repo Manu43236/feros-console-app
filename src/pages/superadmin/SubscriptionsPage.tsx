@@ -19,8 +19,8 @@ function fmt(n?: number | null) {
   return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 }
 
-function calcAmounts(pricePerVehicle: number, vehicleCount: number, cycle: string) {
-  const months = cycle === 'YEARLY' ? ANNUAL_MTHS : 1
+function calcAmounts(pricePerVehicle: number, vehicleCount: number, cycle: string, twoMonthsFree: boolean) {
+  const months = cycle === 'YEARLY' ? (twoMonthsFree ? ANNUAL_MTHS : 12) : 1
   const base   = pricePerVehicle * vehicleCount * months
   const gst    = base * GST_RATE
   return { base, gst, total: base + gst, months }
@@ -42,11 +42,11 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ─── Amount Preview ───────────────────────────────────────────────────────────
-function AmountPreview({ pricePerVehicle, vehicleCount, cycle }: {
-  pricePerVehicle: number; vehicleCount: number; cycle: string
+function AmountPreview({ pricePerVehicle, vehicleCount, cycle, twoMonthsFree }: {
+  pricePerVehicle: number; vehicleCount: number; cycle: string; twoMonthsFree: boolean
 }) {
   if (!pricePerVehicle || !vehicleCount) return null
-  const { base, gst, total, months } = calcAmounts(pricePerVehicle, vehicleCount, cycle)
+  const { base, gst, total, months } = calcAmounts(pricePerVehicle, vehicleCount, cycle, twoMonthsFree)
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
       <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 mb-2">
@@ -65,8 +65,11 @@ function AmountPreview({ pricePerVehicle, vehicleCount, cycle }: {
           <span>Total</span>
           <span>{fmt(total)}</span>
         </div>
-        {cycle === 'YEARLY' && (
-          <p className="text-blue-600 text-xs mt-1">Annual plan — 2 months free (paying for 10, getting 12)</p>
+        {cycle === 'YEARLY' && twoMonthsFree && (
+          <p className="text-blue-600 text-xs mt-1">Annual plan — 2 months free (paying for 10, getting 12) · 250+ vehicles benefit</p>
+        )}
+        {cycle === 'YEARLY' && !twoMonthsFree && (
+          <p className="text-gray-500 text-xs mt-1">Annual plan — 12 months</p>
         )}
       </div>
     </div>
@@ -223,9 +226,16 @@ function PlansTab() {
                     {plan.minVehicles ?? 1}–{plan.maxVehicles === -1 ? '∞' : plan.maxVehicles} vehicles
                   </p>
                   <p>Users: {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers}</p>
-                  {!isFree && (
-                    <p className="text-blue-600">Annual: {fmt((plan.pricePerVehicle ?? 0) * ANNUAL_MTHS)}/vehicle (2 months free)</p>
-                  )}
+                  {!isFree && (() => {
+                    const qualifies = (plan.minVehicles ?? 0) >= 250
+                    const annualRate = qualifies ? ANNUAL_MTHS : 12
+                    return (
+                      <p className="text-blue-600">
+                        Annual: {fmt((plan.pricePerVehicle ?? 0) * annualRate)}/vehicle
+                        {qualifies ? ' (2 months free)' : ''}
+                      </p>
+                    )
+                  })()}
                 </div>
 
                 {/* Feature flags */}
@@ -473,6 +483,7 @@ function HistoryTab() {
                         pricePerVehicle={selectedPlan.pricePerVehicle}
                         vehicleCount={vehicleCount}
                         cycle={actionForm.billingCycle}
+                        twoMonthsFree={(selectedPlan.minVehicles ?? 0) >= 250}
                       />
                     )}
                   </>
@@ -571,6 +582,7 @@ function HistoryTab() {
                     pricePerVehicle={extendRate}
                     vehicleCount={extendVehicles}
                     cycle={latestActive.billingCycle}
+                    twoMonthsFree={extendVehicles >= 250}
                   />
                 )}
 
