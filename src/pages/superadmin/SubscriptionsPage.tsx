@@ -215,7 +215,7 @@ function PlansTab() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {plans.map(plan => {
-            const isPaid = plan.pricePerVehicle && plan.pricePerVehicle > 0
+            const isPaid = !!(plan.pricePerVehicle && plan.pricePerVehicle > 0)
             return (
               <div key={plan.id} className={`bg-white rounded-xl border p-4 space-y-3 ${!plan.isActive ? 'opacity-50' : ''}`}>
                 <div className="flex items-start justify-between">
@@ -226,7 +226,9 @@ function PlansTab() {
                         {fmt(plan.pricePerVehicle)}<span className="text-xs font-normal text-gray-500">/vehicle/month</span>
                       </p>
                     ) : (
-                      <p className="text-sm font-bold text-blue-600 mt-0.5">Free</p>
+                      <p className="text-sm font-bold text-blue-600 mt-0.5">
+                        {plan.name.toLowerCase() === 'trial' ? '30-day Trial' : 'Free'}
+                      </p>
                     )}
                   </div>
                   <button onClick={() => toggleMutation.mutate(plan.id)} className="text-gray-400 hover:text-gray-700">

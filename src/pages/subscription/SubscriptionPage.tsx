@@ -170,9 +170,8 @@ export function SubscriptionPage() {
     )
   }
 
-  // Trial = unlimited vehicles and users
-  const vehicleLimit = isTrial ? -1 : (sub.maxLorries ?? sub.vehicleCount ?? 0)
-  const userLimit    = isTrial ? -1 : (sub.maxUsers ?? -1)
+  const vehicleLimit = sub.maxLorries ?? sub.vehicleCount ?? -1
+  const userLimit    = sub.maxUsers ?? -1
 
   return (
     <div className="space-y-6 max-w-4xl">
