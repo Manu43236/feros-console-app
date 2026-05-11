@@ -8,6 +8,7 @@ import {
 import type { UpgradeRequest } from '@/types'
 import { tenantsApi, subscriptionPlansApi, subscriptionsApi, notificationsApi } from '@/api/superadmin'
 import type { SubscriptionPlan, SubscriptionHistory, SubscriptionInvoice } from '@/types'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 type Tab = 'plans' | 'requests' | 'history' | 'invoices' | 'broadcast'
 
@@ -403,16 +404,18 @@ function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | nu
       <div className="flex flex-wrap gap-3 items-end">
         <div>
           <label className="text-xs text-gray-600 mb-1 block">Select Tenant</label>
-          <select
-            className="border rounded-lg px-3 py-2 text-sm w-64"
-            value={selectedTenantId ?? ''}
-            onChange={e => setSelectedTenantId(e.target.value ? Number(e.target.value) : null)}
-          >
-            <option value="">— choose tenant —</option>
-            {tenants.map(t => (
-              <option key={t.id} value={t.id}>{t.companyName} ({t.subscriptionStatus})</option>
-            ))}
-          </select>
+          <SearchableSelect
+            className="w-64"
+            placeholder="— choose tenant —"
+            value={selectedTenantId != null ? String(selectedTenantId) : ''}
+            onValueChange={v => setSelectedTenantId(v ? Number(v) : null)}
+            options={[
+              ...tenants.map(t => ({
+                value: String(t.id),
+                label: `${t.companyName} (${t.subscriptionStatus})`,
+              }))
+            ]}
+          />
         </div>
 
         {selectedTenant && (
@@ -755,14 +758,13 @@ function InvoicesTab() {
     <div className="space-y-4">
       <div>
         <label className="text-xs text-gray-600 mb-1 block">Select Tenant</label>
-        <select
-          className="border rounded-lg px-3 py-2 text-sm w-64"
-          value={selectedTenantId ?? ''}
-          onChange={e => setSelectedTenantId(e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">— choose tenant —</option>
-          {tenants.map(t => <option key={t.id} value={t.id}>{t.companyName}</option>)}
-        </select>
+        <SearchableSelect
+          className="w-64"
+          placeholder="— choose tenant —"
+          value={selectedTenantId != null ? String(selectedTenantId) : ''}
+          onValueChange={v => setSelectedTenantId(v ? Number(v) : null)}
+          options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))}
+        />
       </div>
 
       {selectedTenantId == null ? (
@@ -829,10 +831,12 @@ function BroadcastTab() {
       {sent && <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 text-sm">Notification sent successfully!</div>}
       <div>
         <label className="text-xs text-gray-600 mb-1 block">Tenant (optional — leave blank for all)</label>
-        <select className="w-full border rounded-lg px-3 py-2 text-sm" value={form.tenantId} onChange={e => setForm(f => ({ ...f, tenantId: e.target.value }))}>
-          <option value="">All Tenants</option>
-          {tenants.map(t => <option key={t.id} value={t.id}>{t.companyName}</option>)}
-        </select>
+        <SearchableSelect
+          placeholder="All Tenants"
+          value={form.tenantId}
+          onValueChange={v => setForm(f => ({ ...f, tenantId: v }))}
+          options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))}
+        />
       </div>
       <div>
         <label className="text-xs text-gray-600 mb-1 block">Title</label>
