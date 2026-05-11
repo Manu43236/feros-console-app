@@ -440,6 +440,7 @@ export function SubscriptionPage() {
                         {cycle === 'YEARLY' && twoFree && (
                           <p className="text-green-600 text-xs pt-0.5">Annual — pay 10 months, get 12 (2 months free)</p>
                         )}
+                        <p className="text-gray-400 text-xs pt-0.5">GST paid is claimable as Input Tax Credit (ITC) for GST-registered businesses.</p>
                       </div>
                     </div>
                   )}
