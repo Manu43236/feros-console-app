@@ -1,5 +1,6 @@
 import { getApiError } from '@/lib/apiError'
 import { useState, useRef } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockApi, sparePartsApi, servicePartsApi, inventoryTransactionsApi } from '@/api/inventory'
 import type { ServicePart, StockTransactionType, BulkUploadResult } from '@/types'
@@ -247,6 +248,7 @@ function BulkStockInDialog({ onClose }: { onClose: () => void }) {
 
 // ─── Stock Tab ────────────────────────────────────────────────────────────────
 function StockTab() {
+  const { locked } = useSubscription()
   const [search, setSearch] = useState('')
   const [showStockIn, setShowStockIn] = useState(false)
   const [showBulkIn, setShowBulkIn] = useState(false)
@@ -278,10 +280,12 @@ function StockTab() {
             <p className="text-xl font-bold text-red-600">{lowStockCount}</p>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" onClick={() => setShowBulkIn(true)} className="gap-2 flex-1 sm:flex-none"><Upload size={15} /> Bulk</Button>
-          <Button onClick={() => setShowStockIn(true)} className="gap-2 flex-1 sm:flex-none"><Plus size={15} /> Add Stock</Button>
-        </div>
+        {!locked && (
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" onClick={() => setShowBulkIn(true)} className="gap-2 flex-1 sm:flex-none"><Upload size={15} /> Bulk</Button>
+            <Button onClick={() => setShowStockIn(true)} className="gap-2 flex-1 sm:flex-none"><Plus size={15} /> Add Stock</Button>
+          </div>
+        )}
       </div>
 
       {filterLow && (

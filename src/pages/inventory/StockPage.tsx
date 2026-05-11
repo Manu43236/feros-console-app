@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockApi, sparePartsApi } from '@/api/inventory'
 import { toast } from 'sonner'
@@ -100,6 +101,7 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function StockPage() {
+  const { locked } = useSubscription()
   const [search, setSearch] = useState('')
   const [showStockIn, setShowStockIn] = useState(false)
   const [filterLow, setFilterLow] = useState(false)
@@ -122,9 +124,11 @@ export default function StockPage() {
           <h1 className="text-xl font-semibold text-gray-900">Stock</h1>
           <p className="text-sm text-gray-500">Current spare parts stock levels</p>
         </div>
-        <Button onClick={() => setShowStockIn(true)} className="gap-2">
-          <Plus size={16} /> Add Stock
-        </Button>
+        {!locked && (
+          <Button onClick={() => setShowStockIn(true)} className="gap-2">
+            <Plus size={16} /> Add Stock
+          </Button>
+        )}
       </div>
 
       {/* Stats */}

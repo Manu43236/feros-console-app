@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { sparePartsApi } from '@/api/inventory'
 import type { TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType, SparePart, BulkUploadResult } from '@/types'
 
@@ -66,6 +67,8 @@ function VehicleStatusSection({
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<{ name: string; statusType: VehicleStatusType }>()
   const selectedType = watch('statusType')
 
+  const { locked } = useSubscription()
+
   function openAdd() { setEditing(null); reset({ name: '', statusType: 'AVAILABLE' }); setOpen(true) }
   function openEdit(item: VehicleStatusItem) {
     setEditing(item)
@@ -82,7 +85,7 @@ function VehicleStatusSection({
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-800">Vehicle Statuses</h2>
-        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
+        {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
       {loading ? (
         <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
@@ -98,14 +101,16 @@ function VehicleStatusSection({
                   {VEHICLE_STATUS_TYPES.find(t => t.value === item.statusType)?.label ?? item.statusType}
                 </span>
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
-                  <Pencil size={13} />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(item.id)}>
-                  <Trash2 size={13} />
-                </Button>
-              </div>
+              {!locked && (
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
+                    <Pencil size={13} />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(item.id)}>
+                    <Trash2 size={13} />
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -161,6 +166,8 @@ function SimpleSection({
   const [editing, setEditing] = useState<TenantMasterItem | null>(null)
   const { register, handleSubmit, reset, formState: { errors } } = useForm<{ name: string; description?: string }>()
 
+  const { locked } = useSubscription()
+
   function openAdd() { setEditing(null); reset({}); setOpen(true) }
   function openEdit(item: TenantMasterItem) { setEditing(item); reset({ name: item.name, description: item.description }); setOpen(true) }
   function onSubmit(data: { name: string; description?: string }) {
@@ -173,7 +180,7 @@ function SimpleSection({
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-800">{title}</h2>
-        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
+        {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
       {loading ? (
         <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
@@ -189,14 +196,16 @@ function SimpleSection({
                   <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
                 )}
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
-                  <Pencil size={13} />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(item.id)}>
-                  <Trash2 size={13} />
-                </Button>
-              </div>
+              {!locked && (
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
+                    <Pencil size={13} />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(item.id)}>
+                    <Trash2 size={13} />
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -255,6 +264,8 @@ function PaymentTermsSection() {
     onError: () => toast.error('Failed to delete'),
   })
 
+  const { locked } = useSubscription()
+
   function openAdd() { setEditing(null); reset({}); setOpen(true) }
   function openEdit(item: PaymentTermsItem) { setEditing(item); reset({ name: item.name, creditDays: item.creditDays }); setOpen(true) }
   function onSubmit(d: { name: string; creditDays: number }) {
@@ -267,7 +278,7 @@ function PaymentTermsSection() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-800">Payment Terms</h2>
-        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
+        {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
       {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
         : items.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No payment terms yet</div>
@@ -279,10 +290,12 @@ function PaymentTermsSection() {
                   <p className="text-sm font-medium text-gray-800">{item.name}</p>
                   <p className="text-xs text-gray-500">{item.creditDays} days</p>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}><Pencil size={13} /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(item.id)}><Trash2 size={13} /></Button>
-                </div>
+                {!locked && (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}><Pencil size={13} /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(item.id)}><Trash2 size={13} /></Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -340,6 +353,8 @@ function DesignationsSection() {
     onError: () => toast.error('Failed to delete'),
   })
 
+  const { locked } = useSubscription()
+
   function openAdd() { setEditing(null); reset({}); setRoleType(''); setRoleError(false); setOpen(true) }
   function openEdit(item: DesignationItem) { setEditing(item); reset({ name: item.name }); setRoleType(item.roleType); setRoleError(false); setOpen(true) }
   function onSubmit(d: { name: string }) {
@@ -352,7 +367,7 @@ function DesignationsSection() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-800">Designations</h2>
-        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
+        {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
       {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
         : items.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No designations yet</div>
@@ -364,10 +379,12 @@ function DesignationsSection() {
                   <p className="text-sm font-medium text-gray-800">{item.name}</p>
                   <p className="text-xs text-gray-500">{item.roleType.replace('_', ' ')}</p>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}><Pencil size={13} /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(item.id)}><Trash2 size={13} /></Button>
-                </div>
+                {!locked && (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}><Pencil size={13} /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(item.id)}><Trash2 size={13} /></Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -450,6 +467,8 @@ function RoutesSection() {
     onError: () => toast.error('Failed to delete'),
   })
 
+  const { locked } = useSubscription()
+
   function openAdd() {
     setEditing(null); reset({}); setSrcState(null); setDstState(null); setSrcCity(''); setDstCity(''); setCityError(false)
     setOpen(true)
@@ -476,7 +495,7 @@ function RoutesSection() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-800">Routes</h2>
-        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
+        {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
       {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
         : routes.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No routes yet</div>
@@ -492,10 +511,12 @@ function RoutesSection() {
                     {r.estimatedHours ? ` · ${r.estimatedHours}h` : ''}
                   </p>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}><Pencil size={13} /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(r.id)}><Trash2 size={13} /></Button>
-                </div>
+                {!locked && (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}><Pencil size={13} /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(r.id)}><Trash2 size={13} /></Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -608,6 +629,8 @@ function PayRatesSection() {
     onError: () => toast.error('Failed to delete'),
   })
 
+  const { locked } = useSubscription()
+
   function openAdd() { setEditing(null); reset({}); setDesignationId(''); setVehicleTypeId('none'); setDesignationError(false); setOpen(true) }
   function openEdit(item: PayRateItem) {
     setEditing(item)
@@ -634,7 +657,7 @@ function PayRatesSection() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-800">Pay Rates</h2>
-        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
+        {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
       {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
         : rates.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No pay rates yet</div>
@@ -651,10 +674,12 @@ function PayRatesSection() {
                     {r.effectiveTo ? ` to ${r.effectiveTo}` : ''}
                   </p>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}><Pencil size={13} /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(r.id)}><Trash2 size={13} /></Button>
-                </div>
+                {!locked && (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}><Pencil size={13} /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(r.id)}><Trash2 size={13} /></Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -756,6 +781,8 @@ function SettingsSection() {
     save.mutate({ ...d, payCycle, isTripBonusEnabled: Boolean(d.isTripBonusEnabled) })
   }
 
+  const { locked } = useSubscription()
+
   if (isLoading) return <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
 
   return (
@@ -802,7 +829,7 @@ function SettingsSection() {
           </div>
         </div>
         <div className="flex justify-end">
-          <Button type="submit" disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save Settings'}</Button>
+          <Button type="submit" disabled={save.isPending || locked}>{save.isPending ? 'Saving…' : 'Save Settings'}</Button>
         </div>
       </form>
     </div>
@@ -920,6 +947,8 @@ function SparePartsSection() {
     onError: () => toast.error('Failed to delete'),
   })
 
+  const { locked } = useSubscription()
+
   function openAdd() { setEditing(null); setForm({ name: '', category: '', unit: 'Pieces', minStockLevel: 0 }); setOpen(true) }
   function openEdit(p: SparePart) { setEditing(p); setForm({ name: p.name, category: p.category ?? '', unit: p.unit, minStockLevel: p.minStockLevel }); setOpen(true) }
 
@@ -927,10 +956,12 @@ function SparePartsSection() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-800">Spare Parts</h2>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)} className="gap-1"><Upload size={13} />Bulk Upload</Button>
-          <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
-        </div>
+        {!locked && (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)} className="gap-1"><Upload size={13} />Bulk Upload</Button>
+            <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>
+          </div>
+        )}
       </div>
       {isLoading ? (
         <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
@@ -948,10 +979,12 @@ function SparePartsSection() {
                   {` · ${p.unit} · Min: ${p.minStockLevel}`}
                 </p>
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil size={13} /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => del.mutate(p.id)}><Trash2 size={13} /></Button>
-              </div>
+              {!locked && (
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil size={13} /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => del.mutate(p.id)}><Trash2 size={13} /></Button>
+                </div>
+              )}
             </div>
           ))}
         </div>

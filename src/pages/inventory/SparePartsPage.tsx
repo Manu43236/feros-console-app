@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sparePartsApi } from '@/api/inventory'
 import type { SparePart } from '@/types'
@@ -129,6 +130,7 @@ function DeleteDialog({ part, onClose }: { part: SparePart | null; onClose: () =
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function SparePartsPage() {
+  const { locked } = useSubscription()
   const [search, setSearch] = useState('')
   const [formPart, setFormPart] = useState<SparePart | null | undefined>(undefined) // undefined = closed, null = new
   const [deletePart, setDeletePart] = useState<SparePart | null>(null)
@@ -151,9 +153,11 @@ export default function SparePartsPage() {
           <h1 className="text-xl font-semibold text-gray-900">Spare Parts</h1>
           <p className="text-sm text-gray-500">Master list of spare parts for your fleet</p>
         </div>
-        <Button onClick={() => setFormPart(null)} className="gap-2">
-          <Plus size={16} /> Add Part
-        </Button>
+        {!locked && (
+          <Button onClick={() => setFormPart(null)} className="gap-2">
+            <Plus size={16} /> Add Part
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -214,6 +218,7 @@ export default function SparePartsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
+                    {!locked && (
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => setFormPart(p)} className="text-gray-400 hover:text-blue-600">
                         <Pencil size={15} />
@@ -222,6 +227,7 @@ export default function SparePartsPage() {
                         <Trash2 size={15} />
                       </button>
                     </div>
+                  )}
                   </td>
                 </tr>
               ))}
