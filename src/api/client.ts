@@ -23,6 +23,12 @@ apiClient.interceptors.response.use(
       toast.error('Your session has expired. Please sign in again.')
       setTimeout(() => { window.location.href = '/login' }, 1500)
     }
+    if (error.response?.status === 402) {
+      toast.error('Your subscription has expired. Upgrade your plan to make changes.', {
+        action: { label: 'View Subscription', onClick: () => { window.location.href = '/subscription' } },
+        duration: 6000,
+      })
+    }
     return Promise.reject(error)
   }
 )
