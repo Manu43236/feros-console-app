@@ -100,7 +100,13 @@ function PlansTab() {
     queryKey: ['sa-plans-all'],
     queryFn: () => subscriptionPlansApi.getAll(),
   })
-  const plans: SubscriptionPlan[] = plansRes?.data ?? []
+  const plans: SubscriptionPlan[] = (plansRes?.data ?? []).slice().sort((a, b) => {
+    const order = (p: SubscriptionPlan) =>
+      p.name.toLowerCase() === 'trial' ? 0
+      : p.name.toLowerCase() === 'free'  ? 1
+      : (p.pricePerVehicle ?? 0)
+    return order(a) - order(b)
+  })
 
   const toggleMutation = useMutation({
     mutationFn: (id: number) => subscriptionPlansApi.toggle(id),
