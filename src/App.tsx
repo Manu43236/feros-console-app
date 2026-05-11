@@ -75,38 +75,49 @@ export default function App() {
 
           {/* ADMIN */}
           <Route path="dashboard"  element={<DashboardPage />} />
-          <Route path="clients"          element={<ClientsPage />} />
-          <Route path="client-advances" element={<ClientAdvancesPage />} />
+          {/* Billing & clients — office only */}
+          <Route path="clients"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ClientsPage /></ProtectedRoute>} />
+          <Route path="client-advances" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ClientAdvancesPage /></ProtectedRoute>} />
+          <Route path="invoices"            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><InvoicesPage /></ProtectedRoute>} />
+          <Route path="invoices/:invoiceId" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><InvoiceDetailPage /></ProtectedRoute>} />
+          <Route path="credit-notes"        element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><CreditNotesPage /></ProtectedRoute>} />
+
+          {/* Vehicles — admin + office + supervisor + driver (read) */}
           <Route path="vehicles"            element={<VehiclesPage />} />
           <Route path="vehicles/:vehicleId" element={<VehicleDetailPage />} />
           <Route path="vehicle-services"    element={<VehicleServicesPage />} />
           <Route path="fuel-logs"           element={<FuelLogsPage />} />
           <Route path="meter-readings"      element={<MeterReadingsPage />} />
-          <Route path="inventory/tires"     element={<TireInventoryPage />} />
+
+          {/* Inventory */}
+          <Route path="inventory/tires"     element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER']}><TireInventoryPage /></ProtectedRoute>} />
+          <Route path="inventory" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER','SERVICE_MEN']}><InventoryPage /></ProtectedRoute>} />
+
+          {/* Orders & LRs */}
           <Route path="orders"          element={<OrdersPage />} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="assignments"     element={<AssignmentsPage />} />
-          <Route path="lrs"          element={<LrsPage />} />
-          <Route path="lrs/:lrId"  element={<LrDetailPage />} />
-          <Route path="invoices"            element={<InvoicesPage />} />
-          <Route path="invoices/:invoiceId" element={<InvoiceDetailPage />} />
-          <Route path="credit-notes"        element={<CreditNotesPage />} />
-          <Route path="staff"           element={<StaffPage />} />
-          <Route path="staff/:userId"   element={<StaffDetailPage />} />
-          <Route path="attendance" element={<AttendancePage />} />
-          <Route path="payroll"    element={<PayrollPage />} />
+          <Route path="lrs"         element={<LrsPage />} />
+          <Route path="lrs/:lrId"   element={<LrDetailPage />} />
+
+          {/* Staff & HR — admin + office only */}
+          <Route path="staff"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><StaffPage /></ProtectedRoute>} />
+          <Route path="staff/:userId" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><StaffDetailPage /></ProtectedRoute>} />
+          <Route path="attendance"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','SUPERVISOR']}><AttendancePage /></ProtectedRoute>} />
+          <Route path="payroll"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PayrollPage /></ProtectedRoute>} />
+
+          {/* Reports & Masters — admin + office only */}
           <Route path="reports" element={<Navigate to="/reports/daily-operations" replace />} />
-          <Route path="reports/:section" element={<ReportsPage />} />
-          <Route path="masters"    element={<MastersPage />} />
-          <Route path="inventory" element={<InventoryPage />} />
+          <Route path="reports/:section" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ReportsPage /></ProtectedRoute>} />
+          <Route path="masters"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><MastersPage /></ProtectedRoute>} />
 
           {/* SUPER_ADMIN */}
-          <Route path="sa/dashboard"      element={<SADashboardPage />} />
-          <Route path="sa/tenants"        element={<TenantsPage />} />
-          <Route path="sa/subscriptions"  element={<SubscriptionsPage />} />
-          <Route path="sa/users"          element={<SAUsersPage />} />
-          <Route path="sa/global-masters" element={<GlobalMastersPage />} />
-          <Route path="sa/settings"       element={<SASettingsPage />} />
+          <Route path="sa/dashboard"      element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SADashboardPage /></ProtectedRoute>} />
+          <Route path="sa/tenants"        element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><TenantsPage /></ProtectedRoute>} />
+          <Route path="sa/subscriptions"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SubscriptionsPage /></ProtectedRoute>} />
+          <Route path="sa/users"          element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SAUsersPage /></ProtectedRoute>} />
+          <Route path="sa/global-masters" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><GlobalMastersPage /></ProtectedRoute>} />
+          <Route path="sa/settings"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SASettingsPage /></ProtectedRoute>} />
 
           {/* Subscription */}
           <Route path="subscription" element={<SubscriptionPage />} />
@@ -117,10 +128,10 @@ export default function App() {
           {/* Notifications */}
           <Route path="notifications" element={<NotificationsPage />} />
 
-          {/* STAFF */}
-          <Route path="my/trips"      element={<MyTripsPage />} />
-          <Route path="my/attendance" element={<MyAttendancePage />} />
-          <Route path="my/payslip"    element={<MyPayslipPage />} />
+          {/* STAFF self-service */}
+          <Route path="my/trips"      element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyTripsPage /></ProtectedRoute>} />
+          <Route path="my/attendance" element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyAttendancePage /></ProtectedRoute>} />
+          <Route path="my/payslip"    element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyPayslipPage /></ProtectedRoute>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
