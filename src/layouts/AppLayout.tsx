@@ -435,7 +435,7 @@ export function AppLayout() {
         </div>
 
         {/* Nav */}
-        <nav className={cn('flex-1 overflow-y-auto py-4 px-3', locked && 'pointer-events-none opacity-40')}>
+        <nav className="flex-1 overflow-y-auto py-4 px-3">
           {isSectionedNav(nav) ? (
             <>
               {/* Dashboard — always visible, no section */}
