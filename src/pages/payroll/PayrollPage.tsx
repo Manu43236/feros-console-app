@@ -1,3 +1,4 @@
+import { getApiError } from '@/lib/apiError'
 import { useState, useEffect } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -120,7 +121,7 @@ function GenerateDialog({ open, onClose, users }: {
       qc.invalidateQueries({ queryKey: ['payrolls'] })
       reset(); setRateAutoFilled(false); onClose()
     },
-    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to generate'),
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed to generate') ?? 'Failed to generate'),
   })
 
   return (
@@ -209,7 +210,7 @@ function ApproveDialog({ open, onClose, payroll }: {
       qc.invalidateQueries({ queryKey: ['payrolls'] })
       onClose()
     },
-    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
   return (
@@ -376,7 +377,7 @@ function AdvanceDialog({ open, onClose, users }: {
       qc.invalidateQueries({ queryKey: ['advances'] })
       reset({ advanceDate: format(new Date(), 'yyyy-MM-dd') }); onClose()
     },
-    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
   return (
@@ -446,7 +447,7 @@ export function PayrollPage() {
   const cancelMutation = useMutation({
     mutationFn: (id: number) => payrollApi.cancel(id),
     onSuccess: () => { toast.success('Payroll cancelled'); qc.invalidateQueries({ queryKey: ['payrolls'] }) },
-    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
   // summary stats

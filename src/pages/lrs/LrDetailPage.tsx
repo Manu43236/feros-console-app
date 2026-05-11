@@ -1,3 +1,4 @@
+import { getApiError } from '@/lib/apiError'
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -445,7 +446,7 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
       return lrsApi.update(lrId, payload)
     },
     onSuccess: () => { toast.success('LR updated'); qc.invalidateQueries({ queryKey: ['lr', lrId] }); onClose() },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to update LR'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to update LR'); if (_m) toast.error(_m) },
   })
 
   return (

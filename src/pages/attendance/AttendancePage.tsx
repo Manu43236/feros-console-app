@@ -1,3 +1,4 @@
+import { getApiError } from '@/lib/apiError'
 import { useState, useEffect } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -84,7 +85,7 @@ function AttendanceDialog({
       onClose()
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to save attendance')
+      toast.error(getApiError(e, 'Failed to save attendance') ?? 'Failed to save attendance')
     },
   })
 
@@ -222,7 +223,7 @@ function BulkMarkDialog({
       onClose()
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to save')
+      toast.error(getApiError(e, 'Failed to save') ?? 'Failed to save')
     },
   })
 
@@ -388,13 +389,13 @@ function PendingApprovalsTab() {
   const approveMutation = useMutation({
     mutationFn: (id: number) => attendanceApi.approve(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Attendance approved') },
-    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
   const rejectMutation = useMutation({
     mutationFn: (id: number) => attendanceApi.reject(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Attendance rejected') },
-    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
   if (isLoading) return <div className="py-12 text-center text-sm text-gray-400">Loading…</div>

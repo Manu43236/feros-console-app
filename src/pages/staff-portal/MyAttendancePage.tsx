@@ -1,3 +1,4 @@
+import { getApiError } from '@/lib/apiError'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
@@ -68,7 +69,7 @@ function MarkTodayDialog({ open, onClose, attendanceTypes, leaveTypes }: {
       handleClose()
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to mark attendance')
+      toast.error(getApiError(e, 'Failed to mark attendance') ?? 'Failed to mark attendance')
     },
   })
 

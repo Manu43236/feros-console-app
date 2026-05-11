@@ -1,3 +1,4 @@
+import { getApiError } from '@/lib/apiError'
 import { useState } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -63,7 +64,7 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
       handleClose()
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to assign vehicle')
+      toast.error(getApiError(e, 'Failed to assign vehicle') ?? 'Failed to assign vehicle')
     },
   })
 
@@ -200,7 +201,7 @@ function AssignDriverDialog({ open, onClose, orders, drivers }: {
       handleClose()
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to assign driver')
+      toast.error(getApiError(e, 'Failed to assign driver') ?? 'Failed to assign driver')
     },
   })
 
@@ -360,7 +361,7 @@ export default function AssignmentsPage() {
       qc.invalidateQueries({ queryKey: ['assignments-vehicles'] })
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to unassign vehicle')
+      toast.error(getApiError(e, 'Failed to unassign vehicle') ?? 'Failed to unassign vehicle')
     },
   })
 
@@ -373,7 +374,7 @@ export default function AssignmentsPage() {
       qc.invalidateQueries({ queryKey: ['assignments-users'] })
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to unassign driver')
+      toast.error(getApiError(e, 'Failed to unassign driver') ?? 'Failed to unassign driver')
     },
   })
 

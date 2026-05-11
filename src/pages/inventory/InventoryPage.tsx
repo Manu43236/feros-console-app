@@ -1,3 +1,4 @@
+import { getApiError } from '@/lib/apiError'
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockApi, sparePartsApi, servicePartsApi, inventoryTransactionsApi } from '@/api/inventory'
@@ -38,7 +39,7 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
       onClose()
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to add stock')
+      toast.error(getApiError(e, 'Failed to add stock') ?? 'Failed to add stock')
     },
   })
 
@@ -104,7 +105,7 @@ function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => v
       onClose()
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to process')
+      toast.error(getApiError(e, 'Failed to process') ?? 'Failed to process')
     },
   })
 
@@ -183,7 +184,7 @@ function BulkStockInDialog({ onClose }: { onClose: () => void }) {
       else toast.warning(`${res.data.successCount} uploaded, ${res.data.failureCount} failed`)
     },
     onError: (e: unknown) => {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Upload failed')
+      toast.error(getApiError(e, 'Upload failed') ?? 'Upload failed')
     },
   })
 

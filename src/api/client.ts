@@ -24,9 +24,11 @@ apiClient.interceptors.response.use(
       setTimeout(() => { window.location.href = '/login' }, 1500)
     }
     if (error.response?.status === 402) {
-      toast.error('Your subscription has expired. Upgrade your plan to make changes.', {
-        action: { label: 'View Subscription', onClick: () => { window.location.href = '/subscription' } },
-        duration: 6000,
+      // Mark so mutations know not to show a duplicate toast
+      error.isSubscriptionBlock = true
+      toast.error('Your trial/subscription has expired. Please upgrade your plan to continue using FEROS.', {
+        action: { label: 'Upgrade Now', onClick: () => { window.location.href = '/subscription' } },
+        duration: 8000,
       })
     }
     return Promise.reject(error)

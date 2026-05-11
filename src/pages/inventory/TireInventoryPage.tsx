@@ -1,3 +1,5 @@
+import { getApiError } from '@/lib/apiError'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tiresApi } from '@/api/tires'
@@ -75,7 +77,7 @@ function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: ()
       qc.invalidateQueries({ queryKey: ['tires'] })
       onClose()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   function handleSubmit(e: React.FormEvent) {
@@ -202,7 +204,7 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
       qc.invalidateQueries({ queryKey: ['tires'] })
       onClose()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to fit tire'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to fit tire'); if (_m) toast.error(_m) },
   })
 
   return (
@@ -301,7 +303,7 @@ function RemoveTireDialog({ open, onClose, tire }: { open: boolean; onClose: () 
       qc.invalidateQueries({ queryKey: ['tires'] })
       onClose()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to remove tire'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to remove tire'); if (_m) toast.error(_m) },
   })
 
   const isRetread = form.removalReason === 'RETREAD'
@@ -386,7 +388,7 @@ function BackToStockDialog({ open, onClose, tire }: { open: boolean; onClose: ()
       qc.invalidateQueries({ queryKey: ['tires'] })
       onClose()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   return (
@@ -467,6 +469,7 @@ function TireHistoryDialog({ open, onClose, tire }: { open: boolean; onClose: ()
 type ActiveFilter = TireStatus | 'ALL'
 
 export default function TireInventoryPage() {
+  const { locked } = useSubscription()
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<ActiveFilter>('ALL')
   const [addOpen, setAddOpen]           = useState(false)
@@ -518,9 +521,11 @@ export default function TireInventoryPage() {
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw size={14} className="mr-1.5" /> Refresh
           </Button>
-          <Button size="sm" onClick={() => setAddOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
-            <Plus size={14} /> Add Tire
-          </Button>
+          {!locked && (
+            <Button size="sm" onClick={() => setAddOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
+              <Plus size={14} /> Add Tire
+            </Button>
+          )}
         </div>
       </div>
 

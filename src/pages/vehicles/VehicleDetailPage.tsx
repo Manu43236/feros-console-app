@@ -1,3 +1,4 @@
+import { getApiError } from '@/lib/apiError'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -304,7 +305,7 @@ function CreateServiceDialog({
       handleClose()
     },
     onError: (e: unknown) => toast.error(
-      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to create service'
+      getApiError(e, 'Failed to create service') ?? 'Failed to create service'
     ),
   })
 
@@ -699,7 +700,7 @@ function CompleteServiceDialog({ service, currentOdometer, open, onClose }: { se
       handleClose()
     },
     onError: (e: unknown) => toast.error(
-      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'
+      getApiError(e, 'Failed') ?? 'Failed'
     ),
   })
 
@@ -1300,7 +1301,7 @@ function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: num
       setNotes('')
       setDate(format(new Date(), 'yyyy-MM-dd'))
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to add reading'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to add reading'); if (_m) toast.error(_m) },
   })
 
   const handleSubmit = () => {
@@ -1430,7 +1431,7 @@ function FitTireDialog({ open, onClose, vehicleId, positionId, availableTires, c
       qc.invalidateQueries({ queryKey: ['tire-fittings', vehicleId] })
       onClose()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   return (
@@ -1489,7 +1490,7 @@ function RemoveTireDialog({ open, onClose, fitting, currentKm }: {
       qc.invalidateQueries({ queryKey: ['tire-fittings', fitting.vehicleId] })
       onClose()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   return (
@@ -1552,7 +1553,7 @@ function ManagePositionsDialog({ open, onClose, vehicleId }: { open: boolean; on
       qc.invalidateQueries({ queryKey: ['tire-positions-current', vehicleId] })
       setNewCode(''); setNewOrder('')
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   const delMutation = useMutation({
@@ -1562,7 +1563,7 @@ function ManagePositionsDialog({ open, onClose, vehicleId }: { open: boolean; on
       qc.invalidateQueries({ queryKey: ['tire-positions', vehicleId] })
       qc.invalidateQueries({ queryKey: ['tire-positions-current', vehicleId] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   return (
@@ -1645,7 +1646,7 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
       qc.invalidateQueries({ queryKey: ['tire-rotations', vehicleId] })
       onClose()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   return (
@@ -1989,7 +1990,7 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
       qc.invalidateQueries({ queryKey: ['fuel-logs', vehicle.id] })
       setDialogOpen(false)
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   const deleteMutation = useMutation({
@@ -1998,7 +1999,7 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
       toast.success('Fuel log deleted')
       qc.invalidateQueries({ queryKey: ['fuel-logs', vehicle.id] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed'),
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   async function handleReceiptUpload(e: React.ChangeEvent<HTMLInputElement>) {

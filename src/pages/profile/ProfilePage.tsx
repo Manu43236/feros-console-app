@@ -1,3 +1,4 @@
+import { getApiError } from '@/lib/apiError'
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
@@ -163,7 +164,7 @@ function AccountTab({ userId, role }: { userId: number; role: string | null }) {
       setEditing(false)
     },
     onError: (e: unknown) => toast.error(
-      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to update'
+      getApiError(e, 'Failed to update') ?? 'Failed to update'
     ),
   })
 
@@ -386,7 +387,7 @@ function DocumentsTab({ role }: { role: string | null }) {
       qc.invalidateQueries({ queryKey: ['my-tenant-docs'] })
     },
     onError: (e: unknown) => toast.error(
-      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to delete'
+      getApiError(e, 'Failed to delete') ?? 'Failed to delete'
     ),
   })
 
@@ -404,7 +405,7 @@ function DocumentsTab({ role }: { role: string | null }) {
       if (fileRef.current) fileRef.current.value = ''
     } catch (e: unknown) {
       toast.error(
-        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Upload failed'
+        getApiError(e, 'Upload failed') ?? 'Upload failed'
       )
     } finally {
       setUploading(false)
@@ -539,7 +540,7 @@ function CompanyTab({ role }: { role: string | null }) {
       setEditing(false)
     },
     onError: (e: unknown) => toast.error(
-      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to update'
+      getApiError(e, 'Failed to update') ?? 'Failed to update'
     ),
   })
 
