@@ -81,6 +81,7 @@ export const subscriptionsApi = {
   getCurrent:       (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/current`).then(r => r.data),
   getMy:                () => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>('/subscriptions/my').then(r => r.data),
   getMyInvoices:        () => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/my/invoices').then(r => r.data),
+  getMyInvoice:         (id: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/my/invoices/${id}`).then(r => r.data),
   submitUpgradeRequest: (data: unknown) => apiClient.post<ApiResponse<import('@/types').UpgradeRequest>>('/subscriptions/upgrade-request', data).then(r => r.data),
   getUpgradeRequests:   () => apiClient.get<ApiResponse<import('@/types').UpgradeRequest[]>>('/subscriptions/upgrade-requests').then(r => r.data),
   dismissUpgradeRequest:(id: number) => apiClient.patch<ApiResponse<void>>(`/subscriptions/upgrade-requests/${id}/dismiss`).then(r => r.data),

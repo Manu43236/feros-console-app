@@ -766,6 +766,11 @@ export interface SubscriptionInvoice {
   totalAmount?: number
   paymentRef?: string
   createdAt: string
+  tenantAddress?: string
+  tenantCity?: string
+  tenantState?: string
+  tenantPincode?: string
+  tenantGstin?: string
 }
 
 export interface UpgradeRequest {

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   BadgeCheck, Calendar, CreditCard, Truck, Users,
   FileText, AlertTriangle, CheckCircle, Clock, Lock,
-  TrendingUp, ArrowUpCircle, Calculator,
+  TrendingUp, ArrowUpCircle, Calculator, Printer,
 } from 'lucide-react'
 import { subscriptionsApi, subscriptionPlansApi } from '@/api/superadmin'
 import { vehiclesApi } from '@/api/vehicles'
@@ -494,6 +494,7 @@ export function SubscriptionPage() {
                 <th className="px-5 py-3 text-right">Amount</th>
                 <th className="px-5 py-3 text-right">GST (18%)</th>
                 <th className="px-5 py-3 text-right">Total</th>
+                <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -513,12 +514,22 @@ export function SubscriptionPage() {
                   <td className="px-5 py-3 text-right">{fmt(inv.amount)}</td>
                   <td className="px-5 py-3 text-right text-gray-500">{fmt(inv.gstAmount)}</td>
                   <td className="px-5 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
+                  <td className="px-5 py-3 text-right">
+                    <button
+                      onClick={() => window.open(`/subscription/invoice/${inv.id}/print`, '_blank')}
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                      title="View Invoice PDF"
+                    >
+                      <Printer size={13} />
+                      View
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
             <tfoot className="bg-gray-50 text-xs text-gray-400 border-t">
               <tr>
-                <td colSpan={7} className="px-5 py-2.5">
+                <td colSpan={8} className="px-5 py-2.5">
                   GST paid on subscription is claimable as Input Tax Credit (ITC) for GST-registered businesses.
                 </td>
               </tr>
