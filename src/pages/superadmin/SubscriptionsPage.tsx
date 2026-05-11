@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
   BadgeCheck, ToggleLeft, ToggleRight, History, FileText,
-  Megaphone, CheckCircle, Lock, Calculator, Truck,
+  Megaphone, CheckCircle, Lock, Calculator, Truck, ArrowUpCircle, X,
 } from 'lucide-react'
+import type { UpgradeRequest } from '@/types'
 import { tenantsApi, subscriptionPlansApi, subscriptionsApi, notificationsApi } from '@/api/superadmin'
 import type { SubscriptionPlan, SubscriptionHistory, SubscriptionInvoice } from '@/types'
 
-type Tab = 'plans' | 'history' | 'invoices' | 'broadcast'
+type Tab = 'plans' | 'requests' | 'history' | 'invoices' | 'broadcast'
 
 const GST_RATE    = 0.18
 const ANNUAL_MTHS = 10  // pay 10 months, get 12
@@ -275,17 +276,19 @@ function PlansTab() {
 }
 
 // ─── History Tab ──────────────────────────────────────────────────────────────
-function HistoryTab() {
+function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | null }) {
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const [selectedTenantId, setSelectedTenantId] = useState<number | null>(() => {
+    if (preselectedTenantId) return preselectedTenantId
     const p = searchParams.get('tenantId')
     return p ? Number(p) : null
   })
   useEffect(() => {
+    if (preselectedTenantId) { setSelectedTenantId(preselectedTenantId); return }
     const p = searchParams.get('tenantId')
     if (p) setSelectedTenantId(Number(p))
-  }, [searchParams])
+  }, [searchParams, preselectedTenantId])
 
   const [actionDialog, setActionDialog] = useState<{
     type: 'activate' | 'extend-trial' | 'extend' | 'suspend' | 'reactivate'
@@ -836,9 +839,104 @@ function BroadcastTab() {
   )
 }
 
+// ─── Requests Tab ─────────────────────────────────────────────────────────────
+function RequestsTab({ onActivate }: { onActivate: (tenantId: number) => void }) {
+  const qc = useQueryClient()
+  const { data: reqRes, isLoading } = useQuery({
+    queryKey: ['sa-upgrade-requests'],
+    queryFn: () => subscriptionsApi.getUpgradeRequests(),
+  })
+  const requests: UpgradeRequest[] = reqRes?.data ?? []
+  const pending   = requests.filter(r => r.status === 'PENDING')
+  const others    = requests.filter(r => r.status !== 'PENDING')
+
+  const dismissMutation = useMutation({
+    mutationFn: (id: number) => subscriptionsApi.dismissUpgradeRequest(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-upgrade-requests'] }),
+  })
+
+  function RequestCard({ r }: { r: UpgradeRequest }) {
+    return (
+      <div className={`bg-white border rounded-xl p-4 space-y-2 ${r.status !== 'PENDING' ? 'opacity-50' : ''}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="font-semibold text-gray-900">{r.companyName}</p>
+            <p className="text-sm text-feros-navy font-medium mt-0.5">
+              {r.planName} · {r.vehicleCount} vehicles · {r.billingCycle}
+            </p>
+          </div>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
+            r.status === 'PENDING'   ? 'bg-blue-100 text-blue-700' :
+            r.status === 'FULFILLED' ? 'bg-green-100 text-green-700' :
+                                       'bg-gray-100 text-gray-500'
+          }`}>{r.status}</span>
+        </div>
+        <div className="text-xs text-gray-500 space-y-0.5">
+          <div className="flex justify-between">
+            <span>Rate: {fmt(r.pricePerVehicle)}/vehicle</span>
+            <span>Estimated: <strong className="text-gray-800">{fmt(r.estimatedTotal)}</strong> (incl. GST)</span>
+          </div>
+          {r.notes && <p className="text-gray-400 italic">"{r.notes}"</p>}
+          <p className="text-gray-400">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        </div>
+        {r.status === 'PENDING' && (
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => onActivate(r.tenantId)}
+              className="flex-1 py-1.5 bg-feros-navy text-white rounded-lg text-xs font-medium"
+            >
+              Activate
+            </button>
+            <button
+              onClick={() => dismissMutation.mutate(r.id)}
+              disabled={dismissMutation.isPending}
+              className="px-3 py-1.5 border rounded-lg text-xs text-gray-500 hover:text-red-500"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (isLoading) return <div className="py-12 text-center text-gray-400 text-sm">Loading…</div>
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <ArrowUpCircle size={16} className="text-feros-navy" />
+          <h3 className="font-semibold text-gray-800">Pending Requests</h3>
+          {pending.length > 0 && (
+            <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-0.5">{pending.length}</span>
+          )}
+        </div>
+        {pending.length === 0 ? (
+          <div className="py-8 text-center text-gray-400 text-sm">No pending upgrade requests</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {pending.map(r => <RequestCard key={r.id} r={r} />)}
+          </div>
+        )}
+      </div>
+
+      {others.length > 0 && (
+        <div>
+          <h3 className="font-semibold text-gray-500 text-sm mb-3">Fulfilled / Dismissed</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {others.map(r => <RequestCard key={r.id} r={r} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 const TABS: { id: Tab; label: string; icon: typeof BadgeCheck }[] = [
   { id: 'plans',     label: 'Plans',     icon: BadgeCheck },
+  { id: 'requests',  label: 'Requests',  icon: ArrowUpCircle },
   { id: 'history',   label: 'History',   icon: History },
   { id: 'invoices',  label: 'Invoices',  icon: FileText },
   { id: 'broadcast', label: 'Broadcast', icon: Megaphone },
@@ -847,6 +945,12 @@ const TABS: { id: Tab; label: string; icon: typeof BadgeCheck }[] = [
 export function SubscriptionsPage() {
   const [searchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>(() => searchParams.get('tenantId') ? 'history' : 'plans')
+  const [historyTenantId, setHistoryTenantId] = useState<number | null>(null)
+
+  function goToActivate(tenantId: number) {
+    setHistoryTenantId(tenantId)
+    setTab('history')
+  }
 
   return (
     <div className="space-y-6">
@@ -872,7 +976,8 @@ export function SubscriptionsPage() {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         {tab === 'plans'     && <PlansTab />}
-        {tab === 'history'   && <HistoryTab />}
+        {tab === 'requests'  && <RequestsTab onActivate={goToActivate} />}
+        {tab === 'history'   && <HistoryTab preselectedTenantId={historyTenantId} />}
         {tab === 'invoices'  && <InvoicesTab />}
         {tab === 'broadcast' && <BroadcastTab />}
       </div>

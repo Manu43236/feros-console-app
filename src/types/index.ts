@@ -768,6 +768,22 @@ export interface SubscriptionInvoice {
   createdAt: string
 }
 
+export interface UpgradeRequest {
+  id: number
+  tenantId: number
+  companyName: string
+  planId?: number
+  planName?: string
+  pricePerVehicle?: number
+  vehicleCount?: number
+  billingCycle?: string
+  estimatedBase?: number
+  estimatedTotal?: number
+  notes?: string
+  status: 'PENDING' | 'FULFILLED' | 'DISMISSED'
+  createdAt: string
+}
+
 // ─── Notification ─────────────────────────────────────────────────────────────
 export interface Notification {
   id: number
