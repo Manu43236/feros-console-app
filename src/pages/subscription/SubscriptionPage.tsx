@@ -341,42 +341,15 @@ export function SubscriptionPage() {
           </div>
         ) : (
           <>
-            {/* Vehicle count input — drives auto plan selection */}
-            <div>
-              <label className="text-xs text-gray-600 mb-1 block font-medium">
-                How many vehicles do you need?
-              </label>
-              <input
-                type="number" min={1}
-                className="w-full border rounded-lg px-3 py-2 text-sm bg-white max-w-xs"
-                value={vehicles}
-                onChange={e => {
-                  const val = e.target.value
-                  setVehicles(val)
-                  const count = Number(val)
-                  if (count > 0) {
-                    const matched = autoSelectPlan(paidPlans, count)
-                    if (matched) setSelectedPlanId(matched.id)
-                  }
-                }}
-                placeholder="e.g. 25"
-              />
-              {vehicles && Number(vehicles) > 0 && (() => {
-                const matched = autoSelectPlan(paidPlans, Number(vehicles))
-                return matched ? (
-                  <p className="mt-1 text-xs text-blue-600">
-                    Matched to <strong>{matched.name}</strong> ({matched.minVehicles}–{matched.maxVehicles === -1 ? '∞' : matched.maxVehicles} vehicles)
-                  </p>
-                ) : null
-              })()}
-            </div>
-
             {/* Plan cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {paidPlans.map(plan => (
                 <button
                   key={plan.id}
-                  onClick={() => setSelectedPlanId(plan.id)}
+                  onClick={() => {
+                    setSelectedPlanId(plan.id)
+                    setVehicles(String(plan.minVehicles ?? 1))
+                  }}
                   className={`text-left border rounded-xl p-3 transition-all ${
                     selectedPlanId === plan.id
                       ? 'border-feros-navy bg-feros-navy/5 ring-1 ring-feros-navy'
@@ -403,6 +376,26 @@ export function SubscriptionPage() {
               return (
                 <div className="border rounded-xl p-4 space-y-3 bg-gray-50">
                   <p className="text-sm font-medium text-gray-700">Configure your <strong>{plan.name}</strong> plan</p>
+                  <div>
+                    <label className="text-xs text-gray-600 mb-1 block">
+                      Number of Vehicles <span className="text-gray-400">(range: {plan.minVehicles}–{plan.maxVehicles === -1 ? '∞' : plan.maxVehicles})</span>
+                    </label>
+                    <input
+                      type="number" min={plan.minVehicles ?? 1}
+                      className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                      value={vehicles}
+                      onChange={e => {
+                        const val = e.target.value
+                        setVehicles(val)
+                        const count = Number(val)
+                        if (count > 0) {
+                          const matched = autoSelectPlan(paidPlans, count)
+                          if (matched) setSelectedPlanId(matched.id)
+                        }
+                      }}
+                      placeholder={`e.g. ${plan.minVehicles ?? 1}`}
+                    />
+                  </div>
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Billing Cycle</label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
