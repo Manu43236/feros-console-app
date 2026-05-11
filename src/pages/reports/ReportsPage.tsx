@@ -8,6 +8,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { reportsApi } from '@/api/reports'
 import { clientsApi } from '@/api/clients'
 import { toast } from 'sonner'
+import { RefreshCw } from 'lucide-react'
 import type {
   LrRegisterRow, InvoiceOutstandingRow, PayrollSummaryRow,
   CollectionReportRow, ClientStatementResponse, VehicleTripRow,
@@ -256,9 +257,11 @@ function DailyVehicleActivityTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Today\'s Data'}
-        </Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
 
       {d && (
@@ -289,7 +292,7 @@ function DailyVehicleActivityTab() {
           </div>
         </>
       )}
-      {!d && !isFetching && <EmptyState msg="Click Fetch to load today's vehicle activity" />}
+      {!d && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No vehicles found for today" />)}
     </div>
   )
 }
@@ -308,10 +311,17 @@ function LocalLongTripsTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading...' : "Fetch Today's Data"}
-        </Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
+      {isFetching && !data && (
+        <div className="py-12 flex justify-center">
+          <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+        </div>
+      )}
       {d && (
         <>
           <div className="flex gap-3 flex-wrap">
@@ -349,7 +359,7 @@ function LocalLongTripsTab() {
           </div>
         </>
       )}
-      {!d && !isFetching && <EmptyState msg="Click Fetch to load today's trip data" />}
+      {!d && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No trips started today" />)}
     </div>
   )
 }
@@ -368,9 +378,11 @@ function IdleDriversTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Idle Drivers'}
-        </Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
       {data && (
         <>
@@ -396,7 +408,7 @@ function IdleDriversTab() {
           </table>
         </>
       )}
-      {!data && !isFetching && <EmptyState msg="Click Fetch to check idle drivers" />}
+      {!data && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No idle drivers found" />)}
     </div>
   )
 }
@@ -429,9 +441,11 @@ function DocumentExpiryTab() {
             triggerClassName="h-8 text-sm"
           />
         </div>
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Alerts'}
-        </Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
       {data && (
         <>
@@ -469,7 +483,7 @@ function DocumentExpiryTab() {
           </div>
         </>
       )}
-      {!data && !isFetching && <EmptyState msg="Click Fetch Alerts to check document expiry" />}
+      {!data && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No documents with upcoming expiry" />)}
     </div>
   )
 }
@@ -491,10 +505,17 @@ function TodayAttendanceTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading...' : "Fetch Today's Attendance"}
-        </Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
+      {isFetching && !data && (
+        <div className="py-12 flex justify-center">
+          <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+        </div>
+      )}
       {d && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -534,7 +555,7 @@ function TodayAttendanceTab() {
           </table>
         </>
       )}
-      {!d && !isFetching && <EmptyState msg="Click Fetch to load today's attendance" />}
+      {!d && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="Attendance not marked for today yet" />)}
     </div>
   )
 }
@@ -553,9 +574,11 @@ function DelayedTripsTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Delayed Trips'}
-        </Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
       {data && (
         <>
@@ -588,7 +611,7 @@ function DelayedTripsTab() {
           </div>
         </>
       )}
-      {!data && !isFetching && <EmptyState msg="Click Fetch to check delayed trips" />}
+      {!data && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No delayed trips" />)}
     </div>
   )
 }
@@ -607,9 +630,11 @@ function OrdersBacklogTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Loading...' : 'Fetch Backlog'}
-        </Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
       {data && (
         <>
@@ -651,7 +676,7 @@ function OrdersBacklogTab() {
           </div>
         </>
       )}
-      {!data && !isFetching && <EmptyState msg="Click Fetch to check orders backlog" />}
+      {!data && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No backlog orders" />)}
     </div>
   )
 }
@@ -676,6 +701,11 @@ function OrderFulfillmentTab() {
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
+      {isFetching && !data && (
+        <div className="py-12 flex justify-center">
+          <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+        </div>
+      )}
       {d && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -710,7 +740,7 @@ function OrderFulfillmentTab() {
           </div>
         </>
       )}
-      {!d && !isFetching && <EmptyState msg="No data found for the selected period" />}
+      {!d && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No data found for the selected period" />)}
     </div>
   )
 }
@@ -740,7 +770,7 @@ function OrderLeadTimeTab() {
             <tr>{[['Route','left'],['Orders','center'],['Avg Days','center'],['Min Days','center'],['Max Days','center']].map(([h,a])=><th key={h} className={`px-3 py-2 text-${a} whitespace-nowrap font-medium`}>{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="Select filters and click Fetch Report" /></td></tr>}
+            {rows.length === 0 && !isFetching && <tr><td colSpan={5}><EmptyState msg="No data found for the selected period" /></td></tr>}
             {rows.map((r, i) => (
               <tr key={i} className="hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.fromCity} → {r.toCity}</td>
@@ -767,7 +797,11 @@ function UnassignedVehiclesTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Report'}</Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
       {data && (
         <>
@@ -803,7 +837,7 @@ function UnassignedVehiclesTab() {
           </div>
         </>
       )}
-      {!data && !isFetching && <EmptyState msg="Click Fetch to load unassigned vehicles report" />}
+      {!data && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No unassigned orders" />)}
     </div>
   )
 }
@@ -867,7 +901,11 @@ function TripsInProgressTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Live Trips'}</Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
       {data && (
         <>
@@ -897,7 +935,7 @@ function TripsInProgressTab() {
           </div>
         </>
       )}
-      {!data && !isFetching && <EmptyState msg="Click Fetch to load live trips" />}
+      {!data && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No trips currently in transit" />)}
     </div>
   )
 }
@@ -918,6 +956,11 @@ function LrStatusFunnelTab() {
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
+      {isFetching && !data && (
+        <div className="py-12 flex justify-center">
+          <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+        </div>
+      )}
       {d && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
@@ -937,7 +980,7 @@ function LrStatusFunnelTab() {
           ))}
         </div>
       )}
-      {!d && !isFetching && <EmptyState msg="No data found for the selected period" />}
+      {!d && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No data found for the selected period" />)}
     </div>
   )
 }
@@ -952,7 +995,11 @@ function UnbilledLrsTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Unbilled LRs'}</Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
       {data && (
         <>
@@ -986,7 +1033,7 @@ function UnbilledLrsTab() {
           </div>
         </>
       )}
-      {!data && !isFetching && <EmptyState msg="Click Fetch to check unbilled LRs" />}
+      {!data && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="All delivered LRs are invoiced" />)}
     </div>
   )
 }
@@ -1427,7 +1474,7 @@ function LrRegisterTab() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && (
-              <tr><td colSpan={15}><EmptyState msg="Select filters and click Fetch Report" /></td></tr>
+              <tr><td colSpan={15}><EmptyState msg="No data found for the selected period" /></td></tr>
             )}
             {rows.map(r => (
               <tr key={r.lrId} className={`hover:bg-gray-50 ${r.isOverloaded ? 'bg-red-50' : ''}`}>
@@ -1501,7 +1548,7 @@ function InvoiceOutstandingTab() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && (
-              <tr><td colSpan={9}><EmptyState msg="Select filters and click Fetch Report" /></td></tr>
+              <tr><td colSpan={9}><EmptyState msg="No data found for the selected period" /></td></tr>
             )}
             {rows.map(r => (
               <tr key={r.invoiceId} className={`hover:bg-gray-50 ${r.daysOverdue > 0 ? 'bg-red-50' : ''}`}>
@@ -1581,7 +1628,7 @@ function CollectionReportTab() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && (
-              <tr><td colSpan={7}><EmptyState msg="Select filters and click Fetch Report" /></td></tr>
+              <tr><td colSpan={7}><EmptyState msg="No data found for the selected period" /></td></tr>
             )}
             {rows.map(r => (
               <tr key={r.paymentId} className="hover:bg-gray-50">
@@ -1829,7 +1876,7 @@ function OrderStatusTab() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && !isFetching && (
-              <tr><td colSpan={10}><EmptyState msg="Select filters and click Fetch Report" /></td></tr>
+              <tr><td colSpan={10}><EmptyState msg="No data found for the selected period" /></td></tr>
             )}
             {rows.map(r => (
               <tr key={r.orderId} className="hover:bg-gray-50">
@@ -2501,8 +2548,17 @@ function InvoiceAgingTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Aging'}</Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
+      {isFetching && !data && (
+        <div className="py-12 flex justify-center">
+          <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+        </div>
+      )}
       {d && (
         <>
           <div className="flex gap-3 flex-wrap">
@@ -2542,7 +2598,7 @@ function InvoiceAgingTab() {
           )}
         </>
       )}
-      {!d && !isFetching && <EmptyState msg="Click Fetch Aging to load outstanding invoices" />}
+      {!d && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="Click Fetch Aging to load outstanding invoices" />)}
     </div>
   )
 }
@@ -2766,7 +2822,11 @@ function ClientPendingBillingTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Loading...' : 'Fetch Pending Billing'}</Button>
+        <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
       {data && (
         <>
@@ -2796,7 +2856,7 @@ function ClientPendingBillingTab() {
           </div>
         </>
       )}
-      {!data && !isFetching && <EmptyState msg="Click Fetch to see clients with uninvoiced deliveries" />}
+      {!data && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="Click Fetch to see clients with uninvoiced deliveries" />)}
     </div>
   )
 }
@@ -2943,6 +3003,11 @@ function OnTimeDeliveryTab() {
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
+      {isFetching && !data && (
+        <div className="py-12 flex justify-center">
+          <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+        </div>
+      )}
       {d && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -2970,7 +3035,7 @@ function OnTimeDeliveryTab() {
           <p className="text-xs text-gray-500">Based on LRs delivered vs. order expected delivery date.</p>
         </>
       )}
-      {!d && !isFetching && <EmptyState msg="No data found for the selected period" />}
+      {!d && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No data found for the selected period" />)}
     </div>
   )
 }
@@ -2991,6 +3056,11 @@ function CancellationRateTab() {
         <DateRange from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
         {isFetching && <span className="text-sm text-gray-400 animate-pulse">Loading…</span>}
       </div>
+      {isFetching && !data && (
+        <div className="py-12 flex justify-center">
+          <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+        </div>
+      )}
       {d && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-white border rounded-xl p-4 text-center">
@@ -3011,7 +3081,7 @@ function CancellationRateTab() {
           </div>
         </div>
       )}
-      {!d && !isFetching && <EmptyState msg="No data found for the selected period" />}
+      {!d && (isFetching ? <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-gray-400" /></div> : <EmptyState msg="No data found for the selected period" />)}
     </div>
   )
 }
@@ -3031,7 +3101,11 @@ function StockLevelsTab() {
         <h2 className="text-lg font-semibold text-gray-800">Stock Levels &amp; Low Stock Alerts</h2>
         {isFetching
           ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
-          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
+          : <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>}
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
@@ -3283,7 +3357,11 @@ function TiresByVehicleTab() {
         <h2 className="text-lg font-semibold text-gray-800">Tires per Vehicle</h2>
         {isFetching
           ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
-          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
+          : <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>}
       </div>
       {vehicles.length > 0 && (
         <div className="space-y-4">
@@ -3339,7 +3417,11 @@ function KmPerTireTab() {
         <h2 className="text-lg font-semibold text-gray-800">Km Run per Tire</h2>
         {isFetching
           ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
-          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
+          : <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>}
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
@@ -3397,7 +3479,11 @@ function TireReplacementTab() {
         <h2 className="text-lg font-semibold text-gray-800">Tire Replacement Projection</h2>
         {isFetching
           ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
-          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
+          : <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>}
       </div>
       {rows.length > 0 && (
         <>
@@ -3454,7 +3540,11 @@ function TireCostPerKmTab() {
         <h2 className="text-lg font-semibold text-gray-800">Tire Cost per Km</h2>
         {isFetching
           ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
-          : <Button size="sm" variant="outline" onClick={() => refetch()}>Refresh</Button>}
+          : <button onClick={() => refetch()} disabled={isFetching}
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors">
+          <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>}
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
@@ -3482,7 +3572,7 @@ function TireCostPerKmTab() {
           </table>
         </div>
       )}
-      {!rows.length && !isFetching && <EmptyState msg="Click Fetch Report — only shows tires with km data" />}
+      {!rows.length && !isFetching && <EmptyState msg="No km data recorded — only tires with meter readings will appear" />}
     </div>
   )
 }
