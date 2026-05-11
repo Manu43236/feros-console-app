@@ -855,15 +855,43 @@ function BroadcastTab() {
 }
 
 // ─── Requests Tab ─────────────────────────────────────────────────────────────
-function RequestsTab({ onActivate }: { onActivate: (tenantId: number) => void }) {
+function RequestsTab({ onActivate: _onActivate }: { onActivate: (tenantId: number) => void }) {
   const qc = useQueryClient()
   const { data: reqRes, isLoading } = useQuery({
     queryKey: ['sa-upgrade-requests'],
     queryFn: () => subscriptionsApi.getUpgradeRequests(),
   })
   const requests: UpgradeRequest[] = reqRes?.data ?? []
-  const pending   = requests.filter(r => r.status === 'PENDING')
-  const others    = requests.filter(r => r.status !== 'PENDING')
+  const pending = requests.filter(r => r.status === 'PENDING')
+  const others  = requests.filter(r => r.status !== 'PENDING')
+
+  // Inline activate dialog state
+  const [activating, setActivating] = useState<UpgradeRequest | null>(null)
+  const [startDate,  setStartDate]  = useState('')
+  const [paymentRef, setPaymentRef] = useState('')
+
+  function openActivate(r: UpgradeRequest) {
+    setActivating(r)
+    setStartDate(new Date().toISOString().slice(0, 10))
+    setPaymentRef('')
+  }
+
+  const activateMutation = useMutation({
+    mutationFn: () => subscriptionsApi.activate(activating!.tenantId, {
+      planId:       activating!.planId!,
+      vehicleCount: activating!.vehicleCount!,
+      billingCycle: activating!.billingCycle ?? 'MONTHLY',
+      startDate,
+      paymentRef:   paymentRef || undefined,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sa-upgrade-requests'] })
+      qc.invalidateQueries({ queryKey: ['sa-sub-history'] })
+      setActivating(null)
+      import('sonner').then(({ toast }) => toast.success('Subscription activated'))
+    },
+    onError: () => import('sonner').then(({ toast }) => toast.error('Activation failed')),
+  })
 
   const dismissMutation = useMutation({
     mutationFn: (id: number) => subscriptionsApi.dismissUpgradeRequest(id),
@@ -897,7 +925,7 @@ function RequestsTab({ onActivate }: { onActivate: (tenantId: number) => void })
         {r.status === 'PENDING' && (
           <div className="flex gap-2 pt-1">
             <button
-              onClick={() => onActivate(r.tenantId)}
+              onClick={() => openActivate(r)}
               className="flex-1 py-1.5 bg-feros-navy text-white rounded-lg text-xs font-medium"
             >
               Activate
@@ -915,10 +943,68 @@ function RequestsTab({ onActivate }: { onActivate: (tenantId: number) => void })
     )
   }
 
+  // ── Inline Activate Modal ──────────────────────────────────────────────
+  const cycleLabel: Record<string, string> = { MONTHLY: 'Monthly', THREE_MONTHS: '3 Months', SIX_MONTHS: '6 Months', YEARLY: 'Annual' }
+
   if (isLoading) return <div className="py-12 text-center text-gray-400 text-sm">Loading…</div>
 
   return (
     <div className="space-y-6">
+      {/* ── Activate Modal ── */}
+      {activating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4 mx-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">Activate Subscription</h3>
+              <button onClick={() => setActivating(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+
+            {/* Summary */}
+            <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+              <div className="font-semibold text-gray-800">{activating.companyName}</div>
+              <div className="text-gray-600">{activating.planName} · {activating.vehicleCount} vehicles · {cycleLabel[activating.billingCycle ?? ''] ?? activating.billingCycle}</div>
+              <div className="text-gray-500 text-xs">Rate: {fmt(activating.pricePerVehicle)}/vehicle · Total: {fmt(activating.estimatedTotal)} (incl. GST)</div>
+            </div>
+
+            {/* Start Date */}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Start Date <span className="text-red-500">*</span></label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-feros-navy"
+              />
+            </div>
+
+            {/* Payment Ref */}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Payment Reference (optional)</label>
+              <input
+                type="text"
+                value={paymentRef}
+                onChange={e => setPaymentRef(e.target.value)}
+                placeholder="UTR / transaction ID"
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-feros-navy"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setActivating(null)} className="flex-1 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                onClick={() => activateMutation.mutate()}
+                disabled={!startDate || activateMutation.isPending}
+                className="flex-1 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50"
+              >
+                {activateMutation.isPending ? 'Activating…' : 'Confirm Activation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div>
         <div className="flex items-center gap-2 mb-4">
           <ArrowUpCircle size={16} className="text-feros-navy" />
