@@ -116,7 +116,7 @@ export function SubscriptionPage() {
   })
   const paidPlans: SubscriptionPlan[] = (plansRes?.data ?? [])
     .filter(p => p.pricePerVehicle && p.pricePerVehicle > 0)
-    .sort((a, b) => (a.pricePerVehicle ?? 0) - (b.pricePerVehicle ?? 0))
+    .sort((a, b) => (a.minVehicles ?? 0) - (b.minVehicles ?? 0))
 
   const upgradeMutation = useMutation({
     mutationFn: () => subscriptionsApi.submitUpgradeRequest({
@@ -146,10 +146,11 @@ export function SubscriptionPage() {
   const vehicleCount = (vehiclesRes?.data ?? []).filter((v: { isActive?: boolean }) => v.isActive !== false).length
   const userCount    = (usersRes?.data ?? []).filter((u: { isActive?: boolean }) => u.isActive !== false).length
 
+  const isTrial     = sub?.status === 'TRIAL'
   const days        = daysLeft(sub?.endDate)
   const statusStyle = STATUS_STYLES[sub?.status ?? 'TRIAL'] ?? STATUS_STYLES.TRIAL
   const StatusIcon  = statusStyle.icon
-  const isFree      = sub?.pricePerVehicle === 0 || sub?.pricePerVehicle == null && sub?.amount === 0
+  const isFree      = !isTrial && (sub?.pricePerVehicle === 0 || (sub?.pricePerVehicle == null && sub?.amount === 0))
 
   if (subLoading) {
     return (
@@ -169,8 +170,9 @@ export function SubscriptionPage() {
     )
   }
 
-  const vehicleLimit = sub.maxLorries ?? sub.vehicleCount ?? 0
-  const userLimit    = sub.maxUsers ?? -1
+  // Trial = unlimited vehicles and users
+  const vehicleLimit = isTrial ? -1 : (sub.maxLorries ?? sub.vehicleCount ?? 0)
+  const userLimit    = isTrial ? -1 : (sub.maxUsers ?? -1)
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -200,6 +202,12 @@ export function SubscriptionPage() {
                 <span className="font-semibold">
                   {sub.vehicleCount} vehicles × {fmt(sub.pricePerVehicle)}/vehicle
                 </span>
+              </div>
+            )}
+            {isTrial && (
+              <div className="flex items-center gap-1.5 text-blue-600 font-semibold">
+                <Clock size={14} />
+                Trial Period — Full Access
               </div>
             )}
             {isFree && (
@@ -286,7 +294,7 @@ export function SubscriptionPage() {
           <FeatureBadge label="Inventory"          enabled={sub.hasInventory} />
           <FeatureBadge label="Reports"            enabled={sub.hasReports} />
         </div>
-        {isFree && (
+        {!isTrial && [sub.hasFuelLogs, sub.hasPayroll, sub.hasInventory, sub.hasReports].some(f => !f) && (
           <p className="mt-3 text-xs text-gray-500 flex items-center gap-1.5">
             <Lock size={11} />
             Upgrade to a paid plan to unlock all features — starting at ₹499/vehicle/month.
