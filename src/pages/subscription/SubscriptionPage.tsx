@@ -13,12 +13,32 @@ import type { SubscriptionInvoice, SubscriptionPlan } from '@/types'
 const GST_RATE    = 0.18
 const ANNUAL_MTHS = 10
 
+const BILLING_CYCLES = [
+  { value: 'MONTHLY',      label: 'Monthly',             months: 1 },
+  { value: 'THREE_MONTHS', label: '3 Months',            months: 3 },
+  { value: 'SIX_MONTHS',   label: '6 Months',            months: 6 },
+  { value: 'YEARLY',       label: 'Annual',              months: 12 },
+]
+
+function cycleMonths(cycle: string, twoFree: boolean) {
+  if (cycle === 'YEARLY') return twoFree ? ANNUAL_MTHS : 12
+  const found = BILLING_CYCLES.find(c => c.value === cycle)
+  return found?.months ?? 1
+}
+
 function calcEstimate(plan: SubscriptionPlan, vehicles: number, cycle: string) {
   const twoFree = (plan.minVehicles ?? 0) >= 250
-  const months  = cycle === 'YEARLY' ? (twoFree ? ANNUAL_MTHS : 12) : 1
+  const months  = cycleMonths(cycle, twoFree)
   const base    = (plan.pricePerVehicle ?? 0) * vehicles * months
   const gst     = base * GST_RATE
   return { base, gst, total: base + gst, months }
+}
+
+function autoSelectPlan(plans: SubscriptionPlan[], count: number): SubscriptionPlan | null {
+  if (!count || count <= 0) return null
+  return plans.find(p =>
+    count >= (p.minVehicles ?? 0) && (p.maxVehicles === -1 || count <= (p.maxVehicles ?? Infinity))
+  ) ?? plans[plans.length - 1] ?? null
 }
 
 function fmtINR(n?: number | null) {
@@ -218,7 +238,10 @@ export function SubscriptionPage() {
             {sub.billingCycle && (
               <div className="flex items-center gap-1.5 text-gray-600">
                 <CreditCard size={14} />
-                <span className="capitalize">{sub.billingCycle.toLowerCase()} billing</span>
+                <span>{{
+                  MONTHLY: 'Monthly', THREE_MONTHS: '3-Month',
+                  SIX_MONTHS: '6-Month', YEARLY: 'Annual',
+                }[sub.billingCycle] ?? sub.billingCycle} billing</span>
               </div>
             )}
             {sub.endDate && (
@@ -318,12 +341,42 @@ export function SubscriptionPage() {
           </div>
         ) : (
           <>
+            {/* Vehicle count input — drives auto plan selection */}
+            <div>
+              <label className="text-xs text-gray-600 mb-1 block font-medium">
+                How many vehicles do you need?
+              </label>
+              <input
+                type="number" min={1}
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-white max-w-xs"
+                value={vehicles}
+                onChange={e => {
+                  const val = e.target.value
+                  setVehicles(val)
+                  const count = Number(val)
+                  if (count > 0) {
+                    const matched = autoSelectPlan(paidPlans, count)
+                    if (matched) setSelectedPlanId(matched.id)
+                  }
+                }}
+                placeholder="e.g. 25"
+              />
+              {vehicles && Number(vehicles) > 0 && (() => {
+                const matched = autoSelectPlan(paidPlans, Number(vehicles))
+                return matched ? (
+                  <p className="mt-1 text-xs text-blue-600">
+                    Matched to <strong>{matched.name}</strong> ({matched.minVehicles}–{matched.maxVehicles === -1 ? '∞' : matched.maxVehicles} vehicles)
+                  </p>
+                ) : null
+              })()}
+            </div>
+
             {/* Plan cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {paidPlans.map(plan => (
                 <button
                   key={plan.id}
-                  onClick={() => { setSelectedPlanId(plan.id); setVehicles('') }}
+                  onClick={() => setSelectedPlanId(plan.id)}
                   className={`text-left border rounded-xl p-3 transition-all ${
                     selectedPlanId === plan.id
                       ? 'border-feros-navy bg-feros-navy/5 ring-1 ring-feros-navy'
@@ -345,32 +398,31 @@ export function SubscriptionPage() {
             {selectedPlanId && (() => {
               const plan = paidPlans.find(p => p.id === selectedPlanId)!
               const v    = Number(vehicles) || 0
+              const twoFree = (plan.minVehicles ?? 0) >= 250
               const est  = v > 0 ? calcEstimate(plan, v, cycle) : null
               return (
                 <div className="border rounded-xl p-4 space-y-3 bg-gray-50">
                   <p className="text-sm font-medium text-gray-700">Configure your <strong>{plan.name}</strong> plan</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-600 mb-1 block">
-                        Number of Vehicles <span className="text-gray-400">(min {plan.minVehicles ?? 1})</span>
-                      </label>
-                      <input
-                        type="number" min={plan.minVehicles ?? 1}
-                        className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
-                        value={vehicles}
-                        onChange={e => setVehicles(e.target.value)}
-                        placeholder={`Min ${plan.minVehicles ?? 1}`}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-600 mb-1 block">Billing Cycle</label>
-                      <select
-                        className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
-                        value={cycle} onChange={e => setCycle(e.target.value)}
-                      >
-                        <option value="MONTHLY">Monthly</option>
-                        <option value="YEARLY">Annual{(plan.minVehicles ?? 0) >= 250 ? ' (2 months free)' : ''}</option>
-                      </select>
+                  <div>
+                    <label className="text-xs text-gray-600 mb-1 block">Billing Cycle</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {BILLING_CYCLES.map(bc => (
+                        <button
+                          key={bc.value}
+                          type="button"
+                          onClick={() => setCycle(bc.value)}
+                          className={`text-center border rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                            cycle === bc.value
+                              ? 'border-feros-navy bg-feros-navy/5 text-feros-navy ring-1 ring-feros-navy'
+                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}
+                        >
+                          {bc.label}
+                          {bc.value === 'YEARLY' && twoFree && (
+                            <span className="block text-green-600 text-xs font-normal">2 months free</span>
+                          )}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
@@ -392,6 +444,9 @@ export function SubscriptionPage() {
                           <span>Total</span>
                           <span>{fmtINR(est.total)}</span>
                         </div>
+                        {cycle === 'YEARLY' && twoFree && (
+                          <p className="text-green-600 text-xs pt-0.5">Annual — pay 10 months, get 12 (2 months free)</p>
+                        )}
                       </div>
                     </div>
                   )}

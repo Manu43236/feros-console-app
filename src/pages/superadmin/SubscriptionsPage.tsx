@@ -20,8 +20,15 @@ function fmt(n?: number | null) {
   return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 }
 
+function cycleMonths(cycle: string, twoMonthsFree: boolean) {
+  if (cycle === 'YEARLY')       return twoMonthsFree ? ANNUAL_MTHS : 12
+  if (cycle === 'SIX_MONTHS')   return 6
+  if (cycle === 'THREE_MONTHS') return 3
+  return 1
+}
+
 function calcAmounts(pricePerVehicle: number, vehicleCount: number, cycle: string, twoMonthsFree: boolean) {
-  const months = cycle === 'YEARLY' ? (twoMonthsFree ? ANNUAL_MTHS : 12) : 1
+  const months = cycleMonths(cycle, twoMonthsFree)
   const base   = pricePerVehicle * vehicleCount * months
   const gst    = base * GST_RATE
   return { base, gst, total: base + gst, months }
@@ -67,10 +74,10 @@ function AmountPreview({ pricePerVehicle, vehicleCount, cycle, twoMonthsFree }: 
           <span>{fmt(total)}</span>
         </div>
         {cycle === 'YEARLY' && twoMonthsFree && (
-          <p className="text-blue-600 text-xs mt-1">Annual plan — 2 months free (paying for 10, getting 12) · 250+ vehicles benefit</p>
+          <p className="text-green-600 text-xs mt-1">Annual — pay 10 months, get 12 (2 months free for 250+ vehicles)</p>
         )}
         {cycle === 'YEARLY' && !twoMonthsFree && (
-          <p className="text-gray-500 text-xs mt-1">Annual plan — 12 months</p>
+          <p className="text-gray-500 text-xs mt-1">Annual — 12 months</p>
         )}
       </div>
     </div>
@@ -491,7 +498,9 @@ function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | nu
                           onChange={e => setActionForm(f => ({ ...f, billingCycle: e.target.value }))}
                         >
                           <option value="MONTHLY">Monthly</option>
-                          <option value="YEARLY">Annual (2 months free)</option>
+                          <option value="THREE_MONTHS">3 Months</option>
+                          <option value="SIX_MONTHS">6 Months</option>
+                          <option value="YEARLY">Annual{(selectedPlan?.minVehicles ?? 0) >= 250 ? ' (2 months free)' : ''}</option>
                         </select>
                       </div>
                     </div>
@@ -519,7 +528,11 @@ function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | nu
                   {actionErrs.startDate && <p className="text-red-500 text-xs mt-1">{actionErrs.startDate}</p>}
                   {actionForm.startDate && (
                     <p className="text-xs text-gray-400 mt-1">
-                      End date auto-calculated: {actionForm.billingCycle === 'YEARLY' ? '12 months' : '1 month'} from start
+                      End date auto-calculated: {
+                        actionForm.billingCycle === 'YEARLY' ? '12 months' :
+                        actionForm.billingCycle === 'SIX_MONTHS' ? '6 months' :
+                        actionForm.billingCycle === 'THREE_MONTHS' ? '3 months' : '1 month'
+                      } from start
                     </p>
                   )}
                 </div>
@@ -710,7 +723,7 @@ function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | nu
                   <td className="px-4 py-3 text-gray-600 text-xs">
                     {h.vehicleCount ? `${h.vehicleCount} × ${fmt(h.pricePerVehicle)}` : h.status === 'TRIAL' ? <span className="text-blue-600">Unlimited</span> : '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{h.billingCycle ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500">{{MONTHLY:'Monthly',THREE_MONTHS:'3-Month',SIX_MONTHS:'6-Month',YEARLY:'Annual'}[h.billingCycle ?? ''] ?? h.billingCycle ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500">{h.startDate}</td>
                   <td className="px-4 py-3 text-gray-500">{h.endDate ?? '∞'}</td>
                   <td className="px-4 py-3 text-right">{fmt(h.totalAmount)}</td>
@@ -864,7 +877,7 @@ function RequestsTab({ onActivate }: { onActivate: (tenantId: number) => void })
           <div>
             <p className="font-semibold text-gray-900">{r.companyName}</p>
             <p className="text-sm text-feros-navy font-medium mt-0.5">
-              {r.planName} · {r.vehicleCount} vehicles · {r.billingCycle}
+              {r.planName} · {r.vehicleCount} vehicles · {{MONTHLY:'Monthly',THREE_MONTHS:'3-Month',SIX_MONTHS:'6-Month',YEARLY:'Annual'}[r.billingCycle ?? ''] ?? r.billingCycle}
             </p>
           </div>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
