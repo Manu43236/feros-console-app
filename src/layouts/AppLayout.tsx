@@ -544,7 +544,7 @@ export function AppLayout() {
         )}
 
         {/* Subscription lockout banner */}
-        {(subStatus === 'EXPIRED' || subStatus === 'SUSPENDED' || isDateExpired) && (
+        {locked && (
           <div className={cn(
             'px-5 py-2.5 flex items-center gap-3 text-sm shrink-0',
             subStatus === 'SUSPENDED' ? 'bg-yellow-500 text-white' : 'bg-red-600 text-white'
