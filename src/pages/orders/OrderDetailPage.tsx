@@ -164,7 +164,7 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
   const qc = useQueryClient()
   const { data: staffRes } = useQuery({ queryKey: ['users'], queryFn: staffApi.getUsers })
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<AssignStaffForm>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AssignStaffForm>({
     resolver: zodResolver(assignStaffSchema) as Resolver<AssignStaffForm>,
   })
 
@@ -202,14 +202,12 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>{slotRole === 'DRIVER' ? 'Driver' : 'Cleaner'} *</Label>
-            <select {...register('userId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-              <option value="">Select {slotRole === 'DRIVER' ? 'driver' : 'cleaner'}</option>
-              {eligible.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.name} · {u.phone}{u.isAssigned ? ` (On Trip: ${u.activeOrderNumber ?? '—'})` : ''}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              placeholder={`Select ${slotRole === 'DRIVER' ? 'driver' : 'cleaner'}`}
+              value={watch('userId') ? String(watch('userId')) : ''}
+              onValueChange={v => setValue('userId', Number(v), { shouldValidate: true })}
+              options={eligible.map(u => ({ value: String(u.id), label: `${u.name} · ${u.phone}${u.isAssigned ? ` (On Trip: ${u.activeOrderNumber ?? '—'})` : ''}` }))}
+            />
             {errors.userId && <p className="text-red-500 text-xs">{errors.userId.message}</p>}
             {eligible.length === 0 && (
               <p className="text-xs text-orange-500">
@@ -476,7 +474,7 @@ function ReplaceVehicleDialog({ orderId, breakdown, open, onClose }: {
   const qc = useQueryClient()
   const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehiclesApi.getAll() })
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<ReplaceForm>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<ReplaceForm>({
     resolver: zodResolver(replaceSchema) as Resolver<ReplaceForm>,
     defaultValues: { transferStaff: 'true' },
   })
@@ -517,14 +515,12 @@ function ReplaceVehicleDialog({ orderId, breakdown, open, onClose }: {
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Replacement Vehicle *</Label>
-            <select {...register('replacementVehicleId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-              <option value="">Select vehicle</option>
-              {availableVehicles.map(v => (
-                <option key={v.id} value={v.id}>
-                  {v.registrationNumber}{v.vehicleTypeName ? ` · ${v.vehicleTypeName}` : ''}{v.capacityInTons ? ` · ${v.capacityInTons}T` : ''}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              placeholder="Select vehicle"
+              value={watch('replacementVehicleId') ? String(watch('replacementVehicleId')) : ''}
+              onValueChange={v => setValue('replacementVehicleId', Number(v), { shouldValidate: true })}
+              options={availableVehicles.map(v => ({ value: String(v.id), label: `${v.registrationNumber}${v.vehicleTypeName ? ` · ${v.vehicleTypeName}` : ''}${v.capacityInTons ? ` · ${v.capacityInTons}T` : ''}` }))}
+            />
             {errors.replacementVehicleId && <p className="text-red-500 text-xs">{errors.replacementVehicleId.message}</p>}
           </div>
           <div className="space-y-1.5">

@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { cn } from '@/lib/utils'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
 import type { StaffDocument } from '@/types'
 
@@ -330,7 +331,7 @@ export function StaffDetailPage() {
     enabled: !!selectedState,
   })
 
-  const { register, handleSubmit, formState: { errors, isDirty }, reset, watch } = useForm<ProfileFormData>({
+  const { register, handleSubmit, formState: { errors, isDirty }, reset, watch, setValue } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema) as Resolver<ProfileFormData>,
   })
 
@@ -579,20 +580,21 @@ export function StaffDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>State</Label>
-                <select
-                  {...register('stateId')}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="">Select state</option>
-                  {statesRes?.data?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <SearchableSelect
+                  placeholder="Select state"
+                  value={watch('stateId') ? String(watch('stateId')) : ''}
+                  onValueChange={v => setValue('stateId', v ? Number(v) : undefined, { shouldValidate: true })}
+                  options={(statesRes?.data ?? []).map(s => ({ value: String(s.id), label: s.name }))}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>City</Label>
-                <select {...register('cityId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                  <option value="">Select city</option>
-                  {citiesRes?.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <SearchableSelect
+                  placeholder="Select city"
+                  value={watch('cityId') ? String(watch('cityId')) : ''}
+                  onValueChange={v => setValue('cityId', v ? Number(v) : undefined, { shouldValidate: true })}
+                  options={(citiesRes?.data ?? []).map(c => ({ value: String(c.id), label: c.name }))}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Pincode</Label>

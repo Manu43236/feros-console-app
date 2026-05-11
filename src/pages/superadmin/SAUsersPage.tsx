@@ -53,7 +53,7 @@ function AddUserDialog({ open, onClose, tenants }: {
   open: boolean; onClose: () => void; tenants: Tenant[]
 }) {
   const qc = useQueryClient()
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<AddUserForm>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AddUserForm>({
     resolver: zodResolver(addUserSchema) as Resolver<AddUserForm>,
   })
 
@@ -79,12 +79,13 @@ function AddUserDialog({ open, onClose, tenants }: {
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 mt-2">
           <div>
             <Label>Tenant <span className="text-red-500">*</span></Label>
-            <select {...register('tenantId')} className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.tenantId ? 'border-red-400' : 'border-input'}`}>
-              <option value="">Select tenant</option>
-              {sorted.map(t => (
-                <option key={t.id} value={String(t.id)}>{t.companyName}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              className={`mt-1 ${errors.tenantId ? 'border-red-400' : ''}`}
+              placeholder="Select tenant"
+              value={watch('tenantId') ?? ''}
+              onValueChange={v => setValue('tenantId', v, { shouldValidate: true })}
+              options={sorted.map(t => ({ value: String(t.id), label: t.companyName }))}
+            />
             {errors.tenantId && <p className="text-red-500 text-xs mt-1">{errors.tenantId.message}</p>}
           </div>
           <div>

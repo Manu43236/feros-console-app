@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── Stock In Dialog ────────────────────────────────────────────────────────────
 function StockInDialog({ onClose }: { onClose: () => void }) {
@@ -49,16 +50,12 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
         <div className="space-y-4">
           <div>
             <Label>Spare Part *</Label>
-            <select
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              value={form.sparePartId}
-              onChange={e => setForm(f => ({ ...f, sparePartId: Number(e.target.value) }))}
-            >
-              <option value={0}>Select part…</option>
-              {parts.map(p => (
-                <option key={p.id} value={p.id}>{p.name}{p.partNumber ? ` (${p.partNumber})` : ''}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              placeholder="Select part…"
+              value={form.sparePartId ? String(form.sparePartId) : ''}
+              onValueChange={v => setForm(f => ({ ...f, sparePartId: Number(v) }))}
+              options={parts.map(p => ({ value: String(p.id), label: p.name + (p.partNumber ? ` (${p.partNumber})` : '') }))}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

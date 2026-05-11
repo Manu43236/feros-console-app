@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/authStore'
 import { staffApi } from '@/api/staff'
 import { tenantsApi } from '@/api/superadmin'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { compressIfNeeded } from '@/lib/imageCompressor'
 import type { SubscriptionStatus } from '@/types'
 
@@ -134,7 +135,7 @@ function AccountTab({ userId, role }: { userId: number; role: string | null }) {
 
   const profile = profileRes?.data
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<AccountFormData>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AccountFormData>({
     resolver: zodResolver(accountSchema) as Resolver<AccountFormData>,
     values: profile ? {
       designationId:         profile.designationId ?? 0,
@@ -224,17 +225,23 @@ function AccountTab({ userId, role }: { userId: number; role: string | null }) {
             </div>
             <div>
               <Label>State</Label>
-              <select {...register('stateId')} className="w-full mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">Select</option>
-                {(statesRes?.data ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <SearchableSelect
+                className="mt-1"
+                placeholder="Select state"
+                value={watch('stateId') ? String(watch('stateId')) : ''}
+                onValueChange={v => setValue('stateId', v ? Number(v) : undefined, { shouldValidate: true })}
+                options={(statesRes?.data ?? []).map(s => ({ value: String(s.id), label: s.name }))}
+              />
             </div>
             <div>
               <Label>City</Label>
-              <select {...register('cityId')} className="w-full mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">Select</option>
-                {(citiesRes?.data ?? []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <SearchableSelect
+                className="mt-1"
+                placeholder="Select city"
+                value={watch('cityId') ? String(watch('cityId')) : ''}
+                onValueChange={v => setValue('cityId', v ? Number(v) : undefined, { shouldValidate: true })}
+                options={(citiesRes?.data ?? []).map(c => ({ value: String(c.id), label: c.name }))}
+              />
             </div>
             <div>
               <Label>Pincode</Label>

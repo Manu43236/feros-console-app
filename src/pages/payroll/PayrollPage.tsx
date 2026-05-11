@@ -133,14 +133,13 @@ function GenerateDialog({ open, onClose, users }: {
           {/* Staff */}
           <div>
             <Label>Staff <span className="text-red-500">*</span></Label>
-            <select
-              {...register('userId')}
-              onChange={e => { register('userId').onChange(e); setRateAutoFilled(false) }}
-              className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.userId ? 'border-red-400' : 'border-input'}`}
-            >
-              <option value="">Select staff</option>
-              {users.map(u => <option key={u.id} value={String(u.id)}>{u.name} — {u.role}</option>)}
-            </select>
+            <SearchableSelect
+              className={`mt-1 ${errors.userId ? 'border-red-400' : ''}`}
+              placeholder="Select staff"
+              value={selectedUserId ?? ''}
+              onValueChange={v => { setValue('userId', v, { shouldValidate: true }); setRateAutoFilled(false) }}
+              options={users.map(u => ({ value: String(u.id), label: `${u.name} — ${u.role}` }))}
+            />
             {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId.message}</p>}
           </div>
 
@@ -365,7 +364,7 @@ function AdvanceDialog({ open, onClose, users }: {
   open: boolean; onClose: () => void; users: StaffUser[]
 }) {
   const qc = useQueryClient()
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<AdvanceForm>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AdvanceForm>({
     resolver: zodResolver(advanceSchema) as Resolver<AdvanceForm>,
     defaultValues: { advanceDate: format(new Date(), 'yyyy-MM-dd') },
   })
@@ -387,10 +386,13 @@ function AdvanceDialog({ open, onClose, users }: {
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 mt-2">
           <div>
             <Label>Staff <span className="text-red-500">*</span></Label>
-            <select {...register('userId')} className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.userId ? 'border-red-400' : 'border-input'}`}>
-              <option value="">Select staff</option>
-              {users.map(u => <option key={u.id} value={String(u.id)}>{u.name} — {u.role}</option>)}
-            </select>
+            <SearchableSelect
+              className={`mt-1 ${errors.userId ? 'border-red-400' : ''}`}
+              placeholder="Select staff"
+              value={watch('userId') ?? ''}
+              onValueChange={v => setValue('userId', v, { shouldValidate: true })}
+              options={users.map(u => ({ value: String(u.id), label: `${u.name} — ${u.role}` }))}
+            />
             {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId.message}</p>}
           </div>
           <div>

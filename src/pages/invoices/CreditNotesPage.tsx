@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { CreditNote } from '@/types'
 import { cn } from '@/lib/utils'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
@@ -85,29 +86,30 @@ function AddCreditNoteDialog({ open, onClose }: { open: boolean; onClose: () => 
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4">
           <div>
             <Label>Client *</Label>
-            <select
-              {...register('clientId')}
-              onChange={e => {
-                setValue('clientId', Number(e.target.value))
+            <SearchableSelect
+              className="mt-1"
+              placeholder="Select client"
+              value={clientIdVal ? String(clientIdVal) : ''}
+              onValueChange={v => {
+                setValue('clientId', Number(v))
                 setValue('invoiceId', undefined)
-                setSelectedClientId(Number(e.target.value) || null)
+                setSelectedClientId(Number(v) || null)
               }}
-              className="w-full border rounded-md px-3 py-2 text-sm mt-1 bg-white"
-            >
-              <option value="">Select client</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.clientName}</option>)}
-            </select>
+              options={clients.map(c => ({ value: String(c.id), label: c.clientName }))}
+            />
             {errors.clientId && <p className="text-xs text-red-500 mt-1">{errors.clientId.message}</p>}
           </div>
 
           <div>
             <Label>Linked Invoice (optional)</Label>
-            <select {...register('invoiceId')} className="w-full border rounded-md px-3 py-2 text-sm mt-1 bg-white" disabled={!clientIdVal}>
-              <option value="">None (standalone credit note)</option>
-              {invoices.map(i => (
-                <option key={i.id} value={i.id}>{i.invoiceNumber} — ₹{i.totalAmount?.toLocaleString('en-IN')}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              className="mt-1"
+              placeholder="None (standalone credit note)"
+              value={watch('invoiceId') ? String(watch('invoiceId')) : ''}
+              onValueChange={v => setValue('invoiceId', v ? Number(v) : undefined)}
+              options={invoices.map(i => ({ value: String(i.id), label: `${i.invoiceNumber} — ₹${i.totalAmount?.toLocaleString('en-IN')}` }))}
+              disabled={!clientIdVal}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
