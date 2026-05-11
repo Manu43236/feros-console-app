@@ -392,7 +392,9 @@ export function AppLayout() {
     navigate('/sa/tenants', { replace: true })
   }
 
-  const locked = subStatus === 'EXPIRED' || subStatus === 'SUSPENDED'
+  const subEndDate = mySubRes?.data?.endDate
+  const isDateExpired = subEndDate != null && new Date(subEndDate) < new Date()
+  const locked = subStatus === 'EXPIRED' || subStatus === 'SUSPENDED' || isDateExpired
 
   // Routes that require a specific plan feature (free plan = false)
   const FEATURE_ROUTES: Record<string, boolean | undefined> = {
@@ -542,16 +544,16 @@ export function AppLayout() {
         )}
 
         {/* Subscription lockout banner */}
-        {(subStatus === 'EXPIRED' || subStatus === 'SUSPENDED') && (
+        {(subStatus === 'EXPIRED' || subStatus === 'SUSPENDED' || isDateExpired) && (
           <div className={cn(
             'px-5 py-2.5 flex items-center gap-3 text-sm shrink-0',
-            subStatus === 'EXPIRED' ? 'bg-red-600 text-white' : 'bg-yellow-500 text-white'
+            subStatus === 'SUSPENDED' ? 'bg-yellow-500 text-white' : 'bg-red-600 text-white'
           )}>
             <AlertTriangle size={16} className="shrink-0" />
             <span className="flex-1">
-              {subStatus === 'EXPIRED'
-                ? 'Your subscription has expired. All features are disabled.'
-                : 'Your account has been suspended. Please contact FEROS support.'}
+              {subStatus === 'SUSPENDED'
+                ? 'Your account has been suspended. Please contact FEROS support.'
+                : 'Your subscription has expired. All features are disabled.'}
             </span>
             <Link
               to="/subscription"
