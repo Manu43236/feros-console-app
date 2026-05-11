@@ -100,13 +100,15 @@ function PlansTab() {
     queryKey: ['sa-plans-all'],
     queryFn: () => subscriptionPlansApi.getAll(),
   })
-  const plans: SubscriptionPlan[] = (plansRes?.data ?? []).slice().sort((a, b) => {
+  const allPlans: SubscriptionPlan[] = (plansRes?.data ?? []).slice().sort((a, b) => {
     const order = (p: SubscriptionPlan) =>
       p.name.toLowerCase() === 'trial' ? 0
       : p.name.toLowerCase() === 'free'  ? 1
       : (p.pricePerVehicle ?? 0)
     return order(a) - order(b)
   })
+  const [showInactive, setShowInactive] = useState(false)
+  const plans = showInactive ? allPlans : allPlans.filter(p => p.isActive)
 
   const toggleMutation = useMutation({
     mutationFn: (id: number) => subscriptionPlansApi.toggle(id),
@@ -144,7 +146,13 @@ function PlansTab() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">{plans.filter(p => p.isActive).length} active plans</p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">{allPlans.filter(p => p.isActive).length} active plans</p>
+        <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer select-none">
+          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
+          Show inactive
+        </label>
+      </div>
 
       {/* Edit dialog */}
       {editPlan && (
