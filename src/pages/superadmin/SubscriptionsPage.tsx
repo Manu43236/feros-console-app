@@ -707,9 +707,9 @@ function HistoryTab() {
               {history.map(h => (
                 <tr key={h.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3"><StatusBadge status={h.status} /></td>
-                  <td className="px-4 py-3 font-medium">{h.planName}</td>
+                  <td className="px-4 py-3 font-medium">{h.planName && h.planName !== '-' ? h.planName : (h.status === 'TRIAL' ? 'Trial' : '—')}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">
-                    {h.vehicleCount ? `${h.vehicleCount} × ${fmt(h.pricePerVehicle)}` : '—'}
+                    {h.vehicleCount ? `${h.vehicleCount} × ${fmt(h.pricePerVehicle)}` : h.status === 'TRIAL' ? <span className="text-blue-600">Unlimited</span> : '—'}
                   </td>
                   <td className="px-4 py-3 text-gray-500">{h.billingCycle ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500">{h.startDate}</td>
