@@ -214,18 +214,18 @@ function PlansTab() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {plans.map(plan => {
-            const isFree = !plan.pricePerVehicle || plan.pricePerVehicle === 0
+            const isPaid = plan.pricePerVehicle && plan.pricePerVehicle > 0
             return (
               <div key={plan.id} className={`bg-white rounded-xl border p-4 space-y-3 ${!plan.isActive ? 'opacity-50' : ''}`}>
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold text-gray-900">{plan.name}</h3>
-                    {isFree ? (
-                      <p className="text-sm font-bold text-blue-600 mt-0.5">Free</p>
-                    ) : (
+                    {isPaid ? (
                       <p className="text-sm font-bold text-feros-navy mt-0.5">
                         {fmt(plan.pricePerVehicle)}<span className="text-xs font-normal text-gray-500">/vehicle/month</span>
                       </p>
+                    ) : (
+                      <p className="text-sm font-bold text-blue-600 mt-0.5">Free</p>
                     )}
                   </div>
                   <button onClick={() => toggleMutation.mutate(plan.id)} className="text-gray-400 hover:text-gray-700">
@@ -240,7 +240,7 @@ function PlansTab() {
                     {plan.minVehicles ?? 1}–{plan.maxVehicles === -1 ? '∞' : plan.maxVehicles} vehicles
                   </p>
                   <p>Users: {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers}</p>
-                  {!isFree && (() => {
+                  {isPaid && (() => {
                     const qualifies = (plan.minVehicles ?? 0) >= 250
                     const annualRate = qualifies ? ANNUAL_MTHS : 12
                     return (
@@ -300,7 +300,8 @@ function HistoryTab() {
   const { data: tenantsRes } = useQuery({ queryKey: ['sa-tenants'], queryFn: () => tenantsApi.getAll() })
   const { data: plansRes }   = useQuery({ queryKey: ['sa-plans-active'], queryFn: () => subscriptionPlansApi.getActive() })
   const tenants  = tenantsRes?.data ?? []
-  const plans: SubscriptionPlan[]    = plansRes?.data ?? []
+  // Exclude Trial from activate dropdown — Trial is auto-managed on signup
+  const plans: SubscriptionPlan[] = (plansRes?.data ?? []).filter(p => p.name.toLowerCase() !== 'trial')
 
   const { data: historyRes, isLoading } = useQuery({
     queryKey: ['sa-sub-history', selectedTenantId],
@@ -309,9 +310,8 @@ function HistoryTab() {
   })
   const history: SubscriptionHistory[] = historyRes?.data ?? []
 
-  const selectedPlan   = plans.find(p => String(p.id) === actionForm.planId)
-  const vehicleCount   = Number(actionForm.vehicleCount) || 0
-  const isFreeSelected = selectedPlan && (!selectedPlan.pricePerVehicle || selectedPlan.pricePerVehicle === 0)
+  const selectedPlan = plans.find(p => String(p.id) === actionForm.planId)
+  const vehicleCount = Number(actionForm.vehicleCount) || 0
 
   // For extend: get current vehicleCount + pricePerVehicle from latest ACTIVE history
   const latestActive   = history.find(h => h.status === 'ACTIVE')
@@ -372,7 +372,7 @@ function HistoryTab() {
     const t = actionDialog ? actionDialog.type : null
     if (t === 'activate') {
       if (!actionForm.planId) e.planId = 'Select a plan'
-      if (!isFreeSelected && !actionForm.vehicleCount) e.vehicleCount = 'Vehicle count is required'
+      if (!actionForm.vehicleCount) e.vehicleCount = 'Vehicle count is required'
       if (!actionForm.startDate) e.startDate = 'Start date is required'
     }
     if (t === 'extend-trial') {
@@ -460,7 +460,7 @@ function HistoryTab() {
                   {actionErrs.planId && <p className="text-red-500 text-xs mt-1">{actionErrs.planId}</p>}
                 </div>
 
-                {selectedPlan && !isFreeSelected && (
+                {selectedPlan && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -503,12 +503,6 @@ function HistoryTab() {
                   </>
                 )}
 
-                {isFreeSelected && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700">
-                    Free plan — 2 vehicles, 10 users, core modules only. No invoice generated.
-                  </div>
-                )}
-
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Start Date <span className="text-red-500">*</span></label>
                   <input
@@ -518,14 +512,14 @@ function HistoryTab() {
                     onChange={e => { setActionForm(f => ({ ...f, startDate: e.target.value })); setActionErrs(v => ({ ...v, startDate: '' })) }}
                   />
                   {actionErrs.startDate && <p className="text-red-500 text-xs mt-1">{actionErrs.startDate}</p>}
-                  {!isFreeSelected && actionForm.startDate && (
+                  {actionForm.startDate && (
                     <p className="text-xs text-gray-400 mt-1">
                       End date auto-calculated: {actionForm.billingCycle === 'YEARLY' ? '12 months' : '1 month'} from start
                     </p>
                   )}
                 </div>
 
-                {!isFreeSelected && (
+                {selectedPlan && (
                   <>
                     <div>
                       <label className="text-xs text-gray-600 mb-1 block">Amount override (₹, optional)</label>
