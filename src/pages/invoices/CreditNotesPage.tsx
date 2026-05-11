@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -238,6 +239,7 @@ function DeleteDialog({ cn: note, onClose }: { cn: CreditNote | null; onClose: (
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CreditNotesPage() {
+  const { locked } = useSubscription()
   const qc = useQueryClient()
   const [search, setSearch]       = useState('')
   const [addOpen, setAddOpen]     = useState(false)
@@ -279,9 +281,11 @@ export default function CreditNotesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Credit Notes</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage credit notes issued to clients</p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus size={16} className="mr-1.5" /> Create Credit Note
-        </Button>
+        {!locked && (
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus size={16} className="mr-1.5" /> Create Credit Note
+          </Button>
+        )}
       </div>
 
       {/* Stats */}

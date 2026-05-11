@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ordersApi } from '@/api/orders'
 import { vehiclesApi } from '@/api/vehicles'
@@ -285,6 +286,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AssignmentsPage() {
+  const { locked } = useSubscription()
   const [tab, setTab] = useState<'vehicle' | 'driver'>('vehicle')
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [showAssignDriver, setShowAssignDriver] = useState(false)
@@ -383,7 +385,7 @@ export default function AssignmentsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage vehicle and driver assignments for orders</p>
         </div>
-        {tab === 'vehicle' ? (
+        {!locked && (tab === 'vehicle' ? (
           <Button onClick={() => setShowAddVehicle(true)}>
             <Plus size={16} className="mr-2" />
             Add Assignment
@@ -393,7 +395,7 @@ export default function AssignmentsPage() {
             <Plus size={16} className="mr-2" />
             Assign Driver
           </Button>
-        )}
+        ))}
       </div>
 
       {/* Tabs */}

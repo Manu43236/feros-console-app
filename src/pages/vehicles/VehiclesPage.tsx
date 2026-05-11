@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
@@ -663,6 +664,7 @@ const vehicleStatusBadge: Record<VehicleStatusType, string> = {
 
 // ── main page ─────────────────────────────────────────────────────────────────
 export function VehiclesPage() {
+  const { locked } = useSubscription()
   const navigate = useNavigate()
   const [search, setSearch]           = useState('')
   const [formOpen, setFormOpen]       = useState(false)
@@ -723,14 +725,16 @@ export function VehiclesPage() {
             )}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
-            <Upload size={16} /> Bulk Upload
-          </Button>
-          <Button onClick={openCreate} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
-            <Plus size={16} /> Add Vehicle
-          </Button>
-        </div>
+        {!locked && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
+              <Upload size={16} /> Bulk Upload
+            </Button>
+            <Button onClick={openCreate} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+              <Plus size={16} /> Add Vehicle
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}

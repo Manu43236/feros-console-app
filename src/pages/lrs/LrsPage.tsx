@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
@@ -169,6 +170,7 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export function LrsPage() {
+  const { locked } = useSubscription()
   const navigate    = useNavigate()
   const [search, setSearch]       = useState('')
   const [statusFilter, setStatus] = useState<string>('')
@@ -202,13 +204,15 @@ export function LrsPage() {
           <h1 className="text-2xl font-bold text-gray-900">LR Register</h1>
           <p className="text-sm text-gray-500 mt-1">Lorry Receipts — loading, transit & delivery tracking</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 bg-feros-navy text-white px-4 py-2 rounded-lg hover:bg-feros-navy/90 text-sm font-medium"
-        >
-          <Plus className="h-4 w-4" />
-          Create LR
-        </button>
+        {!locked && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 bg-feros-navy text-white px-4 py-2 rounded-lg hover:bg-feros-navy/90 text-sm font-medium"
+          >
+            <Plus className="h-4 w-4" />
+            Create LR
+          </button>
+        )}
       </div>
 
       {/* Filters */}

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { meterReadingsApi } from '@/api/meterReadings'
 import { vehiclesApi } from '@/api/vehicles'
@@ -404,6 +405,7 @@ function ReadingCard({
 type FilterMode = 'ALL' | MeterReadingType
 
 export default function MeterReadingsPage() {
+  const { locked } = useSubscription()
   const role    = useAuthStore(s => s.role)
   const isAdmin = role === 'ADMIN'
 
@@ -455,9 +457,11 @@ export default function MeterReadingsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Meter Readings</h1>
           <p className="text-sm text-gray-500 mt-0.5">Track odometer readings across your fleet</p>
         </div>
-        <Button onClick={() => setShowAdd(true)} className="gap-2">
-          <Plus size={16} /> Record Reading
-        </Button>
+        {!locked && (
+          <Button onClick={() => setShowAdd(true)} className="gap-2">
+            <Plus size={16} /> Record Reading
+          </Button>
+        )}
       </div>
 
       {/* Stats */}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -304,6 +305,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
 const ALL_STATUSES: InvoiceStatus[] = ['DRAFT','SENT','PARTIALLY_PAID','PAID','OVERDUE','CANCELLED']
 
 export function InvoicesPage() {
+  const { locked } = useSubscription()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [search, setSearch]         = useState('')
@@ -338,9 +340,11 @@ export function InvoicesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
           <p className="text-gray-500 text-sm mt-0.5">{all.length} total invoices</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
-          <Plus size={16} /> New Invoice
-        </Button>
+        {!locked && (
+          <Button onClick={() => setCreateOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+            <Plus size={16} /> New Invoice
+          </Button>
+        )}
       </div>
 
       {/* Summary cards */}

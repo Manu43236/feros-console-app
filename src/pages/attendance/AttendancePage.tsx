@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { format, subDays } from 'date-fns'
@@ -464,6 +465,7 @@ function PendingApprovalsTab() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function AttendancePage() {
+  const { locked } = useSubscription()
   const [activeTab, setActiveTab]       = useState<'daily' | 'pending'>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [markOpen, setMarkOpen]         = useState(false)
@@ -520,7 +522,7 @@ export function AttendancePage() {
           <h1 className="text-xl font-bold text-gray-900">Attendance</h1>
           <p className="text-sm text-gray-500 mt-0.5">Track daily attendance for all staff</p>
         </div>
-        {activeTab === 'daily' && (
+        {!locked && activeTab === 'daily' && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setEditRecord(undefined); setMarkOpen(true) }}>
               <Pencil size={14} className="mr-1.5" />Mark Single

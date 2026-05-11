@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -419,6 +420,7 @@ function AdvanceDialog({ open, onClose, users }: {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function PayrollPage() {
+  const { locked } = useSubscription()
   const qc = useQueryClient()
   const [tab, setTab]               = useState<'payrolls' | 'advances'>('payrolls')
   const [genOpen, setGenOpen]       = useState(false)
@@ -461,17 +463,19 @@ export function PayrollPage() {
           <h1 className="text-xl font-bold text-gray-900">Payroll</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage staff salaries and advances</p>
         </div>
-        <div className="flex gap-2">
-          {tab === 'payrolls' ? (
-            <Button onClick={() => setGenOpen(true)}>
-              <Plus size={14} className="mr-1.5" />Generate Payroll
-            </Button>
-          ) : (
-            <Button onClick={() => setAdvOpen(true)}>
-              <Plus size={14} className="mr-1.5" />New Advance
-            </Button>
-          )}
-        </div>
+        {!locked && (
+          <div className="flex gap-2">
+            {tab === 'payrolls' ? (
+              <Button onClick={() => setGenOpen(true)}>
+                <Plus size={14} className="mr-1.5" />Generate Payroll
+              </Button>
+            ) : (
+              <Button onClick={() => setAdvOpen(true)}>
+                <Plus size={14} className="mr-1.5" />New Advance
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats */}

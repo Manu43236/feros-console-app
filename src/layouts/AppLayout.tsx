@@ -13,6 +13,7 @@ import {
   Activity, Banknote, Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SubscriptionContext } from '@/context/SubscriptionContext'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type NavItem = { to: string; label: string; icon: React.ElementType }
@@ -566,7 +567,9 @@ export function AppLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+          <SubscriptionContext.Provider value={{ locked }}>
+            <Outlet />
+          </SubscriptionContext.Provider>
         </main>
       </div>
     </div>

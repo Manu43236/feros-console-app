@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -391,6 +392,7 @@ function ClientForm({
 
 // ── main page ─────────────────────────────────────────────────────────────────
 export function ClientsPage() {
+  const { locked } = useSubscription()
   const qc = useQueryClient()
   const [search, setSearch]     = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -425,14 +427,16 @@ export function ClientsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
           <p className="text-gray-500 text-sm mt-0.5">{res?.data?.length ?? 0} total clients</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
-            <Upload size={16} /> Bulk Upload
-          </Button>
-          <Button onClick={openCreate} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
-            <Plus size={16} /> Add Client
-          </Button>
-        </div>
+        {!locked && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
+              <Upload size={16} /> Bulk Upload
+            </Button>
+            <Button onClick={openCreate} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+              <Plus size={16} /> Add Client
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Search */}

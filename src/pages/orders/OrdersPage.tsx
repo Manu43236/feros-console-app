@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -463,6 +464,7 @@ const ALL_STATUSES: OrderStatus[] = [
 ]
 
 export function OrdersPage() {
+  const { locked } = useSubscription()
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
@@ -511,9 +513,11 @@ export function OrdersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-500 text-sm mt-0.5">{res?.data?.length ?? 0} total orders</p>
         </div>
-        <Button onClick={() => setFormOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
-          <Plus size={16} /> New Order
-        </Button>
+        {!locked && (
+          <Button onClick={() => setFormOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+            <Plus size={16} /> New Order
+          </Button>
+        )}
       </div>
 
       {/* Filters */}

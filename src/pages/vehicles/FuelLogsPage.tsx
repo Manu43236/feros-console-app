@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fuelLogsApi } from '@/api/fuelLogs'
 import { vehiclesApi } from '@/api/vehicles'
@@ -441,6 +442,7 @@ function FuelLogCard({
 type FilterMode = 'ALL' | FuelPaymentMode | 'FULL_TANK'
 
 export default function FuelLogsPage() {
+  const { locked } = useSubscription()
   const [search, setSearch]     = useState('')
   const [filter, setFilter]     = useState<FilterMode>('ALL')
   const [showAdd, setShowAdd]   = useState(false)
@@ -497,9 +499,11 @@ export default function FuelLogsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Fuel Logs</h1>
           <p className="text-sm text-gray-500 mt-0.5">Track fuel consumption across your fleet</p>
         </div>
-        <Button onClick={() => setShowAdd(true)} className="gap-2">
-          <Plus size={16} /> Add Fuel Log
-        </Button>
+        {!locked && (
+          <Button onClick={() => setShowAdd(true)} className="gap-2">
+            <Plus size={16} /> Add Fuel Log
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
