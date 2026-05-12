@@ -5,6 +5,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ordersApi } from '@/api/orders'
+import apiClient from '@/api/client'
 import { vehiclesApi } from '@/api/vehicles'
 import { staffApi } from '@/api/staff'
 import { lrsApi } from '@/api/lrs'
@@ -27,6 +28,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { StatusBadge, PaymentStatusBadge, OrderForm } from './OrdersPage'
 import { cn } from '@/lib/utils'
 import type { OrderPaymentStatus, VehicleAllocation } from '@/types'
+import { useAuthStore } from '@/store/authStore'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function fmt(date?: string) {
@@ -991,6 +993,16 @@ export function OrderDetailPage() {
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading order…</div>
   if (!order)    return <div className="p-12 text-center text-gray-500">Order not found.</div>
 
+  const role = useAuthStore(s => s.role)
+  const canForceDeliver = ['ADMIN', 'SUPER_ADMIN', 'SUPERVISOR'].includes(role ?? '')
+    && ['IN_TRANSIT', 'PARTIALLY_DELIVERED'].includes(order.orderStatus)
+
+  const forceDeliverMutation = useMutation({
+    mutationFn: () => apiClient.patch(`/orders/${order.id}/force-deliver`, null),
+    onSuccess: () => { toast.success('Order marked as delivered'); qc.invalidateQueries({ queryKey: ['order', orderId] }) },
+    onError: (e: unknown) => { const msg = (e as any)?.response?.data?.message ?? 'Failed'; toast.error(msg) },
+  })
+
   const canAssign   = !['DELIVERED', 'CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const canCancel   = ['PENDING', 'PARTIALLY_ASSIGNED'].includes(order.orderStatus)
   const hasBreakdown = (order.vehicleAllocations ?? []).some(a => a.allocationStatus === 'IN_TRANSIT')
@@ -1016,6 +1028,16 @@ export function OrderDetailPage() {
               <ArrowLeft size={15} /> Orders
             </button>
             <div className="flex items-center gap-2 shrink-0">
+              {canForceDeliver && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDlg({ title: 'Mark Order Delivered', desc: 'All existing LRs must be delivered. Mark this order as delivered?', onOk: () => forceDeliverMutation.mutate() })}
+                  className="text-green-300 border-green-400/40 hover:bg-green-500/20 bg-transparent gap-1.5"
+                >
+                  <CheckCircle size={14} /> Mark Delivered
+                </Button>
+              )}
               {canCancel && (
                 <Button
                   variant="outline"
