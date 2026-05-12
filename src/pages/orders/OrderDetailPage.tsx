@@ -990,18 +990,19 @@ export function OrderDetailPage() {
 
   const order = res?.data
 
-  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading order…</div>
-  if (!order)    return <div className="p-12 text-center text-gray-500">Order not found.</div>
-
   const role = useAuthStore(s => s.role)
-  const canForceDeliver = ['ADMIN', 'SUPER_ADMIN', 'SUPERVISOR'].includes(role ?? '')
-    && ['IN_TRANSIT', 'PARTIALLY_DELIVERED'].includes(order.orderStatus)
 
   const forceDeliverMutation = useMutation({
-    mutationFn: () => apiClient.patch(`/orders/${order.id}/force-deliver`, null),
+    mutationFn: () => apiClient.patch(`/orders/${order?.id}/force-deliver`, null),
     onSuccess: () => { toast.success('Order marked as delivered'); qc.invalidateQueries({ queryKey: ['order', orderId] }) },
     onError: (e: unknown) => { const msg = (e as any)?.response?.data?.message ?? 'Failed'; toast.error(msg) },
   })
+
+  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading order…</div>
+  if (!order)    return <div className="p-12 text-center text-gray-500">Order not found.</div>
+
+  const canForceDeliver = ['ADMIN', 'SUPER_ADMIN', 'SUPERVISOR'].includes(role ?? '')
+    && ['IN_TRANSIT', 'PARTIALLY_DELIVERED'].includes(order.orderStatus)
 
   const canAssign   = !['DELIVERED', 'CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const canCancel   = ['PENDING', 'PARTIALLY_ASSIGNED'].includes(order.orderStatus)
