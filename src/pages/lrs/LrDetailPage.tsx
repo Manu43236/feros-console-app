@@ -61,7 +61,6 @@ function RecordLoadingDialog({ lrId, open, onClose }: { lrId: number; open: bool
     mutationFn: (data: LoadForm) => lrsApi.update(lrId, {
       loadedWeight: parseFloat(data.loadedWeight),
       loadedAt:     new Date().toISOString().slice(0, 19),
-      lrStatus:     'IN_TRANSIT',
       remarks:      data.remarks || undefined,
     }),
     onSuccess: () => {
@@ -86,7 +85,7 @@ function RecordLoadingDialog({ lrId, open, onClose }: { lrId: number; open: bool
             <textarea {...register('remarks')} rows={2} className="w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background" />
           </div>
           {mutation.isError && <p className="text-sm text-red-600">Failed. Please try again.</p>}
-          <p className="text-xs text-gray-500">LR status will move to <strong>In Transit</strong>.</p>
+          <p className="text-xs text-gray-500">Driver will start the trip from mobile once weight is recorded.</p>
           <div className="flex justify-end gap-3 pt-2 border-t">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="bg-amber-600 hover:bg-amber-700 text-white">
@@ -435,7 +434,7 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
   const [loadedWeight, setLoadedWeight]     = useState(currentLoadedWeight?.toString() ?? '')
   const [deliveredWeight, setDeliveredWeight] = useState(currentDeliveredWeight?.toString() ?? '')
 
-  const canEditLoaded    = lrStatus === 'IN_TRANSIT'
+  const canEditLoaded    = lrStatus === 'CREATED' || lrStatus === 'IN_TRANSIT'
   const canEditDelivered = lrStatus === 'DELIVERED'
 
   const mutation = useMutation({
@@ -682,7 +681,7 @@ export function LrDetailPage() {
                   className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                   <Package className="h-4 w-4" />
-                  Loaded & Dispatched
+                  Record Loading
                 </button>
               )}
               {lr.lrStatus === 'IN_TRANSIT' && (
