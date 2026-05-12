@@ -202,7 +202,7 @@ export interface Breakdown {
 }
 
 // ─── LR ───────────────────────────────────────────────────────────────────────
-export type LrStatus = 'CREATED'|'IN_TRANSIT'|'DELIVERED'|'CANCELLED'
+export type LrStatus = 'CREATED'|'WEIGHT_LOADED'|'IN_TRANSIT'|'DELIVERED'|'CANCELLED'
 
 export interface Lr {
   id: number; tenantId: number; lrNumber: string

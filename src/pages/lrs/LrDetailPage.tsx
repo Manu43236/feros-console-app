@@ -28,10 +28,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 // ─── Status helpers ────────────────────────────────────────────────────────
 const STATUS_CFG: Record<LrStatus, { label: string; bg: string; text: string; dot: string }> = {
-  CREATED:    { label: 'Created',    bg: 'bg-blue-100',  text: 'text-blue-800',  dot: 'bg-blue-500'  },
-  IN_TRANSIT: { label: 'In Transit', bg: 'bg-amber-100', text: 'text-amber-800', dot: 'bg-amber-500' },
-  DELIVERED:  { label: 'Delivered',  bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-500' },
-  CANCELLED:  { label: 'Cancelled',  bg: 'bg-red-100',   text: 'text-red-800',   dot: 'bg-red-500'   },
+  CREATED:       { label: 'Created',       bg: 'bg-blue-100',   text: 'text-blue-800',   dot: 'bg-blue-500'   },
+  WEIGHT_LOADED: { label: 'Weight Loaded', bg: 'bg-purple-100', text: 'text-purple-800', dot: 'bg-purple-500' },
+  IN_TRANSIT:    { label: 'In Transit',    bg: 'bg-amber-100',  text: 'text-amber-800',  dot: 'bg-amber-500'  },
+  DELIVERED:     { label: 'Delivered',     bg: 'bg-green-100',  text: 'text-green-800',  dot: 'bg-green-500'  },
+  CANCELLED:     { label: 'Cancelled',     bg: 'bg-red-100',    text: 'text-red-800',    dot: 'bg-red-500'    },
 }
 
 function StatusBadge({ status }: { status: LrStatus }) {
@@ -61,6 +62,7 @@ function RecordLoadingDialog({ lrId, open, onClose }: { lrId: number; open: bool
     mutationFn: (data: LoadForm) => lrsApi.update(lrId, {
       loadedWeight: parseFloat(data.loadedWeight),
       loadedAt:     new Date().toISOString().slice(0, 19),
+      lrStatus:     'WEIGHT_LOADED',
       remarks:      data.remarks || undefined,
     }),
     onSuccess: () => {
@@ -85,7 +87,7 @@ function RecordLoadingDialog({ lrId, open, onClose }: { lrId: number; open: bool
             <textarea {...register('remarks')} rows={2} className="w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background" />
           </div>
           {mutation.isError && <p className="text-sm text-red-600">Failed. Please try again.</p>}
-          <p className="text-xs text-gray-500">Driver will start the trip from mobile once weight is recorded.</p>
+          <p className="text-xs text-gray-500">LR status will move to <strong>Weight Loaded</strong>. Driver will start the trip from mobile.</p>
           <div className="flex justify-end gap-3 pt-2 border-t">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="bg-amber-600 hover:bg-amber-700 text-white">
@@ -434,7 +436,7 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
   const [loadedWeight, setLoadedWeight]     = useState(currentLoadedWeight?.toString() ?? '')
   const [deliveredWeight, setDeliveredWeight] = useState(currentDeliveredWeight?.toString() ?? '')
 
-  const canEditLoaded    = lrStatus === 'CREATED' || lrStatus === 'IN_TRANSIT'
+  const canEditLoaded    = lrStatus === 'CREATED' || lrStatus === 'WEIGHT_LOADED' || lrStatus === 'IN_TRANSIT'
   const canEditDelivered = lrStatus === 'DELIVERED'
 
   const mutation = useMutation({
@@ -683,6 +685,12 @@ export function LrDetailPage() {
                   <Package className="h-4 w-4" />
                   Record Loading
                 </button>
+              )}
+              {lr.lrStatus === 'WEIGHT_LOADED' && (
+                <div className="flex items-center gap-2 bg-purple-500/20 text-purple-200 px-3 py-2 rounded-lg text-sm font-medium">
+                  <Package className="h-4 w-4" />
+                  Awaiting Driver Start
+                </div>
               )}
               {lr.lrStatus === 'IN_TRANSIT' && (
                 <button
