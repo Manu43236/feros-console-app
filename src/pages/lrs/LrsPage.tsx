@@ -19,8 +19,9 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ─── Status helpers ─────────────────────────────────────────────────────────
 const STATUS_CFG: Record<LrStatus, { label: string; bg: string; text: string }> = {
-  CREATED:    { label: 'Created',    bg: 'bg-blue-100',  text: 'text-blue-800'  },
-  IN_TRANSIT: { label: 'In Transit', bg: 'bg-amber-100', text: 'text-amber-800' },
+  CREATED:       { label: 'Created',       bg: 'bg-blue-100',   text: 'text-blue-800'   },
+  WEIGHT_LOADED: { label: 'Weight Loaded', bg: 'bg-purple-100', text: 'text-purple-800' },
+  IN_TRANSIT:    { label: 'In Transit',    bg: 'bg-amber-100',  text: 'text-amber-800'  },
   DELIVERED:  { label: 'Delivered',  bg: 'bg-green-100', text: 'text-green-800' },
   CANCELLED:  { label: 'Cancelled',  bg: 'bg-red-100',   text: 'text-red-800'   },
 }
