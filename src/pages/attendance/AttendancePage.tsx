@@ -406,6 +406,7 @@ function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: (
 // ── Pending Approvals Tab ─────────────────────────────────────────────────────
 function PendingApprovalsTab() {
   const qc = useQueryClient()
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-pending'],
@@ -453,6 +454,7 @@ function PendingApprovalsTab() {
               <th className="text-left px-5 py-3">Date</th>
               <th className="text-left px-5 py-3">Type</th>
               <th className="text-left px-5 py-3">Marked At</th>
+              <th className="text-left px-5 py-3">Selfie</th>
               <th className="text-left px-5 py-3">Remarks</th>
               <th className="px-5 py-3"></th>
             </tr>
@@ -465,6 +467,16 @@ function PendingApprovalsTab() {
                 <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
                 <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
                 <td className="px-5 py-3 text-gray-400 text-xs">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
+                <td className="px-5 py-3">
+                  {r.selfieUrl ? (
+                    <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
+                      <img src={r.selfieUrl} alt="selfie" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <Camera size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </button>
+                  ) : <span className="text-gray-300 text-xs">—</span>}
+                </td>
                 <td className="px-5 py-3 text-gray-400 text-xs max-w-[140px] truncate">{r.remarks || '—'}</td>
                 <td className="px-5 py-3">
                   <div className="flex gap-1.5 justify-end">
@@ -488,6 +500,7 @@ function PendingApprovalsTab() {
         </table>
       </div>
     </div>
+    {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
   )
 }
 
