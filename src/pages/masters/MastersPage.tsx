@@ -740,6 +740,8 @@ function PayRatesSection() {
 function SettingsSection() {
   const qc = useQueryClient()
   const [payCycle, setPayCycle] = useState('MONTHLY')
+  const [attendanceEnforced, setAttendanceEnforced] = useState(false)
+  const [attendanceDeadlineTime, setAttendanceDeadlineTime] = useState('08:00')
   const { register, handleSubmit, reset } = useForm<{
     overtimeThresholdHours: number
     overtimeRateMultiplier: number
@@ -759,6 +761,9 @@ function SettingsSection() {
   useEffect(() => {
     if (s) {
       setPayCycle(s.payCycle ?? 'MONTHLY')
+      setAttendanceEnforced(s.attendanceEnforced ?? false)
+      // API returns "HH:MM:SS" — strip seconds for the time input
+      setAttendanceDeadlineTime((s.attendanceDeadlineTime ?? '08:00:00').slice(0, 5))
       reset({
         overtimeThresholdHours: s.overtimeThresholdHours,
         overtimeRateMultiplier: s.overtimeRateMultiplier,
@@ -778,7 +783,13 @@ function SettingsSection() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function onSubmit(d: any) {
-    save.mutate({ ...d, payCycle, isTripBonusEnabled: Boolean(d.isTripBonusEnabled) })
+    save.mutate({
+      ...d,
+      payCycle,
+      isTripBonusEnabled: Boolean(d.isTripBonusEnabled),
+      attendanceEnforced,
+      attendanceDeadlineTime: attendanceDeadlineTime + ':00',
+    })
   }
 
   const { locked } = useSubscription()
@@ -828,6 +839,39 @@ function SettingsSection() {
             <Input type="number" step="0.01" {...register('tripBonusAmount')} className="mt-1" />
           </div>
         </div>
+
+        {/* Attendance Gate */}
+        <div className="border rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="attendanceEnforced"
+              checked={attendanceEnforced}
+              onChange={e => setAttendanceEnforced(e.target.checked)}
+              className="h-4 w-4 accent-blue-600"
+            />
+            <Label htmlFor="attendanceEnforced" className="cursor-pointer">
+              Require Attendance Before Trip Start
+            </Label>
+          </div>
+          <p className="text-xs text-gray-500">
+            When enabled, drivers and cleaners must mark attendance before they can start a trip on the mobile app.
+          </p>
+          <div>
+            <Label>Missed Attendance Notification Time (IST)</Label>
+            <Input
+              type="time"
+              value={attendanceDeadlineTime}
+              onChange={e => setAttendanceDeadlineTime(e.target.value)}
+              className="mt-1 w-40"
+              disabled={!attendanceEnforced}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Staff who haven't marked attendance by this time will be notified. Supervisors and office staff are also alerted.
+            </p>
+          </div>
+        </div>
+
         <div className="flex justify-end">
           <Button type="submit" disabled={save.isPending || locked}>{save.isPending ? 'Saving…' : 'Save Settings'}</Button>
         </div>
