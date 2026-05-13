@@ -506,10 +506,103 @@ function PendingApprovalsTab() {
   )
 }
 
+// ── Rejected Tab ──────────────────────────────────────────────────────────────
+function RejectedTab() {
+  const qc = useQueryClient()
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['attendance-rejected'],
+    queryFn: attendanceApi.getRejected,
+  })
+  const records = data?.data ?? []
+
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => attendanceApi.approve(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['attendance-rejected'] })
+      qc.invalidateQueries({ queryKey: ['attendance-pending'] })
+      toast.success('Attendance approved')
+    },
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
+  })
+
+  if (isLoading) return <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+
+  if (records.length === 0)
+    return (
+      <div className="bg-white rounded-xl border p-12 flex flex-col items-center text-gray-400">
+        <CheckCircle size={36} className="mb-3 text-green-300" />
+        <p className="font-medium">No rejected records</p>
+        <p className="text-sm mt-1">All attendance has been approved or is pending</p>
+      </div>
+    )
+
+  return (
+    <>
+    <div className="border rounded-xl bg-white overflow-hidden">
+      <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-700">Rejected Attendance</h2>
+        <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+          {records.length} rejected
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
+              <th className="text-left px-5 py-3">Staff</th>
+              <th className="text-left px-5 py-3">Role</th>
+              <th className="text-left px-5 py-3">Date</th>
+              <th className="text-left px-5 py-3">Type</th>
+              <th className="text-left px-5 py-3">Marked At</th>
+              <th className="text-left px-5 py-3">Selfie</th>
+              <th className="text-left px-5 py-3">Rejected By</th>
+              <th className="px-5 py-3"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {records.map(r => (
+              <tr key={r.id} className="hover:bg-gray-50">
+                <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
+                <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
+                <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
+                <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                <td className="px-5 py-3 text-gray-400 text-xs">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
+                <td className="px-5 py-3">
+                  {r.selfieUrl ? (
+                    <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
+                      <img src={r.selfieUrl} alt="selfie" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <Camera size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </button>
+                  ) : <span className="text-gray-300 text-xs">—</span>}
+                </td>
+                <td className="px-5 py-3 text-gray-500 text-xs">{r.approvedByName ?? '—'}</td>
+                <td className="px-5 py-3">
+                  <Button size="sm" variant="outline"
+                    className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-2.5 text-xs"
+                    disabled={approveMutation.isPending}
+                    onClick={() => approveMutation.mutate(r.id)}>
+                    <CheckCircle size={12} className="mr-1" />Approve
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
+    </>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function AttendancePage() {
   const { locked } = useSubscription()
-  const [activeTab, setActiveTab]       = useState<'daily' | 'pending'>('daily')
+  const [activeTab, setActiveTab]       = useState<'daily' | 'pending' | 'rejected'>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [markOpen, setMarkOpen]         = useState(false)
   const [bulkOpen, setBulkOpen]         = useState(false)
@@ -531,8 +624,10 @@ export function AttendancePage() {
   const { data: leaveTypesData } = useQuery({ queryKey: ['leave-types'], queryFn: globalMastersApi.getLeaveTypes })
   const leaveTypes = (leaveTypesData?.data ?? []) as { id: number; name: string }[]
 
-  const { data: pendingData } = useQuery({ queryKey: ['attendance-pending'], queryFn: attendanceApi.getPending })
-  const pendingCount = pendingData?.data?.length ?? 0
+  const { data: pendingData }  = useQuery({ queryKey: ['attendance-pending'],  queryFn: attendanceApi.getPending })
+  const { data: rejectedData } = useQuery({ queryKey: ['attendance-rejected'], queryFn: attendanceApi.getRejected })
+  const pendingCount  = pendingData?.data?.length ?? 0
+  const rejectedCount = rejectedData?.data?.length ?? 0
 
   const existingMap: Record<number, Attendance> = {}
   records.forEach(r => { existingMap[r.userId] = r })
@@ -598,9 +693,21 @@ export function AttendancePage() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('rejected')}
+          className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors relative',
+            activeTab === 'rejected' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
+        >
+          Rejected
+          {rejectedCount > 0 && (
+            <span className="ml-2 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center px-1">
+              {rejectedCount}
+            </span>
+          )}
+        </button>
       </div>
 
-      {activeTab === 'pending' ? <PendingApprovalsTab /> : (
+      {activeTab === 'rejected' ? <RejectedTab /> : activeTab === 'pending' ? <PendingApprovalsTab /> : (
         <>
           {/* Date navigator */}
           <div className="flex items-center gap-3">
