@@ -11,12 +11,9 @@ import {
   MapPin, DollarSign, Plus, Activity, Scale, FileText, Pencil, Trash2, XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import apiClient from '@/api/client'
 import { lrsApi } from '@/api/lrs'
-import { ordersApi } from '@/api/orders'
 import { tenantMastersApi } from '@/api/masters'
-import { tenantsApi } from '@/api/superadmin'
-import { useAuthStore } from '@/store/authStore'
-import { openLrPdf } from './LrPdf'
 import type { LrStatus, LrCheckpost, LrCharge } from '@/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -550,13 +547,6 @@ export function LrDetailPage() {
   const [dialog, setDialog]         = useState<ActiveDialog>(null)
   const [pdfLoading, setPdfLoading] = useState(false)
 
-  const companyName = useAuthStore(s => s.companyName) ?? 'FEROS'
-
-  const { data: tenantData } = useQuery({
-    queryKey: ['tenant-my'],
-    queryFn: () => tenantsApi.getMy().then(r => r.data),
-  })
-
   const { data: lr, isLoading } = useQuery({
     queryKey: ['lr', id],
     queryFn: () => lrsApi.getById(id).then(r => r.data),
@@ -575,23 +565,19 @@ export function LrDetailPage() {
     enabled: !isNaN(id),
   })
 
-  const { data: order } = useQuery({
-    queryKey: ['order', lr?.orderId],
-    queryFn: () => ordersApi.getById(lr!.orderId).then(r => r.data),
-    enabled: !!lr?.orderId,
-  })
-
   async function handlePdf() {
     if (!lr) return
     setPdfLoading(true)
     try {
-      await openLrPdf(lr, order, checkposts, charges, {
-        companyName: tenantData?.companyName ?? companyName,
-        address:     tenantData?.address,
-        gstin:       tenantData?.gstin,
-        panNumber:   tenantData?.panNumber,
-        ownerName:   tenantData?.ownerName,
+      const response = await apiClient.get(`/lrs/${lr.id}/pdf`, {
+        responseType: 'blob',
+        headers: { Accept: 'application/pdf' },
       })
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url  = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    } catch {
+      toast.error('Failed to generate PDF')
     } finally {
       setPdfLoading(false)
     }
