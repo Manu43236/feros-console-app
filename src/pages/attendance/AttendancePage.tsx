@@ -438,6 +438,7 @@ function PendingApprovalsTab() {
     )
 
   return (
+    <>
     <div className="border rounded-xl bg-white overflow-hidden">
       <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-700">Pending Approvals</h2>
@@ -501,6 +502,7 @@ function PendingApprovalsTab() {
       </div>
     </div>
     {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
+    </>
   )
 }
 
