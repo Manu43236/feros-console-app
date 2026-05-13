@@ -305,7 +305,7 @@ export interface Attendance {
   attendanceDate: string; attendanceTypeId: number; attendanceTypeName: string
   leaveTypeId?: number; leaveTypeName?: string; leaveReason?: string
   markedById: number; markedByName: string; markedAt: string
-  remarks?: string
+  remarks?: string; selfieUrl?: string
   approvalStatus: AttendanceApprovalStatus
   approvedById?: number; approvedByName?: string; approvedAt?: string
   createdAt: string; updatedAt: string

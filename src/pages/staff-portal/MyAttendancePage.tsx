@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { toast } from 'sonner'
-import { Calendar, CheckCircle, XCircle, Clock, Umbrella, AlertCircle } from 'lucide-react'
+import { Calendar, CheckCircle, XCircle, Clock, Umbrella, AlertCircle, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -140,8 +140,22 @@ function MarkTodayDialog({ open, onClose, attendanceTypes, leaveTypes }: {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+function SelfieDialog({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-xs p-3">
+        <DialogHeader>
+          <DialogTitle className="text-sm">Attendance Selfie</DialogTitle>
+        </DialogHeader>
+        <img src={url} alt="Selfie" className="w-full rounded-lg object-cover" />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function MyAttendancePage() {
   const [markOpen, setMarkOpen] = useState(false)
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
 
   const from = format(startOfMonth(new Date()), 'yyyy-MM-dd')
   const to   = format(endOfMonth(new Date()), 'yyyy-MM-dd')
@@ -256,7 +270,18 @@ export function MyAttendancePage() {
                 {records.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3 font-medium text-gray-800">
-                      {format(new Date(r.attendanceDate), 'dd MMM, EEE')}
+                      <div className="flex items-center gap-2">
+                        {format(new Date(r.attendanceDate), 'dd MMM, EEE')}
+                        {r.selfieUrl && (
+                          <button
+                            onClick={() => setSelfieUrl(r.selfieUrl!)}
+                            className="text-gray-400 hover:text-blue-500 transition-colors"
+                            title="View selfie"
+                          >
+                            <Camera size={13} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
                     <td className="px-5 py-3"><ApprovalBadge status={r.approvalStatus} /></td>
@@ -277,6 +302,7 @@ export function MyAttendancePage() {
         attendanceTypes={attendanceTypes}
         leaveTypes={leaveTypes}
       />
+      {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
     </div>
   )
 }

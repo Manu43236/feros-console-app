@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import {
   CalendarDays, ChevronLeft, ChevronRight, Users,
   CheckCircle, XCircle, Clock, Umbrella, Pencil, ClipboardList,
-  AlertCircle,
+  AlertCircle, Camera,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -306,10 +306,25 @@ function BulkMarkDialog({
   )
 }
 
+// ── Selfie viewer dialog ───────────────────────────────────────────────────────
+function SelfieDialog({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-xs p-3">
+        <DialogHeader>
+          <DialogTitle className="text-sm">Attendance Selfie</DialogTitle>
+        </DialogHeader>
+        <img src={url} alt="Selfie" className="w-full rounded-lg object-cover" />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Staff history dialog ──────────────────────────────────────────────────────
 function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: () => void; user: StaffUser | null }) {
   const [from, setFrom] = useState(() => format(subDays(new Date(), 29), 'yyyy-MM-dd'))
   const [to, setTo]     = useState(todayStr)
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-user', user?.id, from, to],
@@ -331,6 +346,7 @@ function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: (
   )
 
   return (
+    <>
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>{user?.name} — Attendance History</DialogTitle></DialogHeader>
@@ -365,6 +381,15 @@ function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: (
                     <AttendanceBadge type={r.attendanceTypeName} />
                     <ApprovalBadge status={r.approvalStatus} />
                     {r.leaveTypeName && <span className="text-xs text-gray-500">{r.leaveTypeName}</span>}
+                    {r.selfieUrl && (
+                      <button
+                        onClick={() => setSelfieUrl(r.selfieUrl!)}
+                        className="text-gray-400 hover:text-blue-500 transition-colors"
+                        title="View selfie"
+                      >
+                        <Camera size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -373,6 +398,8 @@ function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: (
         </div>
       </DialogContent>
     </Dialog>
+    {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
+    </>
   )
 }
 
