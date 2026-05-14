@@ -33,13 +33,13 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 }
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
-  PENDING:             'bg-yellow-50 text-yellow-700 hover:bg-yellow-50',
-  PARTIALLY_ASSIGNED:  'bg-blue-50 text-blue-700 hover:bg-blue-50',
-  FULLY_ASSIGNED:      'bg-indigo-50 text-indigo-700 hover:bg-indigo-50',
-  IN_TRANSIT:          'bg-orange-50 text-orange-700 hover:bg-orange-50',
-  PARTIALLY_DELIVERED: 'bg-purple-50 text-purple-700 hover:bg-purple-50',
+  PENDING:             'bg-amber-50 text-amber-600 hover:bg-amber-50',
+  PARTIALLY_ASSIGNED:  'bg-blue-50 text-blue-600 hover:bg-blue-50',
+  FULLY_ASSIGNED:      'bg-violet-50 text-violet-600 hover:bg-violet-50',
+  IN_TRANSIT:          'bg-orange-50 text-orange-600 hover:bg-orange-50',
+  PARTIALLY_DELIVERED: 'bg-sky-50 text-sky-600 hover:bg-sky-50',
   DELIVERED:           'bg-green-50 text-green-700 hover:bg-green-50',
-  CANCELLED:           'bg-red-50 text-red-700 hover:bg-red-50',
+  CANCELLED:           'bg-red-50 text-red-600 hover:bg-red-50',
   COMPLETED:           'bg-emerald-50 text-emerald-700 hover:bg-emerald-50',
 }
 
@@ -460,7 +460,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
 // ── main page ─────────────────────────────────────────────────────────────────
 const ALL_STATUSES: OrderStatus[] = [
   'PENDING', 'PARTIALLY_ASSIGNED', 'FULLY_ASSIGNED',
-  'IN_TRANSIT', 'PARTIALLY_DELIVERED', 'DELIVERED', 'CANCELLED', 'COMPLETED',
+  'IN_TRANSIT', 'PARTIALLY_DELIVERED', 'DELIVERED', 'CANCELLED',
 ]
 
 const PAGE_SIZE = 20
