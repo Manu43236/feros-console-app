@@ -217,6 +217,10 @@ export interface Lr {
   lrStatus: LrStatus; remarks?: string
   checkposts?: LrCheckpost[]; charges?: LrCharge[]
   createdById: number; createdByName: string
+  driverId?: number; driverName?: string; driverPhone?: string
+  startedByName?: string; startedByRole?: string
+  completedByName?: string; completedByRole?: string
+  startOdometer?: number; endOdometer?: number
   isActive: boolean; createdAt: string; updatedAt: string
 }
 
