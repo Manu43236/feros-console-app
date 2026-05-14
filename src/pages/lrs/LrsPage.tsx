@@ -56,9 +56,9 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
 
   const { data: ordersRes, isLoading: ordersLoading } = useQuery({
     queryKey: ['orders'],
-    queryFn: ordersApi.getAll,
+    queryFn: () => ordersApi.getAll(),
   })
-  const orders = ordersRes?.data ?? []
+  const orders = ordersRes?.data?.content ?? []
 
   const { register, handleSubmit, control, formState: { errors }, reset } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,

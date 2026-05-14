@@ -295,7 +295,7 @@ export default function AssignmentsPage() {
 
   const { data: ordersRes, isLoading } = useQuery({
     queryKey: ['assignments-orders'],
-    queryFn: ordersApi.getAll,
+    queryFn: () => ordersApi.getAll(),
   })
   const { data: vehiclesRes } = useQuery({
     queryKey: ['assignments-vehicles'],
@@ -306,7 +306,7 @@ export default function AssignmentsPage() {
     queryFn: staffApi.getUsers,
   })
 
-  const orders = (ordersRes?.data ?? []) as Order[]
+  const orders = (ordersRes?.data?.content ?? []) as Order[]
   const vehicles = (vehiclesRes?.data ?? []) as Vehicle[]
   const users = usersRes?.data ?? []
   const drivers = users.filter(u => u.role === 'DRIVER')
