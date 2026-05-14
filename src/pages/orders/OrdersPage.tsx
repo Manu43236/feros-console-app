@@ -463,33 +463,53 @@ const ALL_STATUSES: OrderStatus[] = [
   'IN_TRANSIT', 'PARTIALLY_DELIVERED', 'DELIVERED', 'CANCELLED', 'COMPLETED',
 ]
 
+const PAGE_SIZE = 20
+
 export function OrdersPage() {
   const { locked } = useSubscription()
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
-  const [search, setSearch]       = useState('')
-  const [statusFilter, setStatus] = useState<OrderStatus | 'ALL'>(
+  const [search, setSearch]         = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [statusFilter, setStatus]   = useState<OrderStatus | 'ALL'>(
     (searchParams.get('status') as OrderStatus) || 'ALL'
   )
-  const [formOpen, setFormOpen]   = useState(false)
-  const [editing, setEditing]     = useState<Order | undefined>()
-  const [dlg, setDlg]             = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
+  const [page, setPage]             = useState(0)
+  const [formOpen, setFormOpen]     = useState(false)
+  const [editing, setEditing]       = useState<Order | undefined>()
+  const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
-  const { data: res, isLoading } = useQuery({ queryKey: ['orders'], queryFn: ordersApi.getAll })
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(0) }, 400)
+    return () => clearTimeout(t)
+  }, [search])
+
+  // Reset page when status changes
+  useEffect(() => { setPage(0) }, [statusFilter])
+
+  const queryParams = {
+    page,
+    size: PAGE_SIZE,
+    search: debouncedSearch || undefined,
+    status: (statusFilter === 'ALL' ? undefined : statusFilter) as OrderStatus | undefined,
+  }
+
+  const { data: res, isLoading } = useQuery({
+    queryKey: ['orders', queryParams],
+    queryFn:  () => ordersApi.getAll(queryParams),
+    placeholderData: (prev) => prev,
+  })
+
+  const pageData  = res?.data
+  const orders    = pageData?.content ?? []
+  const totalPages = pageData?.totalPages ?? 1
 
   const cancelMutation = useMutation({
     mutationFn: ordersApi.cancel,
     onSuccess: () => { toast.success('Order cancelled'); qc.invalidateQueries({ queryKey: ['orders'] }) },
     onError: () => toast.error('Failed to cancel order'),
-  })
-
-  const orders = [...(res?.data ?? [])].sort((a, b) => b.id - a.id).filter(o => {
-    const matchesSearch =
-      o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-      o.clientName.toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === 'ALL' || o.orderStatus === statusFilter
-    return matchesSearch && matchesStatus
   })
 
   function handleCancel(o: Order, e: React.MouseEvent) {
@@ -511,7 +531,7 @@ export function OrdersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{res?.data?.length ?? 0} total orders</p>
+          <p className="text-gray-500 text-sm mt-0.5">{pageData?.totalElements ?? 0} total orders</p>
         </div>
         {!locked && (
           <Button onClick={() => setFormOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
@@ -645,6 +665,33 @@ export function OrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <span>
+            Page {page + 1} of {totalPages} &mdash; {pageData?.totalElements ?? 0} orders
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => p - 1)}
+              disabled={page === 0}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => p + 1)}
+              disabled={page >= totalPages - 1}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       <OrderForm open={formOpen} onClose={onClose} order={editing} />
       <ConfirmDialog

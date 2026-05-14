@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, Order, OrderPaymentStatus, VehicleAllocation, StaffAllocation } from '@/types'
+import type { ApiResponse, Order, OrderPaymentStatus, OrderStatus, PageResponse, VehicleAllocation, StaffAllocation } from '@/types'
 
 interface AssignVehicleRequest {
   vehicleId: number; allocatedWeight: number
@@ -10,8 +10,13 @@ interface AssignStaffRequest {
   expectedStartDate?: string; expectedEndDate?: string; remarks?: string
 }
 
+export interface OrdersParams {
+  page?: number; size?: number; search?: string; status?: OrderStatus | ''
+}
+
 export const ordersApi = {
-  getAll:        ()           => apiClient.get<ApiResponse<Order[]>>('/orders').then(r => r.data),
+  getAll:        (params?: OrdersParams) =>
+    apiClient.get<ApiResponse<PageResponse<Order>>>('/orders', { params }).then(r => r.data),
   getById:       (id: number) => apiClient.get<ApiResponse<Order>>(`/orders/${id}`).then(r => r.data),
   create:        (data: Partial<Order>) => apiClient.post<ApiResponse<Order>>('/orders', data).then(r => r.data),
   update:        (id: number, data: Partial<Order>) => apiClient.put<ApiResponse<Order>>(`/orders/${id}`, data).then(r => r.data),

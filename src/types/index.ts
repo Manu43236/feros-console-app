@@ -5,6 +5,17 @@ export interface ApiResponse<T> {
   data: T
 }
 
+// ─── Spring Page wrapper ───────────────────────────────────────────────────────
+export interface PageResponse<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  number: number       // current page (0-based)
+  size: number
+  last: boolean
+  first: boolean
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export interface LoginRequest {
   phone: string
