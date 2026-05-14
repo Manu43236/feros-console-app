@@ -29,7 +29,13 @@ const STATUS_CFG: Record<LrStatus, { label: string; bg: string; text: string }> 
 function LrStatusBadge({ status }: { status: LrStatus }) {
   const cfg = STATUS_CFG[status] ?? { label: status, bg: 'bg-gray-100', text: 'text-gray-700' }
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+      {status === 'IN_TRANSIT' ? (
+        <span className="relative flex h-2 w-2 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+        </span>
+      ) : null}
       {cfg.label}
     </span>
   )
