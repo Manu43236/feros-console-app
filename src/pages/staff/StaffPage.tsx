@@ -6,6 +6,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { staffApi } from '@/api/staff'
+import { globalMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import {
   Plus, Search, UserCheck, Phone, ChevronRight, Copy, KeyRound, Eye, EyeOff,
@@ -57,19 +58,14 @@ const addStaffSchema = z.object({
 })
 type AddStaffForm = z.infer<typeof addStaffSchema>
 
-const STAFF_ROLES = [
-  { value: 'DRIVER',       label: 'Driver' },
-  { value: 'CLEANER',      label: 'Cleaner' },
-  { value: 'SUPERVISOR',   label: 'Supervisor' },
-  { value: 'OFFICE_STAFF', label: 'Office Staff' },
-  { value: 'SERVICE_MEN',  label: 'Service Men' },
-  { value: 'STORE_KEEPER', label: 'Store Keeper' },
-]
 
 function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const [createdPin, setCreatedPin] = useState<string | null>(null)
   const [createdName, setCreatedName] = useState('')
+
+  const { data: rolesData } = useQuery({ queryKey: ['roles'], queryFn: globalMastersApi.getRoles })
+  const roleOptions = rolesData?.data?.filter(r => r.name !== 'SUPER_ADMIN') ?? []
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AddStaffForm>({
     resolver: zodResolver(addStaffSchema) as Resolver<AddStaffForm>,
@@ -143,7 +139,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
               <Label>Role *</Label>
               <select {...register('role')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
                 <option value="">Select role</option>
-                {STAFF_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                {roleOptions.map(r => <option key={r.name} value={r.name}>{r.description || r.name}</option>)}
               </select>
               {errors.role && <p className="text-red-500 text-xs">{errors.role.message}</p>}
             </div>

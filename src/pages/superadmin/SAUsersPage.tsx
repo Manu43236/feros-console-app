@@ -17,6 +17,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { staffApi } from '@/api/staff'
 import { tenantsApi } from '@/api/superadmin'
+import { globalMastersApi } from '@/api/masters'
 import type { Tenant, BulkUploadResult } from '@/types'
 
 type StaffUser = {
@@ -26,7 +27,6 @@ type StaffUser = {
   generatedPin: string | null
 }
 
-const ROLES = ['ADMIN', 'OFFICE_STAFF', 'SUPERVISOR', 'DRIVER', 'CLEANER', 'SERVICE_MEN', 'STORE_KEEPER']
 
 const addUserSchema = z.object({
   tenantId: z.string().min(1, 'Select a tenant'),
@@ -53,6 +53,9 @@ function AddUserDialog({ open, onClose, tenants }: {
   open: boolean; onClose: () => void; tenants: Tenant[]
 }) {
   const qc = useQueryClient()
+  const { data: rolesData } = useQuery({ queryKey: ['roles'], queryFn: globalMastersApi.getRoles })
+  const roleOptions = rolesData?.data?.filter(r => r.name !== 'SUPER_ADMIN') ?? []
+
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AddUserForm>({
     resolver: zodResolver(addUserSchema) as Resolver<AddUserForm>,
   })
@@ -102,8 +105,8 @@ function AddUserDialog({ open, onClose, tenants }: {
             <Label>Role <span className="text-red-500">*</span></Label>
             <select {...register('role')} className={`w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 ${errors.role ? 'border-red-400' : 'border-input'}`}>
               <option value="">Select role</option>
-              {ROLES.map(r => (
-                <option key={r} value={r}>{r}</option>
+              {roleOptions.map(r => (
+                <option key={r.name} value={r.name}>{r.description || r.name}</option>
               ))}
             </select>
             {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role.message}</p>}

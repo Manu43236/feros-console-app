@@ -18,6 +18,7 @@ export const globalMastersApi = {
   getTaxes:            () => apiClient.get<ApiResponse<TaxItem[]>>('/masters/global/taxes').then(r => r.data),
   getPaymentStatuses:  () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/payment-statuses').then(r => r.data),
   getServiceTaskTypes: () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/service-task-types').then(r => r.data),
+  getRoles:            () => apiClient.get<ApiResponse<{ id: number; name: string; description: string }[]>>('/masters/global/roles').then(r => r.data),
 }
 
 // Tenant Masters
