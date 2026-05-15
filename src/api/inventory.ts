@@ -20,6 +20,8 @@ export const stockApi = {
   getStock:    () => apiClient.get<ApiResponse<StockItem[]>>('/inventory/stock').then(r => r.data),
   stockIn:     (data: { sparePartId: number; quantity: number; unitCost?: number; supplierName?: string; notes?: string }) =>
     apiClient.post<ApiResponse<void>>('/inventory/stock-in', data).then(r => r.data),
+  stockOut:    (data: { sparePartId: number; quantity: number; type: 'DAMAGE' | 'ADJUSTMENT'; notes?: string }) =>
+    apiClient.post<ApiResponse<void>>('/inventory/stock-out', data).then(r => r.data),
   bulkStockIn: (file: File) => {
     const form = new FormData()
     form.append('file', file)

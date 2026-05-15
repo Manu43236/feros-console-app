@@ -3,7 +3,7 @@ import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockApi, sparePartsApi } from '@/api/inventory'
 import { toast } from 'sonner'
-import { Plus, Search, AlertTriangle, Boxes } from 'lucide-react'
+import { Plus, Minus, Search, AlertTriangle, Boxes } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -99,11 +99,111 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Stock Out Dialog ───────────────────────────────────────────────────────────
+function StockOutDialog({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({
+    sparePartId: 0,
+    quantity: 1,
+    type: 'DAMAGE' as 'DAMAGE' | 'ADJUSTMENT',
+    notes: '',
+  })
+
+  const { data: partsData } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
+  const parts = partsData?.data ?? []
+
+  const { data: stockData } = useQuery({ queryKey: ['stock'], queryFn: stockApi.getStock })
+  const selectedStock = stockData?.data?.find(s => s.sparePartId === form.sparePartId)
+
+  const mutation = useMutation({
+    mutationFn: () => stockApi.stockOut({
+      sparePartId: form.sparePartId,
+      quantity: form.quantity,
+      type: form.type,
+      notes: form.notes || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Stock recorded successfully')
+      qc.invalidateQueries({ queryKey: ['stock'] })
+      qc.invalidateQueries({ queryKey: ['inventory-transactions'] })
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to record stock out')
+    },
+  })
+
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Write-off / Stock Out</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>Spare Part *</Label>
+            <SearchableSelect
+              placeholder="Select part…"
+              value={form.sparePartId ? String(form.sparePartId) : ''}
+              onValueChange={v => setForm(f => ({ ...f, sparePartId: Number(v) }))}
+              options={parts.map(p => ({ value: String(p.id), label: p.name + (p.partNumber ? ` (${p.partNumber})` : '') }))}
+            />
+            {selectedStock && (
+              <p className="text-xs text-gray-500 mt-1">Available: <strong>{selectedStock.quantity} {selectedStock.unit}</strong></p>
+            )}
+          </div>
+          <div>
+            <Label>Type *</Label>
+            <div className="flex gap-2 mt-1">
+              {(['DAMAGE', 'ADJUSTMENT'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setForm(f => ({ ...f, type: t }))}
+                  className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    form.type === t
+                      ? t === 'DAMAGE' ? 'bg-red-600 text-white border-red-600' : 'bg-orange-500 text-white border-orange-500'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {t === 'DAMAGE' ? '🔴 Damage / Loss' : '🟠 Adjustment'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label>Quantity *</Label>
+            <Input
+              type="number" min={1}
+              max={selectedStock?.quantity ?? undefined}
+              value={form.quantity}
+              onChange={e => setForm(f => ({ ...f, quantity: Number(e.target.value) }))}
+            />
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Found damaged during inspection…" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={mutation.isPending || form.sparePartId === 0 || form.quantity < 1}
+            onClick={() => mutation.mutate()}
+            className={form.type === 'DAMAGE' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-500 hover:bg-orange-600'}
+          >
+            {mutation.isPending ? 'Saving…' : 'Confirm Write-off'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function StockPage() {
   const { locked } = useSubscription()
   const [search, setSearch] = useState('')
   const [showStockIn, setShowStockIn] = useState(false)
+  const [showStockOut, setShowStockOut] = useState(false)
   const [filterLow, setFilterLow] = useState(false)
 
   const { data, isLoading } = useQuery({ queryKey: ['stock'], queryFn: stockApi.getStock })
@@ -125,9 +225,14 @@ export default function StockPage() {
           <p className="text-sm text-gray-500">Current spare parts stock levels</p>
         </div>
         {!locked && (
-          <Button onClick={() => setShowStockIn(true)} className="gap-2">
-            <Plus size={16} /> Add Stock
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowStockOut(true)} className="gap-2 border-red-200 text-red-600 hover:bg-red-50">
+              <Minus size={16} /> Write-off
+            </Button>
+            <Button onClick={() => setShowStockIn(true)} className="gap-2">
+              <Plus size={16} /> Add Stock
+            </Button>
+          </div>
         )}
       </div>
 
@@ -211,7 +316,8 @@ export default function StockPage() {
         )}
       </div>
 
-      {showStockIn && <StockInDialog onClose={() => setShowStockIn(false)} />}
+      {showStockIn  && <StockInDialog  onClose={() => setShowStockIn(false)}  />}
+      {showStockOut && <StockOutDialog onClose={() => setShowStockOut(false)} />}
     </div>
   )
 }
