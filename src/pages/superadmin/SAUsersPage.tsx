@@ -26,7 +26,7 @@ type StaffUser = {
   generatedPin: string | null
 }
 
-const ROLES = ['ADMIN', 'OFFICE_STAFF', 'SUPERVISOR', 'DRIVER', 'CLEANER']
+const ROLES = ['ADMIN', 'OFFICE_STAFF', 'SUPERVISOR', 'DRIVER', 'CLEANER', 'SERVICE_MEN', 'STORE_KEEPER']
 
 const addUserSchema = z.object({
   tenantId: z.string().min(1, 'Select a tenant'),
@@ -159,7 +159,7 @@ function BulkUploadUsersDialog({ open, onClose, tenants }: {
               <p className="font-medium mb-1">Download CSV Template</p>
               <p className="text-xs text-blue-600 mb-2">
                 Columns: <span className="font-mono">name, phone, roleName</span>.
-                Valid roles: ADMIN, OFFICE_STAFF, SUPERVISOR, DRIVER, CLEANER.
+                Valid roles: ADMIN, OFFICE_STAFF, SUPERVISOR, DRIVER, CLEANER, SERVICE_MEN, STORE_KEEPER.
               </p>
               <button onClick={downloadUserTemplate} className="text-xs underline font-medium hover:text-blue-700">
                 Download template.csv
