@@ -42,3 +42,12 @@ export const tiresApi = {
   getRotationHistory: (vehicleId: number) =>
     apiClient.get<ApiResponse<TireRotationLog[]>>('/tire-rotations', { params: { vehicleId } }).then(r => r.data),
 }
+
+export const tireRequestsApi = {
+  getPending: () =>
+    apiClient.get<ApiResponse<unknown[]>>('/tire-requests/pending').then(r => r.data),
+  approve: (id: number, data: { tireId: number; fittedAtKm?: number }) =>
+    apiClient.patch<ApiResponse<unknown>>(`/tire-requests/${id}/approve`, data).then(r => r.data),
+  reject: (id: number, data: { rejectionReason: string }) =>
+    apiClient.patch<ApiResponse<unknown>>(`/tire-requests/${id}/reject`, data).then(r => r.data),
+}

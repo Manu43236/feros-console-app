@@ -143,10 +143,12 @@ const DRIVER_CLEANER_NAV: FlatNav = [
 ]
 
 const STORE_KEEPER_NAV: FlatNav = [
-  { to: '/inventory',       label: 'Spare Parts',   icon: Boxes },
-  { to: '/inventory/tires', label: 'Tires',         icon: CircleDot },
-  { to: '/my/attendance',   label: 'My Attendance', icon: Calendar },
-  { to: '/my/payslip',      label: 'My Payslip',    icon: Wallet },
+  { to: '/inventory',               label: 'Spare Parts',   icon: Boxes },
+  { to: '/inventory/tires',         label: 'Tires',         icon: CircleDot },
+  { to: '/inventory/part-requests', label: 'Part Requests', icon: ClipboardCheck },
+  { to: '/inventory/tire-requests', label: 'Tire Requests', icon: ClipboardList },
+  { to: '/my/attendance',           label: 'My Attendance', icon: Calendar },
+  { to: '/my/payslip',              label: 'My Payslip',    icon: Wallet },
 ]
 
 const SERVICE_MEN_NAV: FlatNav = [

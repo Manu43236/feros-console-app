@@ -742,6 +742,8 @@ function SettingsSection() {
   const [payCycle, setPayCycle] = useState('MONTHLY')
   const [attendanceEnforced, setAttendanceEnforced] = useState(false)
   const [attendanceDeadlineTime, setAttendanceDeadlineTime] = useState('08:00')
+  const [requireTireApproval, setRequireTireApproval] = useState(false)
+  const [requireSparePartApproval, setRequireSparePartApproval] = useState(false)
   const { register, handleSubmit, reset } = useForm<{
     overtimeThresholdHours: number
     overtimeRateMultiplier: number
@@ -764,6 +766,8 @@ function SettingsSection() {
       setAttendanceEnforced(s.attendanceEnforced ?? false)
       // API returns "HH:MM:SS" — strip seconds for the time input
       setAttendanceDeadlineTime((s.attendanceDeadlineTime ?? '08:00:00').slice(0, 5))
+      setRequireTireApproval(s.requireTireApproval ?? false)
+      setRequireSparePartApproval(s.requireSparePartApproval ?? false)
       reset({
         overtimeThresholdHours: s.overtimeThresholdHours,
         overtimeRateMultiplier: s.overtimeRateMultiplier,
@@ -789,6 +793,8 @@ function SettingsSection() {
       isTripBonusEnabled: Boolean(d.isTripBonusEnabled),
       attendanceEnforced,
       attendanceDeadlineTime: attendanceDeadlineTime + ':00',
+      requireTireApproval,
+      requireSparePartApproval,
     })
   }
 
@@ -870,6 +876,41 @@ function SettingsSection() {
               Staff who haven't marked attendance by this time will be notified. Supervisors and office staff are also alerted.
             </p>
           </div>
+        </div>
+
+        {/* Inventory Approval Gates */}
+        <div className="border rounded-lg p-4 space-y-3">
+          <p className="text-sm font-medium text-gray-700">Inventory Approval</p>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="requireTireApproval"
+              checked={requireTireApproval}
+              onChange={e => setRequireTireApproval(e.target.checked)}
+              className="h-4 w-4 accent-blue-600"
+            />
+            <Label htmlFor="requireTireApproval" className="cursor-pointer">
+              Require Store Keeper Approval for Tire Fitting
+            </Label>
+          </div>
+          <p className="text-xs text-gray-500">
+            When enabled, service technicians must submit a tire request. The store keeper approves and issues the tire.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="requireSparePartApproval"
+              checked={requireSparePartApproval}
+              onChange={e => setRequireSparePartApproval(e.target.checked)}
+              className="h-4 w-4 accent-blue-600"
+            />
+            <Label htmlFor="requireSparePartApproval" className="cursor-pointer">
+              Require Store Keeper Approval for Spare Parts
+            </Label>
+          </div>
+          <p className="text-xs text-gray-500">
+            When enabled, spare part requests are held for store keeper approval before stock is deducted.
+          </p>
         </div>
 
         <div className="flex justify-end">
