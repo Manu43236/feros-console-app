@@ -863,6 +863,50 @@ export interface VehicleServiceRecord {
   startedAt?: string
   createdAt: string
   updatedAt: string
+  invoiceId?: number
+  invoiceNumber?: string
+}
+
+// ─── Service Invoice ──────────────────────────────────────────────────────────
+export type ServiceInvoiceType   = 'INTERNAL' | 'EXTERNAL'
+export type ServiceInvoiceStatus = 'PENDING'  | 'PAID'
+
+export interface ServiceInvoiceTaskLine {
+  name: string
+  cost: number
+}
+
+export interface ServiceInvoicePartLine {
+  partName:   string
+  partNumber: string
+  unit:       string
+  quantity:   number
+}
+
+export interface ServiceInvoice {
+  id:            number
+  invoiceNumber: string
+  invoiceType:   ServiceInvoiceType
+  paymentStatus: ServiceInvoiceStatus
+  serviceId:                 number
+  serviceNumber:             string
+  vehicleRegistrationNumber: string
+  serviceType:               VehicleServiceType
+  vendorName?:               string
+  completedDate?:            string
+  tasksTotal?:       number
+  labourCharges?:    number
+  subTotal?:         number
+  gstRate?:          number
+  gstAmount?:        number
+  totalAmount?:      number
+  vendorAmount?:     number
+  vendorInvoiceNo?:  string
+  paidAt?:           string
+  paidByName?:       string
+  tasks: ServiceInvoiceTaskLine[]
+  parts: ServiceInvoicePartLine[]
+  createdAt: string
 }
 
 // ─── Credit Note ──────────────────────────────────────────────────────────────

@@ -26,7 +26,8 @@ import { InvoicesPage }       from '@/pages/invoices/InvoicesPage'
 import { InvoiceDetailPage } from '@/pages/invoices/InvoiceDetailPage'
 import { InvoicePrintPage }  from '@/pages/invoices/InvoicePrintPage'
 import { SubscriptionInvoicePrintPage } from '@/pages/subscription/SubscriptionInvoicePrintPage'
-import CreditNotesPage       from '@/pages/invoices/CreditNotesPage'
+import CreditNotesPage           from '@/pages/invoices/CreditNotesPage'
+import { ServiceInvoicesPage }  from '@/pages/invoices/ServiceInvoicesPage'
 import { StaffPage }       from '@/pages/staff/StaffPage'
 import { StaffDetailPage } from '@/pages/staff/StaffDetailPage'
 import { AttendancePage } from '@/pages/attendance/AttendancePage'
@@ -82,6 +83,7 @@ export default function App() {
           <Route path="invoices"            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><InvoicesPage /></ProtectedRoute>} />
           <Route path="invoices/:invoiceId" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><InvoiceDetailPage /></ProtectedRoute>} />
           <Route path="credit-notes"        element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><CreditNotesPage /></ProtectedRoute>} />
+          <Route path="service-invoices"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ServiceInvoicesPage /></ProtectedRoute>} />
 
           {/* Vehicles — admin + office + supervisor + driver (read) */}
           <Route path="vehicles"            element={<VehiclesPage />} />

@@ -10,7 +10,7 @@ import {
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
-  Activity, Banknote, Package,
+  Activity, Banknote, Package, Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
@@ -39,8 +39,9 @@ const ADMIN_NAV: SectionedNav = {
       section: 'Finance',
       icon: Banknote,
       items: [
-        { to: '/invoices',     label: 'Invoices',     icon: Receipt },
-        { to: '/credit-notes', label: 'Credit Notes', icon: FileMinus },
+        { to: '/invoices',          label: 'Invoices',          icon: Receipt },
+        { to: '/credit-notes',      label: 'Credit Notes',      icon: FileMinus },
+        { to: '/service-invoices',  label: 'Service Invoices',  icon: Wrench },
       ],
     },
     {
@@ -97,8 +98,9 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       section: 'Finance',
       icon: Banknote,
       items: [
-        { to: '/invoices',     label: 'Invoices',     icon: Receipt },
-        { to: '/credit-notes', label: 'Credit Notes', icon: FileMinus },
+        { to: '/invoices',         label: 'Invoices',         icon: Receipt },
+        { to: '/credit-notes',     label: 'Credit Notes',     icon: FileMinus },
+        { to: '/service-invoices', label: 'Service Invoices', icon: Wrench },
       ],
     },
     {
