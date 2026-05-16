@@ -45,9 +45,20 @@ export const tiresApi = {
 
 export const tireRequestsApi = {
   getPending: () =>
-    apiClient.get<ApiResponse<unknown[]>>('/tire-requests/pending').then(r => r.data),
+    apiClient.get<ApiResponse<TireRequestItem[]>>('/tire-requests/pending').then(r => r.data),
   approve: (id: number, data: { tireId: number; fittedAtKm?: number }) =>
-    apiClient.patch<ApiResponse<unknown>>(`/tire-requests/${id}/approve`, data).then(r => r.data),
+    apiClient.patch<ApiResponse<TireRequestItem>>(`/tire-requests/${id}/approve`, data).then(r => r.data),
   reject: (id: number, data: { rejectionReason: string }) =>
-    apiClient.patch<ApiResponse<unknown>>(`/tire-requests/${id}/reject`, data).then(r => r.data),
+    apiClient.patch<ApiResponse<TireRequestItem>>(`/tire-requests/${id}/reject`, data).then(r => r.data),
+}
+
+export interface TireRequestItem {
+  id: number
+  vehicleRegistrationNumber: string
+  positionCode: string
+  requestedByName: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  rejectionReason?: string
+  notes?: string
+  createdAt: string
 }

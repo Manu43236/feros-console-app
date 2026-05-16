@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tiresApi, tireRequestsApi } from '@/api/tires'
+import { tiresApi, tireRequestsApi, type TireRequestItem } from '@/api/tires'
 import { toast } from 'sonner'
 import { CheckCircle2, CircleDot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,19 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 
-interface TireRequest {
-  id: number
-  vehicleRegistrationNumber: string
-  positionCode: string
-  requestedByName: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-  rejectionReason?: string
-  notes?: string
-  createdAt: string
-}
-
 // ── Approve/Reject Dialog ─────────────────────────────────────────────────────
-function ApprovalDialog({ request, onClose }: { request: TireRequest; onClose: () => void }) {
+function ApprovalDialog({ request, onClose }: { request: TireRequestItem; onClose: () => void }) {
   const qc = useQueryClient()
   const [action, setAction] = useState<'APPROVED' | 'REJECTED'>('APPROVED')
   const [selectedTireId, setSelectedTireId] = useState<number>(0)
@@ -149,14 +138,14 @@ function ApprovalDialog({ request, onClose }: { request: TireRequest; onClose: (
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function TireRequestsPage() {
-  const [selected, setSelected] = useState<TireRequest | null>(null)
+  const [selected, setSelected] = useState<TireRequestItem | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['tire-requests'],
     queryFn: tireRequestsApi.getPending,
     refetchInterval: 30_000,
   })
-  const requests: TireRequest[] = data?.data ?? []
+  const requests: TireRequestItem[] = data?.data ?? []
 
   return (
     <div className="p-6 space-y-5">
