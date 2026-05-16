@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-  Search, Download, CheckCircle2, Clock, Wrench,
+  Search, ExternalLink, CheckCircle2, Clock, Wrench,
   Receipt, FileText, BadgeCheck, AlertCircle,
 } from 'lucide-react'
 import { Button }  from '@/components/ui/button'
@@ -25,13 +25,11 @@ function fmtDate(d?: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function downloadBlob(blob: Blob, filename: string) {
+function openPdfInTab(blob: Blob) {
   const url = URL.createObjectURL(blob)
-  const a   = document.createElement('a')
-  a.href     = url
-  a.download  = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  window.open(url, '_blank')
+  // revoke after a short delay to allow the tab to load
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 // ── Badges ────────────────────────────────────────────────────────────────────
@@ -322,13 +320,13 @@ export function ServiceInvoicesPage() {
   const pending  = all.filter(i => i.paymentStatus === 'PENDING').length
   const paid     = all.filter(i => i.paymentStatus === 'PAID').length
 
-  async function handleDownload(inv: ServiceInvoice) {
+  async function handleViewPdf(inv: ServiceInvoice) {
     setDownloadingId(inv.id)
     try {
       const blob = await serviceInvoicesApi.downloadPdf(inv.id)
-      downloadBlob(blob, `${inv.invoiceNumber}.pdf`)
+      openPdfInTab(blob)
     } catch {
-      toast.error('Failed to download PDF')
+      toast.error('Failed to load PDF')
     } finally {
       setDownloadingId(null)
     }
@@ -465,16 +463,16 @@ export function ServiceInvoicesPage() {
                               Mark Paid
                             </Button>
                           )}
-                          {/* PDF download */}
+                          {/* View PDF */}
                           <button
                             className="p-1.5 rounded-lg text-gray-400 hover:text-feros-navy hover:bg-blue-50 transition-colors"
-                            title="Download PDF"
-                            onClick={() => handleDownload(inv)}
+                            title="View PDF"
+                            onClick={() => handleViewPdf(inv)}
                             disabled={downloadingId === inv.id}
                           >
                             {downloadingId === inv.id
                               ? <span className="text-xs">…</span>
-                              : <Download size={15} />}
+                              : <ExternalLink size={15} />}
                           </button>
                         </div>
                       </td>
