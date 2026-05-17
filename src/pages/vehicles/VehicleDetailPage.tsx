@@ -18,7 +18,7 @@ import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
-  AlertTriangle, CheckCircle, Clock, Pencil, Power,
+  AlertTriangle, Pencil, Power,
   ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ChevronUp, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge,
 } from 'lucide-react'
@@ -52,44 +52,6 @@ function fmtDate(d?: string) {
   try { return format(parseISO(d), 'dd MMM yyyy') } catch { return d }
 }
 
-// ── compliance row ────────────────────────────────────────────────────────────
-function ComplianceRow({ label, docNumber, expiryDate }: { label: string; docNumber?: string; expiryDate?: string }) {
-  const level = expiryLevel(expiryDate)
-  const days  = expiryDate && isValid(parseISO(expiryDate))
-    ? differenceInDays(parseISO(expiryDate), new Date()) : null
-
-  const chip: Record<ExpiryLevel, string> = {
-    expired:  'text-red-600 bg-red-50 border-red-200',
-    critical: 'text-orange-600 bg-orange-50 border-orange-200',
-    warning:  'text-yellow-700 bg-yellow-50 border-yellow-200',
-    ok:       'text-green-700 bg-green-50 border-green-200',
-    none:     'text-gray-400 bg-gray-50 border-gray-200',
-  }
-
-  const icon = level === 'expired' || level === 'critical'
-    ? <AlertTriangle size={13} />
-    : level === 'ok' ? <CheckCircle size={13} />
-    : level === 'warning' ? <Clock size={13} />
-    : null
-
-  const text =
-    level === 'none'    ? 'Not recorded' :
-    level === 'expired' ? `Expired ${Math.abs(days!)}d ago` :
-    level === 'ok'      ? `Valid · ${days}d left` : `${days}d left`
-
-  return (
-    <div className="flex items-center justify-between py-3.5 border-b border-gray-50 last:border-0">
-      <div>
-        <p className="text-sm font-medium text-gray-800">{label}</p>
-        {docNumber && <p className="text-xs text-gray-400 mt-0.5">{docNumber}</p>}
-        <p className="text-xs text-gray-400 mt-0.5">Expiry: {fmtDate(expiryDate)}</p>
-      </div>
-      <span className={cn('flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border', chip[level])}>
-        {icon}{text}
-      </span>
-    </div>
-  )
-}
 
 // ── info row ─────────────────────────────────────────────────────────────────
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
@@ -102,7 +64,7 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 }
 
 // ── tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Compliance', 'Service', 'Fuel', 'Tires', 'Meter Readings', 'GPS & Notes', 'Order History', 'Trip History'] as const
+const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tires', 'Meter Readings', 'GPS & Notes', 'Order History', 'Trip History'] as const
 type Tab = typeof TABS[number]
 
 // ── add document form ─────────────────────────────────────────────────────────
@@ -2589,17 +2551,12 @@ export function VehicleDetailPage() {
           {/* ── Compliance ── */}
           {tab === 'Compliance' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Compliance & Documents</p>
-                <Button size="sm" onClick={() => setAddDocOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
-                  <Plus size={13} /> Add Document
-                </Button>
-              </div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Document Status</p>
               {complianceDocs.length === 0 ? (
                 <div className="py-10 text-center text-gray-400">
                   <FileText size={32} className="mx-auto mb-3 text-gray-200" />
                   <p className="text-sm">No compliance documents added yet.</p>
-                  <p className="text-xs mt-1">Add RC, Insurance, Permit, Fitness, PUC, Road Tax documents using the button above.</p>
+                  <p className="text-xs mt-1">Go to the Documents tab to add RC, Insurance, Permit, Fitness, PUC or Road Tax.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -2627,10 +2584,81 @@ export function VehicleDetailPage() {
                           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                             {level !== 'none' && (
                               <span className={cn('text-xs px-2 py-1 rounded-full font-medium', {
-                                'bg-red-50 text-red-600 border border-red-200':       level === 'expired',
+                                'bg-red-50 text-red-600 border border-red-200':          level === 'expired',
                                 'bg-orange-50 text-orange-600 border border-orange-200': level === 'critical',
                                 'bg-yellow-50 text-yellow-700 border border-yellow-200': level === 'warning',
-                                'bg-green-50 text-green-700 border border-green-200':   level === 'ok',
+                                'bg-green-50 text-green-700 border border-green-200':    level === 'ok',
+                              })}>
+                                {level === 'expired' ? 'Expired' : level === 'ok' ? 'Valid' : `${differenceInDays(parseISO(doc.expiryDate!), new Date())}d left`}
+                              </span>
+                            )}
+                            {doc.isVerified ? (
+                              <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
+                                <BadgeCheck size={12} /> Verified
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">Pending</span>
+                            )}
+                            {doc.fileUrl && (
+                              <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-colors border border-blue-200">
+                                <ExternalLink size={11} /> View
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Documents ── */}
+          {tab === 'Documents' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Uploaded Documents</p>
+                <Button size="sm" onClick={() => setAddDocOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+                  <Plus size={13} /> Add Document
+                </Button>
+              </div>
+              {complianceDocs.length === 0 ? (
+                <div className="py-10 text-center text-gray-400">
+                  <FileText size={32} className="mx-auto mb-3 text-gray-200" />
+                  <p className="text-sm">No documents uploaded yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {complianceDocs.map((doc: VehicleDocument) => {
+                    const level = expiryLevel(doc.expiryDate)
+                    return (
+                      <div key={doc.id} className="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+                              <FileText size={15} className="text-feros-navy" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-800">{doc.documentTypeName ?? `Document #${doc.id}`}</p>
+                              {doc.documentNumber && <p className="text-xs text-gray-500 mt-0.5">No: {doc.documentNumber}</p>}
+                              {doc.issuerName     && <p className="text-xs text-gray-500">Issuer: {doc.issuerName}</p>}
+                              {doc.permitType     && <p className="text-xs text-gray-500">Type: {doc.permitType}</p>}
+                              <p className="text-xs text-gray-400 mt-1">
+                                {doc.issueDate  && `Issued: ${fmtDate(doc.issueDate)}`}
+                                {doc.issueDate && doc.expiryDate && ' · '}
+                                {doc.expiryDate && `Expires: ${fmtDate(doc.expiryDate)}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                            {level !== 'none' && (
+                              <span className={cn('text-xs px-2 py-1 rounded-full font-medium', {
+                                'bg-red-50 text-red-600 border border-red-200':          level === 'expired',
+                                'bg-orange-50 text-orange-600 border border-orange-200': level === 'critical',
+                                'bg-yellow-50 text-yellow-700 border border-yellow-200': level === 'warning',
+                                'bg-green-50 text-green-700 border border-green-200':    level === 'ok',
                               })}>
                                 {level === 'expired' ? 'Expired' : level === 'ok' ? 'Valid' : `${differenceInDays(parseISO(doc.expiryDate!), new Date())}d left`}
                               </span>
