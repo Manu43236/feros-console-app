@@ -102,13 +102,15 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 }
 
 // ── tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tires', 'Meter Readings', 'GPS & Notes', 'Order History', 'Trip History'] as const
+const TABS = ['Basic Info', 'Compliance', 'Service', 'Fuel', 'Tires', 'Meter Readings', 'GPS & Notes', 'Order History', 'Trip History'] as const
 type Tab = typeof TABS[number]
 
 // ── add document form ─────────────────────────────────────────────────────────
 const docSchema = z.object({
   documentTypeId: z.coerce.number().min(1, 'Select document type'),
   documentNumber: z.string().optional(),
+  issuerName:     z.string().optional(),
+  permitType:     z.string().optional(),
   issueDate:      z.string().optional(),
   expiryDate:     z.string().optional(),
   remarks:        z.string().optional(),
@@ -126,9 +128,14 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
     d.applicableFor === 'VEHICLE' || d.applicableFor === 'BOTH'
   )
 
-  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<DocForm>({
+  const { register, handleSubmit, control, watch, formState: { errors }, reset } = useForm<DocForm>({
     resolver: zodResolver(docSchema) as Resolver<DocForm>,
   })
+
+  const selectedDocTypeId  = watch('documentTypeId')
+  const selectedDocTypeName = vehicleDocTypes.find(d => d.id === selectedDocTypeId)?.name?.toLowerCase() ?? ''
+  const showIssuerName = selectedDocTypeName.includes('insurance')
+  const showPermitType = selectedDocTypeName.includes('permit')
 
   const mutation = useMutation({
     mutationFn: (data: DocForm & { fileUrl?: string }) => vehiclesApi.addDocument(vehicleId, data),
@@ -187,6 +194,32 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
             <Label>Document Number</Label>
             <Input placeholder="DOC123456" {...register('documentNumber')} />
           </div>
+          {showIssuerName && (
+            <div className="space-y-1.5">
+              <Label>Insurance Company</Label>
+              <Input placeholder="New India Assurance" {...register('issuerName')} />
+            </div>
+          )}
+          {showPermitType && (
+            <div className="space-y-1.5">
+              <Label>Permit Type</Label>
+              <Controller name="permitType" control={control} render={({ field }) => (
+                <div className="flex gap-2 mt-1">
+                  {(['NATIONAL', 'STATE'] as const).map(t => (
+                    <button key={t} type="button"
+                      onClick={() => field.onChange(field.value === t ? '' : t)}
+                      className={cn('flex-1 py-2 text-sm rounded-lg border font-medium transition-colors',
+                        field.value === t
+                          ? 'bg-feros-navy text-white border-feros-navy'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      )}>
+                      {t === 'NATIONAL' ? 'National' : 'State'}
+                    </button>
+                  ))}
+                </div>
+              )} />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Issue Date</Label>
@@ -2330,16 +2363,8 @@ export function VehicleDetailPage() {
     </div>
   )
 
-  const complianceItems = [
-    { label: 'Registration Certificate (RC)', docNumber: v.rcNumber,                                                  expiryDate: v.rcExpiryDate },
-    { label: 'Insurance',                     docNumber: v.insurancePolicyNumber,                                     expiryDate: v.insuranceExpiryDate },
-    { label: 'Permit',                        docNumber: v.permitNumber ? `${v.permitNumber} · ${v.permitType ?? ''}` : undefined, expiryDate: v.permitExpiryDate },
-    { label: 'Fitness Certificate',           docNumber: v.fitnessCertificateNumber,                                  expiryDate: v.fitnessExpiryDate },
-    { label: 'Pollution (PUC)',               docNumber: v.pucNumber,                                                 expiryDate: v.pollutionExpiryDate },
-    { label: 'Road Tax',                      docNumber: v.roadTaxPaidDate ? `Paid: ${fmtDate(v.roadTaxPaidDate)}` : undefined, expiryDate: v.roadTaxExpiryDate },
-  ]
-
-  const alertCount = complianceItems.filter(c => ['expired', 'critical'].includes(expiryLevel(c.expiryDate))).length
+  const complianceDocs = docsRes?.data ?? []
+  const alertCount = complianceDocs.filter(d => ['expired', 'critical'].includes(expiryLevel(d.expiryDate))).length
   const isHired    = v.ownershipTypeName && !v.ownershipTypeName.toUpperCase().includes('OWN')
 
   return (
@@ -2540,13 +2565,8 @@ export function VehicleDetailPage() {
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Identification</p>
-                <InfoRow label="Chassis No."   value={v.chassisNumber} />
-                <InfoRow label="Engine No."    value={v.engineNumber} />
-                <InfoRow label="RC Number"     value={v.rcNumber} />
-                <InfoRow label="Permit No."    value={v.permitNumber} />
-                <InfoRow label="Permit Type"   value={v.permitType} />
-                <InfoRow label="PUC No."       value={v.pucNumber} />
-                <InfoRow label="Fitness Cert." value={v.fitnessCertificateNumber} />
+                <InfoRow label="Chassis No." value={v.chassisNumber} />
+                <InfoRow label="Engine No."  value={v.engineNumber} />
               </div>
               {isHired && (
                 <div className="sm:col-span-2 border-t pt-5">
@@ -2568,43 +2588,80 @@ export function VehicleDetailPage() {
 
           {/* ── Compliance ── */}
           {tab === 'Compliance' && (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Compliance & Documents</p>
-                <Button size="sm" onClick={() => setEditOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
-                  <Pencil size={13} /> Edit
+                <Button size="sm" onClick={() => setAddDocOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+                  <Plus size={13} /> Add Document
                 </Button>
               </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Document Status</p>
-                {complianceItems.map(c => <ComplianceRow key={c.label} {...c} />)}
-              </div>
-              <div className="space-y-5">
-                {/* Insurance detail */}
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Insurance Details</p>
-                  <InfoRow label="Company"     value={v.insuranceCompanyName} />
-                  <InfoRow label="Policy No."  value={v.insurancePolicyNumber} />
-                  <InfoRow label="Start Date"  value={fmtDate(v.insuranceStartDate)} />
-                  <InfoRow label="Expiry Date" value={fmtDate(v.insuranceExpiryDate)} />
+              {complianceDocs.length === 0 ? (
+                <div className="py-10 text-center text-gray-400">
+                  <FileText size={32} className="mx-auto mb-3 text-gray-200" />
+                  <p className="text-sm">No compliance documents added yet.</p>
+                  <p className="text-xs mt-1">Add RC, Insurance, Permit, Fitness, PUC, Road Tax documents using the button above.</p>
                 </div>
-                {/* Permit detail */}
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Permit Details</p>
-                  <InfoRow label="Permit No."  value={v.permitNumber} />
-                  <InfoRow label="Type"        value={v.permitType} />
-                  <InfoRow label="Start Date"  value={fmtDate(v.permitStartDate)} />
-                  <InfoRow label="Expiry Date" value={fmtDate(v.permitExpiryDate)} />
+              ) : (
+                <div className="space-y-2">
+                  {complianceDocs.map((doc: VehicleDocument) => {
+                    const level = expiryLevel(doc.expiryDate)
+                    return (
+                      <div key={doc.id} className="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+                              <FileText size={15} className="text-feros-navy" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-800">{doc.documentTypeName ?? `Document #${doc.id}`}</p>
+                              {doc.documentNumber && <p className="text-xs text-gray-500 mt-0.5">No: {doc.documentNumber}</p>}
+                              {doc.issuerName     && <p className="text-xs text-gray-500">Issuer: {doc.issuerName}</p>}
+                              {doc.permitType     && <p className="text-xs text-gray-500">Type: {doc.permitType}</p>}
+                              <p className="text-xs text-gray-400 mt-1">
+                                {doc.issueDate  && `Issued: ${fmtDate(doc.issueDate)}`}
+                                {doc.issueDate && doc.expiryDate && ' · '}
+                                {doc.expiryDate && `Expires: ${fmtDate(doc.expiryDate)}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                            {level !== 'none' && (
+                              <span className={cn('text-xs px-2 py-1 rounded-full font-medium', {
+                                'bg-red-50 text-red-600 border border-red-200':       level === 'expired',
+                                'bg-orange-50 text-orange-600 border border-orange-200': level === 'critical',
+                                'bg-yellow-50 text-yellow-700 border border-yellow-200': level === 'warning',
+                                'bg-green-50 text-green-700 border border-green-200':   level === 'ok',
+                              })}>
+                                {level === 'expired' ? 'Expired' : level === 'ok' ? 'Valid' : `${differenceInDays(parseISO(doc.expiryDate!), new Date())}d left`}
+                              </span>
+                            )}
+                            {doc.isVerified ? (
+                              <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
+                                <BadgeCheck size={12} /> Verified
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">Pending</span>
+                            )}
+                            {doc.fileUrl && (
+                              <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-colors border border-blue-200">
+                                <ExternalLink size={11} /> View
+                              </a>
+                            )}
+                            <button
+                              onClick={() => setDocToDelete(doc)}
+                              className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors"
+                              title="Delete document"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-                {/* Road Tax */}
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Road Tax</p>
-                  <InfoRow label="Paid Date"   value={fmtDate(v.roadTaxPaidDate)} />
-                  <InfoRow label="Expiry Date" value={fmtDate(v.roadTaxExpiryDate)} />
-                </div>
-              </div>
-            </div>
+              )}
             </div>
           )}
 
@@ -2652,79 +2709,6 @@ export function VehicleDetailPage() {
                 </div>
               )}
             </div>
-            </div>
-          )}
-
-          {/* ── Documents ── */}
-          {tab === 'Documents' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Uploaded Documents</p>
-                <Button size="sm" onClick={() => setAddDocOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
-                  <Plus size={13} /> Add Document
-                </Button>
-              </div>
-              {(docsRes?.data ?? []).length === 0 ? (
-                <div className="py-10 text-center text-gray-400">
-                  <FileText size={32} className="mx-auto mb-3 text-gray-200" />
-                  <p className="text-sm">No documents uploaded yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {(docsRes?.data ?? []).map((doc: VehicleDocument) => {
-                    const level = expiryLevel(doc.expiryDate)
-                    return (
-                      <div key={doc.id} className="flex items-center justify-between p-3.5 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                            <FileText size={15} className="text-feros-navy" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-800">{doc.documentTypeName ?? `Document #${doc.id}`}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {doc.documentNumber && `${doc.documentNumber} · `}
-                              {doc.issueDate && `Issued: ${fmtDate(doc.issueDate)}`}
-                              {doc.expiryDate && ` · Expires: ${fmtDate(doc.expiryDate)}`}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {doc.fileUrl && (
-                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-colors">
-                              <ExternalLink size={11} /> View
-                            </a>
-                          )}
-                          {level !== 'none' && (
-                            <span className={cn('text-xs px-2 py-1 rounded-full', {
-                              'bg-red-50 text-red-600':    level === 'expired',
-                              'bg-orange-50 text-orange-600': level === 'critical',
-                              'bg-yellow-50 text-yellow-700': level === 'warning',
-                              'bg-green-50 text-green-700':   level === 'ok',
-                            })}>
-                              {level === 'expired' ? 'Expired' : level === 'ok' ? 'Valid' : `${differenceInDays(parseISO(doc.expiryDate!), new Date())}d left`}
-                            </span>
-                          )}
-                          {doc.isVerified ? (
-                            <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                              <BadgeCheck size={12} /> Verified
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full">Pending</span>
-                          )}
-                          <button
-                            onClick={() => setDocToDelete(doc)}
-                            className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors"
-                            title="Delete document"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
             </div>
           )}
 

@@ -107,14 +107,6 @@ export interface Vehicle {
   currentStatusId?: number; currentStatusName?: string; currentStatusType?: VehicleStatusType
   capacityInTons?: number; manufactureYear?: number; color?: string
   chassisNumber?: string; engineNumber?: string
-  rcNumber?: string; rcExpiryDate?: string; rcExpired?: boolean
-  insuranceCompanyName?: string; insurancePolicyNumber?: string
-  insuranceStartDate?: string; insuranceExpiryDate?: string; insuranceExpired?: boolean
-  permitNumber?: string; permitType?: string
-  permitStartDate?: string; permitExpiryDate?: string; permitExpired?: boolean
-  fitnessCertificateNumber?: string; fitnessExpiryDate?: string; fitnessExpired?: boolean
-  pucNumber?: string; pollutionExpiryDate?: string; pollutionExpired?: boolean
-  roadTaxPaidDate?: string; roadTaxExpiryDate?: string; roadTaxExpired?: boolean
   ownerName?: string; ownerPhone?: string; ownerPan?: string; ownerAddress?: string
   agreementStartDate?: string; agreementEndDate?: string; agreementAmount?: number
   gpsDeviceNumber?: string; gpsDeviceImei?: string; gpsProvider?: string
@@ -127,7 +119,8 @@ export interface Vehicle {
 export interface VehicleDocument {
   id: number; vehicleId: number; tenantId: number
   documentTypeId: number; documentTypeName?: string
-  documentNumber?: string; issueDate?: string; expiryDate?: string
+  documentNumber?: string; issuerName?: string; permitType?: string
+  issueDate?: string; expiryDate?: string
   fileUrl?: string; isVerified: boolean; remarks?: string
   isActive: boolean; createdAt: string
 }
