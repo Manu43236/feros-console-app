@@ -2549,71 +2549,54 @@ export function VehicleDetailPage() {
           )}
 
           {/* ── Compliance ── */}
-          {tab === 'Compliance' && (
-            <div className="space-y-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Document Status</p>
-              {complianceDocs.length === 0 ? (
-                <div className="py-10 text-center text-gray-400">
-                  <FileText size={32} className="mx-auto mb-3 text-gray-200" />
-                  <p className="text-sm">No compliance documents added yet.</p>
-                  <p className="text-xs mt-1">Go to the Documents tab to add RC, Insurance, Permit, Fitness, PUC or Road Tax.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {complianceDocs.map((doc: VehicleDocument) => {
-                    const level = expiryLevel(doc.expiryDate)
+          {tab === 'Compliance' && (() => {
+            const COMPLIANCE_TYPES = [
+              { label: 'Registration Certificate (RC)', key: 'registration' },
+              { label: 'Insurance',                     key: 'insurance'    },
+              { label: 'Permit',                        key: 'permit'       },
+              { label: 'Fitness Certificate',           key: 'fitness'      },
+              { label: 'PUC',                           key: 'puc'          },
+              { label: 'Road Tax',                      key: 'road'         },
+            ]
+            const chipCls: Record<ExpiryLevel, string> = {
+              expired:  'bg-red-50 text-red-600 border-red-200',
+              critical: 'bg-orange-50 text-orange-600 border-orange-200',
+              warning:  'bg-yellow-50 text-yellow-700 border-yellow-200',
+              ok:       'bg-green-50 text-green-700 border-green-200',
+              none:     'bg-gray-50 text-gray-400 border-gray-200',
+            }
+            return (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Document Status</p>
+                <div className="rounded-xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+                  {COMPLIANCE_TYPES.map(({ label, key }) => {
+                    const doc = complianceDocs.find((d: VehicleDocument) =>
+                      (d.documentTypeName ?? '').toLowerCase().includes(key)
+                    )
+                    const level = expiryLevel(doc?.expiryDate)
+                    const days  = doc?.expiryDate && isValid(parseISO(doc.expiryDate))
+                      ? differenceInDays(parseISO(doc.expiryDate), new Date()) : null
+                    const chipText =
+                      level === 'none'    ? 'Not recorded' :
+                      level === 'expired' ? `Expired ${Math.abs(days!)}d ago` :
+                      level === 'ok'      ? `Valid · ${days}d left` : `${days}d left`
                     return (
-                      <div key={doc.id} className="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
-                              <FileText size={15} className="text-feros-navy" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-gray-800">{doc.documentTypeName ?? `Document #${doc.id}`}</p>
-                              {doc.documentNumber && <p className="text-xs text-gray-500 mt-0.5">No: {doc.documentNumber}</p>}
-                              {doc.issuerName     && <p className="text-xs text-gray-500">Issuer: {doc.issuerName}</p>}
-                              {doc.permitType     && <p className="text-xs text-gray-500">Type: {doc.permitType}</p>}
-                              <p className="text-xs text-gray-400 mt-1">
-                                {doc.issueDate  && `Issued: ${fmtDate(doc.issueDate)}`}
-                                {doc.issueDate && doc.expiryDate && ' · '}
-                                {doc.expiryDate && `Expires: ${fmtDate(doc.expiryDate)}`}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                            {level !== 'none' && (
-                              <span className={cn('text-xs px-2 py-1 rounded-full font-medium', {
-                                'bg-red-50 text-red-600 border border-red-200':          level === 'expired',
-                                'bg-orange-50 text-orange-600 border border-orange-200': level === 'critical',
-                                'bg-yellow-50 text-yellow-700 border border-yellow-200': level === 'warning',
-                                'bg-green-50 text-green-700 border border-green-200':    level === 'ok',
-                              })}>
-                                {level === 'expired' ? 'Expired' : level === 'ok' ? 'Valid' : `${differenceInDays(parseISO(doc.expiryDate!), new Date())}d left`}
-                              </span>
-                            )}
-                            {doc.isVerified ? (
-                              <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
-                                <BadgeCheck size={12} /> Verified
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">Pending</span>
-                            )}
-                            {doc.fileUrl && (
-                              <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-colors border border-blue-200">
-                                <ExternalLink size={11} /> View
-                              </a>
-                            )}
-                          </div>
+                      <div key={key} className="flex items-center justify-between px-4 py-3.5 bg-white hover:bg-gray-50 transition-colors">
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">{label}</p>
+                          {doc?.documentNumber && <p className="text-xs text-gray-400 mt-0.5">{doc.documentNumber}</p>}
+                          {doc?.expiryDate && <p className="text-xs text-gray-400">Expires: {fmtDate(doc.expiryDate)}</p>}
                         </div>
+                        <span className={cn('text-xs font-medium px-2.5 py-1 rounded-full border', chipCls[level])}>
+                          {chipText}
+                        </span>
                       </div>
                     )
                   })}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )
+          })()}
 
           {/* ── Documents ── */}
           {tab === 'Documents' && (
