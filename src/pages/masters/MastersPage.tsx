@@ -853,11 +853,6 @@ function RbacTab() {
       return next
     })
   }
-  function toggleLoginRow(platform: string) {
-    const all = RBAC_ROLES.every(r => loginAccess[platform]?.[r.key])
-    setLoginAccess(prev => ({ ...prev, [platform]: Object.fromEntries(RBAC_ROLES.map(r => [r.key, !all])) }))
-  }
-
   // ── Module access helpers ────────────────────────────────────────────────
   function toggleModule(mod: string, role: string, val: boolean) {
     setModuleAccess(prev => ({ ...prev, [mod]: { ...prev[mod], [role]: val } }))
@@ -924,7 +919,6 @@ function RbacTab() {
                       onToggleAll={() => toggleLoginCol(r.key)}
                     />
                   ))}
-                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 w-16">Row</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -973,7 +967,6 @@ function RbacTab() {
                       onToggleAll={() => toggleModuleCol(r.key)}
                     />
                   ))}
-                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 w-16">Row</th>
                 </tr>
               </thead>
               <tbody>
@@ -987,15 +980,6 @@ function RbacTab() {
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{section}</span>
                         </td>
                         {RBAC_ROLES.map(r => <td key={r.key} />)}
-                        <td className="px-3 py-1.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => toggleModuleSection(section)}
-                            className="text-[10px] text-feros-orange hover:underline font-medium"
-                          >
-                            {allSection ? 'None' : 'All'}
-                          </button>
-                        </td>
                       </tr>
                       {mods.map(m => (
                         <tr key={m.key} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
