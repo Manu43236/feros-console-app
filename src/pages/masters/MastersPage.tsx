@@ -849,6 +849,7 @@ function RbacTab() {
 
   const [loginInitialized, setLoginInitialized] = useState(false)
   useEffect(() => {
+    if (!loginAccessData) return  // wait for data to actually load
     const entries: RbacEntry[] = loginAccessData?.data?.entries ?? []
     if (loginInitialized) return  // don't overwrite user edits after initial load
     const map = defaultLoginAccess()
@@ -883,6 +884,7 @@ function RbacTab() {
 
   const [moduleInitialized, setModuleInitialized] = useState(false)
   useEffect(() => {
+    if (!moduleAccessData) return  // wait for data to actually load
     const entries: ModuleAccessEntry[] = moduleAccessData?.data?.data?.entries ?? []
     if (moduleInitialized) return
     if (!entries.length) return
