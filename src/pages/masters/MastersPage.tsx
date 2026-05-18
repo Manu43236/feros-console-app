@@ -844,7 +844,7 @@ function RbacTab() {
   ]
 
   // ── Load login access from API ───────────────────────────────────────────
-  const { data: loginAccessData, isLoading: loadingLogin } = useQuery({
+  const { data: loginAccessData } = useQuery({
     queryKey: ['rbac-login-access'],
     queryFn: rbacApi.getLoginAccess,
   })
