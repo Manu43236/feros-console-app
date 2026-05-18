@@ -736,8 +736,22 @@ function PayRatesSection() {
   )
 }
 
+// ── RBAC (placeholder) ────────────────────────────────────────────────────────
+function RbacTab() {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+      <Settings size={36} className="mb-3 text-gray-300" />
+      <p className="text-sm">Role-based access control — coming soon</p>
+    </div>
+  )
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────────
+const SETTINGS_TABS = ['General', 'RBAC'] as const
+type SettingsTab = typeof SETTINGS_TABS[number]
+
 function SettingsSection() {
+  const [tab, setTab] = useState<SettingsTab>('General')
   const qc = useQueryClient()
   const [payCycle, setPayCycle] = useState('MONTHLY')
   const [attendanceEnforced, setAttendanceEnforced] = useState(false)
@@ -804,8 +818,28 @@ function SettingsSection() {
 
   return (
     <div>
-      <h2 className="text-base font-semibold text-gray-800 mb-4">Tenant Settings</h2>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-w-lg">
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-gray-200 mb-5">
+        {SETTINGS_TABS.map(t => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+              tab === t
+                ? 'border-feros-navy text-feros-navy'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            )}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'RBAC' && <RbacTab />}
+
+      {tab === 'General' && <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-w-lg">
         <div>
           <Label>Pay Cycle</Label>
           <SearchableSelect
@@ -916,7 +950,7 @@ function SettingsSection() {
         <div className="flex justify-end">
           <Button type="submit" disabled={save.isPending || locked}>{save.isPending ? 'Saving…' : 'Save Settings'}</Button>
         </div>
-      </form>
+      </form>}
     </div>
   )
 }
