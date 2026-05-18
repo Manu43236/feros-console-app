@@ -47,9 +47,6 @@ import { SASettingsPage }    from '@/pages/superadmin/SASettingsPage'
 // Subscription
 import { SubscriptionPage } from '@/pages/subscription/SubscriptionPage'
 
-// Settings
-import { SettingsPage } from '@/pages/settings/SettingsPage'
-
 // Profile
 import { ProfilePage } from '@/pages/profile/ProfilePage'
 
@@ -128,9 +125,6 @@ export default function App() {
 
           {/* Subscription */}
           <Route path="subscription" element={<SubscriptionPage />} />
-
-          {/* Settings — ADMIN only */}
-          <Route path="settings" element={<ProtectedRoute allowedRoles={['ADMIN']}><SettingsPage /></ProtectedRoute>} />
 
           {/* Profile */}
           <Route path="profile" element={<ProfilePage />} />

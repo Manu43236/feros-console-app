@@ -14,6 +14,8 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { tenantMastersApi, globalMastersApi, rbacApi } from '@/api/masters'
 import type { RbacEntry } from '@/api/masters'
+import { moduleAccessApi } from '@/api/moduleAccess'
+import type { ModuleAccessEntry, ModuleKey } from '@/types'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { sparePartsApi } from '@/api/inventory'
 import type { TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType, SparePart, BulkUploadResult } from '@/types'
@@ -747,47 +749,43 @@ const RBAC_ROLES = [
   { key: 'SERVICE_MEN',  label: 'Service Men' },
 ]
 
-const RBAC_MODULES = [
-  { key: 'dashboard',        label: 'Dashboard',        section: 'General' },
-  { key: 'clients',          label: 'Clients',          section: 'Operations' },
-  { key: 'orders',           label: 'Orders',           section: 'Operations' },
-  { key: 'assignments',      label: 'Assignments',      section: 'Operations' },
-  { key: 'lrs',              label: 'LR Register',      section: 'Operations' },
-  { key: 'invoices',         label: 'Invoices',         section: 'Finance' },
-  { key: 'credit_notes',     label: 'Credit Notes',     section: 'Finance' },
-  { key: 'service_invoices', label: 'Service Invoices', section: 'Finance' },
-  { key: 'client_advances',  label: 'Client Advances',  section: 'Finance' },
-  { key: 'vehicles',         label: 'Vehicles',         section: 'Fleet' },
-  { key: 'fuel_logs',        label: 'Fuel Logs',        section: 'Fleet' },
-  { key: 'meter_readings',   label: 'Meter Readings',   section: 'Fleet' },
-  { key: 'vehicle_services', label: 'Vehicle Services', section: 'Fleet' },
-  { key: 'spare_parts',      label: 'Spare Parts',      section: 'Inventory' },
-  { key: 'tires',            label: 'Tires',            section: 'Inventory' },
-  { key: 'staff',            label: 'Staff',            section: 'HR' },
-  { key: 'attendance',       label: 'Attendance',       section: 'HR' },
-  { key: 'payroll',          label: 'Payroll',          section: 'HR' },
-  { key: 'reports',          label: 'Reports',          section: 'Analytics' },
-  { key: 'masters',          label: 'Masters',          section: 'Analytics' },
+// Roles shown in Module Access tab (DRIVER/CLEANER have nothing configurable)
+const MODULE_ACCESS_ROLES = [
+  { key: 'OFFICE_STAFF', label: 'Office Staff' },
+  { key: 'SUPERVISOR',   label: 'Supervisor' },
+  { key: 'STORE_KEEPER', label: 'Store Keeper' },
+  { key: 'SERVICE_MEN',  label: 'Service Men' },
 ]
 
-const RBAC_MODULE_SECTIONS = ['General', 'Operations', 'Finance', 'Fleet', 'Inventory', 'HR', 'Analytics']
+// Module rows — keys match backend ModuleKey enum, roles = which roles can configure this module
+const RBAC_MODULE_ROWS: { key: string; label: string; section: string; roles: string[] }[] = [
+  { key: 'CLIENTS',          label: 'Clients',          section: 'Operations', roles: ['OFFICE_STAFF'] },
+  { key: 'ORDERS',           label: 'Orders',           section: 'Operations', roles: ['OFFICE_STAFF', 'SUPERVISOR'] },
+  { key: 'ASSIGNMENTS',      label: 'Assignments',      section: 'Operations', roles: ['SUPERVISOR'] },
+  { key: 'LR_REGISTER',      label: 'LR Register',      section: 'Operations', roles: ['OFFICE_STAFF', 'SUPERVISOR'] },
+  { key: 'INVOICES',         label: 'Invoices',         section: 'Finance',    roles: ['OFFICE_STAFF'] },
+  { key: 'CREDIT_NOTES',     label: 'Credit Notes',     section: 'Finance',    roles: ['OFFICE_STAFF'] },
+  { key: 'SERVICE_INVOICES', label: 'Service Invoices', section: 'Finance',    roles: ['OFFICE_STAFF'] },
+  { key: 'ATTENDANCE',       label: 'Attendance',       section: 'HR',         roles: ['OFFICE_STAFF'] },
+  { key: 'REPORTS',          label: 'Reports',          section: 'Analytics',  roles: ['OFFICE_STAFF'] },
+  { key: 'SPARE_PARTS',      label: 'Spare Parts',      section: 'Inventory',  roles: ['STORE_KEEPER'] },
+  { key: 'TIRES',            label: 'Tires',            section: 'Inventory',  roles: ['STORE_KEEPER'] },
+  { key: 'PART_REQUESTS',    label: 'Part Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },
+  { key: 'TIRE_REQUESTS',    label: 'Tire Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },
+  { key: 'VEHICLE_SERVICES', label: 'Vehicle Services', section: 'Fleet',      roles: ['SERVICE_MEN'] },
+]
+
+const RBAC_MODULE_SECTIONS = ['Operations', 'Finance', 'HR', 'Analytics', 'Inventory', 'Fleet']
 
 type CheckMap = Record<string, Record<string, boolean>>
+// [role][moduleKey] = enabled
+type ModuleMap = Record<string, Record<string, boolean>>
 
 function defaultLoginAccess(): CheckMap {
   const map: CheckMap = {}
   for (const p of ['web', 'mobile']) {
     map[p] = {}
     for (const r of RBAC_ROLES) map[p][r.key] = true
-  }
-  return map
-}
-
-function defaultModuleAccess(): CheckMap {
-  const map: CheckMap = {}
-  for (const m of RBAC_MODULES) {
-    map[m.key] = {}
-    for (const r of RBAC_ROLES) map[m.key][r.key] = true
   }
   return map
 }
@@ -835,8 +833,8 @@ type RbacSubTab = 'login' | 'modules'
 function RbacTab() {
   const qc = useQueryClient()
   const [subTab, setSubTab] = useState<RbacSubTab>('login')
-  const [loginAccess, setLoginAccess]   = useState<CheckMap>(defaultLoginAccess)
-  const [moduleAccess, setModuleAccess] = useState<CheckMap>(defaultModuleAccess)
+  const [loginAccess, setLoginAccess] = useState<CheckMap>(defaultLoginAccess)
+  const [moduleMap, setModuleMap]     = useState<ModuleMap>({})
 
   const platforms = [
     { key: 'web',    label: 'Web Platform', icon: '🖥' },
@@ -877,6 +875,43 @@ function RbacTab() {
     onError: () => toast.error('Failed to save login access'),
   })
 
+  // ── Load module access from API ──────────────────────────────────────────
+  const { data: moduleAccessData } = useQuery({
+    queryKey: ['module-access'],
+    queryFn: moduleAccessApi.getAll,
+  })
+
+  const [moduleInitialized, setModuleInitialized] = useState(false)
+  useEffect(() => {
+    const entries: ModuleAccessEntry[] = moduleAccessData?.data?.data?.entries ?? []
+    if (moduleInitialized) return
+    if (!entries.length) return
+    const map: ModuleMap = {}
+    for (const e of entries) {
+      if (!map[e.role]) map[e.role] = {}
+      map[e.role][e.moduleKey] = e.enabled
+    }
+    setModuleMap(map)
+    setModuleInitialized(true)
+  }, [moduleAccessData])
+
+  // ── Save module access ───────────────────────────────────────────────────
+  const saveModules = useMutation({
+    mutationFn: () => {
+      const entries: ModuleAccessEntry[] = []
+      for (const m of RBAC_MODULE_ROWS) {
+        for (const role of m.roles) {
+          entries.push({ role, moduleKey: m.key as ModuleKey, enabled: moduleMap[role]?.[m.key] ?? true })
+        }
+      }
+      return moduleAccessApi.saveAll({ entries })
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['module-access'] }); toast.success('Module access saved') },
+    onError: (err: any) => {
+      if (!err?.isSubscriptionBlock) toast.error(err?.response?.data?.message ?? 'Failed to save module access')
+    },
+  })
+
   // ── Login access helpers ─────────────────────────────────────────────────
   function toggleLogin(platform: string, role: string, val: boolean) {
     setLoginAccess(prev => ({ ...prev, [platform]: { ...prev[platform], [role]: val } }))
@@ -891,13 +926,14 @@ function RbacTab() {
   }
   // ── Module access helpers ────────────────────────────────────────────────
   function toggleModule(mod: string, role: string, val: boolean) {
-    setModuleAccess(prev => ({ ...prev, [mod]: { ...prev[mod], [role]: val } }))
+    setModuleMap(prev => ({ ...prev, [role]: { ...(prev[role] ?? {}), [mod]: val } }))
   }
   function toggleModuleCol(role: string) {
-    const all = RBAC_MODULES.every(m => moduleAccess[m.key]?.[role])
-    setModuleAccess(prev => {
-      const next = { ...prev }
-      for (const m of RBAC_MODULES) next[m.key] = { ...next[m.key], [role]: !all }
+    const applicableMods = RBAC_MODULE_ROWS.filter(m => m.roles.includes(role))
+    const all = applicableMods.every(m => moduleMap[role]?.[m.key] ?? true)
+    setModuleMap(prev => {
+      const next = { ...prev, [role]: { ...(prev[role] ?? {}) } }
+      for (const m of applicableMods) next[role][m.key] = !all
       return next
     })
   }
@@ -974,10 +1010,10 @@ function RbacTab() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 w-44">Module</th>
-                  {RBAC_ROLES.map(r => (
+                  {MODULE_ACCESS_ROLES.map(r => (
                     <RbacRoleHeader
                       key={r.key} label={r.label}
-                      allChecked={RBAC_MODULES.every(m => moduleAccess[m.key]?.[r.key])}
+                      allChecked={RBAC_MODULE_ROWS.filter(m => m.roles.includes(r.key)).every(m => moduleMap[r.key]?.[m.key] ?? true)}
                       onToggleAll={() => toggleModuleCol(r.key)}
                     />
                   ))}
@@ -985,26 +1021,30 @@ function RbacTab() {
               </thead>
               <tbody>
                 {RBAC_MODULE_SECTIONS.map(section => {
-                  const mods = RBAC_MODULES.filter(m => m.section === section)
+                  const mods = RBAC_MODULE_ROWS.filter(m => m.section === section)
                   return (
                     <>
                       <tr key={`sec-${section}`} className="bg-gray-50 border-y border-gray-200">
                         <td className="px-4 py-1.5">
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{section}</span>
                         </td>
-                        {RBAC_ROLES.map(r => <td key={r.key} />)}
+                        {MODULE_ACCESS_ROLES.map(r => <td key={r.key} />)}
                       </tr>
                       {mods.map(m => (
                         <tr key={m.key} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
                           <td className="px-4 py-3 pl-7">
                             <span className="text-gray-700">{m.label}</span>
                           </td>
-                          {RBAC_ROLES.map(r => (
+                          {MODULE_ACCESS_ROLES.map(r => (
                             <td key={r.key} className="px-3 py-3">
-                              <RbacCheckbox
-                                checked={moduleAccess[m.key]?.[r.key] ?? false}
-                                onChange={v => toggleModule(m.key, r.key, v)}
-                              />
+                              {m.roles.includes(r.key) ? (
+                                <RbacCheckbox
+                                  checked={moduleMap[r.key]?.[m.key] ?? true}
+                                  onChange={v => toggleModule(m.key, r.key, v)}
+                                />
+                              ) : (
+                                <div className="flex justify-center text-gray-300 text-xs">—</div>
+                              )}
                             </td>
                           ))}
                         </tr>
@@ -1027,7 +1067,9 @@ function RbacTab() {
       )}
       {subTab === 'modules' && (
         <div className="flex justify-end">
-          <Button type="button">Save Changes</Button>
+          <Button type="button" onClick={() => saveModules.mutate()} disabled={saveModules.isPending}>
+            {saveModules.isPending ? 'Saving…' : 'Save Changes'}
+          </Button>
         </div>
       )}
     </div>

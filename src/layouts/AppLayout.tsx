@@ -78,7 +78,6 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/reports',       label: 'Reports',      icon: BarChart3 },
         { to: '/masters',       label: 'Masters',      icon: Settings },
         { to: '/subscription',  label: 'Subscription', icon: BadgeCheck },
-        { to: '/settings',      label: 'Settings',     icon: Settings },
       ],
     },
   ],
