@@ -865,19 +865,6 @@ function RbacTab() {
       return next
     })
   }
-  function toggleModuleRow(modKey: string) {
-    const all = RBAC_ROLES.every(r => moduleAccess[modKey]?.[r.key])
-    setModuleAccess(prev => ({ ...prev, [modKey]: Object.fromEntries(RBAC_ROLES.map(r => [r.key, !all])) }))
-  }
-  function toggleModuleSection(section: string) {
-    const mods = RBAC_MODULES.filter(m => m.section === section)
-    const all  = mods.every(m => RBAC_ROLES.every(r => moduleAccess[m.key]?.[r.key]))
-    setModuleAccess(prev => {
-      const next = { ...prev }
-      for (const m of mods) next[m.key] = Object.fromEntries(RBAC_ROLES.map(r => [r.key, !all]))
-      return next
-    })
-  }
 
   return (
     <div className="space-y-4">
@@ -935,15 +922,6 @@ function RbacTab() {
                         />
                       </td>
                     ))}
-                    <td className="px-3 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => toggleLoginRow(p.key)}
-                        className="text-xs text-feros-orange hover:underline font-medium"
-                      >
-                        {RBAC_ROLES.every(r => loginAccess[p.key]?.[r.key]) ? 'None' : 'All'}
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -972,7 +950,6 @@ function RbacTab() {
               <tbody>
                 {RBAC_MODULE_SECTIONS.map(section => {
                   const mods = RBAC_MODULES.filter(m => m.section === section)
-                  const allSection = mods.every(m => RBAC_ROLES.every(r => moduleAccess[m.key]?.[r.key]))
                   return (
                     <>
                       <tr key={`sec-${section}`} className="bg-gray-50 border-y border-gray-200">
@@ -994,15 +971,6 @@ function RbacTab() {
                               />
                             </td>
                           ))}
-                          <td className="px-3 py-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => toggleModuleRow(m.key)}
-                              className="text-xs text-feros-orange hover:underline font-medium"
-                            >
-                              {RBAC_ROLES.every(r => moduleAccess[m.key]?.[r.key]) ? 'None' : 'All'}
-                            </button>
-                          </td>
                         </tr>
                       ))}
                     </>
