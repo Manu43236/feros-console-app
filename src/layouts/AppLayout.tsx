@@ -15,9 +15,10 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
+import type { ModuleKey } from '@/types'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type NavItem = { to: string; label: string; icon: React.ElementType }
+type NavItem = { to: string; label: string; icon: React.ElementType; moduleKey?: ModuleKey }
 type NavSection = { section: string; icon?: React.ElementType; items: NavItem[] }
 type FlatNav = NavItem[]
 type SectionedNav = { dashboard: NavItem; sections: NavSection[] }
@@ -30,19 +31,19 @@ const ADMIN_NAV: SectionedNav = {
       section: 'Operations',
       icon: Activity,
       items: [
-        { to: '/clients',     label: 'Clients',      icon: Users },
-        { to: '/orders',      label: 'Orders',       icon: ClipboardList },
-        { to: '/assignments', label: 'Assignments',  icon: ClipboardCheck },
-        { to: '/lrs',         label: 'LR Register',  icon: FileText },
+        { to: '/clients',     label: 'Clients',      icon: Users,          moduleKey: 'CLIENTS' },
+        { to: '/orders',      label: 'Orders',       icon: ClipboardList,  moduleKey: 'ORDERS' },
+        { to: '/assignments', label: 'Assignments',  icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
+        { to: '/lrs',         label: 'LR Register',  icon: FileText,       moduleKey: 'LR_REGISTER' },
       ],
     },
     {
       section: 'Finance',
       icon: Banknote,
       items: [
-        { to: '/invoices',          label: 'Invoices',          icon: Receipt },
-        { to: '/credit-notes',      label: 'Credit Notes',      icon: FileMinus },
-        { to: '/service-invoices',  label: 'Service Invoices',  icon: Wrench },
+        { to: '/invoices',          label: 'Invoices',          icon: Receipt,   moduleKey: 'INVOICES' },
+        { to: '/credit-notes',      label: 'Credit Notes',      icon: FileMinus, moduleKey: 'CREDIT_NOTES' },
+        { to: '/service-invoices',  label: 'Service Invoices',  icon: Wrench,    moduleKey: 'SERVICE_INVOICES' },
       ],
     },
     {
@@ -77,7 +78,7 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/reports',       label: 'Reports',      icon: BarChart3 },
         { to: '/masters',       label: 'Masters',      icon: Settings },
         { to: '/subscription',  label: 'Subscription', icon: BadgeCheck },
-
+        { to: '/settings',      label: 'Settings',     icon: Settings },
       ],
     },
   ],
@@ -91,38 +92,37 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       section: 'Operations',
       icon: Activity,
       items: [
-        { to: '/clients',     label: 'Clients',      icon: Users },
-        { to: '/orders',      label: 'Orders',       icon: ClipboardList },
-        { to: '/lrs',         label: 'LR Register',  icon: FileText },
+        { to: '/clients',     label: 'Clients',      icon: Users,          moduleKey: 'CLIENTS' },
+        { to: '/orders',      label: 'Orders',       icon: ClipboardList,  moduleKey: 'ORDERS' },
+        { to: '/lrs',         label: 'LR Register',  icon: FileText,       moduleKey: 'LR_REGISTER' },
       ],
     },
     {
       section: 'Finance',
       icon: Banknote,
       items: [
-        { to: '/invoices',         label: 'Invoices',         icon: Receipt },
-        { to: '/credit-notes',     label: 'Credit Notes',     icon: FileMinus },
-        { to: '/service-invoices', label: 'Service Invoices', icon: Wrench },
+        { to: '/invoices',         label: 'Invoices',         icon: Receipt,   moduleKey: 'INVOICES' },
+        { to: '/credit-notes',     label: 'Credit Notes',     icon: FileMinus, moduleKey: 'CREDIT_NOTES' },
+        { to: '/service-invoices', label: 'Service Invoices', icon: Wrench,    moduleKey: 'SERVICE_INVOICES' },
       ],
     },
     {
       section: 'HR',
       icon: Users,
       items: [
-        { to: '/attendance', label: 'Attendance', icon: Calendar },
+        { to: '/attendance', label: 'Attendance', icon: Calendar, moduleKey: 'ATTENDANCE' },
       ],
     },
     {
       section: '',
       items: [
-        { to: '/reports',      label: 'Reports',      icon: BarChart3 },
-        { to: '/subscription', label: 'Subscription', icon: BadgeCheck },
+        { to: '/reports', label: 'Reports', icon: BarChart3, moduleKey: 'REPORTS' },
       ],
     },
   ],
 }
 
-// ─── Flat navs (few items — no sections needed) ─────────────────────────────────
+// ─── Flat navs ──────────────────────────────────────────────────────────────────
 const SUPER_ADMIN_NAV: FlatNav = [
   { to: '/sa/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
   { to: '/sa/tenants',        label: 'Tenants',        icon: Building2 },
@@ -134,9 +134,9 @@ const SUPER_ADMIN_NAV: FlatNav = [
 
 const SUPERVISOR_NAV: FlatNav = [
   { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
-  { to: '/orders',        label: 'Orders',        icon: ClipboardList },
-  { to: '/assignments',   label: 'Assignments',   icon: ClipboardCheck },
-  { to: '/lrs',           label: 'LR Register',   icon: FileText },
+  { to: '/orders',        label: 'Orders',        icon: ClipboardList,  moduleKey: 'ORDERS' },
+  { to: '/assignments',   label: 'Assignments',   icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
+  { to: '/lrs',           label: 'LR Register',   icon: FileText,       moduleKey: 'LR_REGISTER' },
   { to: '/my/payslip',    label: 'My Payslip',    icon: Wallet },
 ]
 
@@ -147,16 +147,16 @@ const DRIVER_CLEANER_NAV: FlatNav = [
 ]
 
 const STORE_KEEPER_NAV: FlatNav = [
-  { to: '/inventory',               label: 'Spare Parts',   icon: Boxes },
-  { to: '/inventory/tires',         label: 'Tires',         icon: CircleDot },
-  { to: '/inventory/part-requests', label: 'Part Requests', icon: ClipboardCheck },
-  { to: '/inventory/tire-requests', label: 'Tire Requests', icon: ClipboardList },
+  { to: '/inventory',               label: 'Spare Parts',   icon: Boxes,          moduleKey: 'SPARE_PARTS' },
+  { to: '/inventory/tires',         label: 'Tires',         icon: CircleDot,      moduleKey: 'TIRES' },
+  { to: '/inventory/part-requests', label: 'Part Requests', icon: ClipboardCheck, moduleKey: 'PART_REQUESTS' },
+  { to: '/inventory/tire-requests', label: 'Tire Requests', icon: ClipboardList,  moduleKey: 'TIRE_REQUESTS' },
   { to: '/my/attendance',           label: 'My Attendance', icon: Calendar },
   { to: '/my/payslip',              label: 'My Payslip',    icon: Wallet },
 ]
 
 const SERVICE_MEN_NAV: FlatNav = [
-  { to: '/vehicle-services', label: 'Vehicle Services', icon: Truck },
+  { to: '/vehicle-services', label: 'Vehicle Services', icon: Truck, moduleKey: 'VEHICLE_SERVICES' },
   { to: '/my/attendance',    label: 'My Attendance',    icon: Calendar },
   { to: '/my/payslip',       label: 'My Payslip',       icon: Wallet },
 ]
@@ -164,6 +164,13 @@ const SERVICE_MEN_NAV: FlatNav = [
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 function isSectionedNav(nav: SectionedNav | FlatNav): nav is SectionedNav {
   return !Array.isArray(nav)
+}
+
+/** Returns true if the nav item should be shown based on allowedModules. */
+function isModuleAllowed(item: NavItem, allowedModules: string[] | null): boolean {
+  if (allowedModules === null) return true          // ADMIN/SA — all visible
+  if (!item.moduleKey) return true                   // no moduleKey = always-on item
+  return allowedModules.includes(item.moduleKey)
 }
 
 // ─── Notification Nav Link ───────────────────────────────────────────────────────
@@ -334,6 +341,7 @@ export function AppLayout() {
   const saSession          = useAuthStore(s => s.saSession)
   const logout             = useAuthStore(s => s.logout)
   const exitImpersonation  = useAuthStore(s => s.exitImpersonation)
+  const allowedModules     = useAuthStore(s => s.allowedModules)
   const navigate = useNavigate()
 
   const isImpersonating = !!saSession
@@ -360,7 +368,6 @@ export function AppLayout() {
 
   const location = useLocation()
 
-  // Collapsed by default — open only the section containing the current route
   function getActiveSection(): string | null {
     if (!isSectionedNav(nav)) return null
     for (const { section, items } of nav.sections) {
@@ -375,7 +382,6 @@ export function AppLayout() {
     return active ? new Set([active]) : new Set()
   })
 
-  // Auto-expand section when navigating into it
   useEffect(() => {
     const active = getActiveSection()
     if (active) setOpenSections(prev => prev.has(active) ? prev : new Set([...prev, active]))
@@ -390,7 +396,6 @@ export function AppLayout() {
   }
 
   async function handleLogout() {
-    // Notify server to invalidate session (best-effort — don't block logout if it fails)
     try { await authApi.logout() } catch (_) {}
     logout()
     navigate('/login', { replace: true })
@@ -405,7 +410,6 @@ export function AppLayout() {
   const isDateExpired = subEndDate != null && new Date(subEndDate) < new Date()
   const locked = subStatus === 'EXPIRED' || subStatus === 'SUSPENDED' || isDateExpired
 
-  // Routes that require a specific plan feature (free plan = false)
   const FEATURE_ROUTES: Record<string, boolean | undefined> = {
     '/fuel-logs':        subFeatures?.hasFuelLogs,
     '/meter-readings':   subFeatures?.hasMeterReadings,
@@ -418,10 +422,14 @@ export function AppLayout() {
     '/credit-notes':     subFeatures?.hasCreditNotes,
   }
 
-  function isRouteAllowed(to: string) {
-    if (role === 'SUPER_ADMIN' || subFeatures === undefined) return true
-    const flag = FEATURE_ROUTES[to]
-    return flag === undefined ? true : Boolean(flag)
+  function isRouteAllowed(item: NavItem) {
+    // 1. Check subscription feature flags
+    if (role !== 'SUPER_ADMIN' && subFeatures !== undefined) {
+      const flag = FEATURE_ROUTES[item.to]
+      if (flag !== undefined && !flag) return false
+    }
+    // 2. Check module access
+    return isModuleAllowed(item, allowedModules)
   }
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => {
@@ -447,12 +455,9 @@ export function AppLayout() {
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           {isSectionedNav(nav) ? (
             <>
-              {/* Dashboard — always visible, no section */}
               <NavItemLink {...nav.dashboard} onClick={closeMobile} />
-
-              {/* Sections */}
               {nav.sections.map(({ section, icon, items }) => {
-                const allowed = items.filter(i => isRouteAllowed(i.to))
+                const allowed = items.filter(i => isRouteAllowed(i))
                 if (allowed.length === 0) return null
                 return (
                   <NavSectionGroup
@@ -469,7 +474,7 @@ export function AppLayout() {
             </>
           ) : (
             <div className="space-y-0.5">
-              {nav.map(item => (
+              {(nav as FlatNav).filter(i => isRouteAllowed(i)).map(item => (
                 <NavItemLink key={item.to} {...item} onClick={closeMobile} />
               ))}
             </div>
@@ -520,7 +525,6 @@ export function AppLayout() {
           </button>
           <div className="flex-1" />
 
-          {/* User menu */}
           <button
             onClick={() => navigate('/profile')}
             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"

@@ -34,6 +34,28 @@ export interface LoginResponse {
   role: string
   companyName: string
   logoUrl?: string
+  isPinResetRequired?: boolean
+  allowedModules?: string[] | null
+}
+
+// ─── Module Access ─────────────────────────────────────────────────────────────
+export type ModuleKey =
+  | 'DASHBOARD' | 'CLIENTS' | 'ORDERS' | 'ASSIGNMENTS' | 'LR_REGISTER'
+  | 'INVOICES' | 'CREDIT_NOTES' | 'SERVICE_INVOICES' | 'ATTENDANCE' | 'REPORTS'
+  | 'SPARE_PARTS' | 'TIRES' | 'PART_REQUESTS' | 'TIRE_REQUESTS' | 'VEHICLE_SERVICES'
+
+export interface ModuleAccessEntry {
+  role: string
+  moduleKey: ModuleKey
+  enabled: boolean
+}
+
+export interface ModuleAccessResponse {
+  entries: ModuleAccessEntry[]
+}
+
+export interface ModuleAccessRequest {
+  entries: ModuleAccessEntry[]
 }
 
 // ─── Master (shared) ──────────────────────────────────────────────────────────
