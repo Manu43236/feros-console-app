@@ -849,15 +849,17 @@ function RbacTab() {
     queryFn: rbacApi.getLoginAccess,
   })
 
+  const [loginInitialized, setLoginInitialized] = useState(false)
   useEffect(() => {
     const entries: RbacEntry[] = loginAccessData?.data?.entries ?? []
-    if (entries.length === 0) return
+    if (loginInitialized) return  // don't overwrite user edits after initial load
     const map = defaultLoginAccess()
     for (const e of entries) {
       const p = e.platform.toLowerCase()
       if (map[p]) map[p][e.role] = e.allowed
     }
     setLoginAccess(map)
+    setLoginInitialized(true)
   }, [loginAccessData])
 
   // ── Save login access ────────────────────────────────────────────────────
@@ -1018,7 +1020,7 @@ function RbacTab() {
 
       {subTab === 'login' && (
         <div className="flex justify-end">
-          <Button type="button" onClick={() => saveLogin.mutate()} disabled={loadingLogin || saveLogin.isPending}>
+          <Button type="button" onClick={() => saveLogin.mutate()} disabled={saveLogin.isPending}>
             {saveLogin.isPending ? 'Saving…' : 'Save Changes'}
           </Button>
         </div>
