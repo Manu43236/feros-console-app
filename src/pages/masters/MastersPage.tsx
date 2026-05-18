@@ -736,12 +736,303 @@ function PayRatesSection() {
   )
 }
 
-// ── RBAC (placeholder) ────────────────────────────────────────────────────────
-function RbacTab() {
+// ── RBAC ──────────────────────────────────────────────────────────────────────
+const RBAC_ROLES = [
+  { key: 'OFFICE_STAFF', label: 'Office Staff' },
+  { key: 'SUPERVISOR',   label: 'Supervisor' },
+  { key: 'DRIVER',       label: 'Driver' },
+  { key: 'CLEANER',      label: 'Cleaner' },
+  { key: 'STORE_KEEPER', label: 'Store Keeper' },
+  { key: 'SERVICE_MEN',  label: 'Service Men' },
+]
+
+const RBAC_MODULES = [
+  { key: 'dashboard',        label: 'Dashboard',        section: 'General' },
+  { key: 'clients',          label: 'Clients',          section: 'Operations' },
+  { key: 'orders',           label: 'Orders',           section: 'Operations' },
+  { key: 'assignments',      label: 'Assignments',      section: 'Operations' },
+  { key: 'lrs',              label: 'LR Register',      section: 'Operations' },
+  { key: 'invoices',         label: 'Invoices',         section: 'Finance' },
+  { key: 'credit_notes',     label: 'Credit Notes',     section: 'Finance' },
+  { key: 'service_invoices', label: 'Service Invoices', section: 'Finance' },
+  { key: 'client_advances',  label: 'Client Advances',  section: 'Finance' },
+  { key: 'vehicles',         label: 'Vehicles',         section: 'Fleet' },
+  { key: 'fuel_logs',        label: 'Fuel Logs',        section: 'Fleet' },
+  { key: 'meter_readings',   label: 'Meter Readings',   section: 'Fleet' },
+  { key: 'vehicle_services', label: 'Vehicle Services', section: 'Fleet' },
+  { key: 'spare_parts',      label: 'Spare Parts',      section: 'Inventory' },
+  { key: 'tires',            label: 'Tires',            section: 'Inventory' },
+  { key: 'staff',            label: 'Staff',            section: 'HR' },
+  { key: 'attendance',       label: 'Attendance',       section: 'HR' },
+  { key: 'payroll',          label: 'Payroll',          section: 'HR' },
+  { key: 'reports',          label: 'Reports',          section: 'Analytics' },
+  { key: 'masters',          label: 'Masters',          section: 'Analytics' },
+]
+
+const RBAC_MODULE_SECTIONS = ['General', 'Operations', 'Finance', 'Fleet', 'Inventory', 'HR', 'Analytics']
+
+type CheckMap = Record<string, Record<string, boolean>>
+
+function defaultLoginAccess(): CheckMap {
+  const map: CheckMap = {}
+  for (const p of ['web', 'mobile']) {
+    map[p] = {}
+    for (const r of RBAC_ROLES) map[p][r.key] = true
+  }
+  return map
+}
+
+function defaultModuleAccess(): CheckMap {
+  const map: CheckMap = {}
+  for (const m of RBAC_MODULES) {
+    map[m.key] = {}
+    for (const r of RBAC_ROLES) map[m.key][r.key] = true
+  }
+  return map
+}
+
+function RbacCheckbox({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-      <Settings size={36} className="mb-3 text-gray-300" />
-      <p className="text-sm">Role-based access control — coming soon</p>
+    <div className="flex justify-center">
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+          checked
+            ? 'bg-feros-orange border-feros-orange'
+            : 'bg-white border-gray-300 hover:border-feros-orange'
+        )}
+      >
+        {checked && (
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </button>
+    </div>
+  )
+}
+
+function RbacRoleHeader({ label, allChecked, onToggleAll }: {
+  label: string; allChecked: boolean; onToggleAll: () => void
+}) {
+  return (
+    <th className="px-3 py-3 text-center min-w-[90px]">
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">{label}</span>
+        <button onClick={onToggleAll} className="text-[10px] text-feros-orange hover:underline font-medium">
+          {allChecked ? 'None' : 'All'}
+        </button>
+      </div>
+    </th>
+  )
+}
+
+type RbacSubTab = 'login' | 'modules'
+
+function RbacTab() {
+  const [subTab, setSubTab] = useState<RbacSubTab>('login')
+  const [loginAccess, setLoginAccess]   = useState<CheckMap>(defaultLoginAccess)
+  const [moduleAccess, setModuleAccess] = useState<CheckMap>(defaultModuleAccess)
+
+  const platforms = [
+    { key: 'web',    label: 'Web Platform', icon: '🖥' },
+    { key: 'mobile', label: 'Mobile App',   icon: '📱' },
+  ]
+
+  // ── Login access helpers ─────────────────────────────────────────────────
+  function toggleLogin(platform: string, role: string, val: boolean) {
+    setLoginAccess(prev => ({ ...prev, [platform]: { ...prev[platform], [role]: val } }))
+  }
+  function toggleLoginCol(role: string) {
+    const all = platforms.every(p => loginAccess[p.key]?.[role])
+    setLoginAccess(prev => {
+      const next = { ...prev }
+      for (const p of platforms) next[p.key] = { ...next[p.key], [role]: !all }
+      return next
+    })
+  }
+  function toggleLoginRow(platform: string) {
+    const all = RBAC_ROLES.every(r => loginAccess[platform]?.[r.key])
+    setLoginAccess(prev => ({ ...prev, [platform]: Object.fromEntries(RBAC_ROLES.map(r => [r.key, !all])) }))
+  }
+
+  // ── Module access helpers ────────────────────────────────────────────────
+  function toggleModule(mod: string, role: string, val: boolean) {
+    setModuleAccess(prev => ({ ...prev, [mod]: { ...prev[mod], [role]: val } }))
+  }
+  function toggleModuleCol(role: string) {
+    const all = RBAC_MODULES.every(m => moduleAccess[m.key]?.[role])
+    setModuleAccess(prev => {
+      const next = { ...prev }
+      for (const m of RBAC_MODULES) next[m.key] = { ...next[m.key], [role]: !all }
+      return next
+    })
+  }
+  function toggleModuleRow(modKey: string) {
+    const all = RBAC_ROLES.every(r => moduleAccess[modKey]?.[r.key])
+    setModuleAccess(prev => ({ ...prev, [modKey]: Object.fromEntries(RBAC_ROLES.map(r => [r.key, !all])) }))
+  }
+  function toggleModuleSection(section: string) {
+    const mods = RBAC_MODULES.filter(m => m.section === section)
+    const all  = mods.every(m => RBAC_ROLES.every(r => moduleAccess[m.key]?.[r.key]))
+    setModuleAccess(prev => {
+      const next = { ...prev }
+      for (const m of mods) next[m.key] = Object.fromEntries(RBAC_ROLES.map(r => [r.key, !all]))
+      return next
+    })
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Sub-tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+        {(['login', 'modules'] as RbacSubTab[]).map(t => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setSubTab(t)}
+            className={cn(
+              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+              subTab === t ? 'bg-white text-feros-navy shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            )}
+          >
+            {t === 'login' ? 'Login Access' : 'Module Access'}
+          </button>
+        ))}
+      </div>
+
+      <p className="text-xs text-gray-500">
+        {subTab === 'login'
+          ? 'Control which roles can log in on each platform. Admin always has full access.'
+          : 'Control which modules each role can access. Admin always has full access.'}
+      </p>
+
+      {/* ── Login Access ── */}
+      {subTab === 'login' && (
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 w-36">Platform</th>
+                  {RBAC_ROLES.map(r => (
+                    <RbacRoleHeader
+                      key={r.key} label={r.label}
+                      allChecked={platforms.every(p => loginAccess[p.key]?.[r.key])}
+                      onToggleAll={() => toggleLoginCol(r.key)}
+                    />
+                  ))}
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 w-16">Row</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {platforms.map(p => (
+                  <tr key={p.key} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-gray-800">{p.icon} {p.label}</span>
+                    </td>
+                    {RBAC_ROLES.map(r => (
+                      <td key={r.key} className="px-3 py-3">
+                        <RbacCheckbox
+                          checked={loginAccess[p.key]?.[r.key] ?? false}
+                          onChange={v => toggleLogin(p.key, r.key, v)}
+                        />
+                      </td>
+                    ))}
+                    <td className="px-3 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleLoginRow(p.key)}
+                        className="text-xs text-feros-orange hover:underline font-medium"
+                      >
+                        {RBAC_ROLES.every(r => loginAccess[p.key]?.[r.key]) ? 'None' : 'All'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Module Access ── */}
+      {subTab === 'modules' && (
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 w-44">Module</th>
+                  {RBAC_ROLES.map(r => (
+                    <RbacRoleHeader
+                      key={r.key} label={r.label}
+                      allChecked={RBAC_MODULES.every(m => moduleAccess[m.key]?.[r.key])}
+                      onToggleAll={() => toggleModuleCol(r.key)}
+                    />
+                  ))}
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 w-16">Row</th>
+                </tr>
+              </thead>
+              <tbody>
+                {RBAC_MODULE_SECTIONS.map(section => {
+                  const mods = RBAC_MODULES.filter(m => m.section === section)
+                  const allSection = mods.every(m => RBAC_ROLES.every(r => moduleAccess[m.key]?.[r.key]))
+                  return (
+                    <>
+                      <tr key={`sec-${section}`} className="bg-gray-50 border-y border-gray-200">
+                        <td className="px-4 py-1.5">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{section}</span>
+                        </td>
+                        {RBAC_ROLES.map(r => <td key={r.key} />)}
+                        <td className="px-3 py-1.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => toggleModuleSection(section)}
+                            className="text-[10px] text-feros-orange hover:underline font-medium"
+                          >
+                            {allSection ? 'None' : 'All'}
+                          </button>
+                        </td>
+                      </tr>
+                      {mods.map(m => (
+                        <tr key={m.key} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+                          <td className="px-4 py-3 pl-7">
+                            <span className="text-gray-700">{m.label}</span>
+                          </td>
+                          {RBAC_ROLES.map(r => (
+                            <td key={r.key} className="px-3 py-3">
+                              <RbacCheckbox
+                                checked={moduleAccess[m.key]?.[r.key] ?? false}
+                                onChange={v => toggleModule(m.key, r.key, v)}
+                              />
+                            </td>
+                          ))}
+                          <td className="px-3 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => toggleModuleRow(m.key)}
+                              className="text-xs text-feros-orange hover:underline font-medium"
+                            >
+                              {RBAC_ROLES.every(r => moduleAccess[m.key]?.[r.key]) ? 'None' : 'All'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        <Button type="button">Save Changes</Button>
+      </div>
     </div>
   )
 }

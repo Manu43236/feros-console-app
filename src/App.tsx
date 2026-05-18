@@ -35,7 +35,6 @@ import { PayrollPage }    from '@/pages/payroll/PayrollPage'
 import { ReportsPage }    from '@/pages/reports/ReportsPage'
 import { MastersPage }    from '@/pages/masters/MastersPage'
 import InventoryPage      from '@/pages/inventory/InventoryPage'
-import { SettingsPage }   from '@/pages/settings/SettingsPage'
 
 // Super Admin pages
 import { SADashboardPage }   from '@/pages/superadmin/SADashboardPage'
@@ -115,7 +114,6 @@ export default function App() {
           <Route path="reports" element={<Navigate to="/reports/daily-operations" replace />} />
           <Route path="reports/:section" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ReportsPage /></ProtectedRoute>} />
           <Route path="masters"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><MastersPage /></ProtectedRoute>} />
-          <Route path="settings"   element={<ProtectedRoute allowedRoles={['ADMIN']}><SettingsPage /></ProtectedRoute>} />
 
           {/* SUPER_ADMIN */}
           <Route path="sa/dashboard"      element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SADashboardPage /></ProtectedRoute>} />
