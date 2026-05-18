@@ -20,6 +20,10 @@ export interface PageResponse<T> {
 export interface LoginRequest {
   phone: string
   pin: string
+  deviceType: 'WEB' | 'MOBILE'
+  deviceInfo?: string
+  appVersion?: string
+  fcmToken?: string
 }
 export interface LoginResponse {
   token: string

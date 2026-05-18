@@ -30,7 +30,7 @@ export function LoginPage() {
   async function onSubmit(data: FormData) {
     setLoading(true)
     try {
-      const res = await authApi.login(data)
+      const res = await authApi.login({ ...data, deviceType: 'WEB' })
       if (res.success && res.data) {
         const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'OFFICE_STAFF', 'SUPERVISOR']
         if (!allowedRoles.includes(res.data.role)) {

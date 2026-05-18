@@ -4,6 +4,7 @@ import leftMenuLogo from '@/assets/left_menu_logo.png'
 import { useAuthStore } from '@/store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { notificationsApi, subscriptionsApi } from '@/api/superadmin'
+import { authApi } from '@/api/auth'
 import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
   Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
@@ -387,7 +388,9 @@ export function AppLayout() {
     })
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    // Notify server to invalidate session (best-effort — don't block logout if it fails)
+    try { await authApi.logout() } catch (_) {}
     logout()
     navigate('/login', { replace: true })
   }
