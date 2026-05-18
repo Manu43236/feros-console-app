@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
-import { tenantMastersApi, globalMastersApi } from '@/api/masters'
+import { tenantMastersApi, globalMastersApi, rbacApi } from '@/api/masters'
+import type { RbacEntry } from '@/api/masters'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { sparePartsApi } from '@/api/inventory'
 import type { TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType, SparePart, BulkUploadResult } from '@/types'
@@ -832,6 +833,7 @@ function RbacRoleHeader({ label, allChecked, onToggleAll }: {
 type RbacSubTab = 'login' | 'modules'
 
 function RbacTab() {
+  const qc = useQueryClient()
   const [subTab, setSubTab] = useState<RbacSubTab>('login')
   const [loginAccess, setLoginAccess]   = useState<CheckMap>(defaultLoginAccess)
   const [moduleAccess, setModuleAccess] = useState<CheckMap>(defaultModuleAccess)
@@ -840,6 +842,38 @@ function RbacTab() {
     { key: 'web',    label: 'Web Platform', icon: '🖥' },
     { key: 'mobile', label: 'Mobile App',   icon: '📱' },
   ]
+
+  // ── Load login access from API ───────────────────────────────────────────
+  const { data: loginAccessData, isLoading: loadingLogin } = useQuery({
+    queryKey: ['rbac-login-access'],
+    queryFn: rbacApi.getLoginAccess,
+  })
+
+  useEffect(() => {
+    const entries: RbacEntry[] = loginAccessData?.data?.entries ?? []
+    if (entries.length === 0) return
+    const map = defaultLoginAccess()
+    for (const e of entries) {
+      const p = e.platform.toLowerCase()
+      if (map[p]) map[p][e.role] = e.allowed
+    }
+    setLoginAccess(map)
+  }, [loginAccessData])
+
+  // ── Save login access ────────────────────────────────────────────────────
+  const saveLogin = useMutation({
+    mutationFn: () => {
+      const entries: RbacEntry[] = []
+      for (const p of platforms) {
+        for (const r of RBAC_ROLES) {
+          entries.push({ role: r.key, platform: p.key.toUpperCase(), allowed: loginAccess[p.key]?.[r.key] ?? true })
+        }
+      }
+      return rbacApi.saveLoginAccess({ entries })
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['rbac-login-access'] }); toast.success('Login access saved') },
+    onError: () => toast.error('Failed to save login access'),
+  })
 
   // ── Login access helpers ─────────────────────────────────────────────────
   function toggleLogin(platform: string, role: string, val: boolean) {
@@ -982,9 +1016,18 @@ function RbacTab() {
         </div>
       )}
 
-      <div className="flex justify-end">
-        <Button type="button">Save Changes</Button>
-      </div>
+      {subTab === 'login' && (
+        <div className="flex justify-end">
+          <Button type="button" onClick={() => saveLogin.mutate()} disabled={loadingLogin || saveLogin.isPending}>
+            {saveLogin.isPending ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </div>
+      )}
+      {subTab === 'modules' && (
+        <div className="flex justify-end">
+          <Button type="button">Save Changes</Button>
+        </div>
+      )}
     </div>
   )
 }

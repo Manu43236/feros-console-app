@@ -69,3 +69,12 @@ export const tenantMastersApi = {
   getSettings:     () => apiClient.get<ApiResponse<TenantMasterItem>>('/masters/tenant/settings').then(r => r.data),
   upsertSettings:  (data: object) => apiClient.post<ApiResponse<TenantMasterItem>>('/masters/tenant/settings', data).then(r => r.data),
 }
+
+// RBAC
+export type RbacEntry = { role: string; platform: string; allowed: boolean }
+export type RbacLoginAccessData = { entries: RbacEntry[] }
+
+export const rbacApi = {
+  getLoginAccess:  () => apiClient.get<{ data: RbacLoginAccessData }>('/masters/tenant/rbac/login-access').then(r => r.data),
+  saveLoginAccess: (data: RbacLoginAccessData) => apiClient.put<{ data: RbacLoginAccessData }>('/masters/tenant/rbac/login-access', data).then(r => r.data),
+}
