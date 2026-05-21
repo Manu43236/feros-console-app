@@ -14,6 +14,8 @@ interface UpdateLrPayload {
   loadedAt?: string
   deliveredWeight?: number
   deliveredAt?: string
+  endOdometer?: number
+  startOdometer?: number
   lrStatus?: LrStatus
   remarks?: string
 }
