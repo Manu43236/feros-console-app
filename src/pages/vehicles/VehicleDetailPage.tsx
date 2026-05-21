@@ -984,7 +984,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
 
   const dueSoonCount = allServices.filter(s => s.displayStatus === 'DUE_SOON').length
   const overdueCount = allServices.filter(s => s.displayStatus === 'OVERDUE').length
-  const openBreakdowns = allBreakdowns.filter(b => b.status !== 'RESOLVED' && b.status !== 'VEHICLE_REPLACED')
+  const openBreakdowns = allBreakdowns.filter(b => b.status !== 'RESOLVED')
 
   return (
     <div className="space-y-4">
@@ -1171,19 +1171,23 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
             </div>
           ) : (
             allBreakdowns.map(b => {
-              const isOpen = b.status !== 'RESOLVED' && b.status !== 'VEHICLE_REPLACED'
+              const isResolved = b.status === 'RESOLVED'
+              const isReplaced = b.status === 'VEHICLE_REPLACED'
               const isInRepair = b.status === 'IN_REPAIR'
+              const isOpen     = b.status === 'REPORTED'
               return (
                 <div key={b.id} className="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border',
-                          isInRepair ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                          isOpen ? 'bg-red-50 text-red-600 border-red-200' :
-                          'bg-green-50 text-green-700 border-green-200'
+                          isInRepair  ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                          isOpen      ? 'bg-red-50 text-red-600 border-red-200' :
+                          isReplaced  ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          isResolved  ? 'bg-green-50 text-green-700 border-green-200' :
+                                        'bg-gray-50 text-gray-600 border-gray-200'
                         )}>
-                          {isInRepair ? '🔧 In Repair' : isOpen ? '⚠ Open' : '✓ Resolved'}
+                          {isInRepair ? '🔧 In Repair' : isOpen ? '⚠ Open' : isReplaced ? '🔄 Vehicle Replaced — Pending Repair' : '✓ Resolved'}
                         </span>
                         <span className="text-xs text-gray-500 capitalize">{b.breakdownType.replace('_', ' ')}</span>
                         <span className="text-xs text-gray-400">{b.breakdownDuration === 'SHORT' ? 'Minor' : 'Major'}</span>
