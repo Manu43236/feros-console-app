@@ -500,7 +500,11 @@ function ReplaceVehicleDialog({ orderId, breakdown, open, onClose }: {
     },
   })
 
-  const availableVehicles = (vehiclesRes?.data ?? []).filter(v => v.isActive && !v.isAssigned)
+  const availableVehicles = (vehiclesRes?.data ?? []).filter(
+    v => v.isActive &&
+         v.currentStatusType === 'AVAILABLE' &&
+         v.id !== breakdown.vehicleId
+  )
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>

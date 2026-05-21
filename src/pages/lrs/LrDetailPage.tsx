@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner'
 import apiClient from '@/api/client'
 import { lrsApi } from '@/api/lrs'
+import { breakdownsApi } from '@/api/breakdowns'
 import { tenantMastersApi } from '@/api/masters'
 import type { LrStatus, LrCheckpost, LrCharge } from '@/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -107,6 +108,7 @@ function RecordLoadingDialog({ lrId, open, onClose }: { lrId: number; open: bool
 // ─── Mark Delivered Dialog ─────────────────────────────────────────────────
 const deliverSchema = z.object({
   deliveredWeight: z.string().min(1, 'Required').refine(v => !isNaN(parseFloat(v)) && parseFloat(v) > 0, 'Must be a positive number'),
+  endOdometer:     z.string().min(1, 'Required').refine(v => !isNaN(parseFloat(v)) && parseFloat(v) > 0, 'Must be a positive number'),
   remarks:         z.string().optional(),
 })
 type DeliverForm = z.infer<typeof deliverSchema>
@@ -120,6 +122,7 @@ function MarkDeliveredDialog({ lrId, open, onClose }: { lrId: number; open: bool
   const mutation = useMutation({
     mutationFn: (data: DeliverForm) => lrsApi.update(lrId, {
       deliveredWeight: parseFloat(data.deliveredWeight),
+      endOdometer:     parseFloat(data.endOdometer),
       deliveredAt:     new Date().toISOString().slice(0, 19),
       lrStatus:        'DELIVERED',
       remarks:         data.remarks || undefined,
@@ -140,6 +143,11 @@ function MarkDeliveredDialog({ lrId, open, onClose }: { lrId: number; open: bool
             <Label>Delivered Weight (tons) *</Label>
             <Input type="number" step="0.01" min="0" {...register('deliveredWeight')} placeholder="Actual weight delivered at destination" autoFocus />
             {errors.deliveredWeight && <p className="text-red-500 text-xs">{errors.deliveredWeight.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>End Odometer (km) *</Label>
+            <Input type="number" step="0.1" min="0" {...register('endOdometer')} placeholder="Odometer reading at delivery point" />
+            {errors.endOdometer && <p className="text-red-500 text-xs">{errors.endOdometer.message}</p>}
           </div>
           <div className="space-y-1.5">
             <Label>Remarks</Label>
@@ -572,6 +580,14 @@ export function LrDetailPage() {
     enabled: !isNaN(id),
   })
 
+  const { data: breakdown } = useQuery({
+    queryKey: ['lr-breakdown', id],
+    queryFn: () => breakdownsApi.get(lr!.orderId, lr!.vehicleAllocationId!).then(r => r.data).catch(() => null),
+    enabled: !!lr && lr.lrStatus === 'IN_TRANSIT' && !!lr.vehicleAllocationId,
+  })
+
+  const hasActiveBreakdown = breakdown?.status === 'REPORTED'
+
   async function handlePdf() {
     if (!lr) return
     setPdfLoading(true)
@@ -686,13 +702,20 @@ export function LrDetailPage() {
                 </div>
               )}
               {lr.lrStatus === 'IN_TRANSIT' && (
-                <button
-                  onClick={() => setDialog('deliver')}
-                  className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Mark Delivered
-                </button>
+                hasActiveBreakdown ? (
+                  <div className="flex items-center gap-2 bg-red-500/20 text-red-200 border border-red-400/30 px-3 py-2 rounded-lg text-sm font-medium">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Breakdown Reported
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setDialog('deliver')}
+                    className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Mark Delivered
+                  </button>
+                )
               )}
               {lr.lrStatus === 'DELIVERED' && (
                 <div className="flex items-center gap-2 bg-green-500/20 text-green-300 px-3 py-2 rounded-lg text-sm font-medium">
