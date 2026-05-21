@@ -1201,7 +1201,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
                         {b.orderNumber && <span>Order: {b.orderNumber}</span>}
                       </div>
                     </div>
-                    {isOpen && !isInRepair && (
+                    {(isOpen || isReplaced) && !isInRepair && (
                       <Button size="sm" onClick={() => { setCreateBreakdownId(b.id); setCreateOpen(true) }}
                         className="h-7 text-xs bg-feros-navy hover:bg-feros-navy/90 text-white gap-1 shrink-0">
                         <Wrench size={12} /> Log Service
