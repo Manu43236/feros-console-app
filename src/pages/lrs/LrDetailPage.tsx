@@ -113,7 +113,7 @@ const deliverSchema = z.object({
 })
 type DeliverForm = z.infer<typeof deliverSchema>
 
-function MarkDeliveredDialog({ lrId, open, onClose }: { lrId: number; open: boolean; onClose: () => void }) {
+function MarkDeliveredDialog({ lrId, startOdometer, open, onClose }: { lrId: number; startOdometer?: number; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const { register, handleSubmit, formState: { errors }, reset } = useForm<DeliverForm>({
     resolver: zodResolver(deliverSchema) as Resolver<DeliverForm>,
@@ -134,6 +134,10 @@ function MarkDeliveredDialog({ lrId, open, onClose }: { lrId: number; open: bool
     },
   })
 
+  const apiError = mutation.isError
+    ? ((mutation.error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed. Please try again.')
+    : null
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
@@ -148,12 +152,15 @@ function MarkDeliveredDialog({ lrId, open, onClose }: { lrId: number; open: bool
             <Label>End Odometer (km) *</Label>
             <Input type="number" step="0.1" min="0" {...register('endOdometer')} placeholder="Odometer reading at delivery point" />
             {errors.endOdometer && <p className="text-red-500 text-xs">{errors.endOdometer.message}</p>}
+            {startOdometer != null && (
+              <p className="text-xs text-gray-500">Start odometer was <strong>{startOdometer} km</strong> — end must be higher.</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Remarks</Label>
             <textarea {...register('remarks')} rows={2} className="w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background" />
           </div>
-          {mutation.isError && <p className="text-sm text-red-600">Failed. Please try again.</p>}
+          {apiError && <p className="text-sm text-red-600">{apiError}</p>}
           <p className="text-xs text-gray-500">LR status will move to <strong>Delivered</strong>.</p>
           <div className="flex justify-end gap-3 pt-2 border-t">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -884,7 +891,7 @@ export function LrDetailPage() {
 
       {/* ── Dialogs ── */}
       <RecordLoadingDialog  lrId={id} open={dialog === 'load'}      onClose={() => setDialog(null)} />
-      <MarkDeliveredDialog  lrId={id} open={dialog === 'deliver'}   onClose={() => setDialog(null)} />
+      <MarkDeliveredDialog  lrId={id} startOdometer={lr?.startOdometer} open={dialog === 'deliver'}   onClose={() => setDialog(null)} />
       <AddCheckpostDialog   lrId={id} open={dialog === 'checkpost'} onClose={() => setDialog(null)} />
       <AddChargeDialog      lrId={id} open={dialog === 'charge'}    onClose={() => setDialog(null)} />
       <EditLrDialog         lrId={id} lrStatus={lr.lrStatus} currentRemarks={lr.remarks} currentLoadedWeight={lr.loadedWeight} currentDeliveredWeight={lr.deliveredWeight} open={dialog === 'edit'} onClose={() => setDialog(null)} />
