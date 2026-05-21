@@ -4,7 +4,9 @@ import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, Tax
 // Global Masters
 export const globalMastersApi = {
   getStates:           () => apiClient.get<ApiResponse<StateItem[]>>('/masters/global/states').then(r => r.data),
-  getCities:           (stateId?: number) => apiClient.get<ApiResponse<CityItem[]>>(`/masters/global/cities${stateId ? `?stateId=${stateId}` : ''}`).then(r => r.data),
+  getStatesPaged:      (page: number, size: number, search?: string) => apiClient.get<ApiResponse<{ content: StateItem[]; totalElements: number; totalPages: number; number: number }>>(`/masters/global/states?page=${page}&size=${size}&search=${search ?? ''}`).then(r => r.data),
+  getCitiesPaged:      (page: number, size: number, search?: string, stateId?: number) => apiClient.get<ApiResponse<{ content: CityItem[]; totalElements: number; totalPages: number; number: number }>>(`/masters/global/cities?page=${page}&size=${size}&search=${search ?? ''}${stateId ? `&stateId=${stateId}` : ''}`).then(r => r.data),
+  getCities:           (stateId?: number) => apiClient.get<ApiResponse<CityItem[]>>(stateId ? `/masters/global/cities/state/${stateId}` : '/masters/global/cities').then(r => r.data),
   getVehicleBrands:    () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/vehicle-brands').then(r => r.data),
   getVehicleTypes:     () => apiClient.get<ApiResponse<VehicleTypeItem[]>>('/masters/global/vehicle-types').then(r => r.data),
   getFuelTypes:        () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/fuel-types').then(r => r.data),

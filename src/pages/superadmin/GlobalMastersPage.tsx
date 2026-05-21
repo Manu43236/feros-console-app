@@ -101,8 +101,16 @@ function SimpleSection({
 // ── States section ────────────────────────────────────────────────────────────
 function StatesSection() {
   const qc = useQueryClient()
-  const { data, isLoading } = useQuery({ queryKey: ['g-states'], queryFn: globalMastersApi.getStates })
-  const items = (data?.data ?? []) as StateItem[]
+  const [page, setPage]     = useState(0)
+  const [search, setSearch] = useState('')
+  const PAGE_SIZE = 20
+  const { data, isLoading } = useQuery({
+    queryKey: ['g-states-paged', page, search],
+    queryFn: () => globalMastersApi.getStatesPaged(page, PAGE_SIZE, search),
+  })
+  const paged = data?.data as { content: StateItem[]; totalElements: number; totalPages: number; number: number } | undefined
+  const items = paged?.content ?? []
+  const totalPages = paged?.totalPages ?? 1
   const [open, setOpen]       = useState(false)
   const [editItem, setEditItem] = useState<StateItem | null>(null)
   const [name, setName]       = useState('')
@@ -110,9 +118,9 @@ function StatesSection() {
   const [errs, setErrs]       = useState({ name: '', code: '' })
   const [dlg, setDlg]         = useState<{ name: string; id: number } | null>(null)
 
-  const mutAdd = useMutation({ mutationFn: (d: { name: string; code: string }) => globalMastersWriteApi.createState(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-states'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
-  const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; code: string } }) => globalMastersWriteApi.updateState(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-states'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
-  const mutDel = useMutation({ mutationFn: (id: number) => globalMastersWriteApi.deleteState(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-states'] }), onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
+  const mutAdd = useMutation({ mutationFn: (d: { name: string; code: string }) => globalMastersWriteApi.createState(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-states-paged'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
+  const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; code: string } }) => globalMastersWriteApi.updateState(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-states-paged'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
+  const mutDel = useMutation({ mutationFn: (id: number) => globalMastersWriteApi.deleteState(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-states-paged'] }), onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
 
   function openAdd() { setEditItem(null); setName(''); setCode(''); setErrs({ name: '', code: '' }); setOpen(true) }
   function openEdit(it: StateItem) { setEditItem(it); setName(it.name); setCode(it.code); setErrs({ name: '', code: '' }); setOpen(true) }
@@ -131,7 +139,10 @@ function StatesSection() {
         <h3 className="text-sm font-semibold text-gray-700">States</h3>
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No states yet</div> : (
+      <div className="mb-2">
+        <Input placeholder="Search states…" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} className="h-7 text-xs" />
+      </div>
+      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No states found</div> : (
         <div className="divide-y border rounded-lg overflow-hidden">
           {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
@@ -142,6 +153,13 @@ function StatesSection() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-2">
+          <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="text-xs text-gray-500 disabled:opacity-40 hover:text-gray-800">← Prev</button>
+          <span className="text-xs text-gray-400">Page {page + 1} of {totalPages}</span>
+          <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="text-xs text-gray-500 disabled:opacity-40 hover:text-gray-800">Next →</button>
         </div>
       )}
       <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
@@ -180,19 +198,27 @@ function StatesSection() {
 // ── Cities section ────────────────────────────────────────────────────────────
 function CitiesSection({ states }: { states: StateItem[] }) {
   const qc = useQueryClient()
-  const { data, isLoading } = useQuery({ queryKey: ['g-cities'], queryFn: () => globalMastersApi.getCities() })
-  const items = (data?.data ?? []) as CityItem[]
+  const [page, setPage]           = useState(0)
+  const [search, setSearch]       = useState('')
+  const [filterState, setFilterState] = useState('all')
+  const PAGE_SIZE = 20
+  const { data, isLoading } = useQuery({
+    queryKey: ['g-cities-paged', page, search, filterState],
+    queryFn: () => globalMastersApi.getCitiesPaged(page, PAGE_SIZE, search, filterState !== 'all' ? Number(filterState) : undefined),
+  })
+  const paged = data?.data as { content: CityItem[]; totalElements: number; totalPages: number; number: number } | undefined
+  const items = paged?.content ?? []
+  const totalPages = paged?.totalPages ?? 1
   const [open, setOpen]       = useState(false)
   const [editItem, setEditItem] = useState<CityItem | null>(null)
   const [name, setName]       = useState('')
   const [stateId, setStateId] = useState('')
-  const [filterState, setFilterState] = useState('all')
   const [errs, setErrs]       = useState({ name: '', stateId: '' })
   const [dlg, setDlg]         = useState<{ name: string; id: number } | null>(null)
 
-  const mutAdd  = useMutation({ mutationFn: (d: { name: string; stateId: number }) => globalMastersWriteApi.createCity(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-cities'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
-  const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; stateId: number } }) => globalMastersWriteApi.updateCity(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-cities'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
-  const mutDel  = useMutation({ mutationFn: (id: number) => globalMastersWriteApi.deleteCity(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-cities'] }), onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
+  const mutAdd  = useMutation({ mutationFn: (d: { name: string; stateId: number }) => globalMastersWriteApi.createCity(d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-cities-paged'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
+  const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { name: string; stateId: number } }) => globalMastersWriteApi.updateCity(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['g-cities-paged'] }); setOpen(false) }, onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
+  const mutDel  = useMutation({ mutationFn: (id: number) => globalMastersWriteApi.deleteCity(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['g-cities-paged'] }), onError: err => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed') })
 
   function openAdd() { setEditItem(null); setName(''); setStateId(''); setErrs({ name: '', stateId: '' }); setOpen(true) }
   function openEdit(it: CityItem) { setEditItem(it); setName(it.name); setStateId(String(it.stateId)); setErrs({ name: '', stateId: '' }); setOpen(true) }
@@ -204,8 +230,6 @@ function CitiesSection({ states }: { states: StateItem[] }) {
     if (editItem) mutEdit.mutate({ id: editItem.id, d: { name: name.trim(), stateId: Number(stateId) } })
     else mutAdd.mutate({ name: name.trim(), stateId: Number(stateId) })
   }
-
-  const displayed = filterState === 'all' ? items : items.filter(c => String(c.stateId) === filterState)
 
   return (
     <div>
@@ -222,9 +246,12 @@ function CitiesSection({ states }: { states: StateItem[] }) {
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
         </div>
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : displayed.length === 0 ? <div className="text-xs text-gray-400 py-3">No cities yet</div> : (
-        <div className="divide-y border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
-          {displayed.map(it => (
+      <div className="mb-2">
+        <Input placeholder="Search cities…" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} className="h-7 text-xs" />
+      </div>
+      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No cities found</div> : (
+        <div className="divide-y border rounded-lg overflow-hidden">
+          {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
               <div><span className="text-sm text-gray-700">{it.name}</span><span className="ml-2 text-xs text-gray-400">{it.stateName}</span></div>
               <div className="flex gap-1">
@@ -233,6 +260,13 @@ function CitiesSection({ states }: { states: StateItem[] }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-2">
+          <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="text-xs text-gray-500 disabled:opacity-40 hover:text-gray-800">← Prev</button>
+          <span className="text-xs text-gray-400">Page {page + 1} of {totalPages}</span>
+          <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="text-xs text-gray-500 disabled:opacity-40 hover:text-gray-800">Next →</button>
         </div>
       )}
       <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
