@@ -206,7 +206,7 @@ export function VehicleForm({
   const selectedOwnershipName = ownershipRes?.data?.find(o => o.id === ownershipTypeId)?.name ?? ''
   const showOwnerSection = !!ownershipTypeId && !selectedOwnershipName.toUpperCase().includes('OWN')
 
-  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, control, formState: { errors }, reset, watch, setValue } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: vehicle ? {
       registrationNumber: vehicle.registrationNumber,
@@ -256,6 +256,15 @@ export function VehicleForm({
     }
     if (!open) reset({})
   }, [open])
+
+  const watchedTypeId = watch('vehicleTypeId')
+  useEffect(() => {
+    if (!watchedTypeId) return
+    const vehicleType = (typesRes?.data ?? []).find(t => t.id === watchedTypeId)
+    if (vehicleType?.capacityInTons) {
+      setValue('capacityInTons', Number(vehicleType.capacityInTons))
+    }
+  }, [watchedTypeId])
 
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
