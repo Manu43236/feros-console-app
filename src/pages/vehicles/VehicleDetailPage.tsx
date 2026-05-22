@@ -1279,7 +1279,7 @@ function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: num
   const qc = useQueryClient()
   const [addOpen, setAddOpen] = useState(false)
   const [km, setKm] = useState('')
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
   const [notes, setNotes] = useState('')
 
   const { data, isLoading } = useQuery({
@@ -1290,7 +1290,7 @@ function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: num
   const lastKm = readings.length > 0 ? readings[0].readingKm : (latestOdometer ?? 0)
 
   const mutation = useMutation({
-    mutationFn: () => meterReadingsApi.create({ vehicleId, readingKm: Number(km), readingType: 'GENERAL', recordedAt: date, notes: notes || undefined }),
+    mutationFn: () => meterReadingsApi.create({ vehicleId, readingKm: Number(km), readingType: 'GENERAL', recordedAt: date ? `${date}:00` : undefined, notes: notes || undefined }),
     onSuccess: () => {
       toast.success('Reading added')
       qc.invalidateQueries({ queryKey: ['meter-readings', vehicleId] })
@@ -1298,7 +1298,7 @@ function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: num
       setAddOpen(false)
       setKm('')
       setNotes('')
-      setDate(format(new Date(), 'yyyy-MM-dd'))
+      setDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed to add reading'); if (_m) toast.error(_m) },
   })
@@ -1374,8 +1374,8 @@ function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: num
                 placeholder={`Must be > ${lastKm.toLocaleString('en-IN')}`} className="mt-1" />
             </div>
             <div>
-              <Label>Date *</Label>
-              <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="mt-1" />
+              <Label>Date & Time *</Label>
+              <Input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className="mt-1" />
             </div>
             <div>
               <Label>Notes</Label>
