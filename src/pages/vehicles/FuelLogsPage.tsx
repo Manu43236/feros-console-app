@@ -81,8 +81,14 @@ interface FuelLogForm {
   receiptUrl: string
 }
 
+function nowDateTimeLocal() {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 const BLANK: FuelLogForm = {
-  vehicleId: '', fillDate: '', litresFilled: '', odometerReading: '',
+  vehicleId: '', fillDate: nowDateTimeLocal(), litresFilled: '', odometerReading: '',
   costPerLitre: '', totalCost: '', isFullTank: false,
   paymentMode: 'CASH', fuelStationName: '', fuelStationCity: '',
   notes: '', receiptUrl: '',
@@ -91,7 +97,7 @@ const BLANK: FuelLogForm = {
 function toForm(log: FuelLog): FuelLogForm {
   return {
     vehicleId:       String(log.vehicleId),
-    fillDate:        log.fillDate,
+    fillDate:        log.fillDate ? log.fillDate.slice(0, 16) : nowDateTimeLocal(),
     litresFilled:    String(log.litresFilled),
     odometerReading: String(log.odometerReading),
     costPerLitre:    String(log.costPerLitre),
@@ -128,12 +134,50 @@ function FuelLogDialog({
   const set = (field: keyof FuelLogForm, value: string | boolean) =>
     setForm(f => ({ ...f, [field]: value }))
 
+  // Selected vehicle info
+  const selectedVehicle = vehicles.find(v => String(v.id) === form.vehicleId)
+  const tankCapacity     = selectedVehicle?.fuelTankCapacity ? Number(selectedVehicle.fuelTankCapacity) : null
+  const currentFuel      = selectedVehicle?.currentFuelLevel  ? Number(selectedVehicle.currentFuelLevel)  : 0
+  const maxFillable      = tankCapacity != null ? tankCapacity - currentFuel : null
+
+  // When vehicle changes: auto-fill odometer
+  function handleVehicleChange(vehicleId: string) {
+    const v = vehicles.find(vv => String(vv.id) === vehicleId)
+    setForm(f => ({
+      ...f,
+      vehicleId,
+      odometerReading: v?.currentOdometerReading ? String(v.currentOdometerReading) : f.odometerReading,
+      litresFilled: '',
+      isFullTank: false,
+    }))
+  }
+
+  // When Full Tank toggled on: auto-fill max fillable litres
+  function handleFullTankChange(checked: boolean) {
+    if (checked && maxFillable != null) {
+      setForm(f => ({ ...f, isFullTank: true, litresFilled: maxFillable.toFixed(2) }))
+      autoTotal(maxFillable.toFixed(2))
+    } else {
+      set('isFullTank', checked)
+    }
+  }
+
   // Auto-calc total cost
-  const autoTotal = () => {
-    const l = parseFloat(form.litresFilled)
+  const autoTotal = (litresOverride?: string) => {
+    const l = parseFloat(litresOverride ?? form.litresFilled)
     const c = parseFloat(form.costPerLitre)
     if (!isNaN(l) && !isNaN(c)) set('totalCost', (l * c).toFixed(2))
   }
+
+  // Validate litres against tank
+  function validateLitres(value: string): string | null {
+    const l = parseFloat(value)
+    if (isNaN(l)) return null
+    if (tankCapacity != null && l > tankCapacity) return `Cannot exceed tank capacity (${tankCapacity} L)`
+    if (maxFillable != null && l > maxFillable) return `Tank already has ${currentFuel} L — max fillable is ${maxFillable.toFixed(1)} L`
+    return null
+  }
+  const litresError = validateLitres(form.litresFilled)
 
   const mutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
@@ -170,9 +214,10 @@ function FuelLogDialog({
       toast.error('Fill all required fields')
       return
     }
+    if (litresError) { toast.error(litresError); return }
     const payload: Record<string, unknown> = {
       vehicleId:       Number(form.vehicleId),
-      fillDate:        form.fillDate,
+      fillDate:        form.fillDate ? `${form.fillDate}:00` : undefined,
       litresFilled:    parseFloat(form.litresFilled),
       odometerReading: parseFloat(form.odometerReading),
       costPerLitre:    parseFloat(form.costPerLitre),
@@ -206,17 +251,22 @@ function FuelLogDialog({
             <Label>Vehicle *</Label>
             <SearchableSelect
               value={form.vehicleId}
-              onValueChange={v => set('vehicleId', v)}
+              onValueChange={handleVehicleChange}
               options={vehicles.map(v => ({ value: String(v.id), label: v.registrationNumber }))}
               placeholder="Select vehicle…"
               className="mt-1"
             />
+            {tankCapacity != null && (
+              <p className="text-xs text-blue-600 mt-1">
+                Tank: {tankCapacity} L · Current: {currentFuel} L · Max fillable: <strong>{maxFillable?.toFixed(1)} L</strong>
+              </p>
+            )}
           </div>
 
-          {/* Date */}
+          {/* Date + Time */}
           <div>
-            <Label>Fill Date *</Label>
-            <Input type="date" className="mt-1" value={form.fillDate}
+            <Label>Fill Date & Time *</Label>
+            <Input type="datetime-local" className="mt-1" value={form.fillDate}
               onChange={e => set('fillDate', e.target.value)} />
           </div>
 
@@ -224,10 +274,15 @@ function FuelLogDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Litres Filled *</Label>
-              <Input className="mt-1" type="number" step="0.01" placeholder="e.g. 50"
+              {maxFillable != null && (
+                <p className="text-xs text-gray-400 mb-0.5">Max: {maxFillable.toFixed(1)} L</p>
+              )}
+              <Input className="mt-1" type="number" step="0.01"
+                placeholder={maxFillable != null ? `Max ${maxFillable.toFixed(1)} L` : 'e.g. 50'}
                 value={form.litresFilled}
                 onChange={e => set('litresFilled', e.target.value)}
-                onBlur={autoTotal} />
+                onBlur={() => autoTotal()} />
+              {litresError && <p className="text-xs text-red-500 mt-0.5">{litresError}</p>}
             </div>
             <div>
               <Label>Cost / Litre (₹) *</Label>
@@ -269,7 +324,7 @@ function FuelLogDialog({
             <div className="flex items-end pb-1">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.isFullTank}
-                  onChange={e => set('isFullTank', e.target.checked)}
+                  onChange={e => handleFullTankChange(e.target.checked)}
                   className="w-4 h-4 accent-feros-navy" />
                 <span className="text-sm font-medium text-gray-700">Full Tank</span>
               </label>

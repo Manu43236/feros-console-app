@@ -1944,15 +1944,25 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
 
   const litres      = watch('litresFilled')
   const costPerL    = watch('costPerLitre')
+  const isFullTank  = watch('isFullTank')
 
   // Auto-calculate total cost
   const autoTotal = litres && costPerL ? (Number(litres) * Number(costPerL)).toFixed(2) : ''
+
+  const tankCapacity  = vehicle.fuelTankCapacity  ? Number(vehicle.fuelTankCapacity)  : null
+  const currentFuel   = vehicle.currentFuelLevel  ? Number(vehicle.currentFuelLevel)  : 0
+  const maxFillable   = tankCapacity != null ? tankCapacity - currentFuel : null
+
+  function nowDTL() {
+    const d = new Date(); const p = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+  }
 
   function openAdd() {
     reset({
       isFullTank: false,
       paymentMode: 'CASH',
-      fillDate: new Date().toISOString().split('T')[0],
+      fillDate: nowDTL(),
       odometerReading: vehicle.currentOdometerReading ?? undefined,
     })
     setEditLog(null)
@@ -1961,7 +1971,7 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
 
   function openEdit(log: FuelLog) {
     reset({
-      fillDate:        log.fillDate,
+      fillDate:        log.fillDate ? String(log.fillDate).slice(0, 16) : nowDTL(),
       litresFilled:    log.litresFilled,
       odometerReading: log.odometerReading,
       costPerLitre:    log.costPerLitre,
@@ -1977,9 +1987,20 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
     setDialogOpen(true)
   }
 
+  // Litres validation
+  const litresNum = Number(litres)
+  const litresError = litres && !isNaN(litresNum)
+    ? tankCapacity != null && litresNum > tankCapacity
+      ? `Cannot exceed tank capacity (${tankCapacity} L)`
+      : maxFillable != null && litresNum > maxFillable
+        ? `Tank has ${currentFuel} L — max fillable is ${maxFillable.toFixed(1)} L`
+        : null
+    : null
+
   const saveMutation = useMutation({
     mutationFn: (data: FuelLogForm) => {
-      const payload = { ...data, vehicleId: vehicle.id, totalCost: (data.totalCost ?? Number(autoTotal)) || undefined }
+      const fillDate = data.fillDate ? `${data.fillDate}:00` : undefined
+      const payload = { ...data, fillDate, vehicleId: vehicle.id, totalCost: (data.totalCost ?? Number(autoTotal)) || undefined }
       return editLog
         ? fuelLogsApi.update(editLog.id, payload)
         : fuelLogsApi.create(payload)
@@ -2160,12 +2181,18 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
           <DialogHeader>
             <DialogTitle>{editLog ? 'Edit Fuel Log' : 'Add Fuel Fill-up'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(d => saveMutation.mutate(d))} className="space-y-4 pt-1">
+          <form onSubmit={handleSubmit(d => { if (litresError) { toast.error(litresError); return } saveMutation.mutate(d) })} className="space-y-4 pt-1">
+
+            {tankCapacity != null && (
+              <div className="bg-blue-50 rounded-lg px-3 py-2 text-xs text-blue-700">
+                Tank: <strong>{tankCapacity} L</strong> · Current: <strong>{currentFuel} L</strong> · Max fillable: <strong>{maxFillable?.toFixed(1)} L</strong>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Date *</Label>
-                <Input type="date" {...register('fillDate')} />
+                <Label>Date & Time *</Label>
+                <Input type="datetime-local" {...register('fillDate')} />
                 {errors.fillDate && <p className="text-xs text-red-500">{errors.fillDate.message}</p>}
               </div>
               <div className="space-y-1.5">
@@ -2175,8 +2202,16 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
               </div>
               <div className="space-y-1.5">
                 <Label>Litres Filled *</Label>
-                <Input type="number" step="0.01" placeholder="150" {...register('litresFilled')} />
-                {errors.litresFilled && <p className="text-xs text-red-500">{errors.litresFilled.message}</p>}
+                {maxFillable != null && (
+                  <p className="text-xs text-gray-400">Max: {maxFillable.toFixed(1)} L</p>
+                )}
+                <Input type="number" step="0.01"
+                  placeholder={maxFillable != null ? `Max ${maxFillable.toFixed(1)} L` : '150'}
+                  {...register('litresFilled')} />
+                {litresError
+                  ? <p className="text-xs text-red-500">{litresError}</p>
+                  : errors.litresFilled && <p className="text-xs text-red-500">{errors.litresFilled.message}</p>
+                }
               </div>
               <div className="space-y-1.5">
                 <Label>Cost per Litre (₹) *</Label>
@@ -2209,6 +2244,14 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
             {/* Full Tank toggle */}
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" {...register('isFullTank')}
+                onChange={e => {
+                  setValue('isFullTank', e.target.checked)
+                  if (e.target.checked && maxFillable != null) {
+                    setValue('litresFilled', maxFillable)
+                    const c = Number(watch('costPerLitre'))
+                    if (!isNaN(c) && c > 0) setValue('totalCost', Number((maxFillable * c).toFixed(2)))
+                  }
+                }}
                 className="w-4 h-4 rounded accent-feros-navy" />
               <span className="text-sm font-medium text-gray-700">Full tank fill-up</span>
               <span className="text-xs text-gray-400">(enables accurate mileage calculation)</span>
