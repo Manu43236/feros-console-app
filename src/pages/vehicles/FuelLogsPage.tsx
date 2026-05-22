@@ -289,7 +289,7 @@ function FuelLogDialog({
               <Input className="mt-1" type="number" step="0.01" placeholder="e.g. 96.50"
                 value={form.costPerLitre}
                 onChange={e => set('costPerLitre', e.target.value)}
-                onBlur={autoTotal} />
+                onBlur={() => autoTotal()} />
             </div>
           </div>
 

@@ -1944,7 +1944,6 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
 
   const litres      = watch('litresFilled')
   const costPerL    = watch('costPerLitre')
-  const isFullTank  = watch('isFullTank')
 
   // Auto-calculate total cost
   const autoTotal = litres && costPerL ? (Number(litres) * Number(costPerL)).toFixed(2) : ''
