@@ -2532,7 +2532,6 @@ export function VehicleDetailPage() {
               {t === 'GPS & Notes'    && <MapPin size={14} />}
               {t === 'Documents'      && <FileText size={14} />}
               {t === 'Service'        && <Wrench size={14} />}
-              {t === 'Fuel'           && <Droplets size={14} />}
               {t === 'Tires'          && <CircleDot size={14} />}
               {t === 'Meter Readings' && <Gauge size={14} />}
               {t === 'Order History'  && <ClipboardList size={14} />}
