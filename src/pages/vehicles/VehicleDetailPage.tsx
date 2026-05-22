@@ -97,7 +97,7 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
   const selectedDocTypeId  = watch('documentTypeId')
   const selectedDocTypeName = vehicleDocTypes.find(d => d.id === selectedDocTypeId)?.name?.toLowerCase() ?? ''
   const showIssuerName = selectedDocTypeName.includes('insurance')
-  const showPermitType = selectedDocTypeName.includes('permit')
+  const showPermitType = false
 
   const mutation = useMutation({
     mutationFn: (data: DocForm & { fileUrl?: string }) => vehiclesApi.addDocument(vehicleId, data),
