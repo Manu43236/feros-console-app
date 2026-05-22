@@ -1287,7 +1287,7 @@ function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: num
     queryFn: () => meterReadingsApi.getAll(vehicleId),
   })
   const readings: MeterReading[] = (data?.data ?? []).sort((a, b) => b.readingKm - a.readingKm)
-  const lastKm = readings.length > 0 ? readings[0].readingKm : (latestOdometer ?? 0)
+  const lastKm = Math.max(readings.length > 0 ? readings[0].readingKm : 0, latestOdometer ?? 0)
 
   const mutation = useMutation({
     mutationFn: () => meterReadingsApi.create({ vehicleId, readingKm: Number(km), readingType: 'GENERAL', recordedAt: date ? `${date}:00` : undefined, notes: notes || undefined }),
@@ -2007,6 +2007,8 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
     onSuccess: () => {
       toast.success(editLog ? 'Fuel log updated' : 'Fuel log added')
       qc.invalidateQueries({ queryKey: ['fuel-logs', vehicle.id] })
+      qc.invalidateQueries({ queryKey: ['vehicle', vehicle.id] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
       setDialogOpen(false)
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
@@ -2017,6 +2019,8 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
     onSuccess: () => {
       toast.success('Fuel log deleted')
       qc.invalidateQueries({ queryKey: ['fuel-logs', vehicle.id] })
+      qc.invalidateQueries({ queryKey: ['vehicle', vehicle.id] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
