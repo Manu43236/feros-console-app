@@ -38,8 +38,10 @@ export const attendanceApi = {
     apiClient.get<ApiResponse<Attendance[]>>(`/attendance/my?from=${from}&to=${to}`).then(r => r.data),
 
   // Admin approval
-  getPending:  () => apiClient.get<ApiResponse<Attendance[]>>('/attendance/pending').then(r => r.data),
-  getRejected: () => apiClient.get<ApiResponse<Attendance[]>>('/attendance/rejected').then(r => r.data),
-  approve:     (id: number) => apiClient.put<ApiResponse<Attendance>>(`/attendance/${id}/approve`).then(r => r.data),
-  reject:      (id: number) => apiClient.put<ApiResponse<Attendance>>(`/attendance/${id}/reject`).then(r => r.data),
+  getPending:    () => apiClient.get<ApiResponse<Attendance[]>>('/attendance/pending').then(r => r.data),
+  getRejected:   () => apiClient.get<ApiResponse<Attendance[]>>('/attendance/rejected').then(r => r.data),
+  approve:       (id: number) => apiClient.put<ApiResponse<Attendance>>(`/attendance/${id}/approve`).then(r => r.data),
+  reject:        (id: number) => apiClient.put<ApiResponse<Attendance>>(`/attendance/${id}/reject`).then(r => r.data),
+  bulkApprove:   (ids: number[]) => apiClient.put<ApiResponse<Attendance[]>>('/attendance/bulk-approve', { ids }).then(r => r.data),
+  bulkReject:    (ids: number[]) => apiClient.put<ApiResponse<Attendance[]>>('/attendance/bulk-reject',  { ids }).then(r => r.data),
 }

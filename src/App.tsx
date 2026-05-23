@@ -134,7 +134,7 @@ export default function App() {
 
           {/* STAFF self-service */}
           <Route path="my/trips"      element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyTripsPage /></ProtectedRoute>} />
-          <Route path="my/attendance" element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyAttendancePage /></ProtectedRoute>} />
+          <Route path="my/attendance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'OFFICE_STAFF', 'DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyAttendancePage /></ProtectedRoute>} />
           <Route path="my/payslip"    element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyPayslipPage /></ProtectedRoute>} />
         </Route>
 

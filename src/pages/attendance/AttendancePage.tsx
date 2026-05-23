@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { attendanceApi, type AttendanceRequest, type BulkAttendanceEntry } from '@/api/attendance'
 import { globalMastersApi } from '@/api/masters'
 import { staffApi } from '@/api/staff'
+import { useAuthStore } from '@/store/authStore'
 import type { Attendance } from '@/types'
 
 type StaffUser = { id: number; name: string; phone: string; role: string; isActive: boolean }
@@ -407,12 +408,25 @@ function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: (
 function PendingApprovalsTab() {
   const qc = useQueryClient()
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-pending'],
     queryFn: attendanceApi.getPending,
   })
   const records = data?.data ?? []
+
+  function toggleSelect(id: number) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    setSelected(prev => prev.size === records.length ? new Set() : new Set(records.map(r => r.id)))
+  }
 
   const approveMutation = useMutation({
     mutationFn: (id: number) => attendanceApi.approve(id),
@@ -423,6 +437,26 @@ function PendingApprovalsTab() {
   const rejectMutation = useMutation({
     mutationFn: (id: number) => attendanceApi.reject(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Attendance rejected') },
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
+  })
+
+  const bulkApproveMutation = useMutation({
+    mutationFn: () => attendanceApi.bulkApprove(Array.from(selected)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['attendance-pending'] })
+      setSelected(new Set())
+      toast.success(`${selected.size} attendance records approved`)
+    },
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
+  })
+
+  const bulkRejectMutation = useMutation({
+    mutationFn: () => attendanceApi.bulkReject(Array.from(selected)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['attendance-pending'] })
+      setSelected(new Set())
+      toast.success(`${selected.size} attendance records rejected`)
+    },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
@@ -441,15 +475,42 @@ function PendingApprovalsTab() {
     <>
     <div className="border rounded-xl bg-white overflow-hidden">
       <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-700">Pending Approvals</h2>
-        <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
-          {records.length} pending
-        </span>
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-semibold text-gray-700">Pending Approvals</h2>
+          <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+            {records.length} pending
+          </span>
+        </div>
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">{selected.size} selected</span>
+            <Button size="sm" variant="outline"
+              className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-3 text-xs"
+              disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
+              onClick={() => bulkApproveMutation.mutate()}>
+              <CheckCircle size={12} className="mr-1" />Approve All
+            </Button>
+            <Button size="sm" variant="outline"
+              className="text-red-600 border-red-300 hover:bg-red-50 h-7 px-3 text-xs"
+              disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
+              onClick={() => bulkRejectMutation.mutate()}>
+              <XCircle size={12} className="mr-1" />Reject All
+            </Button>
+          </div>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
+              <th className="px-5 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={selected.size === records.length}
+                  onChange={toggleAll}
+                  className="rounded"
+                />
+              </th>
               <th className="text-left px-5 py-3">Staff</th>
               <th className="text-left px-5 py-3">Role</th>
               <th className="text-left px-5 py-3">Date</th>
@@ -462,7 +523,15 @@ function PendingApprovalsTab() {
           </thead>
           <tbody className="divide-y">
             {records.map(r => (
-              <tr key={r.id} className="hover:bg-gray-50">
+              <tr key={r.id} className={cn('hover:bg-gray-50', selected.has(r.id) && 'bg-blue-50')}>
+                <td className="px-5 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(r.id)}
+                    onChange={() => toggleSelect(r.id)}
+                    className="rounded"
+                  />
+                </td>
                 <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
                 <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
                 <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
@@ -602,6 +671,9 @@ function RejectedTab() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function AttendancePage() {
   const { locked } = useSubscription()
+  const role = useAuthStore(s => s.role)
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
+
   const [activeTab, setActiveTab]       = useState<'daily' | 'pending' | 'rejected'>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [markOpen, setMarkOpen]         = useState(false)
@@ -624,8 +696,16 @@ export function AttendancePage() {
   const { data: leaveTypesData } = useQuery({ queryKey: ['leave-types'], queryFn: globalMastersApi.getLeaveTypes })
   const leaveTypes = (leaveTypesData?.data ?? []) as { id: number; name: string }[]
 
-  const { data: pendingData }  = useQuery({ queryKey: ['attendance-pending'],  queryFn: attendanceApi.getPending })
-  const { data: rejectedData } = useQuery({ queryKey: ['attendance-rejected'], queryFn: attendanceApi.getRejected })
+  const { data: pendingData }  = useQuery({
+    queryKey: ['attendance-pending'],
+    queryFn: attendanceApi.getPending,
+    enabled: isAdmin,
+  })
+  const { data: rejectedData } = useQuery({
+    queryKey: ['attendance-rejected'],
+    queryFn: attendanceApi.getRejected,
+    enabled: isAdmin,
+  })
   const pendingCount  = pendingData?.data?.length ?? 0
   const rejectedCount = rejectedData?.data?.length ?? 0
 
@@ -660,7 +740,7 @@ export function AttendancePage() {
           <h1 className="text-xl font-bold text-gray-900">Attendance</h1>
           <p className="text-sm text-gray-500 mt-0.5">Track daily attendance for all staff</p>
         </div>
-        {!locked && activeTab === 'daily' && (
+        {!locked && isAdmin && activeTab === 'daily' && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setEditRecord(undefined); setMarkOpen(true) }}>
               <Pencil size={14} className="mr-1.5" />Mark Single
@@ -672,7 +752,7 @@ export function AttendancePage() {
         )}
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — Pending & Rejected only for admin */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
         <button
           onClick={() => setActiveTab('daily')}
@@ -681,30 +761,34 @@ export function AttendancePage() {
         >
           Daily Attendance
         </button>
-        <button
-          onClick={() => setActiveTab('pending')}
-          className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors relative',
-            activeTab === 'pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
-        >
-          Pending Approvals
-          {pendingCount > 0 && (
-            <span className="ml-2 min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center px-1">
-              {pendingCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('rejected')}
-          className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors relative',
-            activeTab === 'rejected' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
-        >
-          Rejected
-          {rejectedCount > 0 && (
-            <span className="ml-2 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center px-1">
-              {rejectedCount}
-            </span>
-          )}
-        </button>
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors relative',
+                activeTab === 'pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
+            >
+              Pending Approvals
+              {pendingCount > 0 && (
+                <span className="ml-2 min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center px-1">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('rejected')}
+              className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors relative',
+                activeTab === 'rejected' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
+            >
+              Rejected
+              {rejectedCount > 0 && (
+                <span className="ml-2 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center px-1">
+                  {rejectedCount}
+                </span>
+              )}
+            </button>
+          </>
+        )}
       </div>
 
       {activeTab === 'rejected' ? <RejectedTab /> : activeTab === 'pending' ? <PendingApprovalsTab /> : (
@@ -785,10 +869,12 @@ export function AttendancePage() {
                         <td className="px-5 py-3 text-gray-500 text-xs">{r.markedByName}</td>
                         <td className="px-5 py-3">
                           <div className="flex gap-1 justify-end">
-                            <Button variant="ghost" size="icon" className="h-7 w-7"
-                              onClick={() => { setEditRecord(r); setMarkOpen(true) }}>
-                              <Pencil size={12} />
-                            </Button>
+                            {isAdmin && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7"
+                                onClick={() => { setEditRecord(r); setMarkOpen(true) }}>
+                                <Pencil size={12} />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
                               onClick={() => setHistoryUser(allUsers.find(u => u.id === r.userId) ?? null)}>
                               <CalendarDays size={12} />
@@ -797,7 +883,7 @@ export function AttendancePage() {
                         </td>
                       </tr>
                     ))}
-                    {allUsers.filter(u => !existingMap[u.id]).map(u => (
+                    {isAdmin && allUsers.filter(u => !existingMap[u.id]).map(u => (
                       <tr key={`u-${u.id}`} className="hover:bg-gray-50">
                         <td className="px-5 py-3 font-medium text-gray-700">{u.name}</td>
                         <td className="px-5 py-3 text-gray-400 text-xs">{u.role}</td>
@@ -836,25 +922,29 @@ export function AttendancePage() {
         </>
       )}
 
-      {/* Dialogs */}
-      <AttendanceDialog
-        open={markOpen}
-        onClose={() => { setMarkOpen(false); setEditRecord(undefined) }}
-        date={selectedDate}
-        record={editRecord}
-        users={allUsers}
-        attendanceTypes={attendanceTypes}
-        leaveTypes={leaveTypes}
-      />
-      <BulkMarkDialog
-        open={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        date={selectedDate}
-        users={allUsers}
-        attendanceTypes={attendanceTypes}
-        leaveTypes={leaveTypes}
-        existingMap={existingMap}
-      />
+      {/* Dialogs — only rendered for admin */}
+      {isAdmin && (
+        <>
+          <AttendanceDialog
+            open={markOpen}
+            onClose={() => { setMarkOpen(false); setEditRecord(undefined) }}
+            date={selectedDate}
+            record={editRecord}
+            users={allUsers}
+            attendanceTypes={attendanceTypes}
+            leaveTypes={leaveTypes}
+          />
+          <BulkMarkDialog
+            open={bulkOpen}
+            onClose={() => setBulkOpen(false)}
+            date={selectedDate}
+            users={allUsers}
+            attendanceTypes={attendanceTypes}
+            leaveTypes={leaveTypes}
+            existingMap={existingMap}
+          />
+        </>
+      )}
       <StaffHistoryDialog
         open={!!historyUser}
         onClose={() => setHistoryUser(null)}
