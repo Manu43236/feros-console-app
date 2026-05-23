@@ -30,7 +30,8 @@ export function ProtectedRoute({ children, allowedRoles }: { children: React.Rea
   if (allowedRoles && role && !allowedRoles.includes(role)) return <Navigate to="/" replace />
 
   // Module access check — only applies when allowedModules is a non-null array (non-admin roles)
-  if (allowedModules !== null) {
+  // Skip if allowedRoles explicitly grants this role access (developer gate takes precedence)
+  if (allowedModules !== null && !(allowedRoles && role && allowedRoles.includes(role))) {
     // Find the base route that matches (handle sub-routes like /lrs/:id → /lrs)
     const baseRoute = Object.keys(ROUTE_MODULE_MAP).find(r =>
       pathname === r || pathname.startsWith(r + '/')
