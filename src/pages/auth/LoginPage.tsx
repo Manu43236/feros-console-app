@@ -59,7 +59,7 @@ export function LoginPage() {
           <p className="text-gray-400 text-sm mt-1">Sign in to your FEROS account</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" autoComplete="off">
           <div className="space-y-1.5">
             <Label htmlFor="phone" className="text-gray-700 font-medium">Mobile Number</Label>
             <Input
@@ -68,6 +68,7 @@ export function LoginPage() {
               placeholder="9876543210"
               inputMode="numeric"
               maxLength={10}
+              autoComplete="off"
               {...register('phone')}
               className={`h-11 ${errors.phone ? 'border-red-500 focus-visible:ring-red-200' : ''}`}
             />
@@ -82,6 +83,7 @@ export function LoginPage() {
               placeholder="••••"
               maxLength={4}
               inputMode="numeric"
+              autoComplete="new-password"
               {...register('pin')}
               className={`h-11 tracking-widest ${errors.pin ? 'border-red-500 focus-visible:ring-red-200' : ''}`}
             />

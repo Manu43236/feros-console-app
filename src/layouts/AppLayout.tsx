@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import type { ModuleKey } from '@/types'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -333,6 +334,7 @@ function getRoleLabel(role: string | null) {
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [logoutOpen, setLogoutOpen] = useState(false)
   const phone              = useAuthStore(s => s.phone)
   const name               = useAuthStore(s => s.name)
   const role               = useAuthStore(s => s.role)
@@ -485,7 +487,7 @@ export function AppLayout() {
         <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
           <NotifNavLink />
           <button
-            onClick={handleLogout}
+            onClick={() => setLogoutOpen(true)}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
           >
             <LogOut size={18} />
@@ -512,6 +514,15 @@ export function AppLayout() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={logoutOpen}
+        title="Sign Out"
+        description="Are you sure you want to sign out?"
+        confirmLabel="Sign Out"
+        onConfirm={handleLogout}
+        onCancel={() => setLogoutOpen(false)}
+      />
 
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
