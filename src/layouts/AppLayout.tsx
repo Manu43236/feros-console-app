@@ -70,7 +70,7 @@ const ADMIN_NAV: SectionedNav = {
       icon: Package,
       items: [
         { to: '/inventory',       label: 'Spare Parts', icon: Boxes },
-        { to: '/inventory/tires', label: 'Tires',       icon: CircleDot },
+        { to: '/inventory/tyres', label: 'Tyres',       icon: CircleDot },
       ],
     },
     {
@@ -160,8 +160,8 @@ const DRIVER_CLEANER_NAV: FlatNav = [
 
 const STORE_KEEPER_NAV: FlatNav = [
   { to: '/inventory',               label: 'Spare Parts',   icon: Boxes,         moduleKey: 'SPARE_PARTS' },
-  { to: '/inventory/tires',         label: 'Tires',         icon: CircleDot,     moduleKey: 'TIRES' },
-  { to: '/inventory/tire-requests', label: 'Tire Requests', icon: ClipboardList, moduleKey: 'TIRE_REQUESTS' },
+  { to: '/inventory/tyres',         label: 'Tyres',         icon: CircleDot,     moduleKey: 'TYRES' },
+  { to: '/inventory/tyre-requests', label: 'Tyre Requests', icon: ClipboardList, moduleKey: 'TYRE_REQUESTS' },
   { to: '/my/attendance',           label: 'My Attendance', icon: Calendar },
   { to: '/my/payslip',              label: 'My Payslip',    icon: Wallet },
 ]
@@ -294,7 +294,7 @@ const REPORTS_SUB_ITEMS = [
   { to: '/reports/financial',             label: 'Financial' },
   { to: '/reports/business-intelligence', label: 'Business Intelligence' },
   { to: '/reports/inventory',             label: 'Inventory' },
-  { to: '/reports/tires',                 label: 'Tires' },
+  { to: '/reports/tyres',                 label: 'Tyres' },
   { to: '/reports/periodic',              label: 'Periodic Reports' },
 ]
 
@@ -430,7 +430,7 @@ export function AppLayout() {
     '/attendance':       subFeatures?.hasAttendance,
     '/payroll':          subFeatures?.hasPayroll,
     '/inventory':        subFeatures?.hasInventory,
-    '/inventory/tires':  subFeatures?.hasInventory,
+    '/inventory/tyres':  subFeatures?.hasInventory,
     '/reports':          subFeatures?.hasReports,
     '/credit-notes':     subFeatures?.hasCreditNotes,
   }

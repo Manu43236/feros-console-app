@@ -22,8 +22,8 @@ import type {
   OnTimeDeliveryResponse, OrderCancellationRateResponse,
   StockLevelResponse, StockMovementResponse, VehiclePartConsumptionResponse,
   PartConsumptionByTypeResponse, ServiceCostBreakdownResponse,
-  TiresByVehicleResponse, KmPerTireResponse,
-  TireReplacementProjectionResponse, TireCostPerKmResponse,
+  TyresByVehicleResponse, KmPerTyreResponse,
+  TyreReplacementProjectionResponse, TyreCostPerKmResponse,
 } from '@/types'
 
 export const reportsApi = {
@@ -207,16 +207,16 @@ export const reportsApi = {
   getServiceCostBreakdown: (from: string, to: string) =>
     apiClient.get<ApiResponse<ServiceCostBreakdownResponse[]>>(`/reports/service-cost-breakdown?from=${from}&to=${to}`).then(r => r.data),
 
-  // Section J — Tire Reports
-  getTiresByVehicle: () =>
-    apiClient.get<ApiResponse<TiresByVehicleResponse[]>>('/reports/tires-by-vehicle').then(r => r.data),
+  // Section J — Tyre Reports
+  getTyresByVehicle: () =>
+    apiClient.get<ApiResponse<TyresByVehicleResponse[]>>('/reports/tyres-by-vehicle').then(r => r.data),
 
-  getKmPerTire: () =>
-    apiClient.get<ApiResponse<KmPerTireResponse[]>>('/reports/km-per-tire').then(r => r.data),
+  getKmPerTyre: () =>
+    apiClient.get<ApiResponse<KmPerTyreResponse[]>>('/reports/km-per-tyre').then(r => r.data),
 
-  getTireReplacementProjection: () =>
-    apiClient.get<ApiResponse<TireReplacementProjectionResponse[]>>('/reports/tire-replacement-projection').then(r => r.data),
+  getTyreReplacementProjection: () =>
+    apiClient.get<ApiResponse<TyreReplacementProjectionResponse[]>>('/reports/tyre-replacement-projection').then(r => r.data),
 
-  getTireCostPerKm: () =>
-    apiClient.get<ApiResponse<TireCostPerKmResponse[]>>('/reports/tire-cost-per-km').then(r => r.data),
+  getTyreCostPerKm: () =>
+    apiClient.get<ApiResponse<TyreCostPerKmResponse[]>>('/reports/tyre-cost-per-km').then(r => r.data),
 }

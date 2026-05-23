@@ -39,9 +39,9 @@ const ROLE_CONFIG: {
     label: 'Store Keeper',
     modules: [
       { key: 'SPARE_PARTS',   label: 'Spare Parts' },
-      { key: 'TIRES',         label: 'Tires' },
+      { key: 'TYRES',         label: 'Tyres' },
       { key: 'PART_REQUESTS', label: 'Part Requests' },
-      { key: 'TIRE_REQUESTS', label: 'Tire Requests' },
+      { key: 'TYRE_REQUESTS', label: 'Tyre Requests' },
     ],
   },
   {

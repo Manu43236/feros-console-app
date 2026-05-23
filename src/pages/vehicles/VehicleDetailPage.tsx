@@ -10,10 +10,10 @@ import { servicePartsApi, sparePartsApi } from '@/api/inventory'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
 import { breakdownsApi } from '@/api/breakdowns'
 import { fuelLogsApi } from '@/api/fuelLogs'
-import { tiresApi } from '@/api/tires'
+import { tyresApi } from '@/api/tyres'
 import { meterReadingsApi } from '@/api/meterReadings'
 import { compressIfNeeded } from '@/lib/imageCompressor'
-import type { FuelLog, FuelPaymentMode, Tire, TirePosition, TireFitting, TireRotationLog, TireRemovalReason, TirePositionType, MeterReading } from '@/types'
+import type { FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading } from '@/types'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
@@ -64,7 +64,7 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 }
 
 // ── tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tires', 'Meter Readings', 'GPS & Notes', 'Order History', 'Trip History'] as const
+const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tyres', 'Meter Readings', 'GPS & Notes', 'Order History', 'Trip History'] as const
 type Tab = typeof TABS[number]
 
 // ── add document form ─────────────────────────────────────────────────────────
@@ -1403,40 +1403,40 @@ function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: num
   )
 }
 
-// ── Tire tab ──────────────────────────────────────────────────────────────────
-const POSITION_TYPE_ORDER: TirePositionType[] = ['STEER', 'DRIVE', 'TRAILER', 'SPARE']
-const REMOVAL_REASONS: TireRemovalReason[] = ['ROTATION', 'WORN', 'PUNCTURE', 'DAMAGE', 'RETREAD', 'SCRAP', 'OTHER']
+// ── Tyre tab ──────────────────────────────────────────────────────────────────
+const POSITION_TYPE_ORDER: TyrePositionType[] = ['STEER', 'DRIVE', 'TRAILER', 'SPARE']
+const REMOVAL_REASONS: TyreRemovalReason[] = ['ROTATION', 'WORN', 'PUNCTURE', 'DAMAGE', 'RETREAD', 'SCRAP', 'OTHER']
 
-function FitTireDialog({ open, onClose, vehicleId, positionId, availableTires, currentKm }: {
-  open: boolean; onClose: () => void; vehicleId: number; positionId: number; availableTires: Tire[]; currentKm?: number
+function FitTyreDialog({ open, onClose, vehicleId, positionId, availableTyres, currentKm }: {
+  open: boolean; onClose: () => void; vehicleId: number; positionId: number; availableTyres: Tyre[]; currentKm?: number
 }) {
   const qc = useQueryClient()
   const [selectedGroup, setSelectedGroup] = useState('')
   const [km, setKm] = useState(currentKm?.toString() ?? '')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
 
-  // Group available tires by brand + size
-  const groupedTires = availableTires.reduce<Record<string, Tire[]>>((acc, t) => {
+  // Group available tyres by brand + size
+  const groupedTyres = availableTyres.reduce<Record<string, Tyre[]>>((acc, t) => {
     const key = `${t.brand} ${t.size}`
     if (!acc[key]) acc[key] = []
     acc[key].push(t)
     return acc
   }, {})
 
-  const groupOptions = Object.entries(groupedTires).map(([key, tires]) => ({
+  const groupOptions = Object.entries(groupedTyres).map(([key, tyres]) => ({
     value: key,
-    label: `${key} (${tires.length} available)`,
+    label: `${key} (${tyres.length} available)`,
   }))
 
-  // Auto-pick first tire from selected group
-  const selectedTireId = selectedGroup ? groupedTires[selectedGroup]?.[0]?.id : undefined
+  // Auto-pick first tyre from selected group
+  const selectedTyreId = selectedGroup ? groupedTyres[selectedGroup]?.[0]?.id : undefined
 
   const mutation = useMutation({
-    mutationFn: () => tiresApi.fitTire({ vehicleId, tireId: selectedTireId!, positionId, fittedAtKm: Number(km), fittedDate: date }),
+    mutationFn: () => tyresApi.fitTyre({ vehicleId, tyreId: selectedTyreId!, positionId, fittedAtKm: Number(km), fittedDate: date }),
     onSuccess: () => {
-      toast.success('Tire fitted')
-      qc.invalidateQueries({ queryKey: ['tire-positions-current', vehicleId] })
-      qc.invalidateQueries({ queryKey: ['tire-fittings', vehicleId] })
+      toast.success('Tyre fitted')
+      qc.invalidateQueries({ queryKey: ['tyre-positions-current', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['tyre-fittings', vehicleId] })
       onClose()
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
@@ -1445,19 +1445,19 @@ function FitTireDialog({ open, onClose, vehicleId, positionId, availableTires, c
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Fit Tire</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Fit Tyre</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label>Select Tire *</Label>
+            <Label>Select Tyre *</Label>
             <SearchableSelect
               value={selectedGroup}
               onValueChange={setSelectedGroup}
               options={groupOptions}
-              placeholder="Choose tire size…"
+              placeholder="Choose tyre size…"
             />
-            {selectedGroup && groupedTires[selectedGroup] && (
+            {selectedGroup && groupedTyres[selectedGroup] && (
               <p className="text-xs text-muted-foreground">
-                Will assign: <span className="font-medium">{groupedTires[selectedGroup][0].serialNumber}</span>
+                Will assign: <span className="font-medium">{groupedTyres[selectedGroup][0].serialNumber}</span>
               </p>
             )}
           </div>
@@ -1471,8 +1471,8 @@ function FitTireDialog({ open, onClose, vehicleId, positionId, availableTires, c
           </div>
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button disabled={!selectedTireId || !km || mutation.isPending} onClick={() => mutation.mutate()} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
-              {mutation.isPending ? 'Fitting…' : 'Fit Tire'}
+            <Button disabled={!selectedTyreId || !km || mutation.isPending} onClick={() => mutation.mutate()} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+              {mutation.isPending ? 'Fitting…' : 'Fit Tyre'}
             </Button>
           </div>
         </div>
@@ -1481,21 +1481,21 @@ function FitTireDialog({ open, onClose, vehicleId, positionId, availableTires, c
   )
 }
 
-function RemoveTireDialog({ open, onClose, fitting, currentKm }: {
-  open: boolean; onClose: () => void; fitting: TireFitting; currentKm?: number
+function RemoveTyreDialog({ open, onClose, fitting, currentKm }: {
+  open: boolean; onClose: () => void; fitting: TyreFitting; currentKm?: number
 }) {
   const qc = useQueryClient()
   const [km, setKm] = useState(currentKm?.toString() ?? '')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [reason, setReason] = useState<TireRemovalReason>('WORN')
+  const [reason, setReason] = useState<TyreRemovalReason>('WORN')
   const [notes, setNotes] = useState('')
 
   const mutation = useMutation({
-    mutationFn: () => tiresApi.removeTire(fitting.id, { removedAtKm: Number(km), removedDate: date, removalReason: reason, notes }),
+    mutationFn: () => tyresApi.removeTyre(fitting.id, { removedAtKm: Number(km), removedDate: date, removalReason: reason, notes }),
     onSuccess: () => {
-      toast.success('Tire removed')
-      qc.invalidateQueries({ queryKey: ['tire-positions-current', fitting.vehicleId] })
-      qc.invalidateQueries({ queryKey: ['tire-fittings', fitting.vehicleId] })
+      toast.success('Tyre removed')
+      qc.invalidateQueries({ queryKey: ['tyre-positions-current', fitting.vehicleId] })
+      qc.invalidateQueries({ queryKey: ['tyre-fittings', fitting.vehicleId] })
       onClose()
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
@@ -1504,11 +1504,11 @@ function RemoveTireDialog({ open, onClose, fitting, currentKm }: {
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Remove Tire</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Remove Tyre</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="p-3 bg-gray-50 rounded-lg text-sm">
-            <p className="font-medium">{fitting.tireSerialNumber}</p>
-            <p className="text-gray-500">{fitting.tireBrand} · {fitting.tireSize}</p>
+            <p className="font-medium">{fitting.tyreSerialNumber}</p>
+            <p className="text-gray-500">{fitting.tyreBrand} · {fitting.tyreSize}</p>
           </div>
           <div className="space-y-1.5">
             <Label>Odometer at Removal (km) *</Label>
@@ -1520,7 +1520,7 @@ function RemoveTireDialog({ open, onClose, fitting, currentKm }: {
           </div>
           <div className="space-y-1.5">
             <Label>Removal Reason *</Label>
-            <select className="w-full border rounded-md px-3 py-2 text-sm" value={reason} onChange={e => setReason(e.target.value as TireRemovalReason)}>
+            <select className="w-full border rounded-md px-3 py-2 text-sm" value={reason} onChange={e => setReason(e.target.value as TyreRemovalReason)}>
               {REMOVAL_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
@@ -1531,7 +1531,7 @@ function RemoveTireDialog({ open, onClose, fitting, currentKm }: {
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button disabled={!km || mutation.isPending} onClick={() => mutation.mutate()} className="bg-red-600 hover:bg-red-700 text-white">
-              {mutation.isPending ? 'Removing…' : 'Remove Tire'}
+              {mutation.isPending ? 'Removing…' : 'Remove Tyre'}
             </Button>
           </div>
         </div>
@@ -1543,33 +1543,33 @@ function RemoveTireDialog({ open, onClose, fitting, currentKm }: {
 function ManagePositionsDialog({ open, onClose, vehicleId }: { open: boolean; onClose: () => void; vehicleId: number }) {
   const qc = useQueryClient()
   const [newCode, setNewCode] = useState('')
-  const [newType, setNewType] = useState<TirePositionType>('DRIVE')
+  const [newType, setNewType] = useState<TyrePositionType>('DRIVE')
   const [newOrder, setNewOrder] = useState('')
 
   const { data } = useQuery({
-    queryKey: ['tire-positions', vehicleId],
-    queryFn: () => tiresApi.getPositions(vehicleId),
+    queryKey: ['tyre-positions', vehicleId],
+    queryFn: () => tyresApi.getPositions(vehicleId),
     enabled: open,
   })
-  const positions: TirePosition[] = data?.data ?? []
+  const positions: TyrePosition[] = data?.data ?? []
 
   const addMutation = useMutation({
-    mutationFn: () => tiresApi.addPosition({ vehicleId, positionCode: newCode, positionType: newType, displayOrder: newOrder ? Number(newOrder) : 0 }),
+    mutationFn: () => tyresApi.addPosition({ vehicleId, positionCode: newCode, positionType: newType, displayOrder: newOrder ? Number(newOrder) : 0 }),
     onSuccess: () => {
       toast.success('Position added')
-      qc.invalidateQueries({ queryKey: ['tire-positions', vehicleId] })
-      qc.invalidateQueries({ queryKey: ['tire-positions-current', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['tyre-positions', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['tyre-positions-current', vehicleId] })
       setNewCode(''); setNewOrder('')
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
 
   const delMutation = useMutation({
-    mutationFn: (id: number) => tiresApi.deletePosition(id),
+    mutationFn: (id: number) => tyresApi.deletePosition(id),
     onSuccess: () => {
       toast.success('Position removed')
-      qc.invalidateQueries({ queryKey: ['tire-positions', vehicleId] })
-      qc.invalidateQueries({ queryKey: ['tire-positions-current', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['tyre-positions', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['tyre-positions-current', vehicleId] })
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
   })
@@ -1577,7 +1577,7 @@ function ManagePositionsDialog({ open, onClose, vehicleId }: { open: boolean; on
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Manage Tire Positions</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Manage Tyre Positions</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="border rounded-lg p-3 space-y-3 bg-gray-50">
             <p className="text-xs font-semibold text-gray-500 uppercase">Add Position</p>
@@ -1588,7 +1588,7 @@ function ManagePositionsDialog({ open, onClose, vehicleId }: { open: boolean; on
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Type *</Label>
-                <select className="w-full border rounded-md px-2 py-1.5 text-xs h-8" value={newType} onChange={e => setNewType(e.target.value as TirePositionType)}>
+                <select className="w-full border rounded-md px-2 py-1.5 text-xs h-8" value={newType} onChange={e => setNewType(e.target.value as TyrePositionType)}>
                   {POSITION_TYPE_ORDER.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
@@ -1624,7 +1624,7 @@ function ManagePositionsDialog({ open, onClose, vehicleId }: { open: boolean; on
 }
 
 function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
-  open: boolean; onClose: () => void; vehicleId: number; positions: TirePosition[]; currentKm?: number
+  open: boolean; onClose: () => void; vehicleId: number; positions: TyrePosition[]; currentKm?: number
 }) {
   const qc = useQueryClient()
   const fittedPositions = positions.filter(p => p.currentFitting)
@@ -1641,17 +1641,17 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
       const moveList = fittedPositions
         .filter(p => moves[p.id])
         .map(p => ({
-          tireId: p.currentFitting!.tireId,
+          tyreId: p.currentFitting!.tyreId,
           fromPositionId: p.id,
           toPositionId: Number(moves[p.id]),
         }))
-      return tiresApi.performRotation({ vehicleId, rotationDate: date, odometerKm: Number(km), notes, moves: moveList })
+      return tyresApi.performRotation({ vehicleId, rotationDate: date, odometerKm: Number(km), notes, moves: moveList })
     },
     onSuccess: () => {
       toast.success('Rotation performed')
-      qc.invalidateQueries({ queryKey: ['tire-positions-current', vehicleId] })
-      qc.invalidateQueries({ queryKey: ['tire-fittings', vehicleId] })
-      qc.invalidateQueries({ queryKey: ['tire-rotations', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['tyre-positions-current', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['tyre-fittings', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['tyre-rotations', vehicleId] })
       onClose()
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
@@ -1660,7 +1660,7 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Perform Tire Rotation</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Perform Tyre Rotation</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -1679,15 +1679,15 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
 
           {hasConflict && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600">
-              Conflict: two tires are targeting the same destination position
+              Conflict: two tyres are targeting the same destination position
             </div>
           )}
 
           {fittedPositions.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">No tires currently fitted</p>
+            <p className="text-sm text-gray-400 text-center py-4">No tyres currently fitted</p>
           ) : (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Move each tire to a new position</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">Move each tyre to a new position</p>
               {fittedPositions.map(p => {
                 const f = p.currentFitting!
                 const target = moves[p.id]
@@ -1696,7 +1696,7 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
                   <div key={p.id} className={cn('flex items-center gap-3 border rounded-lg px-3 py-2', isConflicted && 'border-red-300 bg-red-50')}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{p.positionCode}</p>
-                      <p className="text-xs text-gray-500 truncate">{f.tireSerialNumber} — {f.tireBrand}</p>
+                      <p className="text-xs text-gray-500 truncate">{f.tyreSerialNumber} — {f.tyreBrand}</p>
                     </div>
                     <span className="text-gray-400 text-xs">→</span>
                     <select
@@ -1731,41 +1731,41 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
   )
 }
 
-type TiresSubTab = 'Current' | 'Rotation History' | 'Fitting History'
+type TyresSubTab = 'Current' | 'Rotation History' | 'Fitting History'
 
-function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerReading?: number; tyreRotationIntervalKm?: number } }) {
-  const [subTab, setSubTab] = useState<TiresSubTab>('Current')
+function TyresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerReading?: number; tyreRotationIntervalKm?: number } }) {
+  const [subTab, setSubTab] = useState<TyresSubTab>('Current')
   const [fitDialog, setFitDialog] = useState<{ positionId: number } | null>(null)
-  const [removeDialog, setRemoveDialog] = useState<TireFitting | null>(null)
+  const [removeDialog, setRemoveDialog] = useState<TyreFitting | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
   const [rotateOpen, setRotateOpen] = useState(false)
 
   const { data: posRes } = useQuery({
-    queryKey: ['tire-positions-current', vehicle.id],
-    queryFn: () => tiresApi.getCurrentPositions(vehicle.id),
+    queryKey: ['tyre-positions-current', vehicle.id],
+    queryFn: () => tyresApi.getCurrentPositions(vehicle.id),
   })
-  const { data: availRes } = useQuery({ queryKey: ['tires-available'], queryFn: tiresApi.getAvailable })
+  const { data: availRes } = useQuery({ queryKey: ['tyres-available'], queryFn: tyresApi.getAvailable })
   const { data: fittingRes } = useQuery({
-    queryKey: ['tire-fittings', vehicle.id],
-    queryFn: () => tiresApi.getFittingHistory(vehicle.id),
+    queryKey: ['tyre-fittings', vehicle.id],
+    queryFn: () => tyresApi.getFittingHistory(vehicle.id),
     enabled: subTab === 'Fitting History',
   })
   const { data: rotRes } = useQuery({
-    queryKey: ['tire-rotations', vehicle.id],
-    queryFn: () => tiresApi.getRotationHistory(vehicle.id),
+    queryKey: ['tyre-rotations', vehicle.id],
+    queryFn: () => tyresApi.getRotationHistory(vehicle.id),
     enabled: subTab === 'Rotation History',
   })
 
-  const positions: TirePosition[] = posRes?.data ?? []
-  const availableTires: Tire[] = availRes?.data ?? []
-  const fittingHistory: TireFitting[] = fittingRes?.data ?? []
-  const rotationHistory: TireRotationLog[] = rotRes?.data ?? []
+  const positions: TyrePosition[] = posRes?.data ?? []
+  const availableTyres: Tyre[] = availRes?.data ?? []
+  const fittingHistory: TyreFitting[] = fittingRes?.data ?? []
+  const rotationHistory: TyreRotationLog[] = rotRes?.data ?? []
   const currentKm = vehicle.currentOdometerReading ? Number(vehicle.currentOdometerReading) : undefined
 
   const grouped = POSITION_TYPE_ORDER.reduce((acc, type) => {
     acc[type] = positions.filter(p => p.positionType === type)
     return acc
-  }, {} as Record<TirePositionType, TirePosition[]>)
+  }, {} as Record<TyrePositionType, TyrePosition[]>)
 
   const fmtD = (d?: string) => { if (!d) return '—'; try { return format(parseISO(d), 'dd MMM yyyy') } catch { return d } }
 
@@ -1773,7 +1773,7 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
     <div className="space-y-4">
       {/* Sub-tab bar */}
       <div className="flex gap-1 border-b border-gray-100">
-        {(['Current', 'Rotation History', 'Fitting History'] as TiresSubTab[]).map(t => (
+        {(['Current', 'Rotation History', 'Fitting History'] as TyresSubTab[]).map(t => (
           <button
             key={t}
             onClick={() => setSubTab(t)}
@@ -1817,8 +1817,8 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
                         if (kmSinceFitted >= rotInterval * 0.9) return <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">Rotation Soon</span>
                         return null
                       })()
-                      const maxKm = f?.tireMaxLifetimeKm
-                      const totalKm = f ? (f.tireTotalLifetimeKm ?? 0) + (kmSinceFitted ?? 0) : 0
+                      const maxKm = f?.tyreMaxLifetimeKm
+                      const totalKm = f ? (f.tyreTotalLifetimeKm ?? 0) + (kmSinceFitted ?? 0) : 0
                       const replaceBadge = (maxKm && totalKm >= maxKm * 0.85)
                         ? <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium">Replace Soon</span>
                         : null
@@ -1833,8 +1833,8 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
                           </div>
                           {f ? (
                             <>
-                              <p className="font-medium text-gray-800 truncate">{f.tireSerialNumber}</p>
-                              <p className="text-xs text-gray-400 truncate">{f.tireBrand} · {f.tireSize}</p>
+                              <p className="font-medium text-gray-800 truncate">{f.tyreSerialNumber}</p>
+                              <p className="text-xs text-gray-400 truncate">{f.tyreBrand} · {f.tyreSize}</p>
                               {kmSinceFitted != null && (
                                 <p className="text-xs text-blue-600 mt-1">{kmSinceFitted.toLocaleString('en-IN')} km since fitted</p>
                               )}
@@ -1846,7 +1846,7 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
                             <div className="text-center py-1">
                               <p className="text-xs text-gray-400 mb-1.5">Empty</p>
                               <Button size="sm" variant="outline" className="h-6 text-xs px-2 w-full" onClick={() => setFitDialog({ positionId: pos.id })}>
-                                Fit Tire
+                                Fit Tyre
                               </Button>
                             </div>
                           )}
@@ -1873,7 +1873,7 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
                   <p className="font-medium text-sm">{fmtD(log.rotationDate)}</p>
                   <p className="text-xs text-gray-400">Odometer: {Number(log.odometerKm).toLocaleString('en-IN')} km · By {log.performedByName}</p>
                 </div>
-                <span className="text-xs text-gray-400">{log.items.length} tires moved</span>
+                <span className="text-xs text-gray-400">{log.items.length} tyres moved</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {log.items.map(item => (
@@ -1881,7 +1881,7 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
                     <span className="font-mono font-medium">{item.fromPositionCode}</span>
                     <span className="text-gray-400">→</span>
                     <span className="font-mono font-medium">{item.toPositionCode}</span>
-                    <span className="text-gray-400 truncate ml-1">{item.tireSerialNumber}</span>
+                    <span className="text-gray-400 truncate ml-1">{item.tyreSerialNumber}</span>
                   </div>
                 ))}
               </div>
@@ -1900,7 +1900,7 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Tire</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Tyre</th>
                   <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Position</th>
                   <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Fitted</th>
                   <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Removed</th>
@@ -1910,7 +1910,7 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
               <tbody className="divide-y divide-gray-50">
                 {fittingHistory.map(f => (
                   <tr key={f.id}>
-                    <td className="px-3 py-2"><p className="font-medium">{f.tireSerialNumber}</p><p className="text-xs text-gray-400">{f.tireBrand} {f.tireSize}</p></td>
+                    <td className="px-3 py-2"><p className="font-medium">{f.tyreSerialNumber}</p><p className="text-xs text-gray-400">{f.tyreBrand} {f.tyreSize}</p></td>
                     <td className="px-3 py-2 font-mono text-xs">{f.positionCode}</td>
                     <td className="px-3 py-2 text-xs">{fmtD(f.fittedDate)}</td>
                     <td className="px-3 py-2 text-xs">{f.removedDate ? fmtD(f.removedDate) : <span className="text-blue-600">Currently fitted</span>}</td>
@@ -1924,10 +1924,10 @@ function TiresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
       )}
 
       {fitDialog && (
-        <FitTireDialog open={!!fitDialog} onClose={() => setFitDialog(null)} vehicleId={vehicle.id} positionId={fitDialog.positionId} availableTires={availableTires} currentKm={currentKm} />
+        <FitTyreDialog open={!!fitDialog} onClose={() => setFitDialog(null)} vehicleId={vehicle.id} positionId={fitDialog.positionId} availableTyres={availableTyres} currentKm={currentKm} />
       )}
       {removeDialog && (
-        <RemoveTireDialog open={!!removeDialog} onClose={() => setRemoveDialog(null)} fitting={removeDialog} currentKm={currentKm} />
+        <RemoveTyreDialog open={!!removeDialog} onClose={() => setRemoveDialog(null)} fitting={removeDialog} currentKm={currentKm} />
       )}
       {manageOpen && <ManagePositionsDialog open={manageOpen} onClose={() => setManageOpen(false)} vehicleId={vehicle.id} />}
       {rotateOpen && <RotationDialog open={rotateOpen} onClose={() => setRotateOpen(false)} vehicleId={vehicle.id} positions={positions} currentKm={currentKm} />}
@@ -2541,7 +2541,7 @@ export function VehicleDetailPage() {
               {t === 'GPS & Notes'    && <MapPin size={14} />}
               {t === 'Documents'      && <FileText size={14} />}
               {t === 'Service'        && <Wrench size={14} />}
-              {t === 'Tires'          && <CircleDot size={14} />}
+              {t === 'Tyres'          && <CircleDot size={14} />}
               {t === 'Meter Readings' && <Gauge size={14} />}
               {t === 'Order History'  && <ClipboardList size={14} />}
               {t === 'Trip History'   && <Route size={14} />}
@@ -2744,9 +2744,9 @@ export function VehicleDetailPage() {
             <FuelTabContent vehicle={v} />
           )}
 
-          {/* ── Tires ── */}
-          {tab === 'Tires' && v && (
-            <TiresTabContent vehicle={v} />
+          {/* ── Tyres ── */}
+          {tab === 'Tyres' && v && (
+            <TyresTabContent vehicle={v} />
           )}
 
           {/* ── Meter Readings ── */}

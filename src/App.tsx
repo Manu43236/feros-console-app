@@ -15,8 +15,8 @@ import { VehicleDetailPage }   from '@/pages/vehicles/VehicleDetailPage'
 import VehicleServicesPage     from '@/pages/vehicles/VehicleServicesPage'
 import FuelLogsPage            from '@/pages/vehicles/FuelLogsPage'
 import MeterReadingsPage       from '@/pages/vehicles/MeterReadingsPage'
-import TireInventoryPage       from '@/pages/inventory/TireInventoryPage'
-import TireRequestsPage        from '@/pages/inventory/TireRequestsPage'
+import TyreInventoryPage       from '@/pages/inventory/TyreInventoryPage'
+import TyreRequestsPage        from '@/pages/inventory/TyreRequestsPage'
 import { OrdersPage }       from '@/pages/orders/OrdersPage'
 import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
 import AssignmentsPage      from '@/pages/orders/AssignmentsPage'
@@ -93,8 +93,8 @@ export default function App() {
           <Route path="meter-readings"      element={<MeterReadingsPage />} />
 
           {/* Inventory */}
-          <Route path="inventory/tires"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER']}><TireInventoryPage /></ProtectedRoute>} />
-          <Route path="inventory/tire-requests" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','STORE_KEEPER']}><TireRequestsPage /></ProtectedRoute>} />
+          <Route path="inventory/tyres"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER']}><TyreInventoryPage /></ProtectedRoute>} />
+          <Route path="inventory/tyre-requests" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','STORE_KEEPER']}><TyreRequestsPage /></ProtectedRoute>} />
           <Route path="inventory" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER','SERVICE_MEN']}><InventoryPage /></ProtectedRoute>} />
 
           {/* Orders & LRs */}

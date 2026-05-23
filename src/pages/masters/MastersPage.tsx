@@ -767,9 +767,9 @@ const RBAC_MODULE_ROWS: { key: string; label: string; section: string; roles: st
   { key: 'ATTENDANCE',       label: 'Attendance',       section: 'HR',         roles: ['OFFICE_STAFF'] },
   { key: 'REPORTS',          label: 'Reports',          section: 'Analytics',  roles: ['OFFICE_STAFF'] },
   { key: 'SPARE_PARTS',      label: 'Spare Parts',      section: 'Inventory',  roles: ['STORE_KEEPER'] },
-  { key: 'TIRES',            label: 'Tires',            section: 'Inventory',  roles: ['STORE_KEEPER'] },
+  { key: 'TYRES',            label: 'Tyres',            section: 'Inventory',  roles: ['STORE_KEEPER'] },
   { key: 'PART_REQUESTS',    label: 'Part Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },
-  { key: 'TIRE_REQUESTS',    label: 'Tire Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },
+  { key: 'TYRE_REQUESTS',    label: 'Tyre Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },
   { key: 'VEHICLE_SERVICES', label: 'Vehicle Services', section: 'Fleet',      roles: ['SERVICE_MEN'] },
 ]
 
@@ -1086,7 +1086,7 @@ function SettingsSection() {
   const [payCycle, setPayCycle] = useState('MONTHLY')
   const [attendanceEnforced, setAttendanceEnforced] = useState(false)
   const [attendanceDeadlineTime, setAttendanceDeadlineTime] = useState('08:00')
-  const [requireTireApproval, setRequireTireApproval] = useState(false)
+  const [requireTyreApproval, setRequireTyreApproval] = useState(false)
   const [requireSparePartApproval, setRequireSparePartApproval] = useState(false)
   const { register, handleSubmit, reset } = useForm<{
     overtimeThresholdHours: number
@@ -1110,7 +1110,7 @@ function SettingsSection() {
       setAttendanceEnforced(s.attendanceEnforced ?? false)
       // API returns "HH:MM:SS" — strip seconds for the time input
       setAttendanceDeadlineTime((s.attendanceDeadlineTime ?? '08:00:00').slice(0, 5))
-      setRequireTireApproval(s.requireTireApproval ?? false)
+      setRequireTyreApproval(s.requireTyreApproval ?? false)
       setRequireSparePartApproval(s.requireSparePartApproval ?? false)
       reset({
         overtimeThresholdHours: s.overtimeThresholdHours,
@@ -1137,7 +1137,7 @@ function SettingsSection() {
       isTripBonusEnabled: Boolean(d.isTripBonusEnabled),
       attendanceEnforced,
       attendanceDeadlineTime: attendanceDeadlineTime + ':00',
-      requireTireApproval,
+      requireTyreApproval,
       requireSparePartApproval,
     })
   }
@@ -1248,17 +1248,17 @@ function SettingsSection() {
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
-              id="requireTireApproval"
-              checked={requireTireApproval}
-              onChange={e => setRequireTireApproval(e.target.checked)}
+              id="requireTyreApproval"
+              checked={requireTyreApproval}
+              onChange={e => setRequireTyreApproval(e.target.checked)}
               className="h-4 w-4 accent-blue-600"
             />
-            <Label htmlFor="requireTireApproval" className="cursor-pointer">
-              Require Store Keeper Approval for Tire Fitting
+            <Label htmlFor="requireTyreApproval" className="cursor-pointer">
+              Require Store Keeper Approval for Tyre Fitting
             </Label>
           </div>
           <p className="text-xs text-gray-500">
-            When enabled, service technicians must submit a tire request. The store keeper approves and issues the tire.
+            When enabled, service technicians must submit a tyre request. The store keeper approves and issues the tyre.
           </p>
           <div className="flex items-center gap-3">
             <input

@@ -2,10 +2,10 @@ import { getApiError } from '@/lib/apiError'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tiresApi } from '@/api/tires'
+import { tyresApi } from '@/api/tyres'
 import { vehiclesApi } from '@/api/vehicles'
 import { meterReadingsApi } from '@/api/meterReadings'
-import type { Tire, TireStatus, TireType, TireFitting, TirePosition, TireRemovalReason } from '@/types'
+import type { Tyre, TyreStatus, TyreType, TyreFitting, TyrePosition, TyreRemovalReason } from '@/types'
 import { toast } from 'sonner'
 import { Plus, Search, RefreshCw, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ function fmtDate(d?: string) {
   try { return format(parseISO(d), 'dd MMM yyyy') } catch { return d }
 }
 
-const STATUS_COLORS: Record<TireStatus, string> = {
+const STATUS_COLORS: Record<TyreStatus, string> = {
   IN_STOCK:   'bg-green-100 text-green-700',
   FITTED:     'bg-blue-100 text-blue-700',
   RETREADING: 'bg-yellow-100 text-yellow-700',
@@ -29,7 +29,7 @@ const STATUS_COLORS: Record<TireStatus, string> = {
   DISPOSED:   'bg-gray-100 text-gray-500',
 }
 
-const STATUS_LABELS: Record<TireStatus, string> = {
+const STATUS_LABELS: Record<TyreStatus, string> = {
   IN_STOCK:   'In Stock',
   FITTED:     'Fitted',
   RETREADING: 'Retreading',
@@ -37,12 +37,12 @@ const STATUS_LABELS: Record<TireStatus, string> = {
   DISPOSED:   'Disposed',
 }
 
-const TIRE_TYPES: TireType[] = ['RADIAL', 'BIAS', 'TUBELESS', 'TUBE_TYPE']
-const TIRE_TYPE_LABELS: Record<TireType, string> = {
+const TYRE_TYPES: TyreType[] = ['RADIAL', 'BIAS', 'TUBELESS', 'TUBE_TYPE']
+const TYRE_TYPE_LABELS: Record<TyreType, string> = {
   RADIAL: 'Radial', BIAS: 'Bias', TUBELESS: 'Tubeless', TUBE_TYPE: 'Tube Type',
 }
 
-const REMOVAL_REASONS: { value: TireRemovalReason; label: string }[] = [
+const REMOVAL_REASONS: { value: TyreRemovalReason; label: string }[] = [
   { value: 'WORN',     label: 'Worn Out' },
   { value: 'PUNCTURE', label: 'Puncture' },
   { value: 'DAMAGE',   label: 'Damage' },
@@ -51,30 +51,30 @@ const REMOVAL_REASONS: { value: TireRemovalReason; label: string }[] = [
   { value: 'OTHER',    label: 'Other' },
 ]
 
-// ── Add / Edit Tire Dialog ──────────────────────────────────────────────────
-function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => void; tire?: Tire }) {
+// ── Add / Edit Tyre Dialog ──────────────────────────────────────────────────
+function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () => void; tyre?: Tyre }) {
   const qc = useQueryClient()
-  const isEdit = !!tire
+  const isEdit = !!tyre
 
   const [form, setForm] = useState({
-    serialNumber:  tire?.serialNumber ?? '',
-    brand:         tire?.brand ?? '',
-    size:          tire?.size ?? '',
-    tireType:      (tire?.tireType ?? 'RADIAL') as TireType,
-    plyRating:     tire?.plyRating ?? '',
-    purchaseDate:  tire?.purchaseDate ?? '',
-    purchaseCost:  tire?.purchaseCost?.toString() ?? '',
-    tyreLifeYears: tire?.tyreLifeYears?.toString() ?? '',
-    maxLifetimeKm: tire?.maxLifetimeKm?.toString() ?? '',
-    notes:         tire?.notes ?? '',
+    serialNumber:  tyre?.serialNumber ?? '',
+    brand:         tyre?.brand ?? '',
+    size:          tyre?.size ?? '',
+    tyreType:      (tyre?.tyreType ?? 'RADIAL') as TyreType,
+    plyRating:     tyre?.plyRating ?? '',
+    purchaseDate:  tyre?.purchaseDate ?? '',
+    purchaseCost:  tyre?.purchaseCost?.toString() ?? '',
+    tyreLifeYears: tyre?.tyreLifeYears?.toString() ?? '',
+    maxLifetimeKm: tyre?.maxLifetimeKm?.toString() ?? '',
+    notes:         tyre?.notes ?? '',
   })
 
 
   const mutation = useMutation({
-    mutationFn: (data: unknown) => isEdit ? tiresApi.update(tire!.id, data) : tiresApi.create(data),
+    mutationFn: (data: unknown) => isEdit ? tyresApi.update(tyre!.id, data) : tyresApi.create(data),
     onSuccess: () => {
-      toast.success(isEdit ? 'Tire updated' : 'Tire added')
-      qc.invalidateQueries({ queryKey: ['tires'] })
+      toast.success(isEdit ? 'Tyre updated' : 'Tyre added')
+      qc.invalidateQueries({ queryKey: ['tyres'] })
       onClose()
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
@@ -94,7 +94,7 @@ function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: ()
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{isEdit ? 'Edit Tire' : 'Add Tire'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{isEdit ? 'Edit Tyre' : 'Add Tyre'}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
@@ -111,8 +111,8 @@ function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: ()
             </div>
             <div className="space-y-1.5">
               <Label>Type *</Label>
-              <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.tireType} onChange={e => setForm(f => ({ ...f, tireType: e.target.value as TireType }))}>
-                {TIRE_TYPES.map(t => <option key={t} value={t}>{TIRE_TYPE_LABELS[t]}</option>)}
+              <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.tyreType} onChange={e => setForm(f => ({ ...f, tyreType: e.target.value as TyreType }))}>
+                {TYRE_TYPES.map(t => <option key={t} value={t}>{TYRE_TYPE_LABELS[t]}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
@@ -143,7 +143,7 @@ function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: ()
           <div className="flex gap-2 justify-end pt-1">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
-              {mutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Tire'}
+              {mutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Tyre'}
             </Button>
           </div>
         </form>
@@ -152,8 +152,8 @@ function AddEditTireDialog({ open, onClose, tire }: { open: boolean; onClose: ()
   )
 }
 
-// ── Fit Tire Dialog ─────────────────────────────────────────────────────────
-function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => void; tire: Tire }) {
+// ── Fit Tyre Dialog ─────────────────────────────────────────────────────────
+function FitTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () => void; tyre: Tyre }) {
   const qc = useQueryClient()
   const [vehicleId, setVehicleId] = useState(0)
   const [form, setForm] = useState({
@@ -167,12 +167,12 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
   const vehicles = (vehiclesData?.data ?? []).filter(v => v.isActive)
 
   const { data: positionsData } = useQuery({
-    queryKey: ['tire-positions-current', vehicleId],
-    queryFn:  () => tiresApi.getCurrentPositions(vehicleId),
+    queryKey: ['tyre-positions-current', vehicleId],
+    queryFn:  () => tyresApi.getCurrentPositions(vehicleId),
     enabled:  vehicleId > 0,
   })
-  const allPositions: TirePosition[]   = positionsData?.data ?? []
-  const emptyPositions: TirePosition[] = allPositions.filter(p => !p.currentFitting)
+  const allPositions: TyrePosition[]   = positionsData?.data ?? []
+  const emptyPositions: TyrePosition[] = allPositions.filter(p => !p.currentFitting)
 
   const { data: meterData } = useQuery({
     queryKey: ['meter-readings', vehicleId],
@@ -191,28 +191,28 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
   }, [meterData])
 
   const mutation = useMutation({
-    mutationFn: () => tiresApi.fitTire({
+    mutationFn: () => tyresApi.fitTyre({
       vehicleId,
-      tireId:     tire.id,
+      tyreId:     tyre.id,
       positionId: form.positionId,
       fittedAtKm: Number(form.fittedAtKm),
       fittedDate: form.fittedDate || undefined,
       notes:      form.notes || undefined,
     }),
     onSuccess: () => {
-      toast.success('Tire fitted successfully')
-      qc.invalidateQueries({ queryKey: ['tires'] })
+      toast.success('Tyre fitted successfully')
+      qc.invalidateQueries({ queryKey: ['tyres'] })
       onClose()
     },
-    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to fit tire'); if (_m) toast.error(_m) },
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to fit tyre'); if (_m) toast.error(_m) },
   })
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Fit Tire to Vehicle</DialogTitle>
-          <p className="text-sm text-gray-500">{tire.serialNumber} — {tire.brand} {tire.size}</p>
+          <DialogTitle>Fit Tyre to Vehicle</DialogTitle>
+          <p className="text-sm text-gray-500">{tyre.serialNumber} — {tyre.brand} {tyre.size}</p>
         </DialogHeader>
         <div className="space-y-4 pt-1">
           <div className="space-y-1.5">
@@ -269,7 +269,7 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
             onClick={() => mutation.mutate()}
             className="bg-feros-navy hover:bg-feros-navy/90 text-white"
           >
-            {mutation.isPending ? 'Fitting…' : 'Fit Tire'}
+            {mutation.isPending ? 'Fitting…' : 'Fit Tyre'}
           </Button>
         </div>
       </DialogContent>
@@ -277,33 +277,33 @@ function FitTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => 
   )
 }
 
-// ── Remove Tire Dialog ──────────────────────────────────────────────────────
-function RemoveTireDialog({ open, onClose, tire }: { open: boolean; onClose: () => void; tire: Tire }) {
+// ── Remove Tyre Dialog ──────────────────────────────────────────────────────
+function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () => void; tyre: Tyre }) {
   const qc = useQueryClient()
   const [form, setForm] = useState({
     removedAtKm:        '',
     removedDate:        new Date().toISOString().split('T')[0],
-    removalReason:      '' as TireRemovalReason | '',
+    removalReason:      '' as TyreRemovalReason | '',
     retreaderName:      '',
     expectedReturnDate: '',
     notes:              '',
   })
 
   const mutation = useMutation({
-    mutationFn: () => tiresApi.removeTire(tire.currentFittingId!, {
+    mutationFn: () => tyresApi.removeTyre(tyre.currentFittingId!, {
       removedAtKm:        Number(form.removedAtKm),
       removedDate:        form.removedDate || undefined,
-      removalReason:      form.removalReason as TireRemovalReason,
+      removalReason:      form.removalReason as TyreRemovalReason,
       retreaderName:      form.retreaderName || undefined,
       expectedReturnDate: form.expectedReturnDate || undefined,
       notes:              form.notes || undefined,
     }),
     onSuccess: () => {
-      toast.success('Tire removed successfully')
-      qc.invalidateQueries({ queryKey: ['tires'] })
+      toast.success('Tyre removed successfully')
+      qc.invalidateQueries({ queryKey: ['tyres'] })
       onClose()
     },
-    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to remove tire'); if (_m) toast.error(_m) },
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to remove tyre'); if (_m) toast.error(_m) },
   })
 
   const isRetread = form.removalReason === 'RETREAD'
@@ -313,24 +313,24 @@ function RemoveTireDialog({ open, onClose, tire }: { open: boolean; onClose: () 
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Remove Tire</DialogTitle>
+          <DialogTitle>Remove Tyre</DialogTitle>
           <p className="text-sm text-gray-500">
-            {tire.serialNumber} — {tire.currentVehicleRegistrationNumber} · {tire.currentPositionCode}
+            {tyre.serialNumber} — {tyre.currentVehicleRegistrationNumber} · {tyre.currentPositionCode}
           </p>
         </DialogHeader>
         <div className="space-y-4 pt-1">
           {(isRetread || isScrap) && (
             <div className={cn('rounded-lg px-3 py-2 text-sm border', isRetread ? 'bg-yellow-50 border-yellow-200 text-yellow-700' : 'bg-red-50 border-red-200 text-red-700')}>
               {isRetread
-                ? 'Tire will be sent for retreading. Status will change to Retreading.'
-                : 'Tire will be permanently scrapped. This cannot be undone.'}
+                ? 'Tyre will be sent for retreading. Status will change to Retreading.'
+                : 'Tyre will be permanently scrapped. This cannot be undone.'}
             </div>
           )}
           <div className="space-y-1.5">
             <Label>Removal Reason *</Label>
             <SearchableSelect
               value={form.removalReason}
-              onValueChange={val => setForm(f => ({ ...f, removalReason: val as TireRemovalReason, retreaderName: '', expectedReturnDate: '' }))}
+              onValueChange={val => setForm(f => ({ ...f, removalReason: val as TyreRemovalReason, retreaderName: '', expectedReturnDate: '' }))}
               options={REMOVAL_REASONS.map(r => ({ value: r.value, label: r.label }))}
               placeholder="Select reason…"
               showSearch={false}
@@ -370,7 +370,7 @@ function RemoveTireDialog({ open, onClose, tire }: { open: boolean; onClose: () 
             onClick={() => mutation.mutate()}
             className={cn(isScrap ? 'bg-red-600 hover:bg-red-700' : 'bg-feros-navy hover:bg-feros-navy/90', 'text-white')}
           >
-            {mutation.isPending ? 'Removing…' : 'Remove Tire'}
+            {mutation.isPending ? 'Removing…' : 'Remove Tyre'}
           </Button>
         </div>
       </DialogContent>
@@ -379,13 +379,13 @@ function RemoveTireDialog({ open, onClose, tire }: { open: boolean; onClose: () 
 }
 
 // ── Back to Stock Dialog ────────────────────────────────────────────────────
-function BackToStockDialog({ open, onClose, tire }: { open: boolean; onClose: () => void; tire: Tire }) {
+function BackToStockDialog({ open, onClose, tyre }: { open: boolean; onClose: () => void; tyre: Tyre }) {
   const qc = useQueryClient()
   const mutation = useMutation({
-    mutationFn: () => tiresApi.backToStock(tire.id),
+    mutationFn: () => tyresApi.backToStock(tyre.id),
     onSuccess: () => {
-      toast.success('Tire marked as back in stock')
-      qc.invalidateQueries({ queryKey: ['tires'] })
+      toast.success('Tyre marked as back in stock')
+      qc.invalidateQueries({ queryKey: ['tyres'] })
       onClose()
     },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed'); if (_m) toast.error(_m) },
@@ -396,8 +396,8 @@ function BackToStockDialog({ open, onClose, tire }: { open: boolean; onClose: ()
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Retread Complete</DialogTitle></DialogHeader>
         <div className="py-2 space-y-1">
-          <p className="text-sm text-gray-700">Mark <strong>{tire.serialNumber}</strong> as back in stock?</p>
-          <p className="text-sm text-gray-400">The tire has returned from retreading and is ready to be fitted again.</p>
+          <p className="text-sm text-gray-700">Mark <strong>{tyre.serialNumber}</strong> as back in stock?</p>
+          <p className="text-sm text-gray-400">The tyre has returned from retreading and is ready to be fitted again.</p>
         </div>
         <div className="flex gap-2 justify-end pt-1">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -410,26 +410,26 @@ function BackToStockDialog({ open, onClose, tire }: { open: boolean; onClose: ()
   )
 }
 
-// ── Tire History Dialog ─────────────────────────────────────────────────────
-function TireHistoryDialog({ open, onClose, tire }: { open: boolean; onClose: () => void; tire: Tire }) {
+// ── Tyre History Dialog ─────────────────────────────────────────────────────
+function TyreHistoryDialog({ open, onClose, tyre }: { open: boolean; onClose: () => void; tyre: Tyre }) {
   const { data, isLoading } = useQuery({
-    queryKey: ['tire-history', tire.id],
-    queryFn:  () => tiresApi.getTireHistory(tire.id),
+    queryKey: ['tyre-history', tyre.id],
+    queryFn:  () => tyresApi.getTyreHistory(tyre.id),
     enabled:  open,
   })
-  const fittings: TireFitting[] = data?.data ?? []
+  const fittings: TyreFitting[] = data?.data ?? []
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Fitting History — {tire.serialNumber}</DialogTitle>
-          <p className="text-sm text-gray-500">{tire.brand} · {tire.size} · {TIRE_TYPE_LABELS[tire.tireType]}</p>
+          <DialogTitle>Fitting History — {tyre.serialNumber}</DialogTitle>
+          <p className="text-sm text-gray-500">{tyre.brand} · {tyre.size} · {TYRE_TYPE_LABELS[tyre.tyreType]}</p>
         </DialogHeader>
         <div className="pt-2">
           <div className="flex gap-6 text-sm text-gray-600 mb-4">
-            <span>Retread count: <strong>{tire.retreadCount}x</strong></span>
-            <span>Total lifetime KM: <strong>{Number(tire.totalLifetimeKm).toLocaleString('en-IN')} km</strong></span>
+            <span>Retread count: <strong>{tyre.retreadCount}x</strong></span>
+            <span>Total lifetime KM: <strong>{Number(tyre.totalLifetimeKm).toLocaleString('en-IN')} km</strong></span>
           </div>
           {isLoading ? (
             <p className="text-sm text-gray-400 py-4 text-center">Loading…</p>
@@ -466,23 +466,23 @@ function TireHistoryDialog({ open, onClose, tire }: { open: boolean; onClose: ()
 }
 
 // ── Main Page ───────────────────────────────────────────────────────────────
-type ActiveFilter = TireStatus | 'ALL'
+type ActiveFilter = TyreStatus | 'ALL'
 
-export default function TireInventoryPage() {
+export default function TyreInventoryPage() {
   const { locked } = useSubscription()
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<ActiveFilter>('ALL')
   const [addOpen, setAddOpen]           = useState(false)
-  const [editTire, setEditTire]         = useState<Tire | null>(null)
-  const [fitTire, setFitTire]           = useState<Tire | null>(null)
-  const [removeTire, setRemoveTire]     = useState<Tire | null>(null)
-  const [backToStock, setBackToStock]   = useState<Tire | null>(null)
-  const [historyTire, setHistoryTire]   = useState<Tire | null>(null)
+  const [editTyre, setEditTyre]         = useState<Tyre | null>(null)
+  const [fitTyre, setFitTyre]           = useState<Tyre | null>(null)
+  const [removeTyre, setRemoveTyre]     = useState<Tyre | null>(null)
+  const [backToStock, setBackToStock]   = useState<Tyre | null>(null)
+  const [historyTyre, setHistoryTyre]   = useState<Tyre | null>(null)
 
-  const { data, isLoading, refetch } = useQuery({ queryKey: ['tires'], queryFn: tiresApi.getAll })
-  const tires: Tire[] = data?.data ?? []
+  const { data, isLoading, refetch } = useQuery({ queryKey: ['tyres'], queryFn: tyresApi.getAll })
+  const tyres: Tyre[] = data?.data ?? []
 
-  const filtered = tires.filter(t => {
+  const filtered = tyres.filter(t => {
     const matchStatus = statusFilter === 'ALL' || t.status === statusFilter
     const q = search.toLowerCase()
     const matchSearch = !q ||
@@ -494,11 +494,11 @@ export default function TireInventoryPage() {
   })
 
   const stats = {
-    total:      tires.length,
-    inStock:    tires.filter(t => t.status === 'IN_STOCK').length,
-    fitted:     tires.filter(t => t.status === 'FITTED').length,
-    retreading: tires.filter(t => t.status === 'RETREADING').length,
-    scrapped:   tires.filter(t => t.status === 'SCRAPPED').length,
+    total:      tyres.length,
+    inStock:    tyres.filter(t => t.status === 'IN_STOCK').length,
+    fitted:     tyres.filter(t => t.status === 'FITTED').length,
+    retreading: tyres.filter(t => t.status === 'RETREADING').length,
+    scrapped:   tyres.filter(t => t.status === 'SCRAPPED').length,
   }
 
   const STAT_CARDS: { label: string; value: number; color: string; filter: ActiveFilter }[] = [
@@ -514,8 +514,8 @@ export default function TireInventoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tire Inventory</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage all tires across the fleet</p>
+          <h1 className="text-2xl font-bold text-gray-900">Tyre Inventory</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage all tyres across the fleet</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -523,7 +523,7 @@ export default function TireInventoryPage() {
           </Button>
           {!locked && (
             <Button size="sm" onClick={() => setAddOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
-              <Plus size={14} /> Add Tire
+              <Plus size={14} /> Add Tyre
             </Button>
           )}
         </div>
@@ -559,7 +559,7 @@ export default function TireInventoryPage() {
         {isLoading ? (
           <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-sm text-gray-400">No tires found</div>
+          <div className="py-12 text-center text-sm text-gray-400">No tyres found</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[700px]">
@@ -575,12 +575,12 @@ export default function TireInventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map(tire => (
-                  <tr key={tire.id} className="hover:bg-gray-50">
+                {filtered.map(tyre => (
+                  <tr key={tyre.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <p className="font-mono font-medium text-gray-800">{tire.serialNumber}</p>
-                      {tire.expiryDate && (() => {
-                        const daysLeft = Math.ceil((new Date(tire.expiryDate).getTime() - Date.now()) / 86400000)
+                      <p className="font-mono font-medium text-gray-800">{tyre.serialNumber}</p>
+                      {tyre.expiryDate && (() => {
+                        const daysLeft = Math.ceil((new Date(tyre.expiryDate).getTime() - Date.now()) / 86400000)
                         if (daysLeft < 0)
                           return <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Expired</span>
                         if (daysLeft <= 15)
@@ -589,65 +589,65 @@ export default function TireInventoryPage() {
                       })()}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-800">{tire.brand}</p>
-                      <p className="text-xs text-gray-400">{tire.size}</p>
+                      <p className="font-medium text-gray-800">{tyre.brand}</p>
+                      <p className="text-xs text-gray-400">{tyre.size}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', STATUS_COLORS[tire.status])}>
-                        {STATUS_LABELS[tire.status]}
+                      <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', STATUS_COLORS[tyre.status])}>
+                        {STATUS_LABELS[tyre.status]}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {tire.status === 'FITTED' && tire.currentVehicleRegistrationNumber ? (
+                      {tyre.status === 'FITTED' && tyre.currentVehicleRegistrationNumber ? (
                         <div>
-                          <p className="font-medium text-gray-800">{tire.currentVehicleRegistrationNumber}</p>
-                          <p className="text-xs text-gray-400">{tire.currentPositionCode}</p>
+                          <p className="font-medium text-gray-800">{tyre.currentVehicleRegistrationNumber}</p>
+                          <p className="text-xs text-gray-400">{tyre.currentPositionCode}</p>
                         </div>
-                      ) : tire.status === 'RETREADING' ? (
+                      ) : tyre.status === 'RETREADING' ? (
                         <div>
-                          <p className="font-medium text-gray-700">{tire.retreaderName ?? '—'}</p>
-                          {tire.expectedReturnDate && (
-                            <p className="text-xs text-gray-400">Due {fmtDate(tire.expectedReturnDate)}</p>
+                          <p className="font-medium text-gray-700">{tyre.retreaderName ?? '—'}</p>
+                          {tyre.expectedReturnDate && (
+                            <p className="text-xs text-gray-400">Due {fmtDate(tyre.expectedReturnDate)}</p>
                           )}
                         </div>
                       ) : (
                         <span className="text-gray-300">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{Number(tire.totalLifetimeKm).toLocaleString('en-IN')} km</td>
-                    <td className="px-4 py-3 text-gray-600">{tire.retreadCount}x</td>
+                    <td className="px-4 py-3 text-gray-600">{Number(tyre.totalLifetimeKm).toLocaleString('en-IN')} km</td>
+                    <td className="px-4 py-3 text-gray-600">{tyre.retreadCount}x</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end flex-wrap">
                         <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-gray-500 hover:text-gray-700"
-                          onClick={() => setHistoryTire(tire)}>
+                          onClick={() => setHistoryTyre(tyre)}>
                           <History size={12} /> History
                         </Button>
-                        {tire.status === 'IN_STOCK' && (
+                        {tyre.status === 'IN_STOCK' && (
                           <>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTire(tire)}>Edit</Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTyre(tyre)}>Edit</Button>
                             <Button size="sm" className="h-7 text-xs bg-feros-navy hover:bg-feros-navy/90 text-white"
-                              onClick={() => setFitTire(tire)}>
+                              onClick={() => setFitTyre(tyre)}>
                               Fit to Vehicle
                             </Button>
                           </>
                         )}
-                        {tire.status === 'FITTED' && (
+                        {tyre.status === 'FITTED' && (
                           <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50"
-                            onClick={() => setRemoveTire(tire)}>
+                            onClick={() => setRemoveTyre(tyre)}>
                             Remove
                           </Button>
                         )}
-                        {tire.status === 'RETREADING' && (
+                        {tyre.status === 'RETREADING' && (
                           <>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTire(tire)}>Edit</Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTyre(tyre)}>Edit</Button>
                             <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-                              onClick={() => setBackToStock(tire)}>
+                              onClick={() => setBackToStock(tyre)}>
                               Back to Stock
                             </Button>
                           </>
                         )}
-                        {(tire.status === 'SCRAPPED' || tire.status === 'DISPOSED') && (
-                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTire(tire)}>Edit</Button>
+                        {(tyre.status === 'SCRAPPED' || tyre.status === 'DISPOSED') && (
+                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTyre(tyre)}>Edit</Button>
                         )}
                       </div>
                     </td>
@@ -660,12 +660,12 @@ export default function TireInventoryPage() {
       </div>
 
       {/* Dialogs */}
-      {addOpen     && <AddEditTireDialog open onClose={() => setAddOpen(false)} />}
-      {editTire    && <AddEditTireDialog open onClose={() => setEditTire(null)}    tire={editTire} />}
-      {fitTire     && <FitTireDialog     open onClose={() => setFitTire(null)}     tire={fitTire} />}
-      {removeTire  && <RemoveTireDialog  open onClose={() => setRemoveTire(null)}  tire={removeTire} />}
-      {backToStock && <BackToStockDialog open onClose={() => setBackToStock(null)} tire={backToStock} />}
-      {historyTire && <TireHistoryDialog open onClose={() => setHistoryTire(null)} tire={historyTire} />}
+      {addOpen     && <AddEditTyreDialog open onClose={() => setAddOpen(false)} />}
+      {editTyre    && <AddEditTyreDialog open onClose={() => setEditTyre(null)}    tyre={editTyre} />}
+      {fitTyre     && <FitTyreDialog     open onClose={() => setFitTyre(null)}     tyre={fitTyre} />}
+      {removeTyre  && <RemoveTyreDialog  open onClose={() => setRemoveTyre(null)}  tyre={removeTyre} />}
+      {backToStock && <BackToStockDialog open onClose={() => setBackToStock(null)} tyre={backToStock} />}
+      {historyTyre && <TyreHistoryDialog open onClose={() => setHistoryTyre(null)} tyre={historyTyre} />}
     </div>
   )
 }

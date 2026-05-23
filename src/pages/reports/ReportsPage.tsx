@@ -31,8 +31,8 @@ import type {
   OnTimeDeliveryResponse, OrderCancellationRateResponse,
   StockLevelResponse, StockMovementResponse, VehiclePartConsumptionResponse,
   PartConsumptionByTypeResponse, ServiceCostBreakdownResponse,
-  TiresByVehicleResponse, KmPerTireResponse,
-  TireReplacementProjectionResponse, TireCostPerKmResponse,
+  TyresByVehicleResponse, KmPerTyreResponse,
+  TyreReplacementProjectionResponse, TyreCostPerKmResponse,
 } from '@/types'
 
 type ReportTab =
@@ -44,7 +44,7 @@ type ReportTab =
   'invoice-aging' | 'revenue-trend' | 'route-profitability' | 'gst-summary' | 'credit-notes' | 'client-pending-billing' |
   'top-clients' | 'top-materials' | 'top-routes' | 'on-time-delivery' | 'cancellation-rate' |
   'stock-levels' | 'stock-movement' | 'parts-by-vehicle' | 'parts-by-type' | 'service-cost-breakdown' |
-  'tires-by-vehicle' | 'km-per-tire' | 'tire-replacement' | 'tire-cost-per-km' |
+  'tyres-by-vehicle' | 'km-per-tyre' | 'tyre-replacement' | 'tyre-cost-per-km' |
   'targets' | 'lr-register' | 'outstanding' | 'collections' | 'client-statement' | 'vehicle-trips' | 'order-status' | 'payroll' | 'attendance'
 
 const DAILY_OPS_TABS: { id: ReportTab; label: string }[] = [
@@ -114,11 +114,11 @@ const INVENTORY_TABS: { id: ReportTab; label: string }[] = [
   { id: 'service-cost-breakdown', label: 'Service Cost' },
 ]
 
-const TIRE_TABS: { id: ReportTab; label: string }[] = [
-  { id: 'tires-by-vehicle',  label: 'Tires per Vehicle' },
-  { id: 'km-per-tire',       label: 'Km per Tire' },
-  { id: 'tire-replacement',  label: 'Replacement Projection' },
-  { id: 'tire-cost-per-km',  label: 'Cost per Km' },
+const TYRE_TABS: { id: ReportTab; label: string }[] = [
+  { id: 'tyres-by-vehicle',  label: 'Tyres per Vehicle' },
+  { id: 'km-per-tyre',       label: 'Km per Tyre' },
+  { id: 'tyre-replacement',  label: 'Replacement Projection' },
+  { id: 'tyre-cost-per-km',  label: 'Cost per Km' },
 ]
 
 const TABS: { id: ReportTab; label: string }[] = [
@@ -3342,19 +3342,19 @@ function ServiceCostBreakdownTab() {
   )
 }
 
-// ─── Section J — Tire Reports ─────────────────────────────────────────────────
+// ─── Section J — Tyre Reports ─────────────────────────────────────────────────
 
-function TiresByVehicleTab() {
+function TyresByVehicleTab() {
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ['tires-by-vehicle'],
-    queryFn: reportsApi.getTiresByVehicle,
+    queryKey: ['tyres-by-vehicle'],
+    queryFn: reportsApi.getTyresByVehicle,
 
   })
-  const vehicles = (data?.data ?? []) as TiresByVehicleResponse[]
+  const vehicles = (data?.data ?? []) as TyresByVehicleResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">Tires per Vehicle</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Tyres per Vehicle</h2>
         {isFetching
           ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
           : <button onClick={() => refetch()} disabled={isFetching}
@@ -3369,7 +3369,7 @@ function TiresByVehicleTab() {
             <div key={v.vehicleId} className="border rounded-lg overflow-hidden">
               <div className="bg-gray-50 px-4 py-2 flex items-center justify-between">
                 <span className="font-semibold text-gray-800">{v.regNo} <span className="text-gray-400 text-sm">{v.vehicleType}</span></span>
-                <span className="text-sm text-gray-500">{v.activeTireCount} tire{v.activeTireCount !== 1 ? 's' : ''}</span>
+                <span className="text-sm text-gray-500">{v.activeTyreCount} tyre{v.activeTyreCount !== 1 ? 's' : ''}</span>
               </div>
               <table className="w-full text-sm">
                 <thead><tr className="border-b text-left text-gray-500">
@@ -3382,7 +3382,7 @@ function TiresByVehicleTab() {
                   <th className="pb-2 text-right pr-4">Km Driven</th>
                 </tr></thead>
                 <tbody>
-                  {v.tires.map(t => (
+                  {v.tyres.map(t => (
                     <tr key={t.fittingId} className="border-b">
                       <td className="py-2 px-4 font-mono text-xs">{t.serialNumber}</td>
                       <td className="py-2 pr-4">{t.brand}</td>
@@ -3399,22 +3399,22 @@ function TiresByVehicleTab() {
           ))}
         </div>
       )}
-      {!vehicles.length && !isFetching && <EmptyState msg="No data available — tire data" />}
+      {!vehicles.length && !isFetching && <EmptyState msg="No data available — tyre data" />}
     </div>
   )
 }
 
-function KmPerTireTab() {
+function KmPerTyreTab() {
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ['km-per-tire'],
-    queryFn: reportsApi.getKmPerTire,
+    queryKey: ['km-per-tyre'],
+    queryFn: reportsApi.getKmPerTyre,
 
   })
-  const rows = (data?.data ?? []) as KmPerTireResponse[]
+  const rows = (data?.data ?? []) as KmPerTyreResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">Km Run per Tire</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Km Run per Tyre</h2>
         {isFetching
           ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
           : <button onClick={() => refetch()} disabled={isFetching}
@@ -3464,19 +3464,19 @@ function KmPerTireTab() {
   )
 }
 
-function TireReplacementTab() {
+function TyreReplacementTab() {
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ['tire-replacement'],
-    queryFn: reportsApi.getTireReplacementProjection,
+    queryKey: ['tyre-replacement'],
+    queryFn: reportsApi.getTyreReplacementProjection,
 
   })
-  const rows = (data?.data ?? []) as TireReplacementProjectionResponse[]
+  const rows = (data?.data ?? []) as TyreReplacementProjectionResponse[]
   const urgencyColor = (u: string) =>
     u === 'HIGH' ? 'bg-red-100 text-red-800' : u === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">Tire Replacement Projection</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Tyre Replacement Projection</h2>
         {isFetching
           ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
           : <button onClick={() => refetch()} disabled={isFetching}
@@ -3506,7 +3506,7 @@ function TireReplacementTab() {
               </tr></thead>
               <tbody>
                 {rows.map(r => (
-                  <tr key={r.tireId} className="border-b">
+                  <tr key={r.tyreId} className="border-b">
                     <td className="py-2 pr-4 font-mono text-xs">{r.serialNumber}</td>
                     <td className="py-2 pr-4">{r.brand} <span className="text-gray-400">{r.size}</span></td>
                     <td className="py-2 pr-4 font-medium">{r.vehicleRegNo}</td>
@@ -3527,17 +3527,17 @@ function TireReplacementTab() {
   )
 }
 
-function TireCostPerKmTab() {
+function TyreCostPerKmTab() {
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ['tire-cost-per-km'],
-    queryFn: reportsApi.getTireCostPerKm,
+    queryKey: ['tyre-cost-per-km'],
+    queryFn: reportsApi.getTyreCostPerKm,
 
   })
-  const rows = (data?.data ?? []) as TireCostPerKmResponse[]
+  const rows = (data?.data ?? []) as TyreCostPerKmResponse[]
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">Tire Cost per Km</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Tyre Cost per Km</h2>
         {isFetching
           ? <span className="text-sm text-gray-400 animate-pulse">Loading…</span>
           : <button onClick={() => refetch()} disabled={isFetching}
@@ -3559,10 +3559,10 @@ function TireCostPerKmTab() {
             </tr></thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.tireId} className="border-b">
+                <tr key={r.tyreId} className="border-b">
                   <td className="py-2 pr-4 font-mono text-xs">{r.serialNumber}</td>
                   <td className="py-2 pr-4">{r.brand} <span className="text-gray-400">{r.size}</span></td>
-                  <td className="py-2 pr-4 text-gray-500">{r.tireType}</td>
+                  <td className="py-2 pr-4 text-gray-500">{r.tyreType}</td>
                   <td className="py-2 pr-4 text-right">{fmtRs(r.purchaseCost)}</td>
                   <td className="py-2 pr-4 text-right">{fmt(r.totalLifetimeKm)} km</td>
                   <td className="py-2 text-right font-semibold">{fmtRs(r.costPerKm)}/km</td>
@@ -3572,7 +3572,7 @@ function TireCostPerKmTab() {
           </table>
         </div>
       )}
-      {!rows.length && !isFetching && <EmptyState msg="No km data recorded — only tires with meter readings will appear" />}
+      {!rows.length && !isFetching && <EmptyState msg="No km data recorded — only tyres with meter readings will appear" />}
     </div>
   )
 }
@@ -3589,7 +3589,7 @@ const SECTION_CONFIG: Record<string, { label: string; tabs: { id: ReportTab; lab
   'financial':             { label: 'Financial Intelligence', tabs: FINANCIAL_TABS,   defaultTab: 'invoice-aging' },
   'business-intelligence': { label: 'Business Intelligence',  tabs: BI_TABS,          defaultTab: 'top-clients' },
   'inventory':             { label: 'Inventory Reports',      tabs: INVENTORY_TABS,   defaultTab: 'stock-levels' },
-  'tires':                 { label: 'Tire Reports',           tabs: TIRE_TABS,        defaultTab: 'tires-by-vehicle' },
+  'tyres':                 { label: 'Tyre Reports',           tabs: TYRE_TABS,        defaultTab: 'tyres-by-vehicle' },
   'periodic':              { label: 'Periodic Reports',       tabs: TABS,             defaultTab: 'targets' },
 }
 
@@ -3670,10 +3670,10 @@ export function ReportsPage() {
         {tab === 'parts-by-vehicle'     && <PartsByVehicleTab />}
         {tab === 'parts-by-type'        && <PartsByTypeTab />}
         {tab === 'service-cost-breakdown' && <ServiceCostBreakdownTab />}
-        {tab === 'tires-by-vehicle'     && <TiresByVehicleTab />}
-        {tab === 'km-per-tire'          && <KmPerTireTab />}
-        {tab === 'tire-replacement'     && <TireReplacementTab />}
-        {tab === 'tire-cost-per-km'     && <TireCostPerKmTab />}
+        {tab === 'tyres-by-vehicle'     && <TyresByVehicleTab />}
+        {tab === 'km-per-tyre'          && <KmPerTyreTab />}
+        {tab === 'tyre-replacement'     && <TyreReplacementTab />}
+        {tab === 'tyre-cost-per-km'     && <TyreCostPerKmTab />}
         {tab === 'targets'             && <TargetsTab />}
         {tab === 'lr-register'         && <LrRegisterTab />}
         {tab === 'outstanding'         && <InvoiceOutstandingTab />}

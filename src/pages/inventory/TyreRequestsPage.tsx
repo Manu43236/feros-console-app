@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tiresApi, tireRequestsApi, type TireRequestItem } from '@/api/tires'
+import { tyresApi, tyreRequestsApi, type TyreRequestItem } from '@/api/tyres'
 import { toast } from 'sonner'
 import { CheckCircle2, CircleDot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,34 +10,34 @@ import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── Approve/Reject Dialog ─────────────────────────────────────────────────────
-function ApprovalDialog({ request, onClose }: { request: TireRequestItem; onClose: () => void }) {
+function ApprovalDialog({ request, onClose }: { request: TyreRequestItem; onClose: () => void }) {
   const qc = useQueryClient()
   const [action, setAction] = useState<'APPROVED' | 'REJECTED'>('APPROVED')
-  const [selectedTireId, setSelectedTireId] = useState<number>(0)
+  const [selectedTyreId, setSelectedTyreId] = useState<number>(0)
   const [fittedAtKm, setFittedAtKm] = useState('')
   const [rejectionReason, setRejectionReason] = useState('')
 
-  const { data: tiresData, isLoading: loadingTires } = useQuery({
-    queryKey: ['tires-available'],
-    queryFn: tiresApi.getAvailable,
+  const { data: tyresData, isLoading: loadingTyres } = useQuery({
+    queryKey: ['tyres-available'],
+    queryFn: tyresApi.getAvailable,
     enabled: action === 'APPROVED',
   })
-  const availableTires = tiresData?.data ?? []
+  const availableTyres = tyresData?.data ?? []
 
   const mutation = useMutation({
     mutationFn: () => {
       if (action === 'APPROVED') {
-        return tireRequestsApi.approve(request.id, {
-          tireId: selectedTireId,
+        return tyreRequestsApi.approve(request.id, {
+          tyreId: selectedTyreId,
           fittedAtKm: fittedAtKm ? Number(fittedAtKm) : undefined,
         })
       }
-      return tireRequestsApi.reject(request.id, { rejectionReason })
+      return tyreRequestsApi.reject(request.id, { rejectionReason })
     },
     onSuccess: () => {
-      toast.success(action === 'APPROVED' ? 'Tire issued and fitted' : 'Request rejected')
-      qc.invalidateQueries({ queryKey: ['tire-requests'] })
-      qc.invalidateQueries({ queryKey: ['tires-available'] })
+      toast.success(action === 'APPROVED' ? 'Tyre issued and fitted' : 'Request rejected')
+      qc.invalidateQueries({ queryKey: ['tyre-requests'] })
+      qc.invalidateQueries({ queryKey: ['tyres-available'] })
       onClose()
     },
     onError: (e: unknown) => {
@@ -47,13 +47,13 @@ function ApprovalDialog({ request, onClose }: { request: TireRequestItem; onClos
   })
 
   const canSubmit = action === 'APPROVED'
-    ? selectedTireId > 0
+    ? selectedTyreId > 0
     : rejectionReason.trim().length > 0
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Process Tire Request</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Process Tyre Request</DialogTitle></DialogHeader>
         <div className="space-y-3 text-sm">
           <div className="bg-gray-50 rounded-lg p-3 space-y-1">
             <p><span className="text-gray-500">Vehicle:</span> <strong>{request.vehicleRegistrationNumber}</strong></p>
@@ -81,15 +81,15 @@ function ApprovalDialog({ request, onClose }: { request: TireRequestItem; onClos
           {action === 'APPROVED' && (
             <>
               <div>
-                <Label>Select Tire to Issue *</Label>
+                <Label>Select Tyre to Issue *</Label>
                 <SearchableSelect
-                  value={selectedTireId ? String(selectedTireId) : ''}
-                  onValueChange={v => setSelectedTireId(Number(v))}
-                  options={availableTires.map(t => ({
+                  value={selectedTyreId ? String(selectedTyreId) : ''}
+                  onValueChange={v => setSelectedTyreId(Number(v))}
+                  options={availableTyres.map(t => ({
                     value: String(t.id),
                     label: `${t.serialNumber}${t.brand ? ` · ${t.brand}` : ''}${t.size ? ` (${t.size})` : ''}`,
                   }))}
-                  placeholder={loadingTires ? 'Loading…' : 'Search by serial number…'}
+                  placeholder={loadingTyres ? 'Loading…' : 'Search by serial number…'}
                   className="mt-1"
                 />
               </div>
@@ -128,7 +128,7 @@ function ApprovalDialog({ request, onClose }: { request: TireRequestItem; onClos
           >
             {mutation.isPending
               ? 'Processing…'
-              : action === 'APPROVED' ? 'Approve & Issue Tire' : 'Reject Request'}
+              : action === 'APPROVED' ? 'Approve & Issue Tyre' : 'Reject Request'}
           </Button>
         </div>
       </DialogContent>
@@ -137,21 +137,21 @@ function ApprovalDialog({ request, onClose }: { request: TireRequestItem; onClos
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function TireRequestsPage() {
-  const [selected, setSelected] = useState<TireRequestItem | null>(null)
+export default function TyreRequestsPage() {
+  const [selected, setSelected] = useState<TyreRequestItem | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['tire-requests'],
-    queryFn: tireRequestsApi.getPending,
+    queryKey: ['tyre-requests'],
+    queryFn: tyreRequestsApi.getPending,
     refetchInterval: 30_000,
   })
-  const requests: TireRequestItem[] = data?.data ?? []
+  const requests: TyreRequestItem[] = data?.data ?? []
 
   return (
     <div className="p-6 space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Tire Requests</h1>
-        <p className="text-sm text-gray-500">Approve or reject tire fitting requests from service technicians</p>
+        <h1 className="text-xl font-semibold text-gray-900">Tyre Requests</h1>
+        <p className="text-sm text-gray-500">Approve or reject tyre fitting requests from service technicians</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -167,7 +167,7 @@ export default function TireRequestsPage() {
         ) : requests.length === 0 ? (
           <div className="p-10 flex flex-col items-center gap-2 text-gray-400">
             <CircleDot size={36} />
-            <p className="text-sm">No pending tire requests</p>
+            <p className="text-sm">No pending tyre requests</p>
           </div>
         ) : (
           <table className="w-full text-sm">

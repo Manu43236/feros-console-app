@@ -42,7 +42,7 @@ export interface LoginResponse {
 export type ModuleKey =
   | 'DASHBOARD' | 'CLIENTS' | 'ORDERS' | 'ASSIGNMENTS' | 'LR_REGISTER'
   | 'INVOICES' | 'CREDIT_NOTES' | 'SERVICE_INVOICES' | 'ATTENDANCE' | 'REPORTS'
-  | 'SPARE_PARTS' | 'TIRES' | 'PART_REQUESTS' | 'TIRE_REQUESTS' | 'VEHICLE_SERVICES'
+  | 'SPARE_PARTS' | 'TYRES' | 'PART_REQUESTS' | 'TYRE_REQUESTS' | 'VEHICLE_SERVICES'
 
 export interface ModuleAccessEntry {
   role: string
@@ -682,27 +682,27 @@ export interface ServiceCostBreakdownResponse {
   serviceDate: string; serviceType: string; status: string; totalCost: number; partsUsedCount: number
 }
 
-// ─── Section J — Tire Reports ─────────────────────────────────────────────────
-export interface TireFittingItem {
-  fittingId: number; tireId: number; serialNumber: string; brand: string; size: string
-  tireType: string; positionCode: string; fittedDate: string; fittedAtKm: number; kmDriven: number
+// ─── Section J — Tyre Reports ─────────────────────────────────────────────────
+export interface TyreFittingItem {
+  fittingId: number; tyreId: number; serialNumber: string; brand: string; size: string
+  tyreType: string; positionCode: string; fittedDate: string; fittedAtKm: number; kmDriven: number
 }
-export interface TiresByVehicleResponse {
-  vehicleId: number; regNo: string; vehicleType: string; activeTireCount: number
-  tires: TireFittingItem[]
+export interface TyresByVehicleResponse {
+  vehicleId: number; regNo: string; vehicleType: string; activeTyreCount: number
+  tyres: TyreFittingItem[]
 }
-export interface KmPerTireResponse {
-  fittingId: number; tireId: number; serialNumber: string; brand: string; size: string
-  tireType: string; vehicleId: number; vehicleRegNo: string; positionCode: string
+export interface KmPerTyreResponse {
+  fittingId: number; tyreId: number; serialNumber: string; brand: string; size: string
+  tyreType: string; vehicleId: number; vehicleRegNo: string; positionCode: string
   fittedDate: string; fittedAtKm: number; removedAtKm: number; kmDriven: number; active: boolean
 }
-export interface TireReplacementProjectionResponse {
-  tireId: number; serialNumber: string; brand: string; size: string
+export interface TyreReplacementProjectionResponse {
+  tyreId: number; serialNumber: string; brand: string; size: string
   vehicleId: number; vehicleRegNo: string; positionCode: string; fittedDate: string
   totalLifetimeKm: number; maxLifetimeKm: number; remainingKm: number; urgency: string
 }
-export interface TireCostPerKmResponse {
-  tireId: number; serialNumber: string; brand: string; size: string; tireType: string
+export interface TyreCostPerKmResponse {
+  tyreId: number; serialNumber: string; brand: string; size: string; tyreType: string
   purchaseCost: number; totalLifetimeKm: number; costPerKm: number
 }
 
@@ -1087,23 +1087,23 @@ export interface MeterReading {
   serviceAlerts: MeterReadingServiceAlert[]
 }
 
-// ─── Tires ────────────────────────────────────────────────────────────────────
-export type TireStatus = 'IN_STOCK' | 'FITTED' | 'RETREADING' | 'SCRAPPED' | 'DISPOSED'
-export type TireType = 'RADIAL' | 'BIAS' | 'TUBELESS' | 'TUBE_TYPE'
-export type TirePositionType = 'STEER' | 'DRIVE' | 'TRAILER' | 'SPARE'
-export type TireRemovalReason = 'ROTATION' | 'WORN' | 'PUNCTURE' | 'DAMAGE' | 'RETREAD' | 'SCRAP' | 'OTHER'
+// ─── Tyres ────────────────────────────────────────────────────────────────────
+export type TyreStatus = 'IN_STOCK' | 'FITTED' | 'RETREADING' | 'SCRAPPED' | 'DISPOSED'
+export type TyreType = 'RADIAL' | 'BIAS' | 'TUBELESS' | 'TUBE_TYPE'
+export type TyrePositionType = 'STEER' | 'DRIVE' | 'TRAILER' | 'SPARE'
+export type TyreRemovalReason = 'ROTATION' | 'WORN' | 'PUNCTURE' | 'DAMAGE' | 'RETREAD' | 'SCRAP' | 'OTHER'
 
-export interface Tire {
+export interface Tyre {
   id: number
   tenantId: number
   serialNumber: string
   brand: string
   size: string
-  tireType: TireType
+  tyreType: TyreType
   plyRating?: string
   purchaseDate?: string
   purchaseCost?: number
-  status: TireStatus
+  status: TyreStatus
   retreadCount: number
   totalLifetimeKm: number
   notes?: string
@@ -1119,30 +1119,30 @@ export interface Tire {
   updatedAt: string
 }
 
-export interface TirePosition {
+export interface TyrePosition {
   id: number
   tenantId: number
   vehicleId: number
   vehicleRegistrationNumber: string
   positionCode: string
-  positionType: TirePositionType
+  positionType: TyrePositionType
   displayOrder: number
-  currentFitting?: TireFitting
+  currentFitting?: TyreFitting
   createdAt: string
   updatedAt: string
 }
 
-export interface TireFitting {
+export interface TyreFitting {
   id: number
   tenantId: number
   vehicleId: number
   vehicleRegistrationNumber: string
-  tireId: number
-  tireSerialNumber: string
-  tireBrand: string
-  tireSize: string
-  tireMaxLifetimeKm?: number
-  tireTotalLifetimeKm?: number
+  tyreId: number
+  tyreSerialNumber: string
+  tyreBrand: string
+  tyreSize: string
+  tyreMaxLifetimeKm?: number
+  tyreTotalLifetimeKm?: number
   positionId: number
   positionCode: string
   fittedAtKm: number
@@ -1151,7 +1151,7 @@ export interface TireFitting {
   fittedByName: string
   removedAtKm?: number
   removedDate?: string
-  removalReason?: TireRemovalReason
+  removalReason?: TyreRemovalReason
   removedById?: number
   removedByName?: string
   rotationLogId?: number
@@ -1161,10 +1161,10 @@ export interface TireFitting {
   updatedAt: string
 }
 
-export interface TireRotationItem {
+export interface TyreRotationItem {
   id: number
-  tireId: number
-  tireSerialNumber: string
+  tyreId: number
+  tyreSerialNumber: string
   fromPositionId: number
   fromPositionCode: string
   toPositionId: number
@@ -1173,7 +1173,7 @@ export interface TireRotationItem {
   newFittingId: number
 }
 
-export interface TireRotationLog {
+export interface TyreRotationLog {
   id: number
   tenantId: number
   vehicleId: number
@@ -1183,7 +1183,7 @@ export interface TireRotationLog {
   performedById: number
   performedByName: string
   notes?: string
-  items: TireRotationItem[]
+  items: TyreRotationItem[]
   createdAt: string
   updatedAt: string
 }
