@@ -9,13 +9,12 @@ import { ordersApi } from '@/api/orders'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
-import { Plus, Search, Eye, X, ArrowRight, Package, Pencil } from 'lucide-react'
+import { Plus, Search, ArrowRight, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import type { Order, OrderStatus, OrderPaymentStatus } from '@/types'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -468,7 +467,6 @@ const PAGE_SIZE = 20
 export function OrdersPage() {
   const { locked } = useSubscription()
   const navigate = useNavigate()
-  const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const [search, setSearch]         = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -477,8 +475,6 @@ export function OrdersPage() {
   )
   const [page, setPage]             = useState(0)
   const [formOpen, setFormOpen]     = useState(false)
-  const [editing, setEditing]       = useState<Order | undefined>()
-  const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   // Debounce search input
   useEffect(() => {
@@ -506,24 +502,7 @@ export function OrdersPage() {
   const orders    = pageData?.content ?? []
   const totalPages = pageData?.totalPages ?? 1
 
-  const cancelMutation = useMutation({
-    mutationFn: ordersApi.cancel,
-    onSuccess: () => { toast.success('Order cancelled'); qc.invalidateQueries({ queryKey: ['orders'] }) },
-    onError: () => toast.error('Failed to cancel order'),
-  })
-
-  function handleCancel(o: Order, e: React.MouseEvent) {
-    e.stopPropagation()
-    setDlg({ title: 'Cancel Order', desc: `Cancel order ${o.orderNumber}? This cannot be undone.`, onOk: () => cancelMutation.mutate(o.id) })
-  }
-
-  function openEdit(o: Order, e: React.MouseEvent) {
-    e.stopPropagation()
-    setEditing(o)
-    setFormOpen(true)
-  }
-
-  function onClose() { setFormOpen(false); setEditing(undefined) }
+  function onClose() { setFormOpen(false) }
 
   return (
     <div className="space-y-5">
@@ -588,8 +567,7 @@ export function OrdersPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Freight</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Payment</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
-                  <th className="py-3 px-4" />
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -624,39 +602,10 @@ export function OrdersPage() {
                     <td className="py-3 px-4">
                       <PaymentStatusBadge status={o.orderPaymentStatus} />
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-500">
+                    <td className="py-3 px-4 text-sm text-gray-500 whitespace-nowrap">
                       {o.orderDate
                         ? new Date(o.orderDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                         : '—'}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-1 justify-end">
-                        <button
-                          onClick={e => { e.stopPropagation(); navigate(`/orders/${o.id}`) }}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-feros-navy hover:bg-blue-50 transition-colors"
-                          title="View details"
-                        >
-                          <Eye size={15} />
-                        </button>
-                        {o.orderStatus === 'PENDING' && (
-                          <button
-                            onClick={e => openEdit(o, e)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-feros-navy hover:bg-blue-50 transition-colors"
-                            title="Edit order"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                        )}
-                        {(o.orderStatus === 'PENDING' || o.orderStatus === 'PARTIALLY_ASSIGNED') && (
-                          <button
-                            onClick={e => handleCancel(o, e)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            title="Cancel order"
-                          >
-                            <X size={15} />
-                          </button>
-                        )}
-                      </div>
                     </td>
                   </tr>
                 ))}
@@ -693,15 +642,7 @@ export function OrdersPage() {
         </div>
       )}
 
-      <OrderForm open={formOpen} onClose={onClose} order={editing} />
-      <ConfirmDialog
-        open={!!dlg}
-        title={dlg?.title ?? ''}
-        description={dlg?.desc ?? ''}
-        confirmLabel="Yes, Cancel"
-        onConfirm={() => { dlg?.onOk(); setDlg(null) }}
-        onCancel={() => setDlg(null)}
-      />
+      <OrderForm open={formOpen} onClose={onClose} />
     </div>
   )
 }
