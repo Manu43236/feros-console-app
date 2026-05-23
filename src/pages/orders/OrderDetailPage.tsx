@@ -1158,7 +1158,7 @@ export function OrderDetailPage() {
               {allocations.length > 0 && ` · ${allocations.reduce((s, a) => s + (a.staffAllocations?.length ?? 0), 0)} staff`}
             </p>
           </div>
-          {canAssign && (
+          {canAssign && remaining > 0 && (
             <Button
               size="sm"
               onClick={() => setAssignVehicleOpen(true)}
