@@ -266,7 +266,10 @@ function CreateLrFromAllocationDialog({
 
   const { register, handleSubmit, formState: { errors } } = useForm<LrFromAllocForm>({
     resolver: zodResolver(lrFromAllocSchema) as Resolver<LrFromAllocForm>,
-    defaultValues: { lrDate: new Date().toISOString().split('T')[0] },
+    defaultValues: {
+      lrDate:       new Date().toISOString().split('T')[0],
+      loadedWeight: allocation.allocatedWeight != null ? String(allocation.allocatedWeight) : '',
+    },
   })
 
   const mutation = useMutation({

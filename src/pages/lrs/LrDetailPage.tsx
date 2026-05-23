@@ -1,5 +1,5 @@
 import { getApiError } from '@/lib/apiError'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
@@ -57,11 +57,15 @@ const loadSchema = z.object({
 })
 type LoadForm = z.infer<typeof loadSchema>
 
-function RecordLoadingDialog({ lrId, open, onClose }: { lrId: number; open: boolean; onClose: () => void }) {
+function RecordLoadingDialog({ lrId, allocatedWeight, open, onClose }: { lrId: number; allocatedWeight?: number; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const { register, handleSubmit, formState: { errors }, reset } = useForm<LoadForm>({
     resolver: zodResolver(loadSchema) as Resolver<LoadForm>,
   })
+
+  useEffect(() => {
+    if (open && allocatedWeight != null) reset({ loadedWeight: String(allocatedWeight) })
+  }, [open])
 
   const mutation = useMutation({
     mutationFn: (data: LoadForm) => lrsApi.update(lrId, {
@@ -890,7 +894,7 @@ export function LrDetailPage() {
       </p>
 
       {/* ── Dialogs ── */}
-      <RecordLoadingDialog  lrId={id} open={dialog === 'load'}      onClose={() => setDialog(null)} />
+      <RecordLoadingDialog  lrId={id} allocatedWeight={lr?.allocatedWeight} open={dialog === 'load'}      onClose={() => setDialog(null)} />
       <MarkDeliveredDialog  lrId={id} startOdometer={lr?.startOdometer} open={dialog === 'deliver'}   onClose={() => setDialog(null)} />
       <AddCheckpostDialog   lrId={id} open={dialog === 'checkpost'} onClose={() => setDialog(null)} />
       <AddChargeDialog      lrId={id} open={dialog === 'charge'}    onClose={() => setDialog(null)} />
