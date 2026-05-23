@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -200,7 +200,6 @@ export function InvoiceDetailPage() {
   const [showPayment, setShowPay] = useState(false)
   const [showEdit, setShowEdit]   = useState(false)
   const [showPreview, setShowPreview] = useState(false)
-  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
   const invoicePrintRef = useRef<HTMLDivElement>(null)
 
   const handleDownloadPdf = async () => {
@@ -225,25 +224,6 @@ export function InvoiceDetailPage() {
     enabled:  !isNaN(id),
   })
 
-  // Pre-load logo as base64 via server proxy so html2canvas can embed it in PDF
-  useEffect(() => {
-    if (!invoice?.tenantLogoUrl) return
-    const keyMatch = invoice.tenantLogoUrl.match(/amazonaws\.com\/(.+)/)
-    const key = keyMatch?.[1]
-    if (!key) return
-    const token = localStorage.getItem('feros_token')
-    fetch(`/api/v1/upload/proxy?key=${encodeURIComponent(key)}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then(r => r.blob())
-      .then(blob => new Promise<string>(resolve => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.readAsDataURL(blob)
-      }))
-      .then(setLogoDataUrl)
-      .catch(() => {})
-  }, [invoice?.tenantLogoUrl])
 
   const { data: payments = [] } = useQuery({
     queryKey: ['invoice-payments', id],
