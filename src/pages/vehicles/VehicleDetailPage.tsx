@@ -79,12 +79,14 @@ const docSchema = z.object({
 })
 type DocForm = z.infer<typeof docSchema>
 
-function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; open: boolean; onClose: () => void }) {
+function AddDocumentDialog({ vehicleId, open, onClose, existingDocs }: { vehicleId: number; open: boolean; onClose: () => void; existingDocs: VehicleDocument[] }) {
   const qc = useQueryClient()
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
   const { data: docTypesRes } = useQuery({ queryKey: ['document-types'], queryFn: globalMastersApi.getDocumentTypes })
+
+  const existingTypeIds = new Set(existingDocs.map(d => d.documentTypeId))
 
   const vehicleDocTypes = (docTypesRes?.data ?? []).filter(d =>
     d.applicableFor === 'VEHICLE' || d.applicableFor === 'BOTH'
@@ -144,7 +146,14 @@ function AddDocumentDialog({ vehicleId, open, onClose }: { vehicleId: number; op
                 <SearchableSelect
                   value={field.value ? String(field.value) : ''}
                   onValueChange={v => field.onChange(v ? Number(v) : undefined)}
-                  options={vehicleDocTypes.map(t => ({ value: String(t.id), label: t.name }))}
+                  options={vehicleDocTypes.map(t => {
+                    const blocked = !t.allowMultiple && existingTypeIds.has(t.id)
+                    return {
+                      value: String(t.id),
+                      label: blocked ? `${t.name} (already uploaded)` : t.name,
+                      disabled: blocked,
+                    }
+                  })}
                   placeholder="Select type"
                   className="mt-1"
                 />
@@ -2838,7 +2847,7 @@ export function VehicleDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <AddDocumentDialog vehicleId={v.id} open={addDocOpen} onClose={() => setAddDocOpen(false)} />
+      <AddDocumentDialog vehicleId={v.id} open={addDocOpen} onClose={() => setAddDocOpen(false)} existingDocs={docsRes?.data ?? []} />
 
       {/* Delete document confirm */}
       <Dialog open={!!docToDelete} onOpenChange={val => !val && setDocToDelete(null)}>

@@ -184,7 +184,15 @@ const schema = z.object({
   tyreRotationIntervalKm:   z.coerce.number().optional(),
   currentFuelLevel:         z.coerce.number().optional(),
   notes:                    z.string().optional(),
-})
+}).refine(
+  data => {
+    const cap  = data.fuelTankCapacity
+    const fuel = data.currentFuelLevel
+    if (cap != null && fuel != null) return fuel <= cap
+    return true
+  },
+  { message: 'Current fuel cannot exceed tank capacity', path: ['currentFuelLevel'] }
+)
 type FormData = z.infer<typeof schema>
 
 // ── vehicle form dialog ───────────────────────────────────────────────────────
@@ -469,7 +477,8 @@ export function VehicleForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Current Fuel Level (litres)</Label>
-                <Input type="number" placeholder="120" {...register('currentFuelLevel')} />
+                <Input type="number" placeholder="120" {...register('currentFuelLevel')} className={errors.currentFuelLevel ? 'border-red-400' : ''} />
+                {errors.currentFuelLevel && <p className="text-red-500 text-xs mt-1">{errors.currentFuelLevel.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Tyre Rotation Interval (km)</Label>
