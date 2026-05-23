@@ -7,6 +7,7 @@ interface AssignVehicleRequest {
 }
 interface AssignStaffRequest {
   vehicleAllocationId: number; userId: number
+  slotRole?: 'DRIVER' | 'CLEANER'
   expectedStartDate?: string; expectedEndDate?: string; remarks?: string
 }
 

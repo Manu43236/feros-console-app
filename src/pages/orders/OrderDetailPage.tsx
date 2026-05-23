@@ -172,7 +172,7 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
 
   const mutation = useMutation({
     mutationFn: (data: AssignStaffForm) =>
-      ordersApi.assignStaff(orderId, { ...data, vehicleAllocationId: allocation.id }),
+      ordersApi.assignStaff(orderId, { ...data, vehicleAllocationId: allocation.id, slotRole }),
     onSuccess: () => {
       toast.success(`${slotRole === 'DRIVER' ? 'Driver' : 'Cleaner'} assigned successfully`)
       qc.invalidateQueries({ queryKey: ['order', orderId] })
@@ -187,8 +187,9 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
 
   const eligible = (staffRes?.data ?? []).filter(u => {
     if (!u.isActive) return false
-    return slotRole === 'DRIVER' ? u.role === 'DRIVER' : u.role !== 'DRIVER'
-  }).sort((a, b) => (a.isAssigned === b.isAssigned ? 0 : a.isAssigned ? 1 : -1))
+    if (u.isAssigned) return false
+    return slotRole === 'DRIVER' ? u.role === 'DRIVER' : u.role === 'CLEANER'
+  })
 
   const regNo = allocation.vehicleRegistrationNumber ?? allocation.registrationNumber
 
@@ -213,7 +214,7 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
             {errors.userId && <p className="text-red-500 text-xs">{errors.userId.message}</p>}
             {eligible.length === 0 && (
               <p className="text-xs text-orange-500">
-                No active {slotRole === 'DRIVER' ? 'drivers' : 'cleaners'} found.
+                No available {slotRole === 'DRIVER' ? 'drivers' : 'cleaners'} found. All may be assigned to other orders.
               </p>
             )}
           </div>
