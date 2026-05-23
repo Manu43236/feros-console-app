@@ -6,7 +6,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
-import { Plus, Search, Truck, FileText, ChevronRight } from 'lucide-react'
+import { Plus, Search, Truck, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { lrsApi } from '@/api/lrs'
 import { ordersApi } from '@/api/orders'
@@ -279,8 +279,8 @@ export function LrsPage() {
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {['LR #', 'Order #', 'Client', 'Vehicle', 'Allocated', 'Loaded', 'Delivered', 'Status', 'LR Date', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                {['LR #', 'Order #', 'Client', 'Vehicle', 'Allocated', 'Loaded', 'Delivered', 'Status', 'LR Date'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -304,8 +304,7 @@ export function LrsPage() {
                   <td className="px-4 py-3 text-gray-600">{lr.loadedWeight != null ? `${lr.loadedWeight}T` : '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{lr.deliveredWeight != null ? `${lr.deliveredWeight}T` : '—'}</td>
                   <td className="px-4 py-3"><LrStatusBadge status={lr.lrStatus} /></td>
-                  <td className="px-4 py-3 text-gray-500">{lr.lrDate}</td>
-                  <td className="px-4 py-3"><ChevronRight className="h-4 w-4 text-gray-400" /></td>
+                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{lr.lrDate}</td>
                 </tr>
               ))}
             </tbody>

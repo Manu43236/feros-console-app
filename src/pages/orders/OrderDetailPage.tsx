@@ -1191,7 +1191,7 @@ export function OrderDetailPage() {
                 allocation={a}
                 orderId={order.id}
                 canAssign={canAssign}
-                existingLrId={orderLrs.find(lr => lr.vehicleAllocationId === a.id)?.id}
+                existingLrId={orderLrs.find(lr => lr.vehicleAllocationId === a.id && lr.lrStatus !== 'CANCELLED')?.id}
               />
             ))
           )}
