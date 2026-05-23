@@ -638,7 +638,7 @@ export function InvoiceDetailPage() {
           </div>
           <div className="flex-1 overflow-y-auto bg-white">
             <div ref={invoicePrintRef}>
-              <InvoiceDocument invoice={invoice} logoDataUrl={logoDataUrl} />
+              <InvoiceDocument invoice={invoice} />
             </div>
           </div>
         </DialogContent>
