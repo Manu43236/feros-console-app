@@ -3,12 +3,12 @@ import { useState, useEffect } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { format, subDays } from 'date-fns'
+import { format, subDays, startOfMonth, endOfMonth } from 'date-fns'
 import { toast } from 'sonner'
 import {
   CalendarDays, ChevronLeft, ChevronRight, Users,
   CheckCircle, XCircle, Clock, Umbrella, Pencil, ClipboardList,
-  AlertCircle, Camera,
+  AlertCircle, Camera, Calendar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +27,7 @@ type StaffUser = { id: number; name: string; phone: string; role: string; isActi
 const STAFF_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MEN', 'STORE_KEEPER']
 function todayStr() { return format(new Date(), 'yyyy-MM-dd') }
 
-// ── Badges ────────────────────────────────────────────────────────────────────
+// ── Shared Badges ─────────────────────────────────────────────────────────────
 function AttendanceBadge({ type }: { type: string }) {
   const t = type?.toLowerCase() ?? ''
   if (t.includes('present'))
@@ -47,6 +47,240 @@ function ApprovalBadge({ status }: { status: string }) {
   if (status === 'REJECTED')
     return <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full"><XCircle size={10} />Rejected</span>
   return <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full"><AlertCircle size={10} />Pending</span>
+}
+
+// ── Selfie dialog ─────────────────────────────────────────────────────────────
+function SelfieDialog({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-xs p-3">
+        <DialogHeader><DialogTitle className="text-sm">Attendance Selfie</DialogTitle></DialogHeader>
+        <img src={url} alt="Selfie" className="w-full rounded-lg object-cover" />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── My Attendance Tab (self-service) ──────────────────────────────────────────
+function MyAttendanceTab({
+  attendanceTypes, leaveTypes,
+}: {
+  attendanceTypes: { id: number; name: string }[]
+  leaveTypes: { id: number; name: string }[]
+}) {
+  const qc = useQueryClient()
+  const [markOpen, setMarkOpen] = useState(false)
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
+
+  const from = format(startOfMonth(new Date()), 'yyyy-MM-dd')
+  const to   = format(endOfMonth(new Date()), 'yyyy-MM-dd')
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['my-attendance', from, to],
+    queryFn: () => attendanceApi.getMyAttendance(from, to),
+  })
+  const records: Attendance[] = data?.data ?? []
+  const todayRecord = records.find(r => r.attendanceDate === todayStr())
+  const alreadyMarked = !!todayRecord
+
+  const stats = records.reduce(
+    (acc, r) => {
+      const t = r.attendanceTypeName?.toLowerCase() ?? ''
+      if (t.includes('present')) acc.present++
+      else if (t.includes('absent')) acc.absent++
+      else if (t.includes('half')) acc.half++
+      else if (t.includes('leave')) acc.leave++
+      if (r.approvalStatus === 'PENDING') acc.pending++
+      return acc
+    },
+    { present: 0, absent: 0, half: 0, leave: 0, pending: 0 }
+  )
+
+  // ── Mark Today dialog (inline) ──
+  const [attendanceTypeId, setAttendanceTypeId] = useState('')
+  const [leaveTypeId, setLeaveTypeId] = useState('none')
+  const [leaveReason, setLeaveReason] = useState('')
+  const [remarks, setRemarks] = useState('')
+  const [typeError, setTypeError] = useState('')
+
+  function resetDialog() {
+    setAttendanceTypeId(''); setLeaveTypeId('none'); setLeaveReason(''); setRemarks(''); setTypeError('')
+  }
+
+  const markMutation = useMutation({
+    mutationFn: () => attendanceApi.markOwn({
+      attendanceTypeId: Number(attendanceTypeId),
+      leaveTypeId: leaveTypeId !== 'none' ? Number(leaveTypeId) : undefined,
+      leaveReason: leaveReason || undefined,
+      remarks: remarks || undefined,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my-attendance'] })
+      toast.success('Attendance marked — pending admin approval')
+      resetDialog()
+      setMarkOpen(false)
+    },
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed to mark attendance') ?? 'Failed'),
+  })
+
+  const selectedType = attendanceTypes.find(t => String(t.id) === attendanceTypeId)
+  const isLeave = selectedType?.name?.toLowerCase().includes('leave')
+
+  return (
+    <div className="space-y-5">
+      {/* Today card */}
+      <div className={cn(
+        'rounded-xl border p-5 flex items-center justify-between',
+        alreadyMarked ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'
+      )}>
+        <div className="flex items-center gap-3">
+          <div className={cn('w-10 h-10 rounded-full flex items-center justify-center',
+            alreadyMarked ? 'bg-green-100' : 'bg-orange-100')}>
+            <Calendar size={20} className={alreadyMarked ? 'text-green-600' : 'text-orange-500'} />
+          </div>
+          <div>
+            <p className="font-semibold text-gray-800">Today — {format(new Date(), 'dd MMM yyyy, EEEE')}</p>
+            {alreadyMarked ? (
+              <div className="flex items-center gap-2 mt-0.5">
+                <AttendanceBadge type={todayRecord.attendanceTypeName} />
+                <ApprovalBadge status={todayRecord.approvalStatus} />
+              </div>
+            ) : (
+              <p className="text-sm text-orange-600 mt-0.5">Not marked yet</p>
+            )}
+          </div>
+        </div>
+        {!alreadyMarked && (
+          <Button onClick={() => setMarkOpen(true)}>
+            <CheckCircle size={14} className="mr-1.5" />Mark Attendance
+          </Button>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {[
+          { label: 'Present',          value: stats.present, color: 'text-green-700',  bg: 'bg-green-50'  },
+          { label: 'Absent',           value: stats.absent,  color: 'text-red-700',    bg: 'bg-red-50'    },
+          { label: 'Half Day',         value: stats.half,    color: 'text-yellow-700', bg: 'bg-yellow-50' },
+          { label: 'Leave',            value: stats.leave,   color: 'text-blue-700',   bg: 'bg-blue-50'   },
+          { label: 'Pending Approval', value: stats.pending, color: 'text-orange-700', bg: 'bg-orange-50' },
+        ].map(s => (
+          <div key={s.label} className={cn('rounded-xl border p-4', s.bg)}>
+            <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* History table */}
+      <div className="border rounded-xl bg-white overflow-hidden">
+        <div className="px-5 py-3.5 border-b bg-gray-50">
+          <h2 className="text-sm font-semibold text-gray-700">This Month's Records — {format(new Date(), 'MMMM yyyy')}</h2>
+        </div>
+        {isLoading ? (
+          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+        ) : records.length === 0 ? (
+          <div className="py-12 flex flex-col items-center text-gray-400">
+            <Calendar size={36} className="mb-3 text-gray-300" />
+            <p>No attendance records this month</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
+                  <th className="text-left px-5 py-3">Date</th>
+                  <th className="text-left px-5 py-3">Type</th>
+                  <th className="text-left px-5 py-3">Approval</th>
+                  <th className="text-left px-5 py-3">Leave Type</th>
+                  <th className="text-left px-5 py-3">Approved By</th>
+                  <th className="text-left px-5 py-3">Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {records.map(r => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3 font-medium text-gray-800">
+                      <div className="flex items-center gap-2">
+                        {format(new Date(r.attendanceDate), 'dd MMM, EEE')}
+                        {r.selfieUrl && (
+                          <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="text-gray-400 hover:text-blue-500 transition-colors" title="View selfie">
+                            <Camera size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                    <td className="px-5 py-3"><ApprovalBadge status={r.approvalStatus} /></td>
+                    <td className="px-5 py-3 text-gray-500 text-xs">{r.leaveTypeName ?? '—'}</td>
+                    <td className="px-5 py-3 text-gray-500 text-xs">{r.approvedByName ?? '—'}</td>
+                    <td className="px-5 py-3 text-gray-400 text-xs">{r.remarks || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Mark Today dialog */}
+      <Dialog open={markOpen} onOpenChange={v => { if (!v) { resetDialog(); setMarkOpen(false) } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Mark Today's Attendance</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Date</Label>
+              <Input value={format(new Date(), 'dd MMM yyyy')} disabled className="mt-1 bg-gray-50" />
+            </div>
+            <div>
+              <Label>Attendance Type <span className="text-red-500">*</span></Label>
+              <SearchableSelect
+                value={attendanceTypeId}
+                onValueChange={v => { setAttendanceTypeId(v); setTypeError('') }}
+                options={attendanceTypes.map(t => ({ value: String(t.id), label: t.name }))}
+                placeholder="Select type"
+                className="mt-1"
+                triggerClassName={cn(typeError && 'border-red-400')}
+              />
+              {typeError && <p className="text-red-500 text-xs mt-1">{typeError}</p>}
+            </div>
+            {isLeave && (
+              <>
+                <div>
+                  <Label>Leave Type</Label>
+                  <SearchableSelect
+                    value={leaveTypeId}
+                    onValueChange={setLeaveTypeId}
+                    options={[{ value: 'none', label: 'Not specified' }, ...leaveTypes.map(t => ({ value: String(t.id), label: t.name }))]}
+                    placeholder="Select leave type"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Leave Reason</Label>
+                  <Input value={leaveReason} onChange={e => setLeaveReason(e.target.value)} className="mt-1" placeholder="Optional reason" />
+                </div>
+              </>
+            )}
+            <div>
+              <Label>Remarks</Label>
+              <Input value={remarks} onChange={e => setRemarks(e.target.value)} className="mt-1" placeholder="Optional" />
+            </div>
+            <p className="text-xs text-gray-400">Your attendance will be reviewed and approved by admin.</p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => { resetDialog(); setMarkOpen(false) }}>Cancel</Button>
+              <Button onClick={() => { if (!attendanceTypeId) { setTypeError('Select attendance type'); return } markMutation.mutate() }} disabled={markMutation.isPending}>
+                {markMutation.isPending ? 'Marking…' : 'Mark Attendance'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
+    </div>
+  )
 }
 
 // ── Single mark / edit dialog ─────────────────────────────────────────────────
@@ -307,20 +541,6 @@ function BulkMarkDialog({
   )
 }
 
-// ── Selfie viewer dialog ───────────────────────────────────────────────────────
-function SelfieDialog({ url, onClose }: { url: string; onClose: () => void }) {
-  return (
-    <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-xs p-3">
-        <DialogHeader>
-          <DialogTitle className="text-sm">Attendance Selfie</DialogTitle>
-        </DialogHeader>
-        <img src={url} alt="Selfie" className="w-full rounded-lg object-cover" />
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 // ── Staff history dialog ──────────────────────────────────────────────────────
 function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: () => void; user: StaffUser | null }) {
   const [from, setFrom] = useState(() => format(subDays(new Date(), 29), 'yyyy-MM-dd'))
@@ -348,58 +568,54 @@ function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: (
 
   return (
     <>
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader><DialogTitle>{user?.name} — Attendance History</DialogTitle></DialogHeader>
-        <div className="space-y-4 pt-2">
-          <div className="flex gap-3">
-            <div className="flex-1"><Label>From</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1" /></div>
-            <div className="flex-1"><Label>To</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1" /></div>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { label: 'Present',  value: summary.present, color: 'text-green-700 bg-green-50'   },
-              { label: 'Absent',   value: summary.absent,  color: 'text-red-700 bg-red-50'       },
-              { label: 'Half Day', value: summary.half,    color: 'text-yellow-700 bg-yellow-50' },
-              { label: 'Leave',    value: summary.leave,   color: 'text-blue-700 bg-blue-50'     },
-            ].map(s => (
-              <div key={s.label} className={cn('rounded-lg p-3 text-center', s.color)}>
-                <p className="text-xl font-bold">{s.value}</p>
-                <p className="text-xs">{s.label}</p>
-              </div>
-            ))}
-          </div>
-          {isLoading ? (
-            <div className="text-sm text-gray-400 py-4 text-center">Loading…</div>
-          ) : records.length === 0 ? (
-            <div className="text-sm text-gray-400 py-4 text-center">No records in this range</div>
-          ) : (
-            <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
-              {records.map(r => (
-                <div key={r.id} className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-sm text-gray-700">{r.attendanceDate}</span>
-                  <div className="flex items-center gap-3">
-                    <AttendanceBadge type={r.attendanceTypeName} />
-                    <ApprovalBadge status={r.approvalStatus} />
-                    {r.leaveTypeName && <span className="text-xs text-gray-500">{r.leaveTypeName}</span>}
-                    {r.selfieUrl && (
-                      <button
-                        onClick={() => setSelfieUrl(r.selfieUrl!)}
-                        className="text-gray-400 hover:text-blue-500 transition-colors"
-                        title="View selfie"
-                      >
-                        <Camera size={14} />
-                      </button>
-                    )}
-                  </div>
+      <Dialog open={open} onOpenChange={v => !v && onClose()}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader><DialogTitle>{user?.name} — Attendance History</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="flex gap-3">
+              <div className="flex-1"><Label>From</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1" /></div>
+              <div className="flex-1"><Label>To</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1" /></div>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: 'Present',  value: summary.present, color: 'text-green-700 bg-green-50'   },
+                { label: 'Absent',   value: summary.absent,  color: 'text-red-700 bg-red-50'       },
+                { label: 'Half Day', value: summary.half,    color: 'text-yellow-700 bg-yellow-50' },
+                { label: 'Leave',    value: summary.leave,   color: 'text-blue-700 bg-blue-50'     },
+              ].map(s => (
+                <div key={s.label} className={cn('rounded-lg p-3 text-center', s.color)}>
+                  <p className="text-xl font-bold">{s.value}</p>
+                  <p className="text-xs">{s.label}</p>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-    {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
+            {isLoading ? (
+              <div className="text-sm text-gray-400 py-4 text-center">Loading…</div>
+            ) : records.length === 0 ? (
+              <div className="text-sm text-gray-400 py-4 text-center">No records in this range</div>
+            ) : (
+              <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+                {records.map(r => (
+                  <div key={r.id} className="flex items-center justify-between px-4 py-2.5">
+                    <span className="text-sm text-gray-700">{r.attendanceDate}</span>
+                    <div className="flex items-center gap-3">
+                      <AttendanceBadge type={r.attendanceTypeName} />
+                      <ApprovalBadge status={r.approvalStatus} />
+                      {r.leaveTypeName && <span className="text-xs text-gray-500">{r.leaveTypeName}</span>}
+                      {r.selfieUrl && (
+                        <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="text-gray-400 hover:text-blue-500 transition-colors">
+                          <Camera size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
     </>
   )
 }
@@ -417,46 +633,30 @@ function PendingApprovalsTab() {
   const records = data?.data ?? []
 
   function toggleSelect(id: number) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
-
   function toggleAll() {
     setSelected(prev => prev.size === records.length ? new Set() : new Set(records.map(r => r.id)))
   }
 
   const approveMutation = useMutation({
     mutationFn: (id: number) => attendanceApi.approve(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Attendance approved') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Approved') },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
-
   const rejectMutation = useMutation({
     mutationFn: (id: number) => attendanceApi.reject(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Attendance rejected') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Rejected') },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
-
   const bulkApproveMutation = useMutation({
     mutationFn: () => attendanceApi.bulkApprove(Array.from(selected)),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['attendance-pending'] })
-      setSelected(new Set())
-      toast.success(`${selected.size} attendance records approved`)
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); setSelected(new Set()); toast.success(`${selected.size} approved`) },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
-
   const bulkRejectMutation = useMutation({
     mutationFn: () => attendanceApi.bulkReject(Array.from(selected)),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['attendance-pending'] })
-      setSelected(new Set())
-      toast.success(`${selected.size} attendance records rejected`)
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); setSelected(new Set()); toast.success(`${selected.size} rejected`) },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
@@ -473,104 +673,84 @@ function PendingApprovalsTab() {
 
   return (
     <>
-    <div className="border rounded-xl bg-white overflow-hidden">
-      <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-gray-700">Pending Approvals</h2>
-          <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
-            {records.length} pending
-          </span>
-        </div>
-        {selected.size > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">{selected.size} selected</span>
-            <Button size="sm" variant="outline"
-              className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-3 text-xs"
-              disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
-              onClick={() => bulkApproveMutation.mutate()}>
-              <CheckCircle size={12} className="mr-1" />Approve All
-            </Button>
-            <Button size="sm" variant="outline"
-              className="text-red-600 border-red-300 hover:bg-red-50 h-7 px-3 text-xs"
-              disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
-              onClick={() => bulkRejectMutation.mutate()}>
-              <XCircle size={12} className="mr-1" />Reject All
-            </Button>
+      <div className="border rounded-xl bg-white overflow-hidden">
+        <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-700">Pending Approvals</h2>
+            <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">{records.length} pending</span>
           </div>
-        )}
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
-              <th className="px-5 py-3 w-10">
-                <input
-                  type="checkbox"
-                  checked={selected.size === records.length}
-                  onChange={toggleAll}
-                  className="rounded"
-                />
-              </th>
-              <th className="text-left px-5 py-3">Staff</th>
-              <th className="text-left px-5 py-3">Role</th>
-              <th className="text-left px-5 py-3">Date</th>
-              <th className="text-left px-5 py-3">Type</th>
-              <th className="text-left px-5 py-3">Marked At</th>
-              <th className="text-left px-5 py-3">Selfie</th>
-              <th className="text-left px-5 py-3">Remarks</th>
-              <th className="px-5 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {records.map(r => (
-              <tr key={r.id} className={cn('hover:bg-gray-50', selected.has(r.id) && 'bg-blue-50')}>
-                <td className="px-5 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(r.id)}
-                    onChange={() => toggleSelect(r.id)}
-                    className="rounded"
-                  />
-                </td>
-                <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
-                <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
-                <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
-                <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
-                <td className="px-5 py-3 text-gray-400 text-xs">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
-                <td className="px-5 py-3">
-                  {r.selfieUrl ? (
-                    <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
-                      <img src={r.selfieUrl} alt="selfie" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                        <Camera size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </button>
-                  ) : <span className="text-gray-300 text-xs">—</span>}
-                </td>
-                <td className="px-5 py-3 text-gray-400 text-xs max-w-[140px] truncate">{r.remarks || '—'}</td>
-                <td className="px-5 py-3">
-                  <div className="flex gap-1.5 justify-end">
-                    <Button size="sm" variant="outline"
-                      className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-2.5 text-xs"
-                      disabled={approveMutation.isPending}
-                      onClick={() => approveMutation.mutate(r.id)}>
-                      <CheckCircle size={12} className="mr-1" />Approve
-                    </Button>
-                    <Button size="sm" variant="outline"
-                      className="text-red-600 border-red-300 hover:bg-red-50 h-7 px-2.5 text-xs"
-                      disabled={rejectMutation.isPending}
-                      onClick={() => rejectMutation.mutate(r.id)}>
-                      <XCircle size={12} className="mr-1" />Reject
-                    </Button>
-                  </div>
-                </td>
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">{selected.size} selected</span>
+              <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-3 text-xs"
+                disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
+                onClick={() => bulkApproveMutation.mutate()}>
+                <CheckCircle size={12} className="mr-1" />Approve All
+              </Button>
+              <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50 h-7 px-3 text-xs"
+                disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
+                onClick={() => bulkRejectMutation.mutate()}>
+                <XCircle size={12} className="mr-1" />Reject All
+              </Button>
+            </div>
+          )}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
+                <th className="px-5 py-3 w-10">
+                  <input type="checkbox" checked={selected.size === records.length} onChange={toggleAll} className="rounded" />
+                </th>
+                <th className="text-left px-5 py-3">Staff</th>
+                <th className="text-left px-5 py-3">Role</th>
+                <th className="text-left px-5 py-3">Date</th>
+                <th className="text-left px-5 py-3">Type</th>
+                <th className="text-left px-5 py-3">Marked At</th>
+                <th className="text-left px-5 py-3">Selfie</th>
+                <th className="text-left px-5 py-3">Remarks</th>
+                <th className="px-5 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y">
+              {records.map(r => (
+                <tr key={r.id} className={cn('hover:bg-gray-50', selected.has(r.id) && 'bg-blue-50')}>
+                  <td className="px-5 py-3"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="rounded" /></td>
+                  <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
+                  <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
+                  <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                  <td className="px-5 py-3 text-gray-400 text-xs">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
+                  <td className="px-5 py-3">
+                    {r.selfieUrl ? (
+                      <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
+                        <img src={r.selfieUrl} alt="selfie" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          <Camera size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </button>
+                    ) : <span className="text-gray-300 text-xs">—</span>}
+                  </td>
+                  <td className="px-5 py-3 text-gray-400 text-xs max-w-[140px] truncate">{r.remarks || '—'}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex gap-1.5 justify-end">
+                      <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-2.5 text-xs"
+                        disabled={approveMutation.isPending} onClick={() => approveMutation.mutate(r.id)}>
+                        <CheckCircle size={12} className="mr-1" />Approve
+                      </Button>
+                      <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50 h-7 px-2.5 text-xs"
+                        disabled={rejectMutation.isPending} onClick={() => rejectMutation.mutate(r.id)}>
+                        <XCircle size={12} className="mr-1" />Reject
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-    {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
+      {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
     </>
   )
 }
@@ -609,61 +789,57 @@ function RejectedTab() {
 
   return (
     <>
-    <div className="border rounded-xl bg-white overflow-hidden">
-      <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-700">Rejected Attendance</h2>
-        <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-          {records.length} rejected
-        </span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
-              <th className="text-left px-5 py-3">Staff</th>
-              <th className="text-left px-5 py-3">Role</th>
-              <th className="text-left px-5 py-3">Date</th>
-              <th className="text-left px-5 py-3">Type</th>
-              <th className="text-left px-5 py-3">Marked At</th>
-              <th className="text-left px-5 py-3">Selfie</th>
-              <th className="text-left px-5 py-3">Rejected By</th>
-              <th className="px-5 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {records.map(r => (
-              <tr key={r.id} className="hover:bg-gray-50">
-                <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
-                <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
-                <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
-                <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
-                <td className="px-5 py-3 text-gray-400 text-xs">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
-                <td className="px-5 py-3">
-                  {r.selfieUrl ? (
-                    <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
-                      <img src={r.selfieUrl} alt="selfie" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                        <Camera size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </button>
-                  ) : <span className="text-gray-300 text-xs">—</span>}
-                </td>
-                <td className="px-5 py-3 text-gray-500 text-xs">{r.approvedByName ?? '—'}</td>
-                <td className="px-5 py-3">
-                  <Button size="sm" variant="outline"
-                    className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-2.5 text-xs"
-                    disabled={approveMutation.isPending}
-                    onClick={() => approveMutation.mutate(r.id)}>
-                    <CheckCircle size={12} className="mr-1" />Approve
-                  </Button>
-                </td>
+      <div className="border rounded-xl bg-white overflow-hidden">
+        <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700">Rejected Attendance</h2>
+          <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">{records.length} rejected</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
+                <th className="text-left px-5 py-3">Staff</th>
+                <th className="text-left px-5 py-3">Role</th>
+                <th className="text-left px-5 py-3">Date</th>
+                <th className="text-left px-5 py-3">Type</th>
+                <th className="text-left px-5 py-3">Marked At</th>
+                <th className="text-left px-5 py-3">Selfie</th>
+                <th className="text-left px-5 py-3">Rejected By</th>
+                <th className="px-5 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y">
+              {records.map(r => (
+                <tr key={r.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
+                  <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
+                  <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                  <td className="px-5 py-3 text-gray-400 text-xs">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
+                  <td className="px-5 py-3">
+                    {r.selfieUrl ? (
+                      <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
+                        <img src={r.selfieUrl} alt="selfie" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          <Camera size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </button>
+                    ) : <span className="text-gray-300 text-xs">—</span>}
+                  </td>
+                  <td className="px-5 py-3 text-gray-500 text-xs">{r.approvedByName ?? '—'}</td>
+                  <td className="px-5 py-3">
+                    <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-2.5 text-xs"
+                      disabled={approveMutation.isPending} onClick={() => approveMutation.mutate(r.id)}>
+                      <CheckCircle size={12} className="mr-1" />Approve
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-    {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
+      {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
     </>
   )
 }
@@ -674,7 +850,8 @@ export function AttendancePage() {
   const role = useAuthStore(s => s.role)
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
 
-  const [activeTab, setActiveTab]       = useState<'daily' | 'pending' | 'rejected'>('daily')
+  type Tab = 'daily' | 'my' | 'pending' | 'rejected'
+  const [activeTab, setActiveTab]       = useState<Tab>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [markOpen, setMarkOpen]         = useState(false)
   const [bulkOpen, setBulkOpen]         = useState(false)
@@ -684,6 +861,7 @@ export function AttendancePage() {
   const { data: attendanceData, isLoading } = useQuery({
     queryKey: ['attendance', selectedDate],
     queryFn: () => attendanceApi.getByDate(selectedDate),
+    enabled: activeTab === 'daily',
   })
   const records = [...(attendanceData?.data ?? [])].sort((a, b) => b.id - a.id)
 
@@ -696,16 +874,8 @@ export function AttendancePage() {
   const { data: leaveTypesData } = useQuery({ queryKey: ['leave-types'], queryFn: globalMastersApi.getLeaveTypes })
   const leaveTypes = (leaveTypesData?.data ?? []) as { id: number; name: string }[]
 
-  const { data: pendingData }  = useQuery({
-    queryKey: ['attendance-pending'],
-    queryFn: attendanceApi.getPending,
-    enabled: isAdmin,
-  })
-  const { data: rejectedData } = useQuery({
-    queryKey: ['attendance-rejected'],
-    queryFn: attendanceApi.getRejected,
-    enabled: isAdmin,
-  })
+  const { data: pendingData }  = useQuery({ queryKey: ['attendance-pending'],  queryFn: attendanceApi.getPending,  enabled: isAdmin })
+  const { data: rejectedData } = useQuery({ queryKey: ['attendance-rejected'], queryFn: attendanceApi.getRejected, enabled: isAdmin })
   const pendingCount  = pendingData?.data?.length ?? 0
   const rejectedCount = rejectedData?.data?.length ?? 0
 
@@ -732,6 +902,24 @@ export function AttendancePage() {
     if (newDate <= todayStr()) setSelectedDate(newDate)
   }
 
+  const tabBtn = (tab: Tab, label: string, badge?: number) => (
+    <button
+      onClick={() => setActiveTab(tab)}
+      className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors relative',
+        activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
+    >
+      {label}
+      {badge != null && badge > 0 && (
+        <span className={cn(
+          'ml-2 min-w-[18px] h-[18px] text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center px-1',
+          tab === 'pending' ? 'bg-orange-500' : 'bg-red-500'
+        )}>
+          {badge}
+        </span>
+      )}
+    </button>
+  )
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -752,46 +940,21 @@ export function AttendancePage() {
         )}
       </div>
 
-      {/* Tabs — Pending & Rejected only for admin */}
+      {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
-        <button
-          onClick={() => setActiveTab('daily')}
-          className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
-            activeTab === 'daily' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
-        >
-          Daily Attendance
-        </button>
-        {isAdmin && (
-          <>
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors relative',
-                activeTab === 'pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
-            >
-              Pending Approvals
-              {pendingCount > 0 && (
-                <span className="ml-2 min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center px-1">
-                  {pendingCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('rejected')}
-              className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors relative',
-                activeTab === 'rejected' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
-            >
-              Rejected
-              {rejectedCount > 0 && (
-                <span className="ml-2 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center px-1">
-                  {rejectedCount}
-                </span>
-              )}
-            </button>
-          </>
-        )}
+        {tabBtn('daily', 'Daily Attendance')}
+        {tabBtn('my', 'My Attendance')}
+        {isAdmin && tabBtn('pending', 'Pending Approvals', pendingCount)}
+        {isAdmin && tabBtn('rejected', 'Rejected', rejectedCount)}
       </div>
 
-      {activeTab === 'rejected' ? <RejectedTab /> : activeTab === 'pending' ? <PendingApprovalsTab /> : (
+      {/* Tab content */}
+      {activeTab === 'my' && (
+        <MyAttendanceTab attendanceTypes={attendanceTypes} leaveTypes={leaveTypes} />
+      )}
+      {activeTab === 'rejected' && <RejectedTab />}
+      {activeTab === 'pending' && <PendingApprovalsTab />}
+      {activeTab === 'daily' && (
         <>
           {/* Date navigator */}
           <div className="flex items-center gap-3">
@@ -887,9 +1050,7 @@ export function AttendancePage() {
                       <tr key={`u-${u.id}`} className="hover:bg-gray-50">
                         <td className="px-5 py-3 font-medium text-gray-700">{u.name}</td>
                         <td className="px-5 py-3 text-gray-400 text-xs">{u.role}</td>
-                        <td className="px-5 py-3">
-                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Not marked</span>
-                        </td>
+                        <td className="px-5 py-3"><span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Not marked</span></td>
                         <td className="px-5 py-3 text-gray-400">—</td>
                         <td className="px-5 py-3 text-gray-400">—</td>
                         <td className="px-5 py-3 text-gray-400">—</td>
@@ -922,7 +1083,6 @@ export function AttendancePage() {
         </>
       )}
 
-      {/* Dialogs — only rendered for admin */}
       {isAdmin && (
         <>
           <AttendanceDialog
@@ -945,11 +1105,7 @@ export function AttendancePage() {
           />
         </>
       )}
-      <StaffHistoryDialog
-        open={!!historyUser}
-        onClose={() => setHistoryUser(null)}
-        user={historyUser}
-      />
+      <StaffHistoryDialog open={!!historyUser} onClose={() => setHistoryUser(null)} user={historyUser} />
     </div>
   )
 }

@@ -62,7 +62,6 @@ const ADMIN_NAV: SectionedNav = {
       items: [
         { to: '/staff',         label: 'Staff',         icon: UserCheck },
         { to: '/attendance',    label: 'Attendance',    icon: Calendar },
-        { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
         { to: '/payroll',       label: 'Payroll',       icon: Wallet },
       ],
     },
@@ -112,7 +111,6 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       icon: Users,
       items: [
         { to: '/attendance',    label: 'Attendance',    icon: Calendar, moduleKey: 'ATTENDANCE' },
-        { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
       ],
     },
     {
@@ -135,8 +133,7 @@ const SUPER_ADMIN_NAV: FlatNav = [
 ]
 
 const SUPERVISOR_NAV: FlatNav = [
-  { to: '/my/attendance', label: 'My Attendance', icon: Calendar },
-  { to: '/attendance',    label: 'Attendance',    icon: ClipboardList },
+  { to: '/attendance',    label: 'Attendance',    icon: Calendar },
   { to: '/orders',        label: 'Orders',        icon: ClipboardList,  moduleKey: 'ORDERS' },
   { to: '/assignments',   label: 'Assignments',   icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
   { to: '/lrs',           label: 'LR Register',   icon: FileText,       moduleKey: 'LR_REGISTER' },
