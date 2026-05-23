@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { invoicesApi } from '@/api/invoices'
 import type { InvoiceLrItem } from '@/types'
 
-// ── Amount in words ───────────────────────────────────────────────────────
+// ── Amount in words ───────────────────────────────────────────────────────────
 const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
   'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen']
 const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety']
@@ -20,390 +20,353 @@ function amountInWords(amount: number): string {
   const rounded = Math.round(amount * 100) / 100
   const rupees  = Math.floor(rounded)
   const paise   = Math.round((rounded - rupees) * 100)
-
-  const inrParts: string[] = []
+  const parts: string[] = []
   const crore = Math.floor(rupees / 10000000)
   const lakh  = Math.floor((rupees % 10000000) / 100000)
   const thous = Math.floor((rupees % 100000) / 1000)
   const rem   = rupees % 1000
-
-  if (crore) inrParts.push(wordsUnder1000(crore) + ' Crore')
-  if (lakh)  inrParts.push(wordsUnder1000(lakh) + ' Lakh')
-  if (thous) inrParts.push(wordsUnder1000(thous) + ' Thousand')
-  if (rem)   inrParts.push(wordsUnder1000(rem))
-
-  let result = 'INR ' + (inrParts.join(' ') || 'Zero')
+  if (crore) parts.push(wordsUnder1000(crore) + ' Crore')
+  if (lakh)  parts.push(wordsUnder1000(lakh)  + ' Lakh')
+  if (thous) parts.push(wordsUnder1000(thous) + ' Thousand')
+  if (rem)   parts.push(wordsUnder1000(rem))
+  let result = 'INR ' + (parts.join(' ') || 'Zero')
   if (paise) result += ` and ${wordsUnder1000(paise)} Paise`
   return result + ' Only'
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-const fmt     = (n: number | undefined | null) =>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt = (n: number | undefined | null) =>
   Number(n ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 const fmtDate = (d?: string | null) =>
-  d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+  d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
 
-// cell style helpers
-const th = (extra?: React.CSSProperties): React.CSSProperties => ({
-  padding: '6px 8px', background: '#1e3a5f', color: '#fff',
-  fontSize: 11, fontWeight: 600, textAlign: 'left', borderRight: '1px solid #2d4f7a', ...extra,
-})
-const td = (extra?: React.CSSProperties): React.CSSProperties => ({
-  padding: '5px 8px', fontSize: 12, borderBottom: '1px solid #e5e7eb',
-  borderRight: '1px solid #e5e7eb', verticalAlign: 'top', ...extra,
-})
+// Border style shorthand
+const B = '1px solid #000'
 
-// ── Shared Invoice Document ───────────────────────────────────────────────
-export function InvoiceDocument({ invoice, logoDataUrl }: { invoice: import('@/types').Invoice; logoDataUrl?: string | null }) {
-  const lrItems      = invoice.lrItems ?? []
-  const hasTax       = Number(invoice.taxAmount) > 0
-  const cgstPct      = Number(invoice.cgstPercentage ?? 0)
-  const sgstPct      = Number(invoice.sgstPercentage ?? 0)
-  const cgstAmt      = Number(invoice.cgstAmount ?? 0)
-  const sgstAmt      = Number(invoice.sgstAmount ?? 0)
-  const totalAmt     = Number(invoice.totalAmount ?? 0)
-  const subtotal     = Number(invoice.subtotal ?? 0)
-  const hsn          = invoice.transportHsnSac || '996791'
+// ── Shared Invoice Document ───────────────────────────────────────────────────
+export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoice }) {
+  const lrItems   = invoice.lrItems ?? []
+  const subtotal  = Number(invoice.subtotal  ?? 0)
+  const totalAmt  = Number(invoice.totalAmount ?? 0)
+  const taxAmt    = Number(invoice.taxAmount ?? 0)
+  const cgstPct   = Number(invoice.cgstPercentage ?? 0)
+  const sgstPct   = Number(invoice.sgstPercentage ?? 0)
+  const igstPct   = cgstPct + sgstPct
+  const rawTotal  = subtotal + taxAmt
+  const roundOff  = totalAmt - rawTotal
+  const hsn       = invoice.transportHsnSac || '996511'
 
-  const rawTotal    = subtotal + cgstAmt + sgstAmt
-  const roundOff    = totalAmt - rawTotal
+  const totalTrips = lrItems.length
+  const totalQty   = lrItems.reduce((s, i) => s + Number(i.billingWeight ?? 0), 0)
 
-  const totalFreight = lrItems.reduce((s, i) => s + Number(i.freightAmount ?? 0), 0)
-  const totalCharges = lrItems.reduce((s, i) => s + Number(i.chargesAmount ?? 0), 0)
-  const totalFines   = lrItems.reduce((s, i) => s + Number(i.checkpostFineAmount ?? 0), 0)
-  const taxableValue = totalFreight + totalCharges + totalFines
+  // Group summary rows by freight rate (one line per rate)
+  const rateGroups = lrItems.reduce<Record<string, { trips: number; qty: number; amount: number; rate: number }>>((acc, item) => {
+    const rate = Number(item.freightRate ?? 0)
+    const key  = String(rate)
+    if (!acc[key]) acc[key] = { trips: 0, qty: 0, amount: 0, rate }
+    acc[key].trips  += 1
+    acc[key].qty    += Number(item.billingWeight ?? 0)
+    acc[key].amount += Number(item.freightAmount ?? 0)
+    return acc
+  }, {})
+  const summaryRows = Object.values(rateGroups)
 
-  const clientAddrParts = [
-    invoice.clientAddress,
-    invoice.clientCity,
-    [invoice.clientState, invoice.clientPincode].filter(Boolean).join(' - '),
+  // Group annexure rows by date
+  const dateGroups: Record<string, InvoiceLrItem[]> = {}
+  lrItems.forEach(item => {
+    const d = item.lrDate ? new Date(item.lrDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
+    if (!dateGroups[d]) dateGroups[d] = []
+    dateGroups[d].push(item)
+  })
+
+  const cell = (style?: React.CSSProperties): React.CSSProperties => ({
+    border: B, padding: '4px 6px', fontSize: 11, ...style,
+  })
+
+  const tenantAddr = [invoice.tenantAddress, invoice.tenantCity,
+    [invoice.tenantState, invoice.tenantPincode].filter(Boolean).join(' - ')
   ].filter(Boolean).join(', ')
 
-  const tenantAddrParts = [
-    invoice.tenantAddress,
-    invoice.tenantCity,
-    [invoice.tenantState, invoice.tenantPincode].filter(Boolean).join(' - '),
+  const clientAddr = [invoice.clientAddress, invoice.clientCity,
+    [invoice.clientState, invoice.clientPincode].filter(Boolean).join(' - ')
   ].filter(Boolean).join(', ')
+
+  // Description: use remarks or fallback
+  const description = invoice.remarks || 'Goods Transportation Services'
 
   return (
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px 28px', fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#111' }}>
+    <div style={{ maxWidth: 860, margin: '0 auto', fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#000' }}>
 
-        {/* ── Header ── */}
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 0 }}>
-          <tbody>
+      {/* ══════════════════════════════════════════════════════════════════
+          PAGE 1 — TAX INVOICE
+      ══════════════════════════════════════════════════════════════════ */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', border: B }}>
+        <tbody>
+
+          {/* ── Company Header ── */}
+          <tr>
+            <td colSpan={2} style={{ ...cell(), textAlign: 'center', padding: '10px 8px', borderBottom: B }}>
+              <div style={{ fontSize: 18, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+                {invoice.tenantCompanyName || ''}
+              </div>
+              {tenantAddr && (
+                <div style={{ fontSize: 11, marginTop: 3 }}>ADD: {tenantAddr}</div>
+              )}
+              <div style={{ fontSize: 11, marginTop: 2 }}>
+                Mob No:- &nbsp;&nbsp; E-mail:-
+              </div>
+            </td>
+          </tr>
+
+          {/* ── TAX INVOICE title ── */}
+          <tr>
+            <td colSpan={2} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 14, padding: '5px 8px', borderBottom: B }}>
+              TAX INVOICE
+            </td>
+          </tr>
+
+          {/* ── TO (client) left + Bill details right ── */}
+          <tr>
+            {/* LEFT: client */}
+            <td style={{ ...cell(), width: '50%', verticalAlign: 'top', borderRight: B, borderBottom: B, padding: '6px 8px' }}>
+              <div style={{ fontWeight: 700, marginBottom: 3 }}>TO,</div>
+              <div style={{ fontWeight: 700, textTransform: 'uppercase' }}>{invoice.clientName}</div>
+              {clientAddr && <div style={{ marginTop: 2 }}>{clientAddr}</div>}
+              {invoice.clientGstin && <div style={{ marginTop: 2 }}><strong>GST NO: </strong>{invoice.clientGstin}</div>}
+            </td>
+            {/* RIGHT: bill details */}
+            <td style={{ ...cell(), width: '50%', verticalAlign: 'top', borderBottom: B, padding: 0 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  {[
+                    ['BILL NO',     invoice.invoiceNumber],
+                    ['DATE',        fmtDate(invoice.invoiceDate)],
+                    ['GST NO',      invoice.tenantGstin ?? ''],
+                    ['STATE',       invoice.tenantState ?? ''],
+                    ['STATE CODE',  ''],
+                    ['PAN NO',      invoice.tenantPan ?? ''],
+                  ].map(([label, value]) => (
+                    <tr key={label}>
+                      <td style={{ border: B, padding: '4px 6px', fontWeight: 600, width: '40%' }}>{label}</td>
+                      <td style={{ border: B, padding: '4px 6px', fontWeight: 700 }}>{value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+
+          {/* ── Dispatch note ── */}
+          {invoice.remarks && (
             <tr>
-              {/* Left: company */}
-              <td style={{ width: '55%', verticalAlign: 'top', paddingRight: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-                  {(logoDataUrl || invoice.tenantLogoUrl) && (
-                    <img
-                      src={logoDataUrl || invoice.tenantLogoUrl!}
-                      alt="logo"
-                      style={{ height: 56, maxWidth: 120, objectFit: 'contain' }}
-                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-                    />
+              <td colSpan={2} style={{ ...cell(), borderBottom: B, fontSize: 11 }}>
+                {invoice.remarks}
+              </td>
+            </tr>
+          )}
+
+          {/* ── Line Items ── */}
+          <tr>
+            <td colSpan={2} style={{ padding: 0, border: B }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ fontWeight: 700 }}>
+                    <th style={cell({ width: 36, textAlign: 'center' })}>S.No.</th>
+                    <th style={cell()}>Description Of Goods/Service</th>
+                    <th style={cell({ width: 52, textAlign: 'center' })}>Trips</th>
+                    <th style={cell({ width: 64, textAlign: 'center' })}>HSN Code</th>
+                    <th style={cell({ width: 90, textAlign: 'right' })}>Quantity(MT)</th>
+                    <th style={cell({ width: 80, textAlign: 'right' })}>Rate/MT</th>
+                    <th style={cell({ width: 90, textAlign: 'right' })}>Amount in Rs.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summaryRows.map((row, i) => (
+                    <tr key={i} style={{ height: 80 }}>
+                      <td style={cell({ textAlign: 'center', verticalAlign: 'middle' })}>{i + 1}</td>
+                      <td style={cell({ verticalAlign: 'middle' })}>{description}</td>
+                      <td style={cell({ textAlign: 'center', verticalAlign: 'middle' })}>{row.trips}</td>
+                      <td style={cell({ textAlign: 'center', verticalAlign: 'middle' })}>{hsn}</td>
+                      <td style={cell({ textAlign: 'right', verticalAlign: 'middle' })}>{row.qty.toFixed(3)}</td>
+                      <td style={cell({ textAlign: 'right', verticalAlign: 'middle' })}>{fmt(row.rate)}</td>
+                      <td style={cell({ textAlign: 'right', verticalAlign: 'middle' })}>{fmt(row.amount)}</td>
+                    </tr>
+                  ))}
+                  {/* blank filler rows */}
+                  {summaryRows.length < 2 && (
+                    <tr style={{ height: 24 }}>
+                      <td style={cell()} /><td style={cell()} /><td style={cell()} />
+                      <td style={cell()} /><td style={cell()} /><td style={cell()} /><td style={cell()} />
+                    </tr>
                   )}
-                  <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    {invoice.tenantCompanyName || ''}
-                  </div>
-                </div>
-                <div style={{ fontSize: 11, color: '#333', lineHeight: 1.6 }}>
-                  {tenantAddrParts && <div>{tenantAddrParts}</div>}
-                  {invoice.tenantGstin && <div><strong>GSTIN/UIN:</strong> {invoice.tenantGstin}</div>}
-                  {invoice.tenantState && <div>State Name: {invoice.tenantState}</div>}
-                </div>
-              </td>
-              {/* Right: title + invoice details */}
-              <td style={{ width: '45%', verticalAlign: 'top' }}>
-                <div style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: 1 }}>
-                  Tax Invoice
-                </div>
-                {/* Invoice meta table */}
-                <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', fontSize: 11 }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: '4px 6px', border: '1px solid #333', fontWeight: 600, width: '40%' }}>Invoice No.</td>
-                      <td style={{ padding: '4px 6px', border: '1px solid #333', fontWeight: 700 }}>{invoice.invoiceNumber}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '4px 6px', border: '1px solid #333', fontWeight: 600 }}>Dated</td>
-                      <td style={{ padding: '4px 6px', border: '1px solid #333', fontWeight: 700 }}>{fmtDate(invoice.invoiceDate)}</td>
-                    </tr>
-                    {invoice.dueDate && (
-                      <tr>
-                        <td style={{ padding: '4px 6px', border: '1px solid #333', fontWeight: 600 }}>Due Date</td>
-                        <td style={{ padding: '4px 6px', border: '1px solid #333' }}>{fmtDate(invoice.dueDate)}</td>
-                      </tr>
-                    )}
-                    <tr>
-                      <td style={{ padding: '4px 6px', border: '1px solid #333', fontWeight: 600 }}>Mode of Payment</td>
-                      <td style={{ padding: '4px 6px', border: '1px solid #333' }}></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
 
-        {/* ── Consignee / Buyer ── */}
-        <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', marginTop: 6, fontSize: 11 }}>
-          <tbody>
-            <tr>
-              <td style={{ padding: '4px 8px', width: '50%', verticalAlign: 'top', borderRight: '1px solid #333' }}>
-                <div style={{ fontWeight: 600, marginBottom: 2 }}>Consignee (Ship to)</div>
-                <div style={{ fontWeight: 700, fontSize: 12 }}>{invoice.clientName}</div>
-                {clientAddrParts && <div style={{ marginTop: 2 }}>{clientAddrParts}</div>}
-                {invoice.clientGstin && <div><strong>GSTIN/UIN:</strong> {invoice.clientGstin}</div>}
-                {invoice.clientState && <div>State Name: {invoice.clientState}</div>}
-              </td>
-              <td style={{ padding: '4px 8px', width: '50%', verticalAlign: 'top' }}>
-                <div style={{ fontWeight: 600, marginBottom: 2 }}>Buyer (Bill to)</div>
-                <div style={{ fontWeight: 700, fontSize: 12 }}>{invoice.clientName}</div>
-                {clientAddrParts && <div style={{ marginTop: 2 }}>{clientAddrParts}</div>}
-                {invoice.clientGstin && <div><strong>GSTIN/UIN:</strong> {invoice.clientGstin}</div>}
-                {invoice.clientState && <div>State Name: {invoice.clientState}</div>}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* ── Line Items ── */}
-        <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', marginTop: 6 }}>
-          <thead>
-            <tr>
-              <th style={th({ width: 28 })}>SI</th>
-              <th style={th()}>Description of Services</th>
-              <th style={th({ width: 70 })}>HSN/SAC</th>
-              <th style={th({ width: 80, textAlign: 'right' })}>Quantity</th>
-              <th style={th({ width: 80, textAlign: 'right' })}>Rate</th>
-              <th style={th({ width: 50 })}>Per</th>
-              <th style={th({ width: 100, textAlign: 'right' })}>Amount (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lrItems.map((item: InvoiceLrItem, i: number) => (
-              <>
-                {/* Freight row */}
-                <tr key={`lr-${item.id}-freight`}>
-                  <td style={td({ textAlign: 'center' })}>{i + 1}</td>
-                  <td style={td()}>
-                    <div style={{ fontWeight: 600 }}>GOODS TRANSPORTATION CHARGES</div>
-                    <div style={{ fontSize: 11, color: '#555' }}>
-                      LR: {item.lrNumber} · Vehicle: {item.vehicleRegistrationNumber}
-                      {item.lrDate ? ` · ${fmtDate(item.lrDate)}` : ''}
-                    </div>
-                  </td>
-                  <td style={td({ textAlign: 'center' })}>{hsn}</td>
-                  <td style={td({ textAlign: 'right' })}>
-                    {item.billingWeight != null ? `${Number(item.billingWeight).toFixed(3)} MT` : '—'}
-                  </td>
-                  <td style={td({ textAlign: 'right' })}>
-                    {item.freightRateType === 'PER_TON' && item.freightRate != null
-                      ? Number(item.freightRate).toFixed(2) : '—'}
-                  </td>
-                  <td style={td()}>
-                    {item.freightRateType === 'PER_TON' ? 'MT'
-                      : item.freightRateType === 'PER_KM' ? 'KM'
-                      : item.freightRateType === 'PER_TRIP' ? 'Trip' : ''}
-                  </td>
-                  <td style={td({ textAlign: 'right', fontWeight: 600 })}>{fmt(item.freightAmount)}</td>
-                </tr>
-                {/* Charges row if any */}
-                {Number(item.chargesAmount ?? 0) > 0 && (
-                  <tr key={`lr-${item.id}-charges`}>
-                    <td style={td({ textAlign: 'center' })}></td>
-                    <td style={td({ paddingLeft: 20, fontStyle: 'italic', color: '#444' })}>Other Charges</td>
-                    <td style={td({ textAlign: 'center' })}>997159</td>
-                    <td style={td()} /><td style={td()} /><td style={td()} />
-                    <td style={td({ textAlign: 'right' })}>{fmt(item.chargesAmount)}</td>
+                  {/* Sub Total */}
+                  <tr style={{ fontWeight: 700 }}>
+                    <td colSpan={2} style={cell({ textAlign: 'right' })}>Sub Total:</td>
+                    <td style={cell({ textAlign: 'center' })}>{totalTrips}</td>
+                    <td style={cell()} />
+                    <td style={cell({ textAlign: 'right' })}>{totalQty.toFixed(3)}</td>
+                    <td style={cell()} />
+                    <td style={cell({ textAlign: 'right' })}>{fmt(subtotal)}</td>
                   </tr>
-                )}
-                {/* Fines row if any */}
-                {Number(item.checkpostFineAmount ?? 0) > 0 && (
-                  <tr key={`lr-${item.id}-fines`}>
-                    <td style={td({ textAlign: 'center' })}></td>
-                    <td style={td({ paddingLeft: 20, fontStyle: 'italic', color: '#444' })}>Checkpost Fines</td>
-                    <td style={td({ textAlign: 'center' })}>997159</td>
-                    <td style={td()} /><td style={td()} /><td style={td()} />
-                    <td style={td({ textAlign: 'right', color: '#b91c1c' })}>{fmt(item.checkpostFineAmount)}</td>
+
+                  {/* Gross Total */}
+                  <tr style={{ fontWeight: 700 }}>
+                    <td colSpan={6} style={cell({ textAlign: 'right' })}>GROSS TOTAL</td>
+                    <td style={cell({ textAlign: 'right' })}>{fmt(subtotal)}</td>
                   </tr>
-                )}
-              </>
-            ))}
 
-            {/* Blank rows for visual spacing */}
-            {lrItems.length < 4 && Array.from({ length: 4 - lrItems.length }).map((_, i) => (
-              <tr key={`blank-${i}`} style={{ height: 22 }}>
-                <td style={td()} /><td style={td()} /><td style={td()} /><td style={td()} /><td style={td()} /><td style={td()} /><td style={td()} />
-              </tr>
-            ))}
+                  {/* Tax */}
+                  {taxAmt > 0 && igstPct > 0 && (
+                    <tr style={{ fontWeight: 700 }}>
+                      <td colSpan={6} style={cell({ textAlign: 'right' })}>IGST {igstPct} %</td>
+                      <td style={cell({ textAlign: 'right' })}>{fmt(taxAmt)}</td>
+                    </tr>
+                  )}
+                  {taxAmt > 0 && igstPct === 0 && (
+                    <tr style={{ fontWeight: 700 }}>
+                      <td colSpan={6} style={cell({ textAlign: 'right' })}>TAX</td>
+                      <td style={cell({ textAlign: 'right' })}>{fmt(taxAmt)}</td>
+                    </tr>
+                  )}
 
-            {/* Tax rows */}
-            {hasTax && cgstPct > 0 && (
-              <tr>
-                <td style={td()} /><td style={{ ...td(), fontStyle: 'italic', fontWeight: 600 }}>CGST Output Tax @ {cgstPct}%</td>
-                <td style={td()} /><td style={td()} />
-                <td style={{ ...td(), textAlign: 'right' }}>{cgstPct}</td>
-                <td style={td()}>%</td>
-                <td style={{ ...td(), textAlign: 'right', fontWeight: 600 }}>{fmt(cgstAmt)}</td>
-              </tr>
-            )}
-            {hasTax && sgstPct > 0 && (
-              <tr>
-                <td style={td()} /><td style={{ ...td(), fontStyle: 'italic', fontWeight: 600 }}>SGST Output Tax @ {sgstPct}%</td>
-                <td style={td()} /><td style={td()} />
-                <td style={{ ...td(), textAlign: 'right' }}>{sgstPct}</td>
-                <td style={td()}>%</td>
-                <td style={{ ...td(), textAlign: 'right', fontWeight: 600 }}>{fmt(sgstAmt)}</td>
-              </tr>
-            )}
-            {Math.abs(roundOff) >= 0.01 && (
-              <tr>
-                <td style={td()} />
-                <td style={{ ...td(), fontStyle: 'italic' }}>Round Off</td>
-                <td style={td()} /><td style={td()} /><td style={td()} /><td style={td()} />
-                <td style={{ ...td(), textAlign: 'right' }}>{roundOff > 0 ? '+' : ''}{fmt(Math.abs(roundOff))}</td>
-              </tr>
-            )}
+                  {/* Round Off */}
+                  <tr style={{ fontWeight: 700 }}>
+                    <td colSpan={6} style={cell({ textAlign: 'right' })}>ROUNDOFF({roundOff >= 0 ? '-/+' : '-/+'})</td>
+                    <td style={cell({ textAlign: 'right' })}>{Math.abs(roundOff) < 0.01 ? '0.00' : fmt(Math.abs(roundOff))}</td>
+                  </tr>
 
-            {/* Total row */}
-            <tr style={{ background: '#f0f4ff' }}>
-              <td style={{ ...td(), fontWeight: 700, borderTop: '2px solid #1e3a5f' }} colSpan={3}>Total</td>
-              <td style={{ ...td(), textAlign: 'right', fontWeight: 700, borderTop: '2px solid #1e3a5f' }}>
-                {lrItems.reduce((s, i) => s + Number(i.billingWeight ?? 0), 0).toFixed(3)} MT
-              </td>
-              <td style={{ borderTop: '2px solid #1e3a5f', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }} />
-              <td style={{ borderTop: '2px solid #1e3a5f', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }} />
-              <td style={{ ...td(), textAlign: 'right', fontWeight: 700, fontSize: 14, borderTop: '2px solid #1e3a5f' }}>
-                ₹ {fmt(totalAmt)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                  {/* Total Bill Amount */}
+                  <tr style={{ fontWeight: 700 }}>
+                    <td colSpan={6} style={cell({ textAlign: 'right' })}>TOTAL BILL AMOUNT</td>
+                    <td style={cell({ textAlign: 'right', fontSize: 12 })}>{fmt(totalAmt)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
 
-        {/* Amount in words */}
-        <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 11 }}>
-          <tbody>
-            <tr>
-              <td style={{ padding: '4px 8px', width: '60%', borderRight: '1px solid #333' }}>
-                <span style={{ fontWeight: 600 }}>Amount Chargeable (in words)</span>
-                <span style={{ float: 'right', fontStyle: 'italic' }}>E. &amp; O.E</span>
-              </td>
-              <td style={{ padding: '4px 8px' }}></td>
-            </tr>
-            <tr>
-              <td style={{ padding: '4px 8px', fontWeight: 700, borderRight: '1px solid #333' }} colSpan={2}>
+          {/* ── Amount in words + Reverse charge ── */}
+          <tr>
+            <td colSpan={2} style={{ ...cell(), borderTop: B }}>
+              <div style={{ fontWeight: 700 }}>
                 {amountInWords(totalAmt)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td colSpan={2} style={{ ...cell(), borderTop: B, fontWeight: 600 }}>
+              Whether the tax is payable on reverse charge basis: NO
+            </td>
+          </tr>
 
-        {/* HSN / Tax breakdown table */}
-        {hasTax && (
-          <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 11 }}>
-            <thead>
-              <tr style={{ background: '#f0f4ff' }}>
-                <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'left' }}>HSN/SAC</th>
-                <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>Taxable Value</th>
-                <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>CGST Rate</th>
-                <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>CGST Amount</th>
-                <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>SGST Rate</th>
-                <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>SGST Amount</th>
-                <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>Total Tax</th>
-              </tr>
-            </thead>
+          {/* ── Bank Details + Signatory ── */}
+          <tr>
+            <td style={{ ...cell(), verticalAlign: 'top', borderRight: B, borderTop: B, padding: '8px' }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Bank Details:</div>
+              {invoice.tenantCompanyName && <div style={{ fontWeight: 700 }}>{invoice.tenantCompanyName}</div>}
+              {invoice.tenantBankName     && <div>{invoice.tenantBankName}</div>}
+              {invoice.tenantAccountNumber && <div>A/c No: {invoice.tenantAccountNumber}</div>}
+              {invoice.tenantIfscCode     && <div>IFSC: {invoice.tenantIfscCode}</div>}
+              {invoice.tenantBranchName   && <div>Branch: {invoice.tenantBranchName}</div>}
+            </td>
+            <td style={{ ...cell(), verticalAlign: 'top', borderTop: B, padding: '8px', textAlign: 'right' }}>
+              <div style={{ fontSize: 11 }}>E &amp; OE</div>
+              <div style={{ marginTop: 8, fontWeight: 700 }}>
+                For {invoice.tenantCompanyName || ''}
+              </div>
+              <div style={{ marginTop: 40, fontWeight: 600 }}>Authorised Signatory</div>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          PAGE 2 — ANNEXURE
+      ══════════════════════════════════════════════════════════════════ */}
+      {lrItems.length > 0 && (
+        <div style={{ marginTop: 0, pageBreakBefore: 'always' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', border: B }}>
             <tbody>
+
+              {/* Title */}
               <tr>
-                <td style={{ padding: '4px 8px', border: '1px solid #333' }}>{hsn}</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(taxableValue)}</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{cgstPct}%</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(cgstAmt)}</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{sgstPct}%</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(sgstAmt)}</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right', fontWeight: 700 }}>{fmt(cgstAmt + sgstAmt)}</td>
-              </tr>
-              <tr style={{ background: '#f9fafb', fontWeight: 700 }}>
-                <td style={{ padding: '4px 8px', border: '1px solid #333' }}>Total</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(taxableValue)}</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333' }}></td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(cgstAmt)}</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333' }}></td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(sgstAmt)}</td>
-                <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(cgstAmt + sgstAmt)}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={7} style={{ padding: '4px 8px', border: '1px solid #333', fontWeight: 600 }}>
-                  Tax Amount (in words): {amountInWords(cgstAmt + sgstAmt)}
+                <td colSpan={7} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 15, padding: '8px' }}>
+                  ANNEXURE
                 </td>
               </tr>
-            </tfoot>
+              <tr>
+                <td colSpan={7} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 13 }}>
+                  {invoice.tenantCompanyName || ''}
+                </td>
+              </tr>
+              <tr>
+                <td colSpan={7} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 12 }}>
+                  {invoice.clientName}
+                </td>
+              </tr>
+
+              {/* Header row */}
+              <tr style={{ fontWeight: 700 }}>
+                <th style={cell({ width: 36, textAlign: 'center' })}>S.No.</th>
+                <th style={cell()}>Pass No</th>
+                <th style={cell({ width: 90, textAlign: 'center' })}>Trip Date</th>
+                <th style={cell({ width: 100, textAlign: 'center' })}>Vehicle No</th>
+                <th style={cell({ width: 70, textAlign: 'right' })}>Rate</th>
+                <th style={cell({ width: 90, textAlign: 'right' })}>Net Weight</th>
+                <th style={cell({ width: 90, textAlign: 'right' })}>Bill Amount</th>
+              </tr>
+
+              {/* Rows grouped by date */}
+              {(() => {
+                let sno = 1
+                const rows: React.ReactNode[] = []
+                Object.entries(dateGroups).forEach(([date, items]) => {
+                  items.forEach(item => {
+                    rows.push(
+                      <tr key={item.id}>
+                        <td style={cell({ textAlign: 'center' })}>{sno++}</td>
+                        <td style={cell()}>{item.lrNumber}</td>
+                        <td style={cell({ textAlign: 'center' })}>{fmtDate(item.lrDate)}</td>
+                        <td style={cell({ textAlign: 'center' })}>{item.vehicleRegistrationNumber}</td>
+                        <td style={cell({ textAlign: 'right' })}>{fmt(item.freightRate)}</td>
+                        <td style={cell({ textAlign: 'right' })}>{item.billingWeight != null ? Number(item.billingWeight).toFixed(3) : '—'}</td>
+                        <td style={cell({ textAlign: 'right' })}>{fmt(item.freightAmount)}</td>
+                      </tr>
+                    )
+                  })
+                  // Date subtotal
+                  const dateQty    = items.reduce((s, i) => s + Number(i.billingWeight ?? 0), 0)
+                  const dateAmount = items.reduce((s, i) => s + Number(i.freightAmount  ?? 0), 0)
+                  rows.push(
+                    <tr key={`sub-${date}`} style={{ fontWeight: 700 }}>
+                      <td colSpan={5} style={cell({ textAlign: 'right' })}>Total</td>
+                      <td style={cell({ textAlign: 'right' })}>{dateQty.toFixed(3)}</td>
+                      <td style={cell({ textAlign: 'right' })}>{fmt(dateAmount)}</td>
+                    </tr>
+                  )
+                })
+                return rows
+              })()}
+
+              {/* Grand Total */}
+              <tr style={{ fontWeight: 700 }}>
+                <td colSpan={5} style={cell({ textAlign: 'right' })}>Grand Total</td>
+                <td style={cell({ textAlign: 'right' })}>{totalQty.toFixed(3)}</td>
+                <td style={cell({ textAlign: 'right' })}>{fmt(subtotal)}</td>
+              </tr>
+
+            </tbody>
           </table>
-        )}
-
-        {/* ── Footer: Remarks + Bank + Declaration ── */}
-        <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 11 }}>
-          <tbody>
-            <tr>
-              <td style={{ padding: '6px 8px', width: '50%', verticalAlign: 'top', borderRight: '1px solid #333' }}>
-                {invoice.remarks && (
-                  <>
-                    <div style={{ fontWeight: 600, marginBottom: 2 }}>Remarks:</div>
-                    <div style={{ color: '#333' }}>{invoice.remarks}</div>
-                  </>
-                )}
-                {invoice.tenantPan && (
-                  <div style={{ marginTop: 6 }}>
-                    <strong>Company's PAN</strong> : {invoice.tenantPan}
-                  </div>
-                )}
-                <div style={{ marginTop: 8, color: '#555', fontSize: 10 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 2 }}>Declaration</div>
-                  We declare that this invoice shows the actual price of the
-                  goods described and that all particulars are true and correct.
-                </div>
-              </td>
-              <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
-                {(invoice.tenantBankName || invoice.tenantAccountNumber) && (
-                  <>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Company's Bank Details</div>
-                    {invoice.tenantBankName && (
-                      <div><strong>Bank Name</strong> : {invoice.tenantBankName}</div>
-                    )}
-                    {invoice.tenantAccountHolderName && (
-                      <div><strong>Account Name</strong> : {invoice.tenantAccountHolderName}</div>
-                    )}
-                    {invoice.tenantAccountNumber && (
-                      <div><strong>A/c No.</strong> : {invoice.tenantAccountNumber}</div>
-                    )}
-                    {invoice.tenantIfscCode && (
-                      <div><strong>IFS Code</strong> : {invoice.tenantIfscCode}</div>
-                    )}
-                    {invoice.tenantBranchName && (
-                      <div><strong>Branch</strong> : {invoice.tenantBranchName}</div>
-                    )}
-                  </>
-                )}
-                <div style={{ marginTop: 20, textAlign: 'right', fontSize: 11 }}>
-                  <div style={{ fontWeight: 700 }}>Authorised Signatory</div>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* Footer note */}
-        <div style={{ textAlign: 'center', fontSize: 11, color: '#666', marginTop: 10, paddingTop: 6, borderTop: '1px solid #e5e7eb' }}>
-          This is a Computer Generated Invoice
         </div>
-      </div>
+      )}
+    </div>
   )
 }
 
-// ── Print Page (standalone route) ────────────────────────────────────────
+// ── Print Page (standalone route) ─────────────────────────────────────────────
 export function InvoicePrintPage() {
   const { invoiceId } = useParams<{ invoiceId: string }>()
   const id = parseInt(invoiceId!)
@@ -428,11 +391,11 @@ export function InvoicePrintPage() {
     <>
       <style>{`
         * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; background: #fff; }
+        body { font-family: Arial, sans-serif; font-size: 11px; color: #000; margin: 0; background: #fff; }
         @media print {
           .no-print { display: none !important; }
           body { margin: 0; }
-          @page { margin: 10mm; size: A4; }
+          @page { margin: 8mm; size: A4; }
         }
       `}</style>
       <div className="no-print" style={{ padding: '10px 20px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', gap: 10 }}>
@@ -443,7 +406,9 @@ export function InvoicePrintPage() {
           Close
         </button>
       </div>
-      <InvoiceDocument invoice={invoice} />
+      <div style={{ padding: '12px 16px' }}>
+        <InvoiceDocument invoice={invoice} />
+      </div>
     </>
   )
 }
