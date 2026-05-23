@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   Truck, Users, Tag, CreditCard, MapPin, DollarSign, Settings,
-  Plus, Pencil, Trash2, ChevronRight, Upload, Download, CheckCircle, XCircle,
+  Plus, Pencil, Trash2, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
