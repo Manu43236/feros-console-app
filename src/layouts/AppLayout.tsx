@@ -94,6 +94,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       items: [
         { to: '/clients',     label: 'Clients',      icon: Users,          moduleKey: 'CLIENTS' },
         { to: '/orders',      label: 'Orders',       icon: ClipboardList,  moduleKey: 'ORDERS' },
+        { to: '/assignments', label: 'Assignments',  icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
         { to: '/lrs',         label: 'LR Register',  icon: FileText,       moduleKey: 'LR_REGISTER' },
       ],
     },
@@ -107,10 +108,21 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       ],
     },
     {
+      section: 'Fleet',
+      icon: Truck,
+      items: [
+        { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
+        { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
+        { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
+      ],
+    },
+    {
       section: 'HR',
       icon: Users,
       items: [
-        { to: '/attendance',    label: 'Attendance',    icon: Calendar, moduleKey: 'ATTENDANCE' },
+        { to: '/staff',      label: 'Staff',      icon: UserCheck },
+        { to: '/attendance', label: 'Attendance', icon: Calendar,  moduleKey: 'ATTENDANCE' },
+        { to: '/payroll',    label: 'Payroll',    icon: Wallet },
       ],
     },
     {
