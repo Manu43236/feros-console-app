@@ -630,7 +630,9 @@ function PendingApprovalsTab() {
     queryKey: ['attendance-pending'],
     queryFn: attendanceApi.getPending,
   })
-  const records = data?.data ?? []
+  const records = [...(data?.data ?? [])].sort((a, b) =>
+    new Date(b.markedAt ?? b.attendanceDate).getTime() - new Date(a.markedAt ?? a.attendanceDate).getTime()
+  )
 
   function toggleSelect(id: number) {
     setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
