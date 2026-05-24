@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import leftMenuLogo from '@/assets/left_menu_logo.png'
 import { useAuthStore } from '@/store/authStore'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi, subscriptionsApi } from '@/api/superadmin'
 import { authApi } from '@/api/auth'
 import {
@@ -363,6 +363,7 @@ export function AppLayout() {
   const exitImpersonation  = useAuthStore(s => s.exitImpersonation)
   const allowedModules     = useAuthStore(s => s.allowedModules)
   const navigate = useNavigate()
+  const qc = useQueryClient()
 
   const isImpersonating = !!saSession
   const tenantId = useAuthStore(s => s.tenantId)
@@ -418,6 +419,7 @@ export function AppLayout() {
   async function handleLogout() {
     try { await authApi.logout() } catch (_) {}
     logout()
+    qc.clear()
     navigate('/login', { replace: true })
   }
 
