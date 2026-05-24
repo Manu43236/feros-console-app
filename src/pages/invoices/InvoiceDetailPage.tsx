@@ -236,10 +236,11 @@ export function InvoiceDetailPage() {
 
   const statusMutation = useMutation({
     mutationFn: (status: string) => invoicesApi.updateStatus(id, { invoiceStatus: status }),
-    onSuccess: () => {
+    onSuccess: (_data, status) => {
       toast.success('Invoice status updated')
       qc.invalidateQueries({ queryKey: ['invoice', id] })
       qc.invalidateQueries({ queryKey: ['invoices'] })
+      if (status === 'CANCELLED') navigate('/invoices')
     },
     onError: () => toast.error('Failed to update status'),
   })
