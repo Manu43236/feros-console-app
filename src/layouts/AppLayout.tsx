@@ -338,9 +338,16 @@ function ReportsNavGroup({ onNavClick }: { onNavClick?: () => void }) {
 }
 
 function getRoleLabel(role: string | null) {
-  if (role === 'SUPER_ADMIN') return 'Super Admin'
-  if (role === 'ADMIN') return 'Admin'
-  return 'Staff'
+  if (!role) return ''
+  if (role === 'SUPER_ADMIN')  return 'Super Admin'
+  if (role === 'ADMIN')        return 'Admin'
+  if (role === 'OFFICE_STAFF') return 'Office Staff'
+  if (role === 'SUPERVISOR')   return 'Supervisor'
+  if (role === 'DRIVER')       return 'Driver'
+  if (role === 'CLEANER')      return 'Cleaner'
+  if (role === 'STORE_KEEPER') return 'Store Keeper'
+  if (role === 'SERVICE_MEN')  return 'Service Men'
+  return role
 }
 
 export function AppLayout() {
@@ -556,7 +563,8 @@ export function AppLayout() {
             </div>
             <div className="hidden sm:block text-left">
               <p className="text-sm font-medium text-gray-800">{name ?? phone}</p>
-              <p className="text-xs text-gray-500">{companyName ?? getRoleLabel(role)}</p>
+              <p className="text-xs text-gray-500">{companyName}</p>
+              {role && <p className="text-xs text-feros-navy font-medium">{getRoleLabel(role)}</p>}
             </div>
           </button>
         </header>
