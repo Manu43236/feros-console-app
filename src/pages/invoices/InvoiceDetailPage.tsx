@@ -205,14 +205,17 @@ export function InvoiceDetailPage() {
   const handleDownloadPdf = async () => {
     if (!invoicePrintRef.current) return
     const html2pdf = (await import('html2pdf.js')).default
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opts: any = {
+      margin: 10,
+      filename: `${invoice?.invoiceNumber ?? 'invoice'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pageBreaks: { mode: 'css', before: '.annexure-page' },
+    }
     await html2pdf()
-      .set({
-        margin: 10,
-        filename: `${invoice?.invoiceNumber ?? 'invoice'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      })
+      .set(opts)
       .from(invoicePrintRef.current)
       .save()
   }
