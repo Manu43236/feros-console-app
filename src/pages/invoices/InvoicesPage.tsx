@@ -450,13 +450,15 @@ export function InvoicesPage() {
                       <InvoiceStatusBadge status={inv.invoiceStatus} />
                     </td>
                     <td className="py-3 px-4">
-                      <button
-                        onClick={e => { e.stopPropagation(); navigate(`/invoices/${inv.id}`) }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-feros-navy hover:bg-blue-50 transition-colors"
-                        title="View invoice"
-                      >
-                        <Eye size={15} />
-                      </button>
+                      {inv.invoiceStatus !== 'CANCELLED' && (
+                        <button
+                          onClick={e => { e.stopPropagation(); navigate(`/invoices/${inv.id}`) }}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-feros-navy hover:bg-blue-50 transition-colors"
+                          title="View invoice"
+                        >
+                          <Eye size={15} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

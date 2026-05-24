@@ -259,6 +259,33 @@ export function InvoiceDetailPage() {
   if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading…</div>
   if (!invoice)  return <div className="p-8 text-center text-gray-500">Invoice not found.</div>
 
+  if (invoice.invoiceStatus === 'CANCELLED') {
+    return (
+      <div className="space-y-5">
+        <div className="relative bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden">
+          <div className="relative px-6 py-6">
+            <button
+              onClick={() => navigate('/invoices')}
+              className="flex items-center gap-1.5 text-blue-300 hover:text-white text-sm transition-colors mb-4"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Invoices
+            </button>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-bold text-white">{invoice.invoiceNumber}</h1>
+              <InvoiceStatusBadge status={invoice.invoiceStatus} />
+            </div>
+            <p className="text-blue-200 text-sm mt-1">{invoice.clientName}</p>
+          </div>
+        </div>
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-6 text-center text-rose-700">
+          <X className="h-8 w-8 mx-auto mb-2 text-rose-400" />
+          <p className="font-semibold text-base">This invoice has been cancelled.</p>
+          <p className="text-sm mt-1 text-rose-500">No further actions are available.</p>
+        </div>
+      </div>
+    )
+  }
+
   const lrItems    = invoice.lrItems ?? []
   const balanceDue = Number(invoice.balanceDue)
   const canSend    = invoice.invoiceStatus === 'DRAFT'
