@@ -287,7 +287,7 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
           PAGE 2 — ANNEXURE
       ══════════════════════════════════════════════════════════════════ */}
       {lrItems.length > 0 && (
-        <div style={{ marginTop: 0, pageBreakBefore: 'always' }}>
+        <div className="annexure-page" style={{ marginTop: 0, pageBreakBefore: 'always', breakBefore: 'page' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', border: B }}>
             <tbody>
 
@@ -396,6 +396,7 @@ export function InvoicePrintPage() {
           .no-print { display: none !important; }
           body { margin: 0; }
           @page { margin: 8mm; size: A4; }
+          .annexure-page { page-break-before: always !important; break-before: page !important; }
         }
       `}</style>
       <div className="no-print" style={{ padding: '10px 20px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', gap: 10 }}>
