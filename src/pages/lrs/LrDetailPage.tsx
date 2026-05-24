@@ -469,7 +469,7 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
       if (canEditDelivered && deliveredWeight) payload.deliveredWeight = parseFloat(deliveredWeight)
       return lrsApi.update(lrId, payload)
     },
-    onSuccess: () => { toast.success('LR updated'); qc.invalidateQueries({ queryKey: ['lr', lrId] }); onClose() },
+    onSuccess: () => { toast.success('LR updated'); qc.invalidateQueries({ queryKey: ['lr', lrId] }); qc.invalidateQueries({ queryKey: ['lrs'] }); onClose() },
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed to update LR'); if (_m) toast.error(_m) },
   })
 

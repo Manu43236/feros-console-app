@@ -316,6 +316,7 @@ function AttendanceDialog({
       isEdit ? attendanceApi.update(record!.id, d) : attendanceApi.mark(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['attendance', date] })
+      qc.invalidateQueries({ queryKey: ['attendance-pending'] })
       toast.success(isEdit ? 'Attendance updated' : 'Attendance marked')
       onClose()
     },
@@ -454,6 +455,7 @@ function BulkMarkDialog({
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['attendance', date] })
+      qc.invalidateQueries({ queryKey: ['attendance-pending'] })
       toast.success('Bulk attendance saved')
       onClose()
     },
@@ -643,22 +645,22 @@ function PendingApprovalsTab() {
 
   const approveMutation = useMutation({
     mutationFn: (id: number) => attendanceApi.approve(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Approved') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); qc.invalidateQueries({ queryKey: ['attendance'] }); toast.success('Approved') },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
   const rejectMutation = useMutation({
     mutationFn: (id: number) => attendanceApi.reject(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); toast.success('Rejected') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); qc.invalidateQueries({ queryKey: ['attendance'] }); toast.success('Rejected') },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
   const bulkApproveMutation = useMutation({
     mutationFn: () => attendanceApi.bulkApprove(Array.from(selected)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); setSelected(new Set()); toast.success(`${selected.size} approved`) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); qc.invalidateQueries({ queryKey: ['attendance'] }); setSelected(new Set()); toast.success(`${selected.size} approved`) },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
   const bulkRejectMutation = useMutation({
     mutationFn: () => attendanceApi.bulkReject(Array.from(selected)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); setSelected(new Set()); toast.success(`${selected.size} rejected`) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance-pending'] }); qc.invalidateQueries({ queryKey: ['attendance'] }); setSelected(new Set()); toast.success(`${selected.size} rejected`) },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
