@@ -34,12 +34,12 @@ const STATUS_LABELS: Record<InvoiceStatus, string> = {
   CANCELLED:      'Cancelled',
 }
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
-  DRAFT:          'bg-gray-100 text-gray-600 hover:bg-gray-100',
-  SENT:           'bg-blue-50 text-blue-700 hover:bg-blue-50',
-  PARTIALLY_PAID: 'bg-amber-50 text-amber-700 hover:bg-amber-50',
-  PAID:           'bg-green-50 text-green-700 hover:bg-green-50',
-  OVERDUE:        'bg-red-50 text-red-700 hover:bg-red-50',
-  CANCELLED:      'bg-slate-100 text-slate-500 hover:bg-slate-100',
+  DRAFT:          'bg-gray-200 text-gray-700 hover:bg-gray-200',
+  SENT:           'bg-blue-100 text-blue-700 hover:bg-blue-100',
+  PARTIALLY_PAID: 'bg-amber-100 text-amber-700 hover:bg-amber-100',
+  PAID:           'bg-green-100 text-green-700 hover:bg-green-100',
+  OVERDUE:        'bg-red-100 text-red-700 hover:bg-red-100',
+  CANCELLED:      'bg-rose-100 text-rose-700 hover:bg-rose-100',
 }
 export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
   return (
