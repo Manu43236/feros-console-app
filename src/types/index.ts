@@ -126,18 +126,19 @@ export interface Client {
 export interface Vehicle {
   id: number; tenantId: number
   registrationNumber: string
-  brandId?: number; brandName?: string
+  brandId?: number; brandName?: string; model?: string
   vehicleTypeId?: number; vehicleTypeName?: string
   fuelTypeId?: number; fuelTypeName?: string
   ownershipTypeId?: number; ownershipTypeName?: string
   currentStatusId?: number; currentStatusName?: string; currentStatusType?: VehicleStatusType
-  capacityInTons?: number; manufactureYear?: number; color?: string
+  capacityInTons?: number; grossVehicleWeight?: number; manufactureYear?: number; color?: string
   chassisNumber?: string; engineNumber?: string
   ownerName?: string; ownerPhone?: string; ownerPan?: string; ownerAddress?: string
   agreementStartDate?: string; agreementEndDate?: string; agreementAmount?: number
   gpsDeviceNumber?: string; gpsDeviceImei?: string; gpsProvider?: string
   currentOdometerReading?: number; fuelTankCapacity?: number; currentFuelLevel?: number; notes?: string
   tyreRotationIntervalKm?: number
+  isFinanced?: boolean; financerName?: string; financeStartDate?: string; financeEndDate?: string; financeMonthsRemaining?: number
   isActive: boolean; createdAt: string; updatedAt: string
   isAssigned?: boolean; assignedOrderId?: number; assignedOrderNumber?: string
 }

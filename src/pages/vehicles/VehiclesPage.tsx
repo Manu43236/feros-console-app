@@ -162,7 +162,9 @@ const schema = z.object({
   fuelTypeId:               z.coerce.number().optional(),
   ownershipTypeId:          z.coerce.number().optional(),
   currentStatusId:          z.coerce.number().optional(),
+  model:                    z.string().optional(),
   capacityInTons:           z.coerce.number().min(0, 'Capacity cannot be negative').optional(),
+  grossVehicleWeight:       z.coerce.number().min(0, 'GVW cannot be negative').optional(),
   manufactureYear:          z.coerce.number().optional(),
   color:                    z.string().optional(),
   chassisNumber:            z.string().optional(),
@@ -183,6 +185,11 @@ const schema = z.object({
   fuelTankCapacity:         z.coerce.number().optional(),
   tyreRotationIntervalKm:   z.coerce.number().optional(),
   currentFuelLevel:         z.coerce.number().optional(),
+  // Finance
+  isFinanced:               z.boolean().optional(),
+  financerName:             z.string().optional(),
+  financeStartDate:         z.string().optional(),
+  financeEndDate:           z.string().optional(),
   notes:                    z.string().optional(),
 }).refine(
   data => {
@@ -221,6 +228,7 @@ export function VehicleForm({
       brandId: vehicle.brandId, vehicleTypeId: vehicle.vehicleTypeId,
       fuelTypeId: vehicle.fuelTypeId, ownershipTypeId: vehicle.ownershipTypeId,
       currentStatusId: vehicle.currentStatusId, capacityInTons: vehicle.capacityInTons,
+      grossVehicleWeight: vehicle.grossVehicleWeight, model: vehicle.model ?? '',
       manufactureYear: vehicle.manufactureYear, color: vehicle.color ?? '',
       chassisNumber: vehicle.chassisNumber ?? '', engineNumber: vehicle.engineNumber ?? '',
       ownerName: vehicle.ownerName ?? '', ownerPhone: vehicle.ownerPhone ?? '',
@@ -234,6 +242,10 @@ export function VehicleForm({
       fuelTankCapacity: vehicle.fuelTankCapacity,
       currentFuelLevel: vehicle.currentFuelLevel,
       tyreRotationIntervalKm: vehicle.tyreRotationIntervalKm,
+      isFinanced: vehicle.isFinanced ?? false,
+      financerName: vehicle.financerName ?? '',
+      financeStartDate: vehicle.financeStartDate ?? '',
+      financeEndDate: vehicle.financeEndDate ?? '',
       notes: vehicle.notes ?? '',
     } : {},
   })
@@ -245,6 +257,7 @@ export function VehicleForm({
         brandId: vehicle.brandId, vehicleTypeId: vehicle.vehicleTypeId,
         fuelTypeId: vehicle.fuelTypeId, ownershipTypeId: vehicle.ownershipTypeId,
         currentStatusId: vehicle.currentStatusId, capacityInTons: vehicle.capacityInTons,
+        grossVehicleWeight: vehicle.grossVehicleWeight, model: vehicle.model ?? '',
         manufactureYear: vehicle.manufactureYear, color: vehicle.color ?? '',
         chassisNumber: vehicle.chassisNumber ?? '', engineNumber: vehicle.engineNumber ?? '',
         ownerName: vehicle.ownerName ?? '', ownerPhone: vehicle.ownerPhone ?? '',
@@ -258,6 +271,10 @@ export function VehicleForm({
         fuelTankCapacity: vehicle.fuelTankCapacity,
         currentFuelLevel: vehicle.currentFuelLevel,
         tyreRotationIntervalKm: vehicle.tyreRotationIntervalKm,
+        isFinanced: vehicle.isFinanced ?? false,
+        financerName: vehicle.financerName ?? '',
+        financeStartDate: vehicle.financeStartDate ?? '',
+        financeEndDate: vehicle.financeEndDate ?? '',
         notes: vehicle.notes ?? '',
       })
       setOwnershipTypeId(vehicle.ownershipTypeId)
@@ -265,7 +282,8 @@ export function VehicleForm({
     if (!open) reset({})
   }, [open])
 
-  const watchedTypeId = watch('vehicleTypeId')
+  const watchedTypeId    = watch('vehicleTypeId')
+  const watchedFinanced  = watch('isFinanced')
   useEffect(() => {
     if (!watchedTypeId) return
     const vehicleType = (typesRes?.data ?? []).find(t => t.id === watchedTypeId)
@@ -324,6 +342,10 @@ export function VehicleForm({
               />
             </div>
             <div className="space-y-1.5">
+              <Label>Model</Label>
+              <Input placeholder="e.g. 407, Prima 4940, BS4" {...register('model')} />
+            </div>
+            <div className="space-y-1.5">
               <Label>Vehicle Type</Label>
               <Controller
                 name="vehicleTypeId"
@@ -332,7 +354,7 @@ export function VehicleForm({
                   <SearchableSelect
                     value={field.value ? String(field.value) : ''}
                     onValueChange={v => field.onChange(v ? Number(v) : undefined)}
-                    options={(typesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name }))}
+                    options={(typesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.tyreCount ? `${t.name} – ${t.capacityInTons}T` : t.name }))}
                     placeholder="Select type"
                     className="mt-1"
                   />
@@ -396,6 +418,11 @@ export function VehicleForm({
               {errors.capacityInTons && <p className="text-red-500 text-xs">{errors.capacityInTons.message}</p>}
             </div>
             <div className="space-y-1.5">
+              <Label>GVW — Gross Vehicle Weight (tons)</Label>
+              <Input type="number" step="0.01" min="0" placeholder="49.00" {...register('grossVehicleWeight')} />
+              {errors.grossVehicleWeight && <p className="text-red-500 text-xs">{errors.grossVehicleWeight.message}</p>}
+            </div>
+            <div className="space-y-1.5">
               <Label>Current Odometer (km)</Label>
               <Input type="number" placeholder="45000" {...register('currentOdometerReading')} />
             </div>
@@ -454,6 +481,37 @@ export function VehicleForm({
               </div>
             </div>
           )}
+
+          {/* Finance */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-gray-700">Finance</p>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-sm text-gray-500">Vehicle is financed</span>
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-feros-navy"
+                  {...register('isFinanced')}
+                />
+              </label>
+            </div>
+            {watchedFinanced && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 space-y-1.5">
+                  <Label>Financer Name (Bank / NBFC)</Label>
+                  <Input placeholder="e.g. HDFC Bank, Shriram Finance" {...register('financerName')} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Finance From</Label>
+                  <Input type="date" {...register('financeStartDate')} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Finance To</Label>
+                  <Input type="date" {...register('financeEndDate')} />
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* GPS & Notes */}
           <div className="border-t pt-4">

@@ -2687,10 +2687,12 @@ export function VehicleDetailPage() {
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Vehicle Details</p>
                 <InfoRow label="Brand"           value={v.brandName} />
+                <InfoRow label="Model"           value={v.model} />
                 <InfoRow label="Vehicle Type"    value={v.vehicleTypeName} />
                 <InfoRow label="Fuel Type"       value={v.fuelTypeName} />
                 <InfoRow label="Ownership"       value={v.ownershipTypeName} />
                 <InfoRow label="Capacity"        value={v.capacityInTons ? `${v.capacityInTons} tons` : null} />
+                <InfoRow label="GVW"             value={v.grossVehicleWeight ? `${v.grossVehicleWeight} tons` : null} />
                 <InfoRow label="Mfg. Year"       value={v.manufactureYear} />
                 <InfoRow label="Color"           value={v.color} />
                 <InfoRow label="Odometer"        value={v.currentOdometerReading ? `${Number(v.currentOdometerReading).toLocaleString('en-IN')} km` : null} />
@@ -2719,6 +2721,26 @@ export function VehicleDetailPage() {
                 </div>
               )}
             </div>
+            {v.isFinanced && (
+              <div className="border-t pt-5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Finance Details</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                  <InfoRow label="Financer"       value={v.financerName} />
+                  <InfoRow label="Finance From"   value={fmtDate(v.financeStartDate)} />
+                  <InfoRow label="Finance To"     value={fmtDate(v.financeEndDate)} />
+                  <InfoRow
+                    label="Months Remaining"
+                    value={
+                      v.financeMonthsRemaining != null
+                        ? v.financeMonthsRemaining === 0
+                          ? 'Loan closed / overdue'
+                          : `${v.financeMonthsRemaining} month${v.financeMonthsRemaining === 1 ? '' : 's'}`
+                        : null
+                    }
+                  />
+                </div>
+              </div>
+            )}
             </div>
           )}
 
@@ -2835,14 +2857,14 @@ export function VehicleDetailPage() {
                             )}
                             <button
                               onClick={() => setDocToEdit(doc)}
-                              className="p-1.5 text-gray-300 hover:text-feros-navy rounded transition-colors"
+                              className="p-1.5 text-gray-400 hover:text-feros-navy hover:bg-blue-50 rounded transition-colors"
                               title="Edit document"
                             >
                               <Pencil size={14} />
                             </button>
                             <button
                               onClick={() => setDocToDelete(doc)}
-                              className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors"
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                               title="Delete document"
                             >
                               <Trash2 size={14} />
