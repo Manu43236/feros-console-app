@@ -23,9 +23,9 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── bulk upload dialog ────────────────────────────────────────────────────────
 const CSV_TEMPLATE = [
-  'registrationNumber,vehicleType,brand,fuelType,ownershipType,capacityInTons,manufactureYear,color,model,grossVehicleWeight,chassisNumber,engineNumber,currentOdometerReading,fuelTankCapacity,currentFuelLevel,tyreRotationIntervalKm,gpsDeviceNumber,gpsDeviceImei,gpsProvider,isFinanced,financerName,financeStartDate,financeEndDate,ownerName,ownerPhone,ownerAddress,ownerPan,agreementStartDate,agreementEndDate,agreementAmount,notes,doc1Type,doc1Number,doc1IssueDate,doc1ExpiryDate,doc2Type,doc2Number,doc2IssueDate,doc2ExpiryDate',
-  'MH12AB1234,Truck,TATA,DIESEL,Own,10,2020,White,407,16.2,CH123456,ENG123456,5000,80,40,50000,,,,false,,,,,,,,,,,,RC,MH12AB1234,2020-01-15,2040-01-14,Insurance,POL123456,2024-06-01,2025-05-31',
-  'MH14CD5678,Trailer,Ashok Leyland,DIESEL,Hired,25,2019,Blue,Prima 4940,49,,,,,,,,,,false,,,,,Raju Transport,9876543210,Vizianagaram,ABCDE1234F,2024-01-01,2025-12-31,15000,,Fitness,FIT987654,2023-04-01,2025-03-31,,,,',
+  'registrationNumber,vehicleType,brand,fuelType,ownershipType,capacityInTons,manufactureYear,color,model,grossVehicleWeight,chassisNumber,engineNumber,currentOdometerReading,fuelTankCapacity,currentFuelLevel,tyreRotationIntervalKm,gpsDeviceNumber,gpsDeviceImei,gpsProvider,isFinanced,financerName,financeStartDate,financeEndDate,ownerName,ownerPhone,ownerAddress,ownerPan,agreementStartDate,agreementEndDate,agreementAmount,notes,doc1Type,doc1Number,doc1IssueDate,doc1ExpiryDate,doc2Type,doc2Number,doc2IssueDate,doc2ExpiryDate,doc3Type,doc3Number,doc3IssueDate,doc3ExpiryDate,doc4Type,doc4Number,doc4IssueDate,doc4ExpiryDate,doc5Type,doc5Number,doc5IssueDate,doc5ExpiryDate,doc6Type,doc6Number,doc6IssueDate,doc6ExpiryDate,doc7Type,doc7Number,doc7IssueDate,doc7ExpiryDate',
+  'MH12AB1234,Truck,TATA,DIESEL,Own,10,2020,White,407,16.2,CH123456,ENG123456,5000,80,40,50000,,,,false,,,,,,,,,,,,Registration Certificate (RC),MH12AB1234,2020-01-15,2040-01-14,Insurance Certificate,POL123456,2024-06-01,2025-05-31',
+  'MH14CD5678,Trailer,Ashok Leyland,DIESEL,Hired,25,2019,Blue,Prima 4940,49,,,,,,,,,,false,,,,,Raju Transport,9876543210,Vizianagaram,ABCDE1234F,2024-01-01,2025-12-31,15000,,Fitness Certificate,FIT987654,2023-04-01,2025-03-31,National Permit,NP123456,2024-01-01,2026-12-31',
 ].join('\n')
 
 function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -84,8 +84,9 @@ function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: ()
             <p><span className="font-medium">Finance:</span> isFinanced (true/false), financerName, financeStartDate, financeEndDate</p>
             <p><span className="font-medium">Owner (hired):</span> ownerName, ownerPhone, ownerAddress, ownerPan, agreementStartDate, agreementEndDate, agreementAmount</p>
             <p><span className="font-medium">Notes:</span> notes</p>
-            <p><span className="font-medium">Documents</span> (repeating groups of 4 from col 32): docType, docNumber, issueDate, expiryDate</p>
-            <p className="text-blue-600 text-xs mt-2">Dates must be YYYY-MM-DD. Vehicle status defaults to Available. Document type names must match Global Masters exactly. Add more doc groups by appending 4 more columns.</p>
+            <p><span className="font-medium">Documents</span> (up to 7 groups of 4 cols each): docType, docNumber, issueDate, expiryDate</p>
+            <p className="text-blue-600 text-xs mt-1">Valid doc types: <code className="bg-blue-100 px-1 rounded">Registration Certificate (RC)</code>, <code className="bg-blue-100 px-1 rounded">Insurance Certificate</code>, <code className="bg-blue-100 px-1 rounded">Fitness Certificate</code>, <code className="bg-blue-100 px-1 rounded">National Permit</code>, <code className="bg-blue-100 px-1 rounded">State Permit</code>, <code className="bg-blue-100 px-1 rounded">Pollution Under Control (PUC)</code>, <code className="bg-blue-100 px-1 rounded">Road Tax Receipt</code></p>
+            <p className="text-blue-600 text-xs mt-1">Dates must be YYYY-MM-DD. Vehicle status defaults to Available. Doc type names must match exactly as shown above.</p>
           </div>
 
           <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 w-full">
