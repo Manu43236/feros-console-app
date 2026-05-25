@@ -10,6 +10,7 @@ import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import {
   Plus, Search, Truck, ChevronRight, Upload, Download, CheckCircle, XCircle, Calendar,
+  Paperclip, FileText, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import type { Vehicle, BulkUploadResult, VehicleStatusType } from '@/types'
+import type { Vehicle, BulkUploadResult, VehicleStatusType, DocumentTypeItem } from '@/types'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── bulk upload dialog ────────────────────────────────────────────────────────
@@ -202,6 +203,188 @@ const schema = z.object({
 )
 type FormData = z.infer<typeof schema>
 
+// ── step 2: document checklist ────────────────────────────────────────────────
+type DocEntry = { documentNumber: string; issueDate: string; expiryDate: string; issuerName: string; file: File | null }
+const emptyEntry = (): DocEntry => ({ documentNumber: '', issueDate: '', expiryDate: '', issuerName: '', file: null })
+
+function VehicleDocStep({ vehicleId, onFinish }: { vehicleId: number; onFinish: () => void }) {
+  const { data: docTypesRes, isLoading } = useQuery({
+    queryKey: ['document-types'],
+    queryFn: globalMastersApi.getDocumentTypes,
+  })
+  const vehicleDocTypes: DocumentTypeItem[] = (docTypesRes?.data ?? []).filter(
+    dt => dt.applicableFor === 'VEHICLE' || dt.applicableFor === 'BOTH'
+  )
+
+  const [entries, setEntries] = useState<Record<number, DocEntry>>({})
+  const [isSaving, setIsSaving] = useState(false)
+  const fileRefs = useRef<Record<number, HTMLInputElement | null>>({})
+
+  function update(typeId: number, patch: Partial<DocEntry>) {
+    setEntries(prev => ({ ...prev, [typeId]: { ...emptyEntry(), ...prev[typeId], ...patch } }))
+  }
+
+  function isFilled(typeId: number) {
+    const e = entries[typeId]
+    return !!(e?.documentNumber || e?.expiryDate || e?.issueDate || e?.file)
+  }
+
+  async function handleSave() {
+    const filled = vehicleDocTypes.filter(dt => isFilled(dt.id))
+    if (filled.length === 0) { onFinish(); return }
+    setIsSaving(true)
+    let savedCount = 0
+    try {
+      for (const dt of filled) {
+        const entry = entries[dt.id]
+        let fileUrl: string | undefined
+        if (entry.file) {
+          const up = await vehiclesApi.uploadDocFile(vehicleId, entry.file)
+          fileUrl = up.data?.publicUrl
+        }
+        await vehiclesApi.addDocument(vehicleId, {
+          documentTypeId: dt.id,
+          documentNumber: entry.documentNumber || undefined,
+          issueDate: entry.issueDate || undefined,
+          expiryDate: entry.expiryDate || undefined,
+          issuerName: entry.issuerName || undefined,
+          fileUrl,
+        })
+        savedCount++
+      }
+      toast.success(`Vehicle added with ${savedCount} document${savedCount !== 1 ? 's' : ''}`)
+    } catch {
+      if (savedCount > 0) toast.warning(`${savedCount} document${savedCount !== 1 ? 's' : ''} saved, some failed`)
+      else toast.error('Failed to save documents — vehicle was still created')
+    } finally {
+      setIsSaving(false)
+      onFinish()
+    }
+  }
+
+  if (isLoading) return <div className="py-8 text-center text-sm text-gray-400">Loading document types…</div>
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">
+        Fill in what you have on hand. Leave the rest blank — you can always add documents later from the vehicle details page.
+      </p>
+
+      <div className="space-y-2 max-h-[52vh] overflow-y-auto pr-1">
+        {vehicleDocTypes.map(dt => {
+          const e = entries[dt.id]
+          const filled = isFilled(dt.id)
+          return (
+            <div key={dt.id} className={cn(
+              'border rounded-lg p-3 transition-colors',
+              filled ? 'border-blue-200 bg-blue-50/40' : 'border-gray-100 bg-gray-50/50'
+            )}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">{dt.name}</span>
+                {filled && <span className="text-[11px] font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Will save</span>}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  placeholder="Doc number"
+                  value={e?.documentNumber ?? ''}
+                  onChange={ev => update(dt.id, { documentNumber: ev.target.value })}
+                  className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                />
+                <div className="relative">
+                  <input
+                    type="date"
+                    title="Issue Date"
+                    value={e?.issueDate ?? ''}
+                    onChange={ev => update(dt.id, { issueDate: ev.target.value })}
+                    className="w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                  />
+                  {!e?.issueDate && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 pointer-events-none">Issue date</span>}
+                </div>
+                <div className="relative">
+                  <input
+                    type="date"
+                    title="Expiry Date"
+                    value={e?.expiryDate ?? ''}
+                    onChange={ev => update(dt.id, { expiryDate: ev.target.value })}
+                    className="w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                  />
+                  {!e?.expiryDate && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 pointer-events-none">Expiry date</span>}
+                </div>
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <input
+                  ref={el => { fileRefs.current[dt.id] = el }}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={ev => update(dt.id, { file: ev.target.files?.[0] ?? null })}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRefs.current[dt.id]?.click()}
+                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                >
+                  <Paperclip size={11} />
+                  {e?.file ? <span className="text-blue-600 font-medium truncate max-w-[160px]">{e.file.name}</span> : 'Attach file'}
+                </button>
+                {e?.file && (
+                  <button type="button" onClick={() => update(dt.id, { file: null })} className="text-gray-300 hover:text-red-400">
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="flex items-center justify-between pt-3 border-t">
+        <button
+          type="button"
+          onClick={onFinish}
+          className="text-sm text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+        >
+          Skip, add documents later
+        </button>
+        <Button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="bg-feros-navy hover:bg-feros-navy/90 text-white"
+        >
+          <FileText size={14} className="mr-1.5" />
+          {isSaving ? 'Saving…' : 'Save & Finish'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// ── step indicator ─────────────────────────────────────────────────────────────
+function StepIndicator({ step }: { step: 1 | 2 }) {
+  return (
+    <div className="flex items-center gap-2 py-3 border-b mb-1">
+      <div className={cn('flex items-center gap-1.5 text-sm font-medium transition-colors', step === 1 ? 'text-feros-navy' : 'text-gray-400')}>
+        <span className={cn('w-6 h-6 rounded-full text-xs flex items-center justify-center font-semibold transition-colors',
+          step === 1 ? 'bg-feros-navy text-white' : 'bg-green-500 text-white'
+        )}>
+          {step === 1 ? '1' : '✓'}
+        </span>
+        Vehicle Info
+      </div>
+      <div className={cn('flex-1 h-px transition-colors', step === 2 ? 'bg-feros-navy' : 'bg-gray-200')} />
+      <div className={cn('flex items-center gap-1.5 text-sm font-medium transition-colors', step === 2 ? 'text-feros-navy' : 'text-gray-400')}>
+        <span className={cn('w-6 h-6 rounded-full text-xs flex items-center justify-center font-semibold transition-colors',
+          step === 2 ? 'bg-feros-navy text-white' : 'bg-gray-200 text-gray-500'
+        )}>2</span>
+        Documents
+        <span className="text-xs font-normal text-gray-400">(optional)</span>
+      </div>
+    </div>
+  )
+}
+
 // ── vehicle form dialog ───────────────────────────────────────────────────────
 export function VehicleForm({
   open, onClose, vehicle, onSuccess: onSuccessExtra,
@@ -210,6 +393,8 @@ export function VehicleForm({
 }) {
   const qc = useQueryClient()
   const isEdit = !!vehicle
+  const [step, setStep] = useState<1 | 2>(1)
+  const [createdVehicleId, setCreatedVehicleId] = useState<number | null>(null)
   const [ownershipTypeId, setOwnershipTypeId] = useState<number | undefined>(vehicle?.ownershipTypeId)
 
   const { data: brandsRes }        = useQuery({ queryKey: ['vehicle-brands'],    queryFn: globalMastersApi.getVehicleBrands })
@@ -279,7 +464,7 @@ export function VehicleForm({
       })
       setOwnershipTypeId(vehicle.ownershipTypeId)
     }
-    if (!open) reset({})
+    if (!open) { reset({}); setStep(1); setCreatedVehicleId(null) }
   }, [open])
 
   const watchedTypeId    = watch('vehicleTypeId')
@@ -287,35 +472,59 @@ export function VehicleForm({
   useEffect(() => {
     if (!watchedTypeId) return
     const vehicleType = (typesRes?.data ?? []).find(t => t.id === watchedTypeId)
-    if (vehicleType?.capacityInTons) {
-      setValue('capacityInTons', Number(vehicleType.capacityInTons))
-    }
+    if (vehicleType?.capacityInTons) setValue('capacityInTons', Number(vehicleType.capacityInTons))
   }, [watchedTypeId])
+
+  function handleClose() {
+    // If vehicle was already created (step 2 or skip), refresh the list
+    if (createdVehicleId) {
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
+      onSuccessExtra?.()
+    }
+    reset(); setStep(1); setCreatedVehicleId(null); onClose()
+  }
 
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
       isEdit ? vehiclesApi.update(vehicle!.id, data) : vehiclesApi.create(data),
-    onSuccess: () => {
-      toast.success(`Vehicle ${isEdit ? 'updated' : 'added'} successfully`)
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['vehicles'] })
-      onSuccessExtra?.()
-      reset(); onClose()
+      if (isEdit) {
+        toast.success('Vehicle updated successfully')
+        onSuccessExtra?.()
+        reset(); onClose()
+      } else {
+        // Advance to step 2
+        setCreatedVehicleId(res.data.id)
+        setStep(2)
+      }
     },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      // Hide raw Spring/JSON technical errors — show a friendly message instead
       const isTechnical = msg && (msg.startsWith('JSON parse error') || msg.includes('Cannot coerce') || msg.includes('Unrecognized field'))
       toast.error(isTechnical ? 'Invalid data submitted. Please check all fields and try again.' : (msg ?? 'Something went wrong'))
     },
   })
 
+  const dialogTitle = isEdit ? 'Edit Vehicle' : step === 1 ? 'Add Vehicle' : 'Add Documents'
+
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Vehicle' : 'Add Vehicle'}</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
 
+        {/* Progress indicator — only for new vehicle creation */}
+        {!isEdit && <StepIndicator step={step} />}
+
+        {/* ── Step 2: Documents ── */}
+        {step === 2 && createdVehicleId && (
+          <VehicleDocStep vehicleId={createdVehicleId} onFinish={handleClose} />
+        )}
+
+        {/* ── Step 1: Vehicle Info ── */}
+        {step === 1 && (
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
 
           {/* Basic Info */}
@@ -488,11 +697,7 @@ export function VehicleForm({
               <p className="text-sm font-medium text-gray-700">Finance</p>
               <label className="flex items-center gap-2 cursor-pointer">
                 <span className="text-sm text-gray-500">Vehicle is financed</span>
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 accent-feros-navy"
-                  {...register('isFinanced')}
-                />
+                <input type="checkbox" className="w-4 h-4 accent-feros-navy" {...register('isFinanced')} />
               </label>
             </div>
             {watchedFinanced && (
@@ -549,13 +754,18 @@ export function VehicleForm({
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <div className="flex justify-between items-center pt-2 border-t">
+            <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
-              {mutation.isPending ? 'Saving…' : isEdit ? 'Update Vehicle' : 'Add Vehicle'}
+              {mutation.isPending
+                ? 'Saving…'
+                : isEdit
+                  ? 'Update Vehicle'
+                  : 'Next: Add Documents →'}
             </Button>
           </div>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   )
