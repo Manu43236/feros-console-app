@@ -725,7 +725,7 @@ export function LrDetailPage() {
               )}
 
               {/* Primary actions — keep text for clarity */}
-              {lr.lrStatus === 'CREATED' && (
+              {lr.lrStatus === 'CREATED' && lr.loadedWeight == null && (
                 <button
                   onClick={() => setDialog('load')}
                   className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -838,7 +838,7 @@ export function LrDetailPage() {
           icon={<Package className="h-4 w-4" />}
           label="Loaded"
           value={lr.loadedWeight != null ? `${lr.loadedWeight}T` : '—'}
-          sub={lr.loadedAt ? `At ${new Date(lr.loadedAt).toLocaleString()}` : 'Not yet loaded'}
+          sub={lr.loadedAt ? `At ${new Date(lr.loadedAt).toLocaleString()}` : lr.loadedWeight != null ? 'Recorded at LR creation' : 'Not yet loaded'}
         />
         <StatCard
           icon={<CheckCircle2 className="h-4 w-4" />}
