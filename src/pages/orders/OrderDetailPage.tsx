@@ -164,7 +164,7 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
   onClose: () => void
 }) {
   const qc = useQueryClient()
-  const { data: staffRes } = useQuery({ queryKey: ['users'], queryFn: staffApi.getUsers })
+  const { data: staffRes } = useQuery({ queryKey: ['users', { hasAttendanceToday: true }], queryFn: () => staffApi.getUsers({ hasAttendanceToday: true }) })
 
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AssignStaffForm>({
     resolver: zodResolver(assignStaffSchema) as Resolver<AssignStaffForm>,
@@ -176,7 +176,7 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
     onSuccess: () => {
       toast.success(`${slotRole === 'DRIVER' ? 'Driver' : 'Cleaner'} assigned successfully`)
       qc.invalidateQueries({ queryKey: ['order', orderId] })
-      qc.invalidateQueries({ queryKey: ['users'] })
+      qc.invalidateQueries({ queryKey: ['users', { hasAttendanceToday: true }] })
       reset(); onClose()
     },
     onError: (e: unknown) => {
@@ -214,7 +214,7 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
             {errors.userId && <p className="text-red-500 text-xs">{errors.userId.message}</p>}
             {eligible.length === 0 && (
               <p className="text-xs text-orange-500">
-                No available {slotRole === 'DRIVER' ? 'drivers' : 'cleaners'} found. All may be assigned to other orders.
+                No available {slotRole === 'DRIVER' ? 'drivers' : 'cleaners'} found. Only those who have marked attendance today are shown.
               </p>
             )}
           </div>

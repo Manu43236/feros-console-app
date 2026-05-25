@@ -242,6 +242,9 @@ function AssignDriverDialog({ open, onClose, orders, drivers }: {
               placeholder="Select driver"
               className="mt-1"
             />
+            {activeDrivers.length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">No available drivers found. Only drivers who have marked attendance today are shown.</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -302,8 +305,8 @@ export default function AssignmentsPage() {
     queryFn: () => vehiclesApi.getAll(),
   })
   const { data: usersRes } = useQuery({
-    queryKey: ['assignments-users'],
-    queryFn: staffApi.getUsers,
+    queryKey: ['assignments-users', { hasAttendanceToday: true }],
+    queryFn: () => staffApi.getUsers({ hasAttendanceToday: true }),
   })
 
   const orders = (ordersRes?.data?.content ?? []) as Order[]
