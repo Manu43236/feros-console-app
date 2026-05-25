@@ -445,12 +445,15 @@ function ChargesTab({ lrId, charges, canDelete }: { lrId: number; charges: LrCha
 }
 
 // ─── Edit LR Dialog ────────────────────────────────────────────────────────
-function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, currentDeliveredWeight, open, onClose }: {
+function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, currentDeliveredWeight, currentEwayBillNumber, currentEwayBillDate, currentEwayBillValidUpto, open, onClose }: {
   lrId: number
   lrStatus: LrStatus
   currentRemarks?: string
   currentLoadedWeight?: number
   currentDeliveredWeight?: number
+  currentEwayBillNumber?: string
+  currentEwayBillDate?: string
+  currentEwayBillValidUpto?: string
   open: boolean
   onClose: () => void
 }) {
@@ -458,6 +461,9 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
   const [remarks, setRemarks]               = useState(currentRemarks ?? '')
   const [loadedWeight, setLoadedWeight]     = useState(currentLoadedWeight?.toString() ?? '')
   const [deliveredWeight, setDeliveredWeight] = useState(currentDeliveredWeight?.toString() ?? '')
+  const [ewayBillNumber, setEwayBillNumber] = useState(currentEwayBillNumber ?? '')
+  const [ewayBillDate, setEwayBillDate]     = useState(currentEwayBillDate ?? '')
+  const [ewayBillValidUpto, setEwayBillValidUpto] = useState(currentEwayBillValidUpto ?? '')
 
   const canEditLoaded    = lrStatus === 'CREATED' || lrStatus === 'WEIGHT_LOADED' || lrStatus === 'IN_TRANSIT'
   const canEditDelivered = lrStatus === 'DELIVERED'
@@ -465,8 +471,11 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
   const mutation = useMutation({
     mutationFn: () => {
       const payload: Record<string, unknown> = { remarks: remarks || undefined }
-      if (canEditLoaded && loadedWeight)    payload.loadedWeight    = parseFloat(loadedWeight)
-      if (canEditDelivered && deliveredWeight) payload.deliveredWeight = parseFloat(deliveredWeight)
+      if (canEditLoaded && loadedWeight)       payload.loadedWeight      = parseFloat(loadedWeight)
+      if (canEditDelivered && deliveredWeight) payload.deliveredWeight   = parseFloat(deliveredWeight)
+      if (ewayBillNumber)    payload.ewayBillNumber    = ewayBillNumber
+      if (ewayBillDate)      payload.ewayBillDate      = ewayBillDate
+      if (ewayBillValidUpto) payload.ewayBillValidUpto = ewayBillValidUpto
       return lrsApi.update(lrId, payload)
     },
     onSuccess: () => { toast.success('LR updated'); qc.invalidateQueries({ queryKey: ['lr', lrId] }); qc.invalidateQueries({ queryKey: ['lrs'] }); onClose() },
@@ -504,6 +513,25 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
               <p className="text-xs text-gray-400 mt-1">Current: {currentDeliveredWeight ?? '—'}T · Cannot exceed loaded weight</p>
             </div>
           )}
+          <div className="border-t pt-3">
+            <p className="text-sm font-medium text-gray-700 mb-3">E-way Bill (optional)</p>
+            <div className="space-y-2">
+              <div>
+                <Label>E-way Bill No.</Label>
+                <Input className="mt-1" placeholder="EWB123456789" value={ewayBillNumber} onChange={e => setEwayBillNumber(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Bill Date</Label>
+                  <Input className="mt-1" type="date" value={ewayBillDate} onChange={e => setEwayBillDate(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Valid Upto</Label>
+                  <Input className="mt-1" type="date" value={ewayBillValidUpto} onChange={e => setEwayBillValidUpto(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          </div>
           <div>
             <Label>Remarks</Label>
             <textarea
@@ -827,6 +855,27 @@ export function LrDetailPage() {
         />
       </div>
 
+      {/* ── E-way Bill ── */}
+      {(lr.ewayBillNumber || lr.ewayBillDate || lr.ewayBillValidUpto) && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">E-way Bill</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">E-way Bill No.</p>
+              <p className="font-medium text-gray-800">{lr.ewayBillNumber ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Bill Date</p>
+              <p className="font-medium text-gray-800">{lr.ewayBillDate ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Valid Upto</p>
+              <p className="font-medium text-gray-800">{lr.ewayBillValidUpto ?? '—'}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Remarks ── */}
       {lr.remarks && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
@@ -898,7 +947,7 @@ export function LrDetailPage() {
       <MarkDeliveredDialog  lrId={id} startOdometer={lr?.startOdometer} open={dialog === 'deliver'}   onClose={() => setDialog(null)} />
       <AddCheckpostDialog   lrId={id} open={dialog === 'checkpost'} onClose={() => setDialog(null)} />
       <AddChargeDialog      lrId={id} open={dialog === 'charge'}    onClose={() => setDialog(null)} />
-      <EditLrDialog         lrId={id} lrStatus={lr.lrStatus} currentRemarks={lr.remarks} currentLoadedWeight={lr.loadedWeight} currentDeliveredWeight={lr.deliveredWeight} open={dialog === 'edit'} onClose={() => setDialog(null)} />
+      <EditLrDialog         lrId={id} lrStatus={lr.lrStatus} currentRemarks={lr.remarks} currentLoadedWeight={lr.loadedWeight} currentDeliveredWeight={lr.deliveredWeight} currentEwayBillNumber={lr.ewayBillNumber} currentEwayBillDate={lr.ewayBillDate} currentEwayBillValidUpto={lr.ewayBillValidUpto} open={dialog === 'edit'} onClose={() => setDialog(null)} />
       <CancelLrDialog       lrId={id} open={dialog === 'cancel'}    onClose={() => setDialog(null)} />
     </div>
   )

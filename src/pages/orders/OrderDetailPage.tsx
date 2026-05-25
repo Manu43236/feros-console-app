@@ -1231,27 +1231,6 @@ export function OrderDetailPage() {
         </div>
       )}
 
-      {/* ── E-way Bill ── */}
-      {(order.ewayBillNumber || order.ewayBillDate || order.ewayBillValidUpto) && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">E-way Bill</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">E-way Bill No.</p>
-              <p className="font-medium text-gray-800">{order.ewayBillNumber ?? '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Bill Date</p>
-              <p className="font-medium text-gray-800">{fmt(order.ewayBillDate)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Valid Upto</p>
-              <p className="font-medium text-gray-800">{fmt(order.ewayBillValidUpto)}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Dialogs ── */}
       <AssignVehicleDialog
         orderId={order.id}

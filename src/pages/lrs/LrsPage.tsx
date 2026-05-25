@@ -46,6 +46,9 @@ const createSchema = z.object({
   vehicleAllocationId: z.string().min(1, 'Select a vehicle allocation'),
   lrDate:              z.string().min(1, 'LR date is required'),
   loadedWeight:        z.string().optional(),
+  ewayBillNumber:      z.string().optional(),
+  ewayBillDate:        z.string().optional(),
+  ewayBillValidUpto:   z.string().optional(),
   remarks:             z.string().optional(),
 })
 type CreateForm = z.infer<typeof createSchema>
@@ -68,9 +71,12 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const mutation = useMutation({
     mutationFn: (data: CreateForm) => lrsApi.create({
       vehicleAllocationId: parseInt(data.vehicleAllocationId),
-      lrDate:       data.lrDate,
-      loadedWeight: data.loadedWeight ? parseFloat(data.loadedWeight) : undefined,
-      remarks:      data.remarks || undefined,
+      lrDate:            data.lrDate,
+      loadedWeight:      data.loadedWeight ? parseFloat(data.loadedWeight) : undefined,
+      ewayBillNumber:    data.ewayBillNumber || undefined,
+      ewayBillDate:      data.ewayBillDate || undefined,
+      ewayBillValidUpto: data.ewayBillValidUpto || undefined,
+      remarks:           data.remarks || undefined,
     }),
     onSuccess: () => {
       toast.success('LR created successfully')
@@ -152,6 +158,24 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
           <div className="space-y-1.5">
             <Label>Loaded Weight (tons)</Label>
             <Input type="number" step="0.01" min="0" {...register('loadedWeight')} placeholder="Optional — record now or after loading" />
+          </div>
+
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-gray-700 mb-3">E-way Bill (optional)</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>E-way Bill No.</Label>
+                <Input placeholder="EWB123456789" {...register('ewayBillNumber')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Bill Date</Label>
+                <Input type="date" {...register('ewayBillDate')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Valid Upto</Label>
+                <Input type="date" {...register('ewayBillValidUpto')} />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-1.5">

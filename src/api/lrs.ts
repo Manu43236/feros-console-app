@@ -6,6 +6,9 @@ interface CreateLrPayload {
   lrDate?: string
   loadedWeight?: number
   loadedAt?: string
+  ewayBillNumber?: string
+  ewayBillDate?: string
+  ewayBillValidUpto?: string
   remarks?: string
 }
 
@@ -17,6 +20,9 @@ interface UpdateLrPayload {
   endOdometer?: number
   startOdometer?: number
   lrStatus?: LrStatus
+  ewayBillNumber?: string
+  ewayBillDate?: string
+  ewayBillValidUpto?: string
   remarks?: string
 }
 

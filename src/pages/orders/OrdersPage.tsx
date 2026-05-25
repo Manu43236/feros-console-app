@@ -93,9 +93,6 @@ const schema = z.object({
   billingOn:            z.enum(['LOADED_WEIGHT', 'DELIVERED_WEIGHT']).optional(),
   specialInstructions:  z.string().optional(),
   remarks:              z.string().optional(),
-  ewayBillNumber:       z.string().optional(),
-  ewayBillDate:         z.string().optional(),
-  ewayBillValidUpto:    z.string().optional(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -165,9 +162,6 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
         billingOn:            order.billingOn,
         specialInstructions:  order.specialInstructions ?? '',
         remarks:              order.remarks ?? '',
-        ewayBillNumber:       order.ewayBillNumber ?? '',
-        ewayBillDate:         order.ewayBillDate ?? '',
-        ewayBillValidUpto:    order.ewayBillValidUpto ?? '',
       })
       setSrcState(order.sourceStateId)
       setDstState(order.destinationStateId)
@@ -421,25 +415,6 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               <div className="space-y-1.5">
                 <Label>Remarks</Label>
                 <Input placeholder="Internal notes…" {...register('remarks')} />
-              </div>
-            </div>
-          </div>
-
-          {/* ── E-way Bill ── */}
-          <div className="border-t pt-4">
-            <p className="text-sm font-medium text-gray-700 mb-3">E-way Bill (optional)</p>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label>E-way Bill No.</Label>
-                <Input placeholder="EWB123456789" {...register('ewayBillNumber')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>E-way Bill Date</Label>
-                <Input type="date" {...register('ewayBillDate')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Valid Upto</Label>
-                <Input type="date" {...register('ewayBillValidUpto')} />
               </div>
             </div>
           </div>

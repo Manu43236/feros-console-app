@@ -177,7 +177,6 @@ export interface Order {
   freightRateType: FreightRateType; freightRate: number; billingOn: BillingOn
   totalFreightAmount?: number; orderStatus: OrderStatus; orderPaymentStatus: OrderPaymentStatus
   specialInstructions?: string; remarks?: string
-  ewayBillNumber?: string; ewayBillDate?: string; ewayBillValidUpto?: string
   vehicleAllocations?: VehicleAllocation[]
   isActive: boolean; createdAt: string; updatedAt: string
 }
@@ -244,6 +243,7 @@ export interface Lr {
   loadedWeight?: number; deliveredWeight?: number
   overloadWeight?: number; weightVariance?: number; isOverloaded?: boolean
   loadedAt?: string; deliveredAt?: string
+  ewayBillNumber?: string; ewayBillDate?: string; ewayBillValidUpto?: string
   lrStatus: LrStatus; remarks?: string
   checkposts?: LrCheckpost[]; charges?: LrCharge[]
   createdById: number; createdByName: string
