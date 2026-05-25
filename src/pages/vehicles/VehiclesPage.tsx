@@ -207,7 +207,7 @@ type FormData = z.infer<typeof schema>
 type DocEntry = { documentNumber: string; issueDate: string; expiryDate: string; issuerName: string; file: File | null }
 const emptyEntry = (): DocEntry => ({ documentNumber: '', issueDate: '', expiryDate: '', issuerName: '', file: null })
 
-function VehicleDocStep({ vehicleId, onFinish }: { vehicleId: number; onFinish: () => void }) {
+function VehicleDocStep({ vehicleId, onFinish, onBack }: { vehicleId: number; onFinish: () => void; onBack: () => void }) {
   const { data: docTypesRes, isLoading } = useQuery({
     queryKey: ['document-types'],
     queryFn: globalMastersApi.getDocumentTypes,
@@ -340,13 +340,18 @@ function VehicleDocStep({ vehicleId, onFinish }: { vehicleId: number; onFinish: 
       </div>
 
       <div className="flex items-center justify-between pt-3 border-t">
-        <button
-          type="button"
-          onClick={onFinish}
-          className="text-sm text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
-        >
-          Skip, add documents later
-        </button>
+        <div className="flex items-center gap-4">
+          <Button type="button" variant="outline" onClick={onBack} className="gap-1.5">
+            ← Back
+          </Button>
+          <button
+            type="button"
+            onClick={onFinish}
+            className="text-sm text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+          >
+            Skip, add later
+          </button>
+        </div>
         <Button
           type="button"
           onClick={handleSave}
@@ -485,8 +490,11 @@ export function VehicleForm({
   }
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      isEdit ? vehiclesApi.update(vehicle!.id, data) : vehiclesApi.create(data),
+    mutationFn: (data: FormData) => {
+      if (isEdit) return vehiclesApi.update(vehicle!.id, data)
+      if (createdVehicleId) return vehiclesApi.update(createdVehicleId, data)
+      return vehiclesApi.create(data)
+    },
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['vehicles'] })
       if (isEdit) {
@@ -494,8 +502,8 @@ export function VehicleForm({
         onSuccessExtra?.()
         reset(); onClose()
       } else {
-        // Advance to step 2
-        setCreatedVehicleId(res.data.id)
+        // Advance to step 2 (or return to it after back-navigation)
+        if (!createdVehicleId) setCreatedVehicleId(res.data.id)
         setStep(2)
       }
     },
@@ -520,7 +528,7 @@ export function VehicleForm({
 
         {/* ── Step 2: Documents ── */}
         {step === 2 && createdVehicleId && (
-          <VehicleDocStep vehicleId={createdVehicleId} onFinish={handleClose} />
+          <VehicleDocStep vehicleId={createdVehicleId} onFinish={handleClose} onBack={() => setStep(1)} />
         )}
 
         {/* ── Step 1: Vehicle Info ── */}
@@ -761,7 +769,9 @@ export function VehicleForm({
                 ? 'Saving…'
                 : isEdit
                   ? 'Update Vehicle'
-                  : 'Next: Add Documents →'}
+                  : createdVehicleId
+                    ? 'Save & Continue →'
+                    : 'Next: Add Documents →'}
             </Button>
           </div>
         </form>
