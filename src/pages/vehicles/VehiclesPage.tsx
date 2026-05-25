@@ -23,9 +23,9 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── bulk upload dialog ────────────────────────────────────────────────────────
 const CSV_TEMPLATE = [
-  'registrationNumber,vehicleType,brand,fuelType,ownershipType,capacityInTons,manufactureYear,color,model,grossVehicleWeight,doc1Type,doc1Number,doc1IssueDate,doc1ExpiryDate,doc2Type,doc2Number,doc2IssueDate,doc2ExpiryDate',
-  'MH12AB1234,Truck,TATA,DIESEL,Own,10,2020,White,407,16.2,RC,MH12AB1234,2020-01-15,2040-01-14,Insurance,POL123456,2024-06-01,2025-05-31',
-  'MH14CD5678,Trailer,Ashok Leyland,DIESEL,Hired,25,2019,Blue,Prima 4940,49,Fitness,FIT987654,2023-04-01,2025-03-31,,,,',
+  'registrationNumber,vehicleType,brand,fuelType,ownershipType,capacityInTons,manufactureYear,color,model,grossVehicleWeight,chassisNumber,engineNumber,currentOdometerReading,fuelTankCapacity,currentFuelLevel,tyreRotationIntervalKm,gpsDeviceNumber,gpsDeviceImei,gpsProvider,isFinanced,financerName,financeStartDate,financeEndDate,ownerName,ownerPhone,ownerAddress,ownerPan,agreementStartDate,agreementEndDate,agreementAmount,notes,doc1Type,doc1Number,doc1IssueDate,doc1ExpiryDate,doc2Type,doc2Number,doc2IssueDate,doc2ExpiryDate',
+  'MH12AB1234,Truck,TATA,DIESEL,Own,10,2020,White,407,16.2,CH123456,ENG123456,5000,80,40,50000,,,,false,,,,,,,,,,,,RC,MH12AB1234,2020-01-15,2040-01-14,Insurance,POL123456,2024-06-01,2025-05-31',
+  'MH14CD5678,Trailer,Ashok Leyland,DIESEL,Hired,25,2019,Blue,Prima 4940,49,,,,,,,,,,false,,,,,Raju Transport,9876543210,Vizianagaram,ABCDE1234F,2024-01-01,2025-12-31,15000,,Fitness,FIT987654,2023-04-01,2025-03-31,,,,',
 ].join('\n')
 
 function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -78,9 +78,14 @@ function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: ()
           <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-1">
             <p className="font-medium">CSV Format</p>
             <p>Required: <code className="bg-blue-100 px-1 rounded">registrationNumber</code></p>
-            <p>Optional: vehicleType, brand, fuelType, ownershipType, capacityInTons, manufactureYear, color, model, grossVehicleWeight</p>
-            <p>Documents (optional, repeating groups of 4): docType, docNumber, issueDate (YYYY-MM-DD), expiryDate (YYYY-MM-DD)</p>
-            <p className="text-blue-600 text-xs mt-2">Document type names must match exactly as configured in Global Masters. Add more doc groups by appending 4 more columns.</p>
+            <p><span className="font-medium">Vehicle info:</span> vehicleType, brand, fuelType, ownershipType, capacityInTons, manufactureYear, color, model, grossVehicleWeight, chassisNumber, engineNumber</p>
+            <p><span className="font-medium">Operational:</span> currentOdometerReading, fuelTankCapacity, currentFuelLevel, tyreRotationIntervalKm</p>
+            <p><span className="font-medium">GPS:</span> gpsDeviceNumber, gpsDeviceImei, gpsProvider</p>
+            <p><span className="font-medium">Finance:</span> isFinanced (true/false), financerName, financeStartDate, financeEndDate</p>
+            <p><span className="font-medium">Owner (hired):</span> ownerName, ownerPhone, ownerAddress, ownerPan, agreementStartDate, agreementEndDate, agreementAmount</p>
+            <p><span className="font-medium">Notes:</span> notes</p>
+            <p><span className="font-medium">Documents</span> (repeating groups of 4 from col 32): docType, docNumber, issueDate, expiryDate</p>
+            <p className="text-blue-600 text-xs mt-2">Dates must be YYYY-MM-DD. Vehicle status defaults to Available. Document type names must match Global Masters exactly. Add more doc groups by appending 4 more columns.</p>
           </div>
 
           <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 w-full">
