@@ -8,13 +8,14 @@ import { toast } from 'sonner'
 import {
   User, Building2, Pencil, Save, X,
   Phone, AlertTriangle, BadgeCheck,
-  Shield, Upload, FileText, Trash2, ExternalLink, FolderOpen,
+  Shield, Upload, FileText, Trash2, ExternalLink, FolderOpen, KeyRound,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
+import { authApi } from '@/api/auth'
 import { staffApi } from '@/api/staff'
 import { tenantsApi } from '@/api/superadmin'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
@@ -841,6 +842,81 @@ function CompanyTab({ role }: { role: string | null }) {
   )
 }
 
+// ── Security Tab ──────────────────────────────────────────────────────────────
+const changePinSchema = z.object({
+  currentPin: z.string().length(4, 'PIN must be 4 digits').regex(/^\d{4}$/, 'PIN must be digits only'),
+  newPin:     z.string().length(4, 'PIN must be 4 digits').regex(/^\d{4}$/, 'PIN must be digits only'),
+  confirmPin: z.string().length(4, 'PIN must be 4 digits'),
+}).refine(d => d.newPin === d.confirmPin, {
+  message: 'PINs do not match',
+  path: ['confirmPin'],
+})
+type ChangePinForm = z.infer<typeof changePinSchema>
+
+function SecurityTab() {
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<ChangePinForm>({
+    resolver: zodResolver(changePinSchema) as Resolver<ChangePinForm>,
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: ChangePinForm) =>
+      authApi.changePin({ currentPin: data.currentPin, newPin: data.newPin }),
+    onSuccess: () => {
+      toast.success('PIN changed successfully')
+      reset()
+    },
+    onError: (e: unknown) => toast.error(
+      getApiError(e, 'Failed to change PIN') ?? 'Failed to change PIN'
+    ),
+  })
+
+  return (
+    <div className="max-w-sm space-y-5">
+      <SectionHeader title="Change PIN" />
+      <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4">
+        <div>
+          <Label>Current PIN</Label>
+          <Input
+            type="password"
+            maxLength={4}
+            placeholder="Enter current 4-digit PIN"
+            {...register('currentPin')}
+          />
+          {errors.currentPin && <p className="text-xs text-red-500 mt-1">{errors.currentPin.message}</p>}
+        </div>
+        <div>
+          <Label>New PIN</Label>
+          <Input
+            type="password"
+            maxLength={4}
+            placeholder="Enter new 4-digit PIN"
+            {...register('newPin')}
+          />
+          {errors.newPin && <p className="text-xs text-red-500 mt-1">{errors.newPin.message}</p>}
+        </div>
+        <div>
+          <Label>Confirm New PIN</Label>
+          <Input
+            type="password"
+            maxLength={4}
+            placeholder="Re-enter new 4-digit PIN"
+            {...register('confirmPin')}
+          />
+          {errors.confirmPin && <p className="text-xs text-red-500 mt-1">{errors.confirmPin.message}</p>}
+        </div>
+        <Button
+          type="submit"
+          disabled={mutation.isPending}
+          className="bg-feros-navy hover:bg-feros-navy/90 w-full"
+        >
+          <KeyRound size={14} className="mr-1.5" />
+          {mutation.isPending ? 'Changing…' : 'Change PIN'}
+        </Button>
+      </form>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function ProfilePage() {
   const userId      = useAuthStore(s => s.userId)
@@ -849,7 +925,7 @@ export function ProfilePage() {
   const role        = useAuthStore(s => s.role)
   const companyName = useAuthStore(s => s.companyName)
 
-  const [tab, setTab] = useState<'account' | 'company' | 'documents'>('account')
+  const [tab, setTab] = useState<'account' | 'company' | 'documents' | 'security'>('account')
 
   const showCompanyTab = role === 'ADMIN' || role === 'OFFICE_STAFF'
 
@@ -859,6 +935,7 @@ export function ProfilePage() {
     { key: 'account' as const, label: 'Account Details', icon: User },
     ...(showCompanyTab ? [{ key: 'company' as const, label: 'Company Profile', icon: Building2 }] : []),
     ...(showCompanyTab ? [{ key: 'documents' as const, label: 'Documents', icon: FileText }] : []),
+    { key: 'security' as const, label: 'Security', icon: KeyRound },
   ]
 
   return (
@@ -914,6 +991,9 @@ export function ProfilePage() {
           )}
           {tab === 'documents' && showCompanyTab && (
             <DocumentsTab role={role} />
+          )}
+          {tab === 'security' && (
+            <SecurityTab />
           )}
         </div>
       </div>
