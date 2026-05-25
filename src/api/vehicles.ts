@@ -28,6 +28,7 @@ export const vehiclesApi = {
   },
   getDocuments:   (vehicleId: number) => apiClient.get<ApiResponse<VehicleDocument[]>>(`/staff/vehicles/${vehicleId}/documents`).then(r => r.data),
   addDocument:    (vehicleId: number, data: Partial<VehicleDocument>) => apiClient.post<ApiResponse<VehicleDocument>>(`/staff/vehicles/${vehicleId}/documents`, data).then(r => r.data),
+  updateDocument: (docId: number, data: Partial<VehicleDocument>) => apiClient.put<ApiResponse<VehicleDocument>>(`/staff/vehicles/documents/${docId}`, data).then(r => r.data),
   verifyDocument:  (docId: number, data: { isVerified: boolean; remarks?: string }) => apiClient.put<ApiResponse<VehicleDocument>>(`/staff/vehicles/documents/${docId}/verify`, data).then(r => r.data),
   deleteDocument:  (docId: number) => apiClient.delete<ApiResponse<void>>(`/staff/vehicles/documents/${docId}`).then(r => r.data),
   uploadDocFile:  (vehicleId: number, file: File) => {

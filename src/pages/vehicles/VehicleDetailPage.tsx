@@ -1,5 +1,5 @@
 import { getApiError } from '@/lib/apiError'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
@@ -66,6 +66,121 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 // ── tabs ─────────────────────────────────────────────────────────────────────
 const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tyres', 'Meter Readings', 'GPS & Notes', 'Order History', 'Trip History'] as const
 type Tab = typeof TABS[number]
+
+// ── edit document dialog ───────────────────────────────────────────────────────
+function EditDocumentDialog({ vehicleId, doc, open, onClose }: { vehicleId: number; doc: VehicleDocument; open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const showIssuerName = (doc.documentTypeName ?? '').toLowerCase().includes('insurance')
+
+  const { register, handleSubmit, reset } = useForm({
+    defaultValues: {
+      documentNumber: doc.documentNumber ?? '',
+      issuerName:     doc.issuerName ?? '',
+      issueDate:      doc.issueDate ?? '',
+      expiryDate:     doc.expiryDate ?? '',
+      remarks:        doc.remarks ?? '',
+    },
+  })
+
+  useEffect(() => {
+    if (open) reset({
+      documentNumber: doc.documentNumber ?? '',
+      issuerName:     doc.issuerName ?? '',
+      issueDate:      doc.issueDate ?? '',
+      expiryDate:     doc.expiryDate ?? '',
+      remarks:        doc.remarks ?? '',
+    })
+  }, [open, doc.id])
+
+  const mutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) => vehiclesApi.updateDocument(doc.id, data),
+    onSuccess: () => {
+      toast.success('Document updated')
+      qc.invalidateQueries({ queryKey: ['vehicle-docs', vehicleId] })
+      setFile(null); onClose()
+    },
+    onError: () => toast.error('Failed to update document'),
+  })
+
+  async function handleSave(data: Record<string, unknown>) {
+    let fileUrl: string | undefined
+    if (file) {
+      setUploading(true)
+      try {
+        const res = await vehiclesApi.uploadDocFile(vehicleId, file)
+        fileUrl = res.data?.publicUrl
+      } catch {
+        toast.error('File upload failed')
+        setUploading(false)
+        return
+      }
+      setUploading(false)
+    }
+    mutation.mutate({ ...data, ...(fileUrl ? { fileUrl } : {}) })
+  }
+
+  const busy = uploading || mutation.isPending
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Edit Document — {doc.documentTypeName}</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit(handleSave)} className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Document Number</Label>
+            <Input placeholder="DOC123456" {...register('documentNumber')} />
+          </div>
+          {showIssuerName && (
+            <div className="space-y-1.5">
+              <Label>Insurance Company</Label>
+              <Input placeholder="New India Assurance" {...register('issuerName')} />
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Issue Date</Label>
+              <Input type="date" {...register('issueDate')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Expiry Date</Label>
+              <Input type="date" {...register('expiryDate')} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Remarks</Label>
+            <Input placeholder="Optional remarks" {...register('remarks')} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Replace File</Label>
+            <label className={cn(
+              'flex items-center gap-3 w-full border-2 border-dashed rounded-lg px-4 py-3 cursor-pointer transition-colors',
+              file ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            )}>
+              <Paperclip size={16} className={file ? 'text-blue-500' : 'text-gray-400'} />
+              <span className={cn('text-sm truncate', file ? 'text-blue-700 font-medium' : 'text-gray-400')}>
+                {file ? file.name : doc.fileUrl ? 'Click to replace existing file' : 'Click to attach a file'}
+              </span>
+              {file && (
+                <button type="button" onClick={e => { e.preventDefault(); setFile(null) }}
+                  className="ml-auto text-xs text-gray-400 hover:text-red-500">✕</button>
+              )}
+              <input type="file" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+            </label>
+          </div>
+          <div className="flex justify-end gap-3 pt-1">
+            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+            <Button type="submit" disabled={busy} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+              {uploading ? 'Uploading…' : mutation.isPending ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // ── add document form ─────────────────────────────────────────────────────────
 const docSchema = z.object({
@@ -2318,6 +2433,7 @@ export function VehicleDetailPage() {
   const [tab, setTab]                 = useState<Tab>('Basic Info')
   const [editOpen, setEditOpen]       = useState(false)
   const [addDocOpen, setAddDocOpen]   = useState(false)
+  const [docToEdit, setDocToEdit]     = useState<VehicleDocument | null>(null)
   const [docToDelete, setDocToDelete] = useState<VehicleDocument | null>(null)
   const [pendingStatusId, setPendingStatusId]         = useState<number | null>(null)
   const [confirmStatusId, setConfirmStatusId]         = useState<number | null>(null)
@@ -2718,6 +2834,13 @@ export function VehicleDetailPage() {
                               </a>
                             )}
                             <button
+                              onClick={() => setDocToEdit(doc)}
+                              className="p-1.5 text-gray-300 hover:text-feros-navy rounded transition-colors"
+                              title="Edit document"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
                               onClick={() => setDocToDelete(doc)}
                               className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors"
                               title="Delete document"
@@ -2848,6 +2971,7 @@ export function VehicleDetailPage() {
       </Dialog>
 
       <AddDocumentDialog vehicleId={v.id} open={addDocOpen} onClose={() => setAddDocOpen(false)} existingDocs={docsRes?.data ?? []} />
+      {docToEdit && <EditDocumentDialog vehicleId={v.id} doc={docToEdit} open={!!docToEdit} onClose={() => setDocToEdit(null)} />}
 
       {/* Delete document confirm */}
       <Dialog open={!!docToDelete} onOpenChange={val => !val && setDocToDelete(null)}>
