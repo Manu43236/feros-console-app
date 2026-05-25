@@ -291,26 +291,20 @@ function VehicleDocStep({ vehicleId, onFinish, onBack }: { vehicleId: number; on
                   onChange={ev => update(dt.id, { documentNumber: ev.target.value })}
                   className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
                 />
-                <div className="relative">
-                  <input
-                    type="date"
-                    title="Issue Date"
-                    value={e?.issueDate ?? ''}
-                    onChange={ev => update(dt.id, { issueDate: ev.target.value })}
-                    className="w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-                  />
-                  {!e?.issueDate && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 pointer-events-none">Issue date</span>}
-                </div>
-                <div className="relative">
-                  <input
-                    type="date"
-                    title="Expiry Date"
-                    value={e?.expiryDate ?? ''}
-                    onChange={ev => update(dt.id, { expiryDate: ev.target.value })}
-                    className="w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-                  />
-                  {!e?.expiryDate && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 pointer-events-none">Expiry date</span>}
-                </div>
+                <input
+                  type="date"
+                  title="Issue Date"
+                  value={e?.issueDate ?? ''}
+                  onChange={ev => update(dt.id, { issueDate: ev.target.value })}
+                  className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                />
+                <input
+                  type="date"
+                  title="Expiry Date"
+                  value={e?.expiryDate ?? ''}
+                  onChange={ev => update(dt.id, { expiryDate: ev.target.value })}
+                  className="text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+                />
               </div>
               <div className="mt-2 flex items-center gap-3">
                 <input
