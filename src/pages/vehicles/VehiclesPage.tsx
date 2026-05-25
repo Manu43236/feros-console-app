@@ -23,9 +23,9 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── bulk upload dialog ────────────────────────────────────────────────────────
 const CSV_TEMPLATE = [
-  'registrationNumber,vehicleType,brand,fuelType,ownershipType,capacityInTons,manufactureYear,color',
-  'MH12AB1234,Truck,TATA,DIESEL,Own,10,2020,White',
-  'MH14CD5678,Trailer,Ashok Leyland,DIESEL,Hired,25,2019,Blue',
+  'registrationNumber,vehicleType,brand,fuelType,ownershipType,capacityInTons,manufactureYear,color,model,grossVehicleWeight,doc1Type,doc1Number,doc1IssueDate,doc1ExpiryDate,doc2Type,doc2Number,doc2IssueDate,doc2ExpiryDate',
+  'MH12AB1234,Truck,TATA,DIESEL,Own,10,2020,White,407,16.2,RC,MH12AB1234,2020-01-15,2040-01-14,Insurance,POL123456,2024-06-01,2025-05-31',
+  'MH14CD5678,Trailer,Ashok Leyland,DIESEL,Hired,25,2019,Blue,Prima 4940,49,Fitness,FIT987654,2023-04-01,2025-03-31,,,,',
 ].join('\n')
 
 function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -78,8 +78,9 @@ function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: ()
           <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-1">
             <p className="font-medium">CSV Format</p>
             <p>Required: <code className="bg-blue-100 px-1 rounded">registrationNumber</code></p>
-            <p>Optional: vehicleType, brand, fuelType, ownershipType, capacityInTons, manufactureYear, color</p>
-            <p className="text-blue-600 text-xs mt-2">Names must match exactly as configured in Masters.</p>
+            <p>Optional: vehicleType, brand, fuelType, ownershipType, capacityInTons, manufactureYear, color, model, grossVehicleWeight</p>
+            <p>Documents (optional, repeating groups of 4): docType, docNumber, issueDate (YYYY-MM-DD), expiryDate (YYYY-MM-DD)</p>
+            <p className="text-blue-600 text-xs mt-2">Document type names must match exactly as configured in Global Masters. Add more doc groups by appending 4 more columns.</p>
           </div>
 
           <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 w-full">
