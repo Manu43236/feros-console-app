@@ -9,6 +9,7 @@ import type { Resolver } from 'react-hook-form'
 import { invoicesApi } from '@/api/invoices'
 import { clientsApi } from '@/api/clients'
 import { lrsApi } from '@/api/lrs'
+import { tenantsApi } from '@/api/superadmin'
 import { toast } from 'sonner'
 import {
   Plus, Search, Eye, FileText,
@@ -69,8 +70,10 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const { data: clientsRes } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
   const { data: lrsRes } = useQuery({ queryKey: ['lrs'], queryFn: lrsApi.getAll })
   const { data: invoicedIdsRes } = useQuery({ queryKey: ['invoiced-lr-ids'], queryFn: invoicesApi.getInvoicedLrIds })
+  const { data: tenantRes } = useQuery({ queryKey: ['my-tenant'], queryFn: () => tenantsApi.getMy() })
   const allLrs        = lrsRes?.data ?? []
   const invoicedLrIds = new Set(invoicedIdsRes?.data ?? [])
+  const tenantState   = tenantRes?.data?.state ?? ''
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,
@@ -85,14 +88,14 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
     .filter(c => c.isActive)
     .map(c => ({ value: String(c.id), label: c.clientName }))
 
+  const selectedClient = (clientsRes?.data ?? []).find(c => c.id === clientId)
+  const clientState    = selectedClient?.stateName ?? ''
+  // Intra-state: tenant and client are in the same state
+  const isIntraState   = !!(clientId && tenantState && clientState && tenantState === clientState)
+
   const eligibleLrs = allLrs.filter(
     lr => lr.clientId === clientId && lr.lrStatus === 'DELIVERED' && !invoicedLrIds.has(lr.id)
   )
-
-  // Detect if all selected LRs are intra-state
-  const selectedLrs = eligibleLrs.filter(lr => selectedLrIds.has(lr.id))
-  const isIntraState = selectedLrs.length > 0 &&
-    selectedLrs.every(lr => lr.fromState && lr.toState && lr.fromState === lr.toState)
 
   function toggleLr(id: number) {
     setSelectedLrIds(prev => {
@@ -178,7 +181,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
               <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 uppercase tracking-wide">
                 <Percent className="h-3.5 w-3.5" /> GST
               </div>
-              {selectedLrIds.size > 0 && (
+              {clientId > 0 && (
                 <span className={cn(
                   'text-xs font-medium px-2 py-0.5 rounded-full',
                   isIntraState ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
@@ -224,11 +227,11 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
               </div>
             )}
             <p className="text-xs text-blue-600/70">
-              {selectedLrIds.size === 0
-                ? 'Select LRs first — tax type (CGST/SGST or IGST) will be auto-detected from route states.'
+              {!clientId
+                ? 'Select a client — tax type will be auto-detected based on client state vs your company state.'
                 : isIntraState
-                  ? 'All selected LRs are intra-state → CGST + SGST applies.'
-                  : 'Inter-state or mixed routes detected → IGST applies.'}
+                  ? `Client is in ${clientState} (same as your company) → CGST + SGST applies.`
+                  : `Client is in ${clientState || '?'}, your company is in ${tenantState || '?'} → IGST applies.`}
             </p>
           </div>
 
