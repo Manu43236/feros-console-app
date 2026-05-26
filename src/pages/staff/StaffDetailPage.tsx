@@ -310,7 +310,7 @@ export function StaffDetailPage() {
   const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   // Load this user from the cached users list
-  const { data: usersRes } = useQuery({ queryKey: ['users'], queryFn: staffApi.getUsers })
+  const { data: usersRes } = useQuery({ queryKey: ['users'], queryFn: () => staffApi.getUsers() })
   const user = usersRes?.data?.find(u => u.id === uid)
 
   // Load profile

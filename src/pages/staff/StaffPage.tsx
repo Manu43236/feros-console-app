@@ -312,7 +312,7 @@ export function StaffPage() {
   const [statusFilter, setStatusFilter] = useState('')
 
   const { data: profilesRes }          = useQuery({ queryKey: ['staff'],  queryFn: staffApi.getAll })
-  const { data: usersRes, isLoading }  = useQuery({ queryKey: ['users'],  queryFn: staffApi.getUsers })
+  const { data: usersRes, isLoading }  = useQuery({ queryKey: ['users'],  queryFn: () => staffApi.getUsers() })
 
   const profileMap = Object.fromEntries(
     (profilesRes?.data ?? []).map(p => [p.userId, p])

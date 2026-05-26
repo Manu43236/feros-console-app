@@ -443,7 +443,7 @@ export function PayrollPage() {
   })
   const advances: SalaryAdvance[] = advancesData?.data ?? []
 
-  const { data: usersData } = useQuery({ queryKey: ['staff-users'], queryFn: staffApi.getUsers })
+  const { data: usersData } = useQuery({ queryKey: ['staff-users'], queryFn: () => staffApi.getUsers() })
   const users: StaffUser[] = (usersData?.data ?? []) as StaffUser[]
 
   const cancelMutation = useMutation({

@@ -869,7 +869,7 @@ export function AttendancePage() {
   })
   const records = [...(attendanceData?.data ?? [])].sort((a, b) => b.id - a.id)
 
-  const { data: usersData } = useQuery({ queryKey: ['staff-users'], queryFn: staffApi.getUsers })
+  const { data: usersData } = useQuery({ queryKey: ['staff-users'], queryFn: () => staffApi.getUsers() })
   const allUsers: StaffUser[] = ((usersData?.data ?? []) as StaffUser[]).filter(u => STAFF_ROLES.includes(u.role ?? ''))
 
   const { data: attTypesData } = useQuery({ queryKey: ['attendance-types'], queryFn: globalMastersApi.getAttendanceTypes })
