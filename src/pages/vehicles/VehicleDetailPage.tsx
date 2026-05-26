@@ -1,6 +1,6 @@
 import { getApiError } from '@/lib/apiError'
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -2430,7 +2430,9 @@ export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate      = useNavigate()
   const qc            = useQueryClient()
-  const [tab, setTab]                 = useState<Tab>('Basic Info')
+  const [searchParams] = useSearchParams()
+  const initialTab = (TABS.includes(searchParams.get('tab') as Tab) ? searchParams.get('tab') : 'Basic Info') as Tab
+  const [tab, setTab]                 = useState<Tab>(initialTab)
   const [editOpen, setEditOpen]       = useState(false)
   const [addDocOpen, setAddDocOpen]   = useState(false)
   const [docToEdit, setDocToEdit]     = useState<VehicleDocument | null>(null)

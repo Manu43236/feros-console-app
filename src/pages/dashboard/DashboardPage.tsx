@@ -58,10 +58,16 @@ function StatCard({
 }
 
 function VehicleAlertRow({ a }: { a: VehicleAlert }) {
+  const navigate = useNavigate()
   return (
-    <tr className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+    <tr
+      className="border-b border-gray-50 last:border-0 hover:bg-orange-50 transition-colors cursor-pointer"
+      onClick={() => navigate(`/vehicles/${a.vehicleId}?tab=Documents`)}
+    >
       <td className="py-3 px-4 text-sm font-medium text-gray-800">{a.registrationNumber}</td>
-      <td className="py-3 px-4 text-sm text-gray-600">{a.alertType}</td>
+      <td className="py-3 px-4 text-sm text-gray-600">
+        {a.alertType === 'DOCUMENT' ? a.documentName : a.alertType.replace(/_/g, ' ')}
+      </td>
       <td className="py-3 px-4 text-sm text-gray-500">{format(new Date(a.expiryDate), 'dd MMM yyyy')}</td>
       <td className="py-3 px-4">
         <span className={cn('text-xs font-medium px-2 py-1 rounded-full', alertColor(a.daysLeft, a.expired))}>
