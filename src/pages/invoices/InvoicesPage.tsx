@@ -211,20 +211,25 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
             </div>
-            {/* Breakdown display */}
+            {/* Breakdown display — read-only fields */}
             {taxSlab > 0 && (
-              <div className="flex gap-4 text-xs text-blue-700 font-medium">
-                {isIntraState ? (
-                  <>
-                    <span>CGST: {taxSlab / 2}%</span>
-                    <span>+</span>
-                    <span>SGST: {taxSlab / 2}%</span>
-                    <span>= {taxSlab}%</span>
-                  </>
-                ) : (
-                  <span>IGST: {taxSlab}%</span>
-                )}
-              </div>
+              isIntraState ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-600">CGST %</Label>
+                    <Input value={`${taxSlab / 2}%`} readOnly className="bg-gray-100 text-gray-700 cursor-not-allowed" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-600">SGST %</Label>
+                    <Input value={`${taxSlab / 2}%`} readOnly className="bg-gray-100 text-gray-700 cursor-not-allowed" />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-600">IGST %</Label>
+                  <Input value={`${taxSlab}%`} readOnly className="bg-gray-100 text-gray-700 cursor-not-allowed" />
+                </div>
+              )
             )}
             <p className="text-xs text-blue-600/70">
               {!clientId
