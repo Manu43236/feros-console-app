@@ -297,7 +297,7 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
           PAGE 2 — ANNEXURE
       ══════════════════════════════════════════════════════════════════ */}
       {lrItems.length > 0 && (
-        <div className="annexure-page" style={{ marginTop: 0, pageBreakBefore: 'always', breakBefore: 'page' }}>
+        <div className="annexure-page" style={{ marginTop: 32, pageBreakBefore: 'always', breakBefore: 'page' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', border: B }}>
             <tbody>
 
