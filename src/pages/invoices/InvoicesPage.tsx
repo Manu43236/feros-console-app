@@ -50,13 +50,14 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
 }
 
 // ── Create Invoice Dialog ─────────────────────────────────────────────────
+const TAX_SLABS = [0, 5, 12, 18, 28] as const
+
 const createSchema = z.object({
-  clientId:       z.coerce.number().min(1, 'Select a client'),
-  invoiceDate:    z.string().optional(),
-  dueDate:        z.string().optional(),
-  cgstPercentage: z.coerce.number().min(0).max(50).optional(),
-  sgstPercentage: z.coerce.number().min(0).max(50).optional(),
-  remarks:        z.string().optional(),
+  clientId:    z.coerce.number().min(1, 'Select a client'),
+  invoiceDate: z.string().optional(),
+  dueDate:     z.string().optional(),
+  taxSlab:     z.coerce.number().min(0).max(28),
+  remarks:     z.string().optional(),
 })
 type CreateForm = z.infer<typeof createSchema>
 
@@ -73,12 +74,11 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<CreateForm>({
     resolver: zodResolver(createSchema) as Resolver<CreateForm>,
-    defaultValues: { invoiceDate: new Date().toISOString().split('T')[0], cgstPercentage: 9, sgstPercentage: 9 },
+    defaultValues: { invoiceDate: new Date().toISOString().split('T')[0], taxSlab: 18 },
   })
 
   const watchedClientId = watch('clientId')
-  const cgstVal = Number(watch('cgstPercentage') ?? 0)
-  const sgstVal = Number(watch('sgstPercentage') ?? 0)
+  const taxSlab = Number(watch('taxSlab') ?? 0)
   const clientId = Number(watchedClientId)
 
   const clientOptions = (clientsRes?.data ?? [])
@@ -89,6 +89,11 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
     lr => lr.clientId === clientId && lr.lrStatus === 'DELIVERED' && !invoicedLrIds.has(lr.id)
   )
 
+  // Detect if all selected LRs are intra-state
+  const selectedLrs = eligibleLrs.filter(lr => selectedLrIds.has(lr.id))
+  const isIntraState = selectedLrs.length > 0 &&
+    selectedLrs.every(lr => lr.fromState && lr.toState && lr.fromState === lr.toState)
+
   function toggleLr(id: number) {
     setSelectedLrIds(prev => {
       const next = new Set(prev)
@@ -98,15 +103,20 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   }
 
   const mutation = useMutation({
-    mutationFn: (data: CreateForm) => invoicesApi.create({
-      clientId,
-      lrIds:          Array.from(selectedLrIds),
-      invoiceDate:    data.invoiceDate || undefined,
-      dueDate:        data.dueDate || undefined,
-      cgstPercentage: data.cgstPercentage || undefined,
-      sgstPercentage: data.sgstPercentage || undefined,
-      remarks:        data.remarks || undefined,
-    }),
+    mutationFn: (data: CreateForm) => {
+      const slab = data.taxSlab ?? 0
+      const taxPayload = isIntraState
+        ? { cgstPercentage: slab / 2, sgstPercentage: slab / 2 }
+        : { igstPercentage: slab }
+      return invoicesApi.create({
+        clientId,
+        lrIds:       Array.from(selectedLrIds),
+        invoiceDate: data.invoiceDate || undefined,
+        dueDate:     data.dueDate || undefined,
+        remarks:     data.remarks || undefined,
+        ...taxPayload,
+      })
+    },
     onSuccess: (res) => {
       toast.success('Invoice created successfully')
       qc.invalidateQueries({ queryKey: ['invoices'] })
@@ -168,23 +178,58 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
               <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 uppercase tracking-wide">
                 <Percent className="h-3.5 w-3.5" /> GST
               </div>
-              {(cgstVal + sgstVal) > 0 && (
-                <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                  Total GST: {cgstVal + sgstVal}%
+              {selectedLrIds.size > 0 && (
+                <span className={cn(
+                  'text-xs font-medium px-2 py-0.5 rounded-full',
+                  isIntraState ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                )}>
+                  {isIntraState ? 'Intra-state (CGST + SGST)' : 'Inter-state (IGST)'}
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600">CGST %</Label>
-                <Input type="number" step="0.01" min="0" max="50" className="bg-white" {...register('cgstPercentage')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600">SGST %</Label>
-                <Input type="number" step="0.01" min="0" max="50" className="bg-white" {...register('sgstPercentage')} />
+            {/* Tax slab selector */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-600">Tax Slab</Label>
+              <div className="flex gap-2 flex-wrap">
+                {TAX_SLABS.map(slab => (
+                  <button
+                    key={slab}
+                    type="button"
+                    onClick={() => setValue('taxSlab', slab)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-md text-sm font-medium border transition-colors',
+                      taxSlab === slab
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400'
+                    )}
+                  >
+                    {slab === 0 ? 'Nil (0%)' : `${slab}%`}
+                  </button>
+                ))}
               </div>
             </div>
-            <p className="text-xs text-blue-600/70">Leave 0 for non-GST invoices. Standard: CGST 9% + SGST 9% = 18%</p>
+            {/* Breakdown display */}
+            {taxSlab > 0 && (
+              <div className="flex gap-4 text-xs text-blue-700 font-medium">
+                {isIntraState ? (
+                  <>
+                    <span>CGST: {taxSlab / 2}%</span>
+                    <span>+</span>
+                    <span>SGST: {taxSlab / 2}%</span>
+                    <span>= {taxSlab}%</span>
+                  </>
+                ) : (
+                  <span>IGST: {taxSlab}%</span>
+                )}
+              </div>
+            )}
+            <p className="text-xs text-blue-600/70">
+              {selectedLrIds.size === 0
+                ? 'Select LRs first — tax type (CGST/SGST or IGST) will be auto-detected from route states.'
+                : isIntraState
+                  ? 'All selected LRs are intra-state → CGST + SGST applies.'
+                  : 'Inter-state or mixed routes detected → IGST applies.'}
+            </p>
           </div>
 
           {/* ── Remarks ── */}

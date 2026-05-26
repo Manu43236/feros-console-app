@@ -240,6 +240,7 @@ export interface Lr {
   vehicleAllocationId: number
   vehicleId?: number; vehicleRegistrationNumber: string; vehicleTypeName?: string
   clientId?: number; clientName?: string
+  fromCity?: string; fromState?: string; toCity?: string; toState?: string
   lrDate: string; vehicleCapacity: number; allocatedWeight: number
   loadedWeight?: number; deliveredWeight?: number
   overloadWeight?: number; weightVariance?: number; isOverloaded?: boolean
@@ -284,8 +285,8 @@ export interface Invoice {
   clientId: number; clientName: string
   invoiceDate: string; dueDate?: string
   subtotal: number
-  cgstPercentage: number; sgstPercentage: number
-  cgstAmount: number; sgstAmount: number
+  cgstPercentage: number; sgstPercentage: number; igstPercentage: number
+  cgstAmount: number; sgstAmount: number; igstAmount: number
   taxAmount: number; totalAmount: number
   advanceAdjusted: number; creditNoteAdjusted: number
   amountPaid: number; balanceDue: number

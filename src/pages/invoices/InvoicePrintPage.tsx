@@ -52,7 +52,10 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
   const taxAmt    = Number(invoice.taxAmount ?? 0)
   const cgstPct   = Number(invoice.cgstPercentage ?? 0)
   const sgstPct   = Number(invoice.sgstPercentage ?? 0)
-  const igstPct   = cgstPct + sgstPct
+  const igstPct   = Number(invoice.igstPercentage ?? 0)
+  const cgstAmt   = Number(invoice.cgstAmount ?? 0)
+  const sgstAmt   = Number(invoice.sgstAmount ?? 0)
+  const igstAmt   = Number(invoice.igstAmount ?? 0)
   const rawTotal  = subtotal + taxAmt
   const roundOff  = totalAmt - rawTotal
   const hsn       = invoice.transportHsnSac || '996511'
@@ -217,17 +220,24 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
                     <td style={cell({ textAlign: 'right' })}>{fmt(subtotal)}</td>
                   </tr>
 
-                  {/* Tax */}
-                  {taxAmt > 0 && igstPct > 0 && (
+                  {/* Tax — IGST (inter-state) */}
+                  {igstPct > 0 && igstAmt > 0 && (
                     <tr style={{ fontWeight: 700 }}>
-                      <td colSpan={6} style={cell({ textAlign: 'right' })}>IGST {igstPct} %</td>
-                      <td style={cell({ textAlign: 'right' })}>{fmt(taxAmt)}</td>
+                      <td colSpan={6} style={cell({ textAlign: 'right' })}>IGST {igstPct}%</td>
+                      <td style={cell({ textAlign: 'right' })}>{fmt(igstAmt)}</td>
                     </tr>
                   )}
-                  {taxAmt > 0 && igstPct === 0 && (
+                  {/* Tax — CGST + SGST (intra-state) */}
+                  {cgstPct > 0 && cgstAmt > 0 && (
                     <tr style={{ fontWeight: 700 }}>
-                      <td colSpan={6} style={cell({ textAlign: 'right' })}>TAX</td>
-                      <td style={cell({ textAlign: 'right' })}>{fmt(taxAmt)}</td>
+                      <td colSpan={6} style={cell({ textAlign: 'right' })}>CGST {cgstPct}%</td>
+                      <td style={cell({ textAlign: 'right' })}>{fmt(cgstAmt)}</td>
+                    </tr>
+                  )}
+                  {sgstPct > 0 && sgstAmt > 0 && (
+                    <tr style={{ fontWeight: 700 }}>
+                      <td colSpan={6} style={cell({ textAlign: 'right' })}>SGST {sgstPct}%</td>
+                      <td style={cell({ textAlign: 'right' })}>{fmt(sgstAmt)}</td>
                     </tr>
                   )}
 
