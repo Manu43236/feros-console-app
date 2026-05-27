@@ -6,6 +6,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { staffApi } from '@/api/staff'
+import { attendanceApi } from '@/api/attendance'
 import { globalMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import {
@@ -311,8 +312,13 @@ export function StaffPage() {
   const [roleFilter, setRoleFilter]     = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
+  const today = new Date().toISOString().slice(0, 10)
+
   const { data: profilesRes }          = useQuery({ queryKey: ['staff'],  queryFn: staffApi.getAll })
   const { data: usersRes, isLoading }  = useQuery({ queryKey: ['users'],  queryFn: () => staffApi.getUsers() })
+  const { data: attendanceRes }        = useQuery({ queryKey: ['attendance-today', today], queryFn: () => attendanceApi.getByDate(today) })
+
+  const presentUserIds = new Set((attendanceRes?.data ?? []).map(a => a.userId))
 
   const profileMap = Object.fromEntries(
     (profilesRes?.data ?? []).map(p => [p.userId, p])
@@ -423,13 +429,19 @@ export function StaffPage() {
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        {logoUrl ? (
-                          <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-full object-contain shrink-0" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-semibold shrink-0">
-                            {s.userName[0]}
-                          </div>
-                        )}
+                        <div className="relative shrink-0">
+                          {logoUrl ? (
+                            <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-full object-contain" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-semibold">
+                              {s.userName[0]}
+                            </div>
+                          )}
+                          <span className={cn(
+                            'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white',
+                            presentUserIds.has(s.userId) ? 'bg-green-500' : 'bg-red-400'
+                          )} />
+                        </div>
                         <p className="text-sm font-semibold text-gray-800">{s.userName}</p>
                       </div>
                     </td>
