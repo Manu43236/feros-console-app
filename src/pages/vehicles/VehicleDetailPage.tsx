@@ -2743,6 +2743,25 @@ export function VehicleDetailPage() {
                 </div>
               </div>
             )}
+            <div className="border-t pt-5">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Assigned Staff</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                <div className="flex justify-between py-2.5 border-b border-gray-50">
+                  <span className="text-sm text-gray-500">Driver</span>
+                  {v.currentDriverName
+                    ? <span className="text-sm font-semibold text-blue-700">{v.currentDriverName}</span>
+                    : <span className="text-sm text-gray-400">Not assigned</span>
+                  }
+                </div>
+                <div className="flex justify-between py-2.5 border-b border-gray-50">
+                  <span className="text-sm text-gray-500">Cleaner</span>
+                  {v.currentCleanerName
+                    ? <span className="text-sm font-semibold text-purple-700">{v.currentCleanerName}</span>
+                    : <span className="text-sm text-gray-400">Not assigned</span>
+                  }
+                </div>
+              </div>
+            </div>
             </div>
           )}
 

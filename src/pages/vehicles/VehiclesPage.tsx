@@ -12,7 +12,7 @@ import { getApiError } from '@/lib/apiError'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import {
-  Plus, Search, Truck, ChevronRight, Upload, Download, CheckCircle, XCircle, Calendar,
+  Plus, Search, Truck, Upload, Download, CheckCircle, XCircle, Calendar,
   Paperclip, FileText, X, UserCog,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -1040,7 +1040,8 @@ export function VehiclesPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Type / Capacity</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Ownership</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Current Status</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Staff</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Driver</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Cleaner</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Active</th>
                   <th className="py-3 px-4" />
                 </tr>
@@ -1113,22 +1114,40 @@ export function VehiclesPage() {
                         ) : <span className="text-gray-300 text-sm">—</span>}
                       </td>
                       <td className="py-3 px-4">
-                        {v.currentDriverName || v.currentCleanerName ? (
-                          <div className="space-y-0.5">
-                            {v.currentDriverName && (
-                              <p className="text-xs text-gray-600">
-                                <span className="font-medium text-blue-600">D:</span> {v.currentDriverName}
-                              </p>
-                            )}
-                            {v.currentCleanerName && (
-                              <p className="text-xs text-gray-600">
-                                <span className="font-medium text-purple-600">C:</span> {v.currentCleanerName}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-300 text-sm">—</span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {v.currentDriverName
+                            ? <span className="text-xs font-medium text-gray-800">{v.currentDriverName}</span>
+                            : <span className="text-gray-300 text-sm">—</span>
+                          }
+                          {canAssignStaff && v.isActive && (
+                            <button
+                              title={v.currentDriverName ? `Change Driver` : 'Assign Driver'}
+                              onClick={e => { e.stopPropagation(); setStaffDialogVehicle(v); setStaffDialogRole('DRIVER') }}
+                              className={cn('p-1 rounded transition-colors', v.currentDriverName
+                                ? 'text-blue-500 hover:text-blue-700 hover:bg-blue-50'
+                                : 'text-gray-300 hover:text-blue-500 hover:bg-blue-50'
+                              )}
+                            ><UserCog size={13} /></button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          {v.currentCleanerName
+                            ? <span className="text-xs font-medium text-gray-800">{v.currentCleanerName}</span>
+                            : <span className="text-gray-300 text-sm">—</span>
+                          }
+                          {canAssignStaff && v.isActive && (
+                            <button
+                              title={v.currentCleanerName ? `Change Cleaner` : 'Assign Cleaner'}
+                              onClick={e => { e.stopPropagation(); setStaffDialogVehicle(v); setStaffDialogRole('CLEANER') }}
+                              className={cn('p-1 rounded transition-colors', v.currentCleanerName
+                                ? 'text-purple-500 hover:text-purple-700 hover:bg-purple-50'
+                                : 'text-gray-300 hover:text-purple-500 hover:bg-purple-50'
+                              )}
+                            ><UserCog size={13} /></button>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <Badge className={cn('text-xs', v.isActive
@@ -1138,39 +1157,7 @@ export function VehiclesPage() {
                           {v.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1">
-                          {canAssignStaff && v.isActive && (
-                            <>
-                              <button
-                                title={v.currentDriverName ? `Driver: ${v.currentDriverName} (click to change)` : 'Assign Driver'}
-                                onClick={e => { e.stopPropagation(); setStaffDialogVehicle(v); setStaffDialogRole('DRIVER') }}
-                                className={cn(
-                                  'p-1.5 rounded transition-colors',
-                                  v.currentDriverName
-                                    ? 'text-blue-500 hover:text-blue-700 hover:bg-blue-50'
-                                    : 'text-gray-300 hover:text-blue-500 hover:bg-blue-50'
-                                )}
-                              >
-                                <UserCog size={14} />
-                              </button>
-                              <button
-                                title={v.currentCleanerName ? `Cleaner: ${v.currentCleanerName} (click to change)` : 'Assign Cleaner'}
-                                onClick={e => { e.stopPropagation(); setStaffDialogVehicle(v); setStaffDialogRole('CLEANER') }}
-                                className={cn(
-                                  'p-1.5 rounded transition-colors',
-                                  v.currentCleanerName
-                                    ? 'text-purple-500 hover:text-purple-700 hover:bg-purple-50'
-                                    : 'text-gray-300 hover:text-purple-500 hover:bg-purple-50'
-                                )}
-                              >
-                                <UserCog size={14} />
-                              </button>
-                            </>
-                          )}
-                          <ChevronRight size={16} className="text-gray-300" />
-                        </div>
-                      </td>
+                      <td className="py-3 px-4" />
                     </tr>
                   )
                 })}
