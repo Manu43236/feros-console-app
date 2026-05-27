@@ -883,13 +883,11 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
           </div>
 
           {/* User list */}
-          <div className="overflow-y-auto flex-1 border-t divide-y divide-gray-50" style={{ maxHeight: '320px' }}>
-            {search.trim() === '' ? (
-              <p className="text-sm text-gray-400 text-center py-10">
-                Type a name or phone number to search
+          <div className="overflow-y-auto border-t divide-y divide-gray-50" style={{ maxHeight: '320px' }}>
+            {filtered.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">
+                {eligible.length === 0 ? `No active ${roleLabel.toLowerCase()}s found` : `No results for "${search}"`}
               </p>
-            ) : filtered.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">No results for "{search}"</p>
             ) : (
               filtered.map(u => {
                 const isSelected = selectedId === u.id
