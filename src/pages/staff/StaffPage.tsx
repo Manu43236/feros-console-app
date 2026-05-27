@@ -306,6 +306,8 @@ export function StaffPage() {
   const { locked } = useSubscription()
   const navigate = useNavigate()
   const logoUrl = useAuthStore(s => s.logoUrl)
+  const role    = useAuthStore(s => s.role)
+  const isSupervisor = role === 'SUPERVISOR'
   const [search, setSearch]             = useState('')
   const [addOpen, setAddOpen]           = useState(false)
   const [bulkOpen, setBulkOpen]         = useState(false)
@@ -353,10 +355,13 @@ export function StaffPage() {
                          s.userPhone.includes(search)
     const matchRole    = !roleFilter || s.roleName === roleFilter
     const matchStatus  = !statusFilter || (statusFilter === 'active' ? s.isActive : !s.isActive)
-    return matchSearch && matchRole && matchStatus
+    const matchCrew    = !isSupervisor || s.roleName === 'DRIVER' || s.roleName === 'CLEANER'
+    return matchSearch && matchRole && matchStatus && matchCrew
   })
 
-  const roles = [...new Set(allStaff.map(s => s.roleName))]
+  const roles = isSupervisor
+    ? ['DRIVER', 'CLEANER']
+    : [...new Set(allStaff.map(s => s.roleName))]
 
   return (
     <div className="space-y-5">
@@ -366,7 +371,7 @@ export function StaffPage() {
           <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
           <p className="text-gray-500 text-sm mt-0.5">{allStaff.length} total staff members</p>
         </div>
-        {!locked && (
+        {!locked && !isSupervisor && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
               <Upload size={16} /> Bulk Upload
@@ -421,7 +426,7 @@ export function StaffPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Role</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Designation</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">PIN</th>
+                  {!isSupervisor && <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">PIN</th>}
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Trips</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Current</th>
                   <th className="py-3 px-4" />
@@ -461,9 +466,11 @@ export function StaffPage() {
                         {s.userPhone}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <PinCell pin={s.pin ?? null} />
-                    </td>
+                    {!isSupervisor && (
+                      <td className="py-3 px-4">
+                        <PinCell pin={s.pin ?? null} />
+                      </td>
+                    )}
                     <td className="py-3 px-4 text-sm text-gray-600 font-medium">
                       {s.completedTripsCount}
                     </td>

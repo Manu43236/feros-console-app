@@ -117,8 +117,8 @@ export default function App() {
           <Route path="lrs/:lrId"   element={<LrDetailPage />} />
 
           {/* Staff & HR — admin + office only */}
-          <Route path="staff"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><StaffPage /></ProtectedRoute>} />
-          <Route path="staff/:userId" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><StaffDetailPage /></ProtectedRoute>} />
+          <Route path="staff"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','SUPERVISOR']}><StaffPage /></ProtectedRoute>} />
+          <Route path="staff/:userId" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','SUPERVISOR']}><StaffDetailPage /></ProtectedRoute>} />
           <Route path="attendance"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','SUPERVISOR']}><AttendanceRouter /></ProtectedRoute>} />
           <Route path="payroll"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PayrollPage /></ProtectedRoute>} />
 
