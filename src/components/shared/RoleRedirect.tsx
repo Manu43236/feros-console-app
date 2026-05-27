@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 export function RoleRedirect() {
   const role = useAuthStore(s => s.role)
   if (role === 'SUPER_ADMIN')  return <Navigate to="/sa/dashboard" replace />
-  if (role === 'SUPERVISOR') return <Navigate to="/orders" replace />
+  if (role === 'SUPERVISOR') return <Navigate to="/dashboard" replace />
   if (role === 'DRIVER' || role === 'CLEANER') return <Navigate to="/my/trips" replace />
   if (role === 'STORE_KEEPER') return <Navigate to="/inventory" replace />
   if (role === 'SERVICE_MEN')  return <Navigate to="/vehicle-services" replace />

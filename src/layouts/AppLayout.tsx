@@ -145,6 +145,7 @@ const SUPER_ADMIN_NAV: FlatNav = [
 ]
 
 const SUPERVISOR_NAV: FlatNav = [
+  { to: '/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
   { to: '/attendance',    label: 'Attendance',    icon: Calendar },
   { to: '/orders',        label: 'Orders',        icon: ClipboardList,  moduleKey: 'ORDERS' },
   { to: '/assignments',   label: 'Assignments',   icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
