@@ -318,7 +318,17 @@ export function StaffPage() {
   const { data: usersRes, isLoading }  = useQuery({ queryKey: ['users'],  queryFn: () => staffApi.getUsers() })
   const { data: attendanceRes }        = useQuery({ queryKey: ['attendance-today', today], queryFn: () => attendanceApi.getByDate(today) })
 
-  const presentUserIds = new Set((attendanceRes?.data ?? []).map(a => a.userId))
+  // Map userId → attendance border color based on status
+  const attendanceBorderMap = new Map<number, string>(
+    (attendanceRes?.data ?? []).map(a => {
+      let color: string
+      if (a.approvalStatus === 'REJECTED') color = 'ring-2 ring-red-500'
+      else if (a.approvalStatus === 'PENDING') color = 'ring-2 ring-amber-400'
+      else if (a.approvalStatus === 'APPROVED' && a.attendanceTypeName?.toUpperCase().includes('PRESENT')) color = 'ring-2 ring-green-500'
+      else color = 'ring-2 ring-gray-300'
+      return [a.userId, color]
+    })
+  )
 
   const profileMap = Object.fromEntries(
     (profilesRes?.data ?? []).map(p => [p.userId, p])
@@ -429,19 +439,13 @@ export function StaffPage() {
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="relative shrink-0">
-                          {logoUrl ? (
-                            <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-full object-contain" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-semibold">
-                              {s.userName[0]}
-                            </div>
-                          )}
-                          <span className={cn(
-                            'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white',
-                            presentUserIds.has(s.userId) ? 'bg-green-500' : 'bg-red-400'
-                          )} />
-                        </div>
+                        {logoUrl ? (
+                          <img src={logoUrl} alt="logo" className={cn('w-8 h-8 rounded-full object-contain shrink-0', attendanceBorderMap.get(s.userId) ?? 'ring-2 ring-gray-200')} />
+                        ) : (
+                          <div className={cn('w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-semibold shrink-0', attendanceBorderMap.get(s.userId) ?? 'ring-2 ring-gray-200')}>
+                            {s.userName[0]}
+                          </div>
+                        )}
                         <p className="text-sm font-semibold text-gray-800">{s.userName}</p>
                       </div>
                     </td>
