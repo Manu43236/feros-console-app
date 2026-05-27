@@ -791,8 +791,10 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
   vehicle: Vehicle | null; role: 'DRIVER' | 'CLEANER'
 }) {
   const qc = useQueryClient()
-  const [userId, setUserId] = useState('')
+  const [search, setSearch] = useState('')
+  const [selectedId, setSelectedId] = useState<number | null>(null)
   const roleLabel = role === 'DRIVER' ? 'Driver' : 'Cleaner'
+  const accentColor = role === 'DRIVER' ? 'blue' : 'purple'
 
   const { data: usersRes } = useQuery({
     queryKey: ['all-staff-users'],
@@ -804,11 +806,16 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
   const currentId   = role === 'DRIVER' ? vehicle?.currentDriverId  : vehicle?.currentCleanerId
   const currentName = role === 'DRIVER' ? vehicle?.currentDriverName : vehicle?.currentCleanerName
 
+  const filtered = eligible.filter(u =>
+    u.name.toLowerCase().includes(search.toLowerCase()) ||
+    (u.phone ?? '').includes(search)
+  )
+
   const assignMutation = useMutation({
     mutationFn: () =>
       role === 'DRIVER'
-        ? vehiclesApi.assignDriver(vehicle!.id, Number(userId))
-        : vehiclesApi.assignCleaner(vehicle!.id, Number(userId)),
+        ? vehiclesApi.assignDriver(vehicle!.id, selectedId!)
+        : vehiclesApi.assignCleaner(vehicle!.id, selectedId!),
     onSuccess: () => {
       toast.success(`${roleLabel} assigned successfully`)
       qc.invalidateQueries({ queryKey: ['vehicles'] })
@@ -830,52 +837,102 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
     onError: (e: unknown) => toast.error(getApiError(e, `Failed to unassign ${roleLabel.toLowerCase()}`)),
   })
 
-  function handleClose() { setUserId(''); onClose() }
+  function handleClose() { setSearch(''); setSelectedId(null); onClose() }
 
   if (!vehicle) return null
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Assign {roleLabel} — {vehicle.registrationNumber}</DialogTitle>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-5 pb-4 border-b">
+          <DialogTitle className="text-base">
+            {currentId ? `Change ${roleLabel}` : `Assign ${roleLabel}`}
+            <span className="ml-2 text-sm font-normal text-gray-400">— {vehicle.registrationNumber}</span>
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 pt-2">
+
+        <div className="flex flex-col" style={{ maxHeight: '70vh' }}>
+          {/* Current staff banner */}
           {currentName && (
-            <div className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2.5">
+            <div className={`flex items-center justify-between mx-4 mt-4 px-3 py-2.5 rounded-lg bg-${accentColor}-50 border border-${accentColor}-100`}>
               <div>
-                <p className="text-xs text-blue-500 font-medium">Current {roleLabel}</p>
-                <p className="text-sm font-semibold text-blue-800">{currentName}</p>
+                <p className={`text-xs font-medium text-${accentColor}-500`}>Currently Assigned</p>
+                <p className={`text-sm font-semibold text-${accentColor}-800`}>{currentName}</p>
               </div>
               <button
                 onClick={() => unassignMutation.mutate()}
                 disabled={unassignMutation.isPending}
-                className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                className="text-xs text-red-500 hover:text-red-700 font-semibold disabled:opacity-50 px-2 py-1 rounded hover:bg-red-50"
               >
-                {unassignMutation.isPending ? 'Removing…' : 'Unassign'}
+                {unassignMutation.isPending ? 'Removing…' : 'Remove'}
               </button>
             </div>
           )}
-          <div>
-            <Label>{currentId ? `Replace ${roleLabel}` : `Select ${roleLabel}`} <span className="text-red-500">*</span></Label>
-            <SearchableSelect
-              value={userId}
-              onValueChange={setUserId}
-              options={eligible
-                .filter(u => u.id !== currentId)
-                .map(u => ({ value: String(u.id), label: u.name }))}
-              placeholder={`Select ${roleLabel.toLowerCase()}`}
-              className="mt-1"
-            />
-            {eligible.length === 0 && (
-              <p className="text-xs text-amber-600 mt-1">No active {roleLabel.toLowerCase()}s found.</p>
+
+          {/* Search */}
+          <div className="px-4 py-3">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder={`Search ${roleLabel.toLowerCase()} by name or phone…`}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-8 h-9 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* User list */}
+          <div className="overflow-y-auto flex-1 border-t divide-y divide-gray-50">
+            {filtered.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">
+                {eligible.length === 0 ? `No active ${roleLabel.toLowerCase()}s found` : 'No results'}
+              </p>
+            ) : (
+              filtered.map(u => {
+                const isSelected = selectedId === u.id
+                const isCurrent  = u.id === currentId
+                return (
+                  <button
+                    key={u.id}
+                    onClick={() => setSelectedId(isSelected ? null : u.id)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
+                      isSelected ? `bg-${accentColor}-50` : 'hover:bg-gray-50',
+                      isCurrent ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                    )}
+                    disabled={isCurrent}
+                  >
+                    <div className={cn(
+                      'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
+                      isSelected ? `bg-${accentColor}-600 text-white` : 'bg-gray-100 text-gray-600'
+                    )}>
+                      {u.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{u.name}</p>
+                      <p className="text-xs text-gray-400">{u.phone}</p>
+                    </div>
+                    {isCurrent && <span className="text-xs text-gray-400 shrink-0">Current</span>}
+                    {isSelected && !isCurrent && (
+                      <div className={`w-4 h-4 rounded-full bg-${accentColor}-600 flex items-center justify-center shrink-0`}>
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                )
+              })
             )}
           </div>
-          <div className="flex gap-2 pt-1">
+
+          {/* Footer */}
+          <div className="flex gap-2 px-4 py-3 border-t bg-gray-50">
             <Button variant="outline" className="flex-1" onClick={handleClose}>Cancel</Button>
             <Button
               className="flex-1"
-              disabled={!userId || assignMutation.isPending}
+              disabled={!selectedId || assignMutation.isPending}
               onClick={() => assignMutation.mutate()}
             >
               {assignMutation.isPending ? 'Assigning…' : `Assign ${roleLabel}`}
