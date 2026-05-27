@@ -2,12 +2,14 @@ import { BrowserRouter, Routes, Route, Navigate} from 'react-router-dom'
 import { AppLayout } from '@/layouts/AppLayout'
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
 import { RoleRedirect } from '@/components/shared/RoleRedirect'
+import { useAuthStore } from '@/store/authStore'
 
 // Auth
 import { LoginPage } from '@/pages/auth/LoginPage'
 
 // Admin pages
-import { DashboardPage }  from '@/pages/dashboard/DashboardPage'
+import { DashboardPage }           from '@/pages/dashboard/DashboardPage'
+import { SupervisorDashboardPage } from '@/pages/dashboard/SupervisorDashboardPage'
 import { ClientsPage }    from '@/pages/clients/ClientsPage'
 import ClientAdvancesPage from '@/pages/clients/ClientAdvancesPage'
 import { VehiclesPage }        from '@/pages/vehicles/VehiclesPage'
@@ -58,6 +60,11 @@ import { MyTripsPage }      from '@/pages/staff-portal/MyTripsPage'
 import { MyAttendancePage } from '@/pages/staff-portal/MyAttendancePage'
 import { MyPayslipPage }    from '@/pages/staff-portal/MyPayslipPage'
 
+function DashboardRouter() {
+  const role = useAuthStore(s => s.role)
+  return role === 'SUPERVISOR' ? <SupervisorDashboardPage /> : <DashboardPage />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -75,8 +82,7 @@ export default function App() {
         >
           <Route index element={<RoleRedirect />} />
 
-          {/* ADMIN */}
-          <Route path="dashboard"  element={<DashboardPage />} />
+          <Route path="dashboard" element={<DashboardRouter />} />
           {/* Billing & clients — office only */}
           <Route path="clients"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ClientsPage /></ProtectedRoute>} />
           <Route path="client-advances" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ClientAdvancesPage /></ProtectedRoute>} />
