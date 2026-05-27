@@ -32,7 +32,8 @@ import CreditNotesPage           from '@/pages/invoices/CreditNotesPage'
 import { ServiceInvoicesPage }  from '@/pages/invoices/ServiceInvoicesPage'
 import { StaffPage }       from '@/pages/staff/StaffPage'
 import { StaffDetailPage } from '@/pages/staff/StaffDetailPage'
-import { AttendancePage } from '@/pages/attendance/AttendancePage'
+import { AttendancePage }           from '@/pages/attendance/AttendancePage'
+import { SupervisorAttendancePage } from '@/pages/attendance/SupervisorAttendancePage'
 import { PayrollPage }    from '@/pages/payroll/PayrollPage'
 import { ReportsPage }    from '@/pages/reports/ReportsPage'
 import { MastersPage }    from '@/pages/masters/MastersPage'
@@ -63,6 +64,11 @@ import { MyPayslipPage }    from '@/pages/staff-portal/MyPayslipPage'
 function DashboardRouter() {
   const role = useAuthStore(s => s.role)
   return role === 'SUPERVISOR' ? <SupervisorDashboardPage /> : <DashboardPage />
+}
+
+function AttendanceRouter() {
+  const role = useAuthStore(s => s.role)
+  return role === 'SUPERVISOR' ? <SupervisorAttendancePage /> : <AttendancePage />
 }
 
 export default function App() {
@@ -113,7 +119,7 @@ export default function App() {
           {/* Staff & HR — admin + office only */}
           <Route path="staff"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><StaffPage /></ProtectedRoute>} />
           <Route path="staff/:userId" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><StaffDetailPage /></ProtectedRoute>} />
-          <Route path="attendance"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','SUPERVISOR']}><AttendancePage /></ProtectedRoute>} />
+          <Route path="attendance"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','SUPERVISOR']}><AttendanceRouter /></ProtectedRoute>} />
           <Route path="payroll"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PayrollPage /></ProtectedRoute>} />
 
           {/* Reports & Masters — admin + office only */}
