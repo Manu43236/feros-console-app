@@ -325,7 +325,7 @@ export function StaffPage() {
       if (a.approvalStatus === 'REJECTED') color = 'ring-2 ring-red-500'
       else if (a.approvalStatus === 'PENDING') color = 'ring-2 ring-amber-400'
       else if (a.approvalStatus === 'APPROVED' && a.attendanceTypeName?.toUpperCase().includes('PRESENT')) color = 'ring-2 ring-green-500'
-      else color = 'ring-2 ring-gray-300'
+      else color = 'ring-2 ring-gray-400'
       return [a.userId, color]
     })
   )
@@ -440,9 +440,9 @@ export function StaffPage() {
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         {logoUrl ? (
-                          <img src={logoUrl} alt="logo" className={cn('w-8 h-8 rounded-full object-contain shrink-0', attendanceBorderMap.get(s.userId) ?? 'ring-2 ring-gray-200')} />
+                          <img src={logoUrl} alt="logo" className={cn('w-8 h-8 rounded-full object-contain shrink-0', attendanceBorderMap.get(s.userId) ?? 'ring-2 ring-gray-400')} />
                         ) : (
-                          <div className={cn('w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-semibold shrink-0', attendanceBorderMap.get(s.userId) ?? 'ring-2 ring-gray-200')}>
+                          <div className={cn('w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-semibold shrink-0', attendanceBorderMap.get(s.userId) ?? 'ring-2 ring-gray-400')}>
                             {s.userName[0]}
                           </div>
                         )}
