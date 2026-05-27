@@ -43,20 +43,53 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
   const [expectedLoadDate, setExpectedLoadDate] = useState('')
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('')
   const [remarks, setRemarks] = useState('')
+  const [carryOverDriver, setCarryOverDriver] = useState(true)
+  const [carryOverCleaner, setCarryOverCleaner] = useState(true)
 
   const eligibleOrders = orders.filter(o =>
     ['PENDING', 'PARTIALLY_ASSIGNED'].includes(o.orderStatus) && o.isActive
   )
   const availableVehicles = vehicles.filter(v => !v.isAssigned && v.isActive)
+  const selectedVehicle = vehicles.find(v => String(v.id) === vehicleId) ?? null
+  const hasPreAssignedStaff = !!(selectedVehicle?.currentDriverId || selectedVehicle?.currentCleanerId)
 
   const mutation = useMutation({
-    mutationFn: () => ordersApi.assignVehicle(Number(orderId), {
-      vehicleId: Number(vehicleId),
-      allocatedWeight: Number(allocatedWeight),
-      expectedLoadDate: expectedLoadDate || undefined,
-      expectedDeliveryDate: expectedDeliveryDate || undefined,
-      remarks: remarks || undefined,
-    }),
+    mutationFn: async () => {
+      const result = await ordersApi.assignVehicle(Number(orderId), {
+        vehicleId: Number(vehicleId),
+        allocatedWeight: Number(allocatedWeight),
+        expectedLoadDate: expectedLoadDate || undefined,
+        expectedDeliveryDate: expectedDeliveryDate || undefined,
+        remarks: remarks || undefined,
+      })
+      const allocationId = result.data.id
+
+      if (carryOverDriver && selectedVehicle?.currentDriverId) {
+        try {
+          await ordersApi.assignStaff(Number(orderId), {
+            vehicleAllocationId: allocationId,
+            userId: selectedVehicle.currentDriverId,
+            slotRole: 'DRIVER',
+          })
+        } catch (e: unknown) {
+          const msg = getApiError(e, 'Driver carry-over failed')
+          toast.warning(`Vehicle assigned but driver carry-over failed: ${msg}`)
+        }
+      }
+
+      if (carryOverCleaner && selectedVehicle?.currentCleanerId) {
+        try {
+          await ordersApi.assignStaff(Number(orderId), {
+            vehicleAllocationId: allocationId,
+            userId: selectedVehicle.currentCleanerId,
+            slotRole: 'CLEANER',
+          })
+        } catch (e: unknown) {
+          const msg = getApiError(e, 'Cleaner carry-over failed')
+          toast.warning(`Cleaner carry-over failed: ${msg}`)
+        }
+      }
+    },
     onSuccess: () => {
       toast.success('Vehicle assigned successfully')
       qc.invalidateQueries({ queryKey: ['assignments-orders'] })
@@ -71,6 +104,7 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
   function handleClose() {
     setOrderId(''); setVehicleId(''); setAllocatedWeight('')
     setExpectedLoadDate(''); setExpectedDeliveryDate(''); setRemarks('')
+    setCarryOverDriver(true); setCarryOverCleaner(true)
     onClose()
   }
 
@@ -112,6 +146,39 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
               <p className="text-xs text-amber-600 mt-1">No available vehicles found.</p>
             )}
           </div>
+
+          {/* Carry-over confirmation */}
+          {hasPreAssignedStaff && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-blue-700">This vehicle has pre-assigned staff. Carry over to this order?</p>
+              {selectedVehicle?.currentDriverId && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={carryOverDriver}
+                    onChange={e => setCarryOverDriver(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-blue-600"
+                  />
+                  <span className="text-sm text-blue-800">
+                    <span className="font-medium">Driver:</span> {selectedVehicle.currentDriverName}
+                  </span>
+                </label>
+              )}
+              {selectedVehicle?.currentCleanerId && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={carryOverCleaner}
+                    onChange={e => setCarryOverCleaner(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-blue-600"
+                  />
+                  <span className="text-sm text-blue-800">
+                    <span className="font-medium">Cleaner:</span> {selectedVehicle.currentCleanerName}
+                  </span>
+                </label>
+              )}
+            </div>
+          )}
 
           <div>
             <Label>Allocated Weight (tons) <span className="text-red-500">*</span></Label>

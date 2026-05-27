@@ -19,6 +19,10 @@ export const vehiclesApi = {
   updateStatus:   (id: number, payload: UpdateStatusPayload) => apiClient.patch<ApiResponse<Vehicle>>(`/vehicles/${id}/status`, payload).then(r => r.data),
   toggleActive:   (id: number) => apiClient.patch<ApiResponse<Vehicle>>(`/vehicles/${id}/active`).then(r => r.data),
   remove:    (id: number) => apiClient.delete<ApiResponse<null>>(`/vehicles/${id}`).then(r => r.data),
+  assignDriver:   (vehicleId: number, userId: number) => apiClient.put<ApiResponse<Vehicle>>(`/vehicles/${vehicleId}/staff/driver`, { userId }).then(r => r.data),
+  unassignDriver: (vehicleId: number) => apiClient.delete<ApiResponse<Vehicle>>(`/vehicles/${vehicleId}/staff/driver`).then(r => r.data),
+  assignCleaner:  (vehicleId: number, userId: number) => apiClient.put<ApiResponse<Vehicle>>(`/vehicles/${vehicleId}/staff/cleaner`, { userId }).then(r => r.data),
+  unassignCleaner:(vehicleId: number) => apiClient.delete<ApiResponse<Vehicle>>(`/vehicles/${vehicleId}/staff/cleaner`).then(r => r.data),
   bulkUpload: (file: File) => {
     const form = new FormData()
     form.append('file', file)

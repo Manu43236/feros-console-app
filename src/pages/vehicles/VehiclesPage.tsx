@@ -6,11 +6,14 @@ import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi } from '@/api/vehicles'
+import { staffApi } from '@/api/staff'
 import { globalMastersApi, tenantMastersApi } from '@/api/masters'
+import { getApiError } from '@/lib/apiError'
+import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import {
   Plus, Search, Truck, ChevronRight, Upload, Download, CheckCircle, XCircle, Calendar,
-  Paperclip, FileText, X,
+  Paperclip, FileText, X, UserCog,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -782,6 +785,108 @@ export function VehicleForm({
   )
 }
 
+// ── vehicle staff dialog ──────────────────────────────────────────────────────
+function VehicleStaffDialog({ open, onClose, vehicle, role }: {
+  open: boolean; onClose: () => void
+  vehicle: Vehicle | null; role: 'DRIVER' | 'CLEANER'
+}) {
+  const qc = useQueryClient()
+  const [userId, setUserId] = useState('')
+  const roleLabel = role === 'DRIVER' ? 'Driver' : 'Cleaner'
+
+  const { data: usersRes } = useQuery({
+    queryKey: ['all-staff-users'],
+    queryFn: () => staffApi.getUsers(),
+    enabled: open,
+  })
+
+  const eligible = (usersRes?.data ?? []).filter(u => u.role === role && u.isActive)
+  const currentId   = role === 'DRIVER' ? vehicle?.currentDriverId  : vehicle?.currentCleanerId
+  const currentName = role === 'DRIVER' ? vehicle?.currentDriverName : vehicle?.currentCleanerName
+
+  const assignMutation = useMutation({
+    mutationFn: () =>
+      role === 'DRIVER'
+        ? vehiclesApi.assignDriver(vehicle!.id, Number(userId))
+        : vehiclesApi.assignCleaner(vehicle!.id, Number(userId)),
+    onSuccess: () => {
+      toast.success(`${roleLabel} assigned successfully`)
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
+      handleClose()
+    },
+    onError: (e: unknown) => toast.error(getApiError(e, `Failed to assign ${roleLabel.toLowerCase()}`)),
+  })
+
+  const unassignMutation = useMutation({
+    mutationFn: () =>
+      role === 'DRIVER'
+        ? vehiclesApi.unassignDriver(vehicle!.id)
+        : vehiclesApi.unassignCleaner(vehicle!.id),
+    onSuccess: () => {
+      toast.success(`${roleLabel} unassigned`)
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
+      handleClose()
+    },
+    onError: (e: unknown) => toast.error(getApiError(e, `Failed to unassign ${roleLabel.toLowerCase()}`)),
+  })
+
+  function handleClose() { setUserId(''); onClose() }
+
+  if (!vehicle) return null
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Assign {roleLabel} — {vehicle.registrationNumber}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          {currentName && (
+            <div className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2.5">
+              <div>
+                <p className="text-xs text-blue-500 font-medium">Current {roleLabel}</p>
+                <p className="text-sm font-semibold text-blue-800">{currentName}</p>
+              </div>
+              <button
+                onClick={() => unassignMutation.mutate()}
+                disabled={unassignMutation.isPending}
+                className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+              >
+                {unassignMutation.isPending ? 'Removing…' : 'Unassign'}
+              </button>
+            </div>
+          )}
+          <div>
+            <Label>{currentId ? `Replace ${roleLabel}` : `Select ${roleLabel}`} <span className="text-red-500">*</span></Label>
+            <SearchableSelect
+              value={userId}
+              onValueChange={setUserId}
+              options={eligible
+                .filter(u => u.id !== currentId)
+                .map(u => ({ value: String(u.id), label: u.name }))}
+              placeholder={`Select ${roleLabel.toLowerCase()}`}
+              className="mt-1"
+            />
+            {eligible.length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">No active {roleLabel.toLowerCase()}s found.</p>
+            )}
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1" onClick={handleClose}>Cancel</Button>
+            <Button
+              className="flex-1"
+              disabled={!userId || assignMutation.isPending}
+              onClick={() => assignMutation.mutate()}
+            >
+              {assignMutation.isPending ? 'Assigning…' : `Assign ${roleLabel}`}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 const vehicleStatusBadge: Record<VehicleStatusType, string> = {
   AVAILABLE:  'bg-green-100 text-green-700',
   ASSIGNED:   'bg-blue-100 text-blue-700',
@@ -795,6 +900,8 @@ const vehicleStatusBadge: Record<VehicleStatusType, string> = {
 export function VehiclesPage() {
   const { locked } = useSubscription()
   const navigate = useNavigate()
+  const currentRole = useAuthStore(s => s.role)
+  const canAssignStaff = ['ADMIN', 'OFFICE_STAFF', 'SUPERVISOR'].includes(currentRole ?? '')
   const [search, setSearch]           = useState('')
   const [formOpen, setFormOpen]       = useState(false)
   const [bulkOpen, setBulkOpen]       = useState(false)
@@ -803,6 +910,8 @@ export function VehiclesPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [assignFilter, setAssignFilter] = useState('')
   const [dateFilter, setDateFilter]   = useState(() => new Date().toISOString().slice(0, 10))
+  const [staffDialogVehicle, setStaffDialogVehicle] = useState<Vehicle | null>(null)
+  const [staffDialogRole, setStaffDialogRole]       = useState<'DRIVER' | 'CLEANER'>('DRIVER')
 
   const { data: res, isLoading }  = useQuery({
     queryKey: ['vehicles', dateFilter],
@@ -931,6 +1040,7 @@ export function VehiclesPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Type / Capacity</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Ownership</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Current Status</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Staff</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Active</th>
                   <th className="py-3 px-4" />
                 </tr>
@@ -1003,6 +1113,24 @@ export function VehiclesPage() {
                         ) : <span className="text-gray-300 text-sm">—</span>}
                       </td>
                       <td className="py-3 px-4">
+                        {v.currentDriverName || v.currentCleanerName ? (
+                          <div className="space-y-0.5">
+                            {v.currentDriverName && (
+                              <p className="text-xs text-gray-600">
+                                <span className="font-medium text-blue-600">D:</span> {v.currentDriverName}
+                              </p>
+                            )}
+                            {v.currentCleanerName && (
+                              <p className="text-xs text-gray-600">
+                                <span className="font-medium text-purple-600">C:</span> {v.currentCleanerName}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 text-sm">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
                         <Badge className={cn('text-xs', v.isActive
                           ? 'bg-green-50 text-green-700 hover:bg-green-50'
                           : 'bg-red-50 text-red-700 hover:bg-red-50'
@@ -1011,7 +1139,37 @@ export function VehiclesPage() {
                         </Badge>
                       </td>
                       <td className="py-3 px-4">
-                        <ChevronRight size={16} className="text-gray-300" />
+                        <div className="flex items-center gap-1">
+                          {canAssignStaff && v.isActive && (
+                            <>
+                              <button
+                                title={v.currentDriverName ? `Driver: ${v.currentDriverName} (click to change)` : 'Assign Driver'}
+                                onClick={e => { e.stopPropagation(); setStaffDialogVehicle(v); setStaffDialogRole('DRIVER') }}
+                                className={cn(
+                                  'p-1.5 rounded transition-colors',
+                                  v.currentDriverName
+                                    ? 'text-blue-500 hover:text-blue-700 hover:bg-blue-50'
+                                    : 'text-gray-300 hover:text-blue-500 hover:bg-blue-50'
+                                )}
+                              >
+                                <UserCog size={14} />
+                              </button>
+                              <button
+                                title={v.currentCleanerName ? `Cleaner: ${v.currentCleanerName} (click to change)` : 'Assign Cleaner'}
+                                onClick={e => { e.stopPropagation(); setStaffDialogVehicle(v); setStaffDialogRole('CLEANER') }}
+                                className={cn(
+                                  'p-1.5 rounded transition-colors',
+                                  v.currentCleanerName
+                                    ? 'text-purple-500 hover:text-purple-700 hover:bg-purple-50'
+                                    : 'text-gray-300 hover:text-purple-500 hover:bg-purple-50'
+                                )}
+                              >
+                                <UserCog size={14} />
+                              </button>
+                            </>
+                          )}
+                          <ChevronRight size={16} className="text-gray-300" />
+                        </div>
                       </td>
                     </tr>
                   )
@@ -1024,6 +1182,12 @@ export function VehiclesPage() {
 
       <VehicleForm open={formOpen} onClose={onClose} />
       <VehicleBulkUploadDialog open={bulkOpen} onClose={() => setBulkOpen(false)} />
+      <VehicleStaffDialog
+        open={!!staffDialogVehicle}
+        onClose={() => setStaffDialogVehicle(null)}
+        vehicle={staffDialogVehicle}
+        role={staffDialogRole}
+      />
     </div>
   )
 }

@@ -140,6 +140,8 @@ export interface Vehicle {
   tyreRotationIntervalKm?: number
   isFinanced?: boolean; financerName?: string; financeStartDate?: string; financeEndDate?: string; financeMonthsRemaining?: number
   isActive: boolean; createdAt: string; updatedAt: string
+  currentDriverId?: number; currentDriverName?: string
+  currentCleanerId?: number; currentCleanerName?: string
   isAssigned?: boolean; assignedOrderId?: number; assignedOrderNumber?: string
 }
 
