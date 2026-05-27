@@ -395,6 +395,16 @@ export interface DashboardResponse {
   }
 }
 
+export interface SupervisorDashboardResponse {
+  orders:    { total: number; pending: number; active: number; completed: number; delivered: number; cancelled: number }
+  vehicles:  { total: number; available: number; onTrip: number; breakdown: number; inactive: number }
+  drivers:   { total: number; available: number; onTrip: number; todayPresent: number }
+  cleaners:  { total: number; available: number; onTrip: number; todayPresent: number }
+  lrs:       { total: number; created: number; loaded: number; inTransit: number; delivered: number; cancelled: number }
+  attendance: { total: number; present: number; absent: number; halfDay: number; weeklyOff: number }
+  unreadNotifications: number
+}
+
 export interface ExpiryAlertResponse {
   vehicleAlerts: VehicleAlert[]
   staffDocumentAlerts: StaffDocumentAlert[]

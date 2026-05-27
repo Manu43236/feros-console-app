@@ -6,7 +6,7 @@ import {
   ClipboardList, Truck, UserCheck,
   AlertTriangle, CheckCircle, Clock,
 } from 'lucide-react'
-import type { VehicleAlert } from '@/types'
+import type { SupervisorDashboardResponse, VehicleAlert } from '@/types'
 import { cn } from '@/lib/utils'
 
 function fmt(n?: number) {
@@ -76,6 +76,7 @@ function VehicleAlertRow({ a }: { a: VehicleAlert }) {
 
 export function SupervisorDashboardPage() {
   const navigate = useNavigate()
+
   const { data: summaryRes, isLoading: loadingSummary } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: dashboardApi.getSummary,
@@ -86,14 +87,14 @@ export function SupervisorDashboardPage() {
     queryFn: () => dashboardApi.getExpiryAlerts(30),
   })
 
-  const s      = summaryRes?.data
+  const s      = summaryRes?.data as SupervisorDashboardResponse | undefined
   const alerts = alertsRes?.data
 
   const statCards = [
     {
-      label: 'Active Orders',
+      label: 'Orders',
       value: fmt(s?.orders.total),
-      sub: `${fmt(s?.orders.inTransit)} in transit · ${fmt(s?.orders.pending)} pending`,
+      sub: `${fmt(s?.orders.active)} active · ${fmt(s?.orders.pending)} pending`,
       icon: ClipboardList,
       iconBg: 'bg-blue-50 text-feros-navy',
       href: '/orders',
@@ -108,8 +109,8 @@ export function SupervisorDashboardPage() {
     },
     {
       label: "Today's Attendance",
-      value: fmt(s?.todayAttendance.present),
-      sub: `of ${fmt(s?.todayAttendance.total)} · ${fmt(s?.todayAttendance.absent)} absent`,
+      value: fmt(s?.attendance.present),
+      sub: `of ${fmt(s?.attendance.total)} · ${fmt(s?.attendance.absent)} absent`,
       icon: UserCheck,
       iconBg: 'bg-green-50 text-green-600',
       href: '/attendance',
@@ -149,14 +150,13 @@ export function SupervisorDashboardPage() {
       {s && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <h2 className="font-semibold text-gray-800 mb-4">Order Status Breakdown</h2>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {[
-              { label: 'Pending',    value: s.orders.pending,            color: 'text-gray-600   bg-gray-50',   status: 'PENDING' },
-              { label: 'Assigned',   value: s.orders.fullyAssigned,      color: 'text-blue-600   bg-blue-50',   status: 'FULLY_ASSIGNED' },
-              { label: 'In Transit', value: s.orders.inTransit,          color: 'text-orange-600 bg-orange-50', status: 'IN_TRANSIT' },
-              { label: 'Part. Del.', value: s.orders.partiallyDelivered, color: 'text-yellow-700 bg-yellow-50', status: 'PARTIALLY_DELIVERED' },
-              { label: 'Delivered',  value: s.orders.delivered,          color: 'text-green-600  bg-green-50',  status: 'DELIVERED' },
-              { label: 'Cancelled',  value: s.orders.cancelled,          color: 'text-red-600    bg-red-50',    status: 'CANCELLED' },
+              { label: 'Pending',   value: s.orders.pending,   color: 'text-gray-600   bg-gray-50',   status: 'PENDING' },
+              { label: 'Active',    value: s.orders.active,    color: 'text-orange-600 bg-orange-50', status: 'IN_TRANSIT' },
+              { label: 'Completed', value: s.orders.completed, color: 'text-blue-600   bg-blue-50',   status: 'COMPLETED' },
+              { label: 'Delivered', value: s.orders.delivered, color: 'text-green-600  bg-green-50',  status: 'DELIVERED' },
+              { label: 'Cancelled', value: s.orders.cancelled, color: 'text-red-600    bg-red-50',    status: 'CANCELLED' },
             ].map(({ label, value, color, status }) => (
               <div
                 key={label}
@@ -215,10 +215,10 @@ export function SupervisorDashboardPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: 'Present',  value: s.todayAttendance.present },
-              { label: 'Absent',   value: s.todayAttendance.absent },
-              { label: 'Half Day', value: s.todayAttendance.halfDay },
-              { label: 'On Leave', value: s.todayAttendance.onLeave },
+              { label: 'Present',    value: s.attendance.present },
+              { label: 'Absent',     value: s.attendance.absent },
+              { label: 'Half Day',   value: s.attendance.halfDay },
+              { label: 'Weekly Off', value: s.attendance.weeklyOff },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p className="text-2xl font-bold">{fmt(value)}</p>
