@@ -79,8 +79,12 @@ function VehicleAlertRow({ a }: { a: VehicleAlert }) {
 }
 
 function StaffAlertRow({ a }: { a: StaffDocumentAlert }) {
+  const navigate = useNavigate()
   return (
-    <tr className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+    <tr
+      className="border-b border-gray-50 last:border-0 hover:bg-orange-50 transition-colors cursor-pointer"
+      onClick={() => navigate(`/staff/${a.userId}?tab=docs`)}
+    >
       <td className="py-3 px-4 text-sm font-medium text-gray-800">{a.userName}</td>
       <td className="py-3 px-4 text-sm text-gray-600">{a.documentType}</td>
       <td className="py-3 px-4 text-sm text-gray-500">{format(new Date(a.expiryDate), 'dd MMM yyyy')}</td>

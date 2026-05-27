@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -304,7 +304,8 @@ export function StaffDetailPage() {
   const uid        = Number(userId)
 
   const logoUrl = useAuthStore(s => s.logoUrl)
-  const [tab, setTab]               = useState<'info' | 'docs'>('info')
+  const [searchParams] = useSearchParams()
+  const [tab, setTab]               = useState<'info' | 'docs'>(searchParams.get('tab') === 'docs' ? 'docs' : 'info')
   const [selectedState, setSelectedState] = useState<number | undefined>()
   const [currentPin, setCurrentPin] = useState<string | null>(null)
   const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
