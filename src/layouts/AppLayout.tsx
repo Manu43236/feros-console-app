@@ -144,14 +144,43 @@ const SUPER_ADMIN_NAV: FlatNav = [
   { to: '/sa/settings',       label: 'Settings',       icon: Settings },
 ]
 
-const SUPERVISOR_NAV: FlatNav = [
-  { to: '/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
-  { to: '/attendance',    label: 'Attendance',    icon: Calendar },
-  { to: '/orders',        label: 'Orders',        icon: ClipboardList,  moduleKey: 'ORDERS' },
-  { to: '/assignments',   label: 'Assignments',   icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
-  { to: '/lrs',           label: 'LR Register',   icon: FileText,       moduleKey: 'LR_REGISTER' },
-  { to: '/my/payslip',    label: 'My Payslip',    icon: Wallet },
-]
+const SUPERVISOR_NAV: SectionedNav = {
+  dashboard: { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  sections: [
+    {
+      section: 'Operations',
+      icon: Activity,
+      items: [
+        { to: '/orders',      label: 'Orders',      icon: ClipboardList,  moduleKey: 'ORDERS' },
+        { to: '/assignments', label: 'Assignments', icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
+        { to: '/lrs',         label: 'LR Register', icon: FileText,       moduleKey: 'LR_REGISTER' },
+      ],
+    },
+    {
+      section: 'Fleet',
+      icon: Truck,
+      items: [
+        { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
+        { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
+        { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
+      ],
+    },
+    {
+      section: 'HR',
+      icon: Users,
+      items: [
+        { to: '/staff',      label: 'Staff',      icon: UserCheck },
+        { to: '/attendance', label: 'Attendance', icon: Calendar },
+      ],
+    },
+    {
+      section: '',
+      items: [
+        { to: '/my/payslip', label: 'My Payslip', icon: Wallet },
+      ],
+    },
+  ],
+}
 
 const DRIVER_CLEANER_NAV: FlatNav = [
   { to: '/my/trips',      label: 'My Trips',      icon: Truck },
