@@ -958,6 +958,7 @@ export function VehiclesPage() {
   const { locked } = useSubscription()
   const navigate = useNavigate()
   const currentRole = useAuthStore(s => s.role)
+  const isSupervisor   = currentRole === 'SUPERVISOR'
   const canAssignStaff = ['ADMIN', 'OFFICE_STAFF', 'SUPERVISOR'].includes(currentRole ?? '')
   const [search, setSearch]           = useState('')
   const [formOpen, setFormOpen]       = useState(false)
@@ -1007,7 +1008,7 @@ export function VehiclesPage() {
             ) : null })()}
           </p>
         </div>
-        {!locked && (
+        {!locked && !isSupervisor && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
               <Upload size={16} /> Bulk Upload

@@ -1,4 +1,5 @@
 import { getApiError } from '@/lib/apiError'
+import { useAuthStore } from '@/store/authStore'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -2440,6 +2441,7 @@ export function VehicleDetailPage() {
   const [pendingStatusId, setPendingStatusId]         = useState<number | null>(null)
   const [confirmStatusId, setConfirmStatusId]         = useState<number | null>(null)
   const [confirmStatusName, setConfirmStatusName]     = useState('')
+  const isSupervisor = useAuthStore(s => s.role) === 'SUPERVISOR'
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['vehicle', vehicleId],
@@ -2558,8 +2560,8 @@ export function VehicleDetailPage() {
                             ...(statusRes?.data ?? [])
                               .filter(s => {
                                 const cur = v.currentStatusType
-                                if (cur === 'BREAKDOWN') return s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
-                                if (cur === 'IN_REPAIR')  return s.statusType === 'IN_REPAIR'  || s.statusType === 'AVAILABLE'
+                                if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
+                                if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
                                 return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
                               })
                               .map(s => ({
@@ -2681,9 +2683,11 @@ export function VehicleDetailPage() {
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Basic Information</p>
-                <Button size="sm" onClick={() => setEditOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
-                  <Pencil size={13} /> Edit
-                </Button>
+                {!isSupervisor && (
+                  <Button size="sm" onClick={() => setEditOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+                    <Pencil size={13} /> Edit
+                  </Button>
+                )}
               </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
@@ -2820,9 +2824,11 @@ export function VehicleDetailPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Uploaded Documents</p>
-                <Button size="sm" onClick={() => setAddDocOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
-                  <Plus size={13} /> Add Document
-                </Button>
+                {!isSupervisor && (
+                  <Button size="sm" onClick={() => setAddDocOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+                    <Plus size={13} /> Add Document
+                  </Button>
+                )}
               </div>
               {complianceDocs.length === 0 ? (
                 <div className="py-10 text-center text-gray-400">
@@ -2876,13 +2882,15 @@ export function VehicleDetailPage() {
                                 <ExternalLink size={11} /> View
                               </a>
                             )}
-                            <button
-                              onClick={() => setDocToEdit(doc)}
-                              className="p-1.5 text-gray-400 hover:text-feros-navy hover:bg-blue-50 rounded transition-colors"
-                              title="Edit document"
-                            >
-                              <Pencil size={14} />
-                            </button>
+                            {!isSupervisor && (
+                              <button
+                                onClick={() => setDocToEdit(doc)}
+                                className="p-1.5 text-gray-400 hover:text-feros-navy hover:bg-blue-50 rounded transition-colors"
+                                title="Edit document"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
                             <button
                               onClick={() => setDocToDelete(doc)}
                               className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
@@ -2925,9 +2933,11 @@ export function VehicleDetailPage() {
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">GPS & Notes</p>
-                <Button size="sm" onClick={() => setEditOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
-                  <Pencil size={13} /> Edit
-                </Button>
+                {!isSupervisor && (
+                  <Button size="sm" onClick={() => setEditOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+                    <Pencil size={13} /> Edit
+                  </Button>
+                )}
               </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
