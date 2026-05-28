@@ -763,7 +763,7 @@ export function LrDetailPage() {
                 </div>
               )}
 
-              {isActive && (
+              {lr.lrStatus === 'CREATED' && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
