@@ -5,6 +5,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
 import { ordersApi } from '@/api/orders'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi } from '@/api/masters'
@@ -441,6 +442,7 @@ const PAGE_SIZE = 20
 
 export function OrdersPage() {
   const { locked } = useSubscription()
+  const isSupervisor = useAuthStore(s => s.role) === 'SUPERVISOR'
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [search, setSearch]         = useState('')
@@ -487,7 +489,7 @@ export function OrdersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-500 text-sm mt-0.5">{pageData?.totalElements ?? 0} total orders</p>
         </div>
-        {!locked && (
+        {!locked && !isSupervisor && (
           <Button onClick={() => setFormOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
             <Plus size={16} /> New Order
           </Button>

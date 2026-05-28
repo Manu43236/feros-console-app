@@ -988,7 +988,7 @@ export function VehiclesPage() {
     const matchType   = !typeFilter  || String(v.vehicleTypeId) === typeFilter
     const matchOwner  = !ownerFilter || String(v.ownershipTypeId) === ownerFilter
     const matchStatus = !statusFilter || (statusFilter === 'active' ? v.isActive : !v.isActive)
-    const matchAssign = !assignFilter || (assignFilter === 'assigned' ? v.isAssigned : !v.isAssigned)
+    const matchAssign = !assignFilter || v.currentStatusType === assignFilter
     return matchSearch && matchType && matchOwner && matchStatus && matchAssign
   })
 
@@ -1003,9 +1003,16 @@ export function VehiclesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Vehicles</h1>
           <p className="text-gray-500 text-sm mt-0.5">
             {allVehicles.length} total
-            {(() => { const assigned = allVehicles.filter(v => v.isAssigned).length; return assigned > 0 ? (
-              <span className="ml-2 text-blue-600 font-medium">· {assigned} on trip</span>
-            ) : null })()}
+            {(() => {
+              const assigned = allVehicles.filter(v => v.currentStatusType === 'ASSIGNED').length
+              const onTrip   = allVehicles.filter(v => v.currentStatusType === 'ON_TRIP').length
+              return (
+                <>
+                  {assigned > 0 && <span className="ml-2 text-blue-600 font-medium">· {assigned} assigned</span>}
+                  {onTrip   > 0 && <span className="ml-2 text-orange-500 font-medium">· {onTrip} on trip</span>}
+                </>
+              )
+            })()}
           </p>
         </div>
         {!locked && !isSupervisor && (
@@ -1072,9 +1079,10 @@ export function VehiclesPage() {
           value={assignFilter}
           onValueChange={setAssignFilter}
           options={[
-            { value: '', label: 'All Trips' },
-            { value: 'assigned', label: 'On Trip' },
-            { value: 'available', label: 'Available' },
+            { value: '',          label: 'All Trips' },
+            { value: 'ASSIGNED',  label: 'Assigned' },
+            { value: 'ON_TRIP',   label: 'On Trip' },
+            { value: 'AVAILABLE', label: 'Available' },
           ]}
           className="h-10 w-36"
         />
@@ -1144,10 +1152,10 @@ export function VehiclesPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        {v.isAssigned ? (
+                        {v.currentStatusType && ['ASSIGNED', 'ON_TRIP'].includes(v.currentStatusType) ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium w-fit ${vehicleStatusBadge['ASSIGNED']}`}>
-                              Assigned
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium w-fit ${vehicleStatusBadge[v.currentStatusType as VehicleStatusType]}`}>
+                              {v.currentStatusName}
                             </span>
                             {v.assignedOrderNumber && (
                               <span className="text-xs text-gray-400 font-mono pl-1">{v.assignedOrderNumber}</span>

@@ -998,7 +998,8 @@ export function OrderDetailPage() {
 
   const order = res?.data
 
-  const role = useAuthStore(s => s.role)
+  const role         = useAuthStore(s => s.role)
+  const isSupervisor = role === 'SUPERVISOR'
 
   const forceDeliverMutation = useMutation({
     mutationFn: () => apiClient.patch(`/orders/${order?.id}/force-deliver`, null),
@@ -1013,9 +1014,9 @@ export function OrderDetailPage() {
     && ['IN_TRANSIT', 'PARTIALLY_DELIVERED'].includes(order.orderStatus)
 
   const canAssign   = !['DELIVERED', 'CANCELLED', 'COMPLETED'].includes(order.orderStatus)
-  const canCancel   = ['PENDING', 'PARTIALLY_ASSIGNED'].includes(order.orderStatus)
-  const hasBreakdown = (order.vehicleAllocations ?? []).some(a => a.allocationStatus === 'IN_TRANSIT')
-  const canUpdatePayment = !['CANCELLED', 'COMPLETED'].includes(order.orderStatus)
+  const canCancel        = !isSupervisor && ['PENDING', 'PARTIALLY_ASSIGNED'].includes(order.orderStatus)
+  const hasBreakdown     = (order.vehicleAllocations ?? []).some(a => a.allocationStatus === 'IN_TRANSIT')
+  const canUpdatePayment = !isSupervisor && !['CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const allocations = order.vehicleAllocations ?? []
   const totalAssigned = allocations.reduce((s, a) => s + Number(a.allocatedWeight), 0)
   const remaining   = Number(order.totalWeight) - totalAssigned
@@ -1072,7 +1073,7 @@ export function OrderDetailPage() {
                   <Receipt size={14} /> Payment
                 </Button>
               )}
-              {order.orderStatus === 'PENDING' && (
+              {!isSupervisor && order.orderStatus === 'PENDING' && (
                 <Button
                   size="sm"
                   onClick={() => setEditOpen(true)}
