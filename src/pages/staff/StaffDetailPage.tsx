@@ -303,7 +303,9 @@ export function StaffDetailPage() {
   const qc         = useQueryClient()
   const uid        = Number(userId)
 
-  const logoUrl = useAuthStore(s => s.logoUrl)
+  const logoUrl      = useAuthStore(s => s.logoUrl)
+  const authRole     = useAuthStore(s => s.role)
+  const isSupervisor = authRole === 'SUPERVISOR'
   const [searchParams] = useSearchParams()
   const [tab, setTab]               = useState<'info' | 'docs'>(searchParams.get('tab') === 'docs' ? 'docs' : 'info')
   const [selectedState, setSelectedState] = useState<number | undefined>()
@@ -515,17 +517,19 @@ export function StaffDetailPage() {
         {tab === 'info' && (
           <form onSubmit={handleSubmit(d => saveMutation.mutate(d))} className="space-y-6">
 
-          {/* PIN row */}
-          <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Login PIN</p>
-              <PinDisplay
-                pin={currentPin}
-                onReset={() => setDlg({ title: 'Reset PIN', desc: `Reset PIN for ${name}? The old PIN will stop working immediately.`, onOk: () => resetPinMutation.mutate() })}
-                resetting={resetPinMutation.isPending}
-              />
+          {/* PIN row — hidden for supervisors */}
+          {!isSupervisor && (
+            <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Login PIN</p>
+                <PinDisplay
+                  pin={currentPin}
+                  onReset={() => setDlg({ title: 'Reset PIN', desc: `Reset PIN for ${name}? The old PIN will stop working immediately.`, onOk: () => resetPinMutation.mutate() })}
+                  resetting={resetPinMutation.isPending}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Personal */}
           <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
