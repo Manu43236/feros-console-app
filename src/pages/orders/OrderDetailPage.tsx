@@ -149,10 +149,7 @@ function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
 
 // ── assign staff dialog ───────────────────────────────────────────────────────
 const assignStaffSchema = z.object({
-  userId:            z.coerce.number().min(1, 'Select a person'),
-  expectedStartDate: z.string().optional(),
-  expectedEndDate:   z.string().optional(),
-  remarks:           z.string().optional(),
+  userId: z.coerce.number().min(1, 'Select a person'),
 })
 type AssignStaffForm = z.infer<typeof assignStaffSchema>
 
@@ -166,13 +163,17 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
   const qc = useQueryClient()
   const { data: staffRes } = useQuery({ queryKey: ['users', { hasAttendanceToday: true }], queryFn: () => staffApi.getUsers({ hasAttendanceToday: true }) })
 
-  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AssignStaffForm>({
+  const { handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AssignStaffForm>({
     resolver: zodResolver(assignStaffSchema) as Resolver<AssignStaffForm>,
   })
 
+  const isSwap = slotRole === 'DRIVER' ? !!allocation.currentDriverId : !!allocation.currentCleanerId
+
   const mutation = useMutation({
     mutationFn: (data: AssignStaffForm) =>
-      ordersApi.assignStaff(orderId, { ...data, vehicleAllocationId: allocation.id, slotRole }),
+      slotRole === 'DRIVER'
+        ? vehiclesApi.assignDriver(allocation.vehicleId, data.userId)
+        : vehiclesApi.assignCleaner(allocation.vehicleId, data.userId),
     onSuccess: () => {
       toast.success(`${slotRole === 'DRIVER' ? 'Driver' : 'Cleaner'} assigned successfully`)
       qc.invalidateQueries({ queryKey: ['order', orderId] })
@@ -203,13 +204,22 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
           </p>
         </DialogHeader>
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
+          {isSwap && (
+            <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-700">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <span>
+                This vehicle already has a {slotRole === 'DRIVER' ? 'driver' : 'cleaner'} assigned.
+                Selecting a new one will replace them.
+              </span>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>{slotRole === 'DRIVER' ? 'Driver' : 'Cleaner'} *</Label>
             <SearchableSelect
               placeholder={`Select ${slotRole === 'DRIVER' ? 'driver' : 'cleaner'}`}
               value={watch('userId') ? String(watch('userId')) : ''}
               onValueChange={v => setValue('userId', Number(v), { shouldValidate: true })}
-              options={eligible.map(u => ({ value: String(u.id), label: `${u.name} · ${u.phone}${u.isAssigned ? ` (On Trip: ${u.activeOrderNumber ?? '—'})` : ''}` }))}
+              options={eligible.map(u => ({ value: String(u.id), label: `${u.name} · ${u.phone}` }))}
             />
             {errors.userId && <p className="text-red-500 text-xs">{errors.userId.message}</p>}
             {eligible.length === 0 && (
@@ -219,26 +229,10 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Start Date</Label>
-              <Input type="date" {...register('expectedStartDate')} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>End Date</Label>
-              <Input type="date" {...register('expectedEndDate')} />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Remarks</Label>
-            <Input placeholder="Optional notes…" {...register('remarks')} />
-          </div>
-
           <div className="flex justify-end gap-3 pt-2 border-t">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
-              {mutation.isPending ? 'Assigning…' : `Assign ${slotRole === 'DRIVER' ? 'Driver' : 'Cleaner'}`}
+              {mutation.isPending ? 'Assigning…' : `${isSwap ? 'Change' : 'Assign'} ${slotRole === 'DRIVER' ? 'Driver' : 'Cleaner'}`}
             </Button>
           </div>
         </form>
@@ -708,16 +702,29 @@ function VehicleAllocationCard({
     },
   })
 
-  const unassignStaffMutation = useMutation({
-    mutationFn: (staffAllocationId: number) => ordersApi.unassignStaff(orderId, staffAllocationId),
+  const unassignDriverMutation = useMutation({
+    mutationFn: () => vehiclesApi.unassignDriver(allocation.vehicleId),
     onSuccess: () => {
-      toast.success('Staff unassigned')
+      toast.success('Driver unassigned')
       qc.invalidateQueries({ queryKey: ['order', orderId] })
       qc.invalidateQueries({ queryKey: ['users'] })
     },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to unassign staff')
+      toast.error(msg ?? 'Failed to unassign driver')
+    },
+  })
+
+  const unassignCleanerMutation = useMutation({
+    mutationFn: () => vehiclesApi.unassignCleaner(allocation.vehicleId),
+    onSuccess: () => {
+      toast.success('Cleaner unassigned')
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to unassign cleaner')
     },
   })
 
@@ -725,12 +732,10 @@ function VehicleAllocationCard({
   const canReportBreakdown = canAssign && allocation.allocationStatus === 'IN_TRANSIT' && !breakdown
 
   const regNo     = allocation.vehicleRegistrationNumber ?? allocation.registrationNumber
-  const staff     = allocation.staffAllocations ?? []
   const statusCls = ALLOC_STATUS_COLORS[allocation.allocationStatus] ?? 'bg-gray-50 text-gray-600'
 
-  // Exactly one driver, one cleaner — pick the active one
-  const activeDriver  = staff.find(s => s.roleName === 'DRIVER'  && s.allocationStatus !== 'CANCELLED')
-  const activeCleaner = staff.find(s => s.roleName === 'CLEANER' && s.allocationStatus !== 'CANCELLED')
+  const activeDriver  = allocation.currentDriverId  ? { id: allocation.currentDriverId,  name: allocation.currentDriverName  ?? '—', phone: allocation.currentDriverPhone  } : undefined
+  const activeCleaner = allocation.currentCleanerId ? { id: allocation.currentCleanerId, name: allocation.currentCleanerName ?? '—', phone: allocation.currentCleanerPhone } : undefined
 
   return (
     <div className="border border-gray-100 rounded-xl overflow-hidden">
@@ -823,7 +828,7 @@ function VehicleAllocationCard({
             person={activeDriver}
             canAssign={canAssign}
             onAssign={() => setSlotDialog('DRIVER')}
-            onUnassign={canAssign ? (id) => unassignStaffMutation.mutate(id) : undefined}
+            onUnassign={canAssign ? () => unassignDriverMutation.mutate() : undefined}
           />
           {/* Cleaner slot */}
           <StaffSlot
@@ -831,7 +836,7 @@ function VehicleAllocationCard({
             person={activeCleaner}
             canAssign={canAssign}
             onAssign={() => setSlotDialog('CLEANER')}
-            onUnassign={canAssign ? (id) => unassignStaffMutation.mutate(id) : undefined}
+            onUnassign={canAssign ? () => unassignCleanerMutation.mutate() : undefined}
           />
         </div>
       )}
@@ -884,12 +889,11 @@ function VehicleAllocationCard({
 // ── staff slot row ────────────────────────────────────────────────────────────
 function StaffSlot({ label, person, canAssign, onAssign, onUnassign }: {
   label: string
-  person: { id: number; userName: string; expectedStartDate?: string; expectedEndDate?: string; allocationStatus: string } | undefined
+  person: { id: number; name: string; phone?: string } | undefined
   canAssign: boolean
   onAssign: () => void
-  onUnassign?: (id: number) => void
+  onUnassign?: () => void
 }) {
-  const canUnassignPerson = !!person && person.allocationStatus === 'ALLOCATED' && !!onUnassign
   const [dlg, setDlg] = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
 
   return (
@@ -905,22 +909,8 @@ function StaffSlot({ label, person, canAssign, onAssign, onUnassign }: {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
         {person ? (
           <div>
-            <p className="text-sm font-medium text-gray-800">
-              {person.userName}
-              {person.expectedStartDate && (
-                <span className="text-xs font-normal text-gray-400 ml-1.5">
-                  {fmt(person.expectedStartDate)}{person.expectedEndDate ? ` → ${fmt(person.expectedEndDate)}` : ''}
-                </span>
-              )}
-            </p>
-            <span className={cn(
-              'text-xs font-medium px-1.5 py-0.5 rounded-full',
-              person.allocationStatus === 'IN_TRANSIT' ? 'bg-orange-50 text-orange-600' :
-              person.allocationStatus === 'COMPLETED'  ? 'bg-green-50 text-green-600' :
-              'bg-blue-50 text-blue-600'
-            )}>
-              {person.allocationStatus}
-            </span>
+            <p className="text-sm font-medium text-gray-800">{person.name}</p>
+            {person.phone && <p className="text-xs text-gray-400">{person.phone}</p>}
           </div>
         ) : (
           <p className="text-sm text-gray-400 italic">Not assigned</p>
@@ -928,9 +918,9 @@ function StaffSlot({ label, person, canAssign, onAssign, onUnassign }: {
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        {canUnassignPerson && (
+        {person && canAssign && onUnassign && (
           <button
-            onClick={() => setDlg({ title: 'Unassign Staff', desc: `Unassign ${person!.userName} from this vehicle?`, onOk: () => onUnassign!(person!.id) })}
+            onClick={() => setDlg({ title: `Unassign ${label}`, desc: `Unassign ${person.name} from this vehicle?`, onOk: onUnassign })}
             className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-red-600 border-red-200 hover:bg-red-50 transition-colors"
           >
             <X size={11} /> Unassign
@@ -1156,7 +1146,7 @@ export function OrderDetailPage() {
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
               {allocations.length} vehicle{allocations.length !== 1 ? 's' : ''} assigned
-              {allocations.length > 0 && ` · ${allocations.reduce((s, a) => s + (a.staffAllocations?.length ?? 0), 0)} staff`}
+              {allocations.length > 0 && ` · ${allocations.filter(a => a.currentDriverId).length} driver${allocations.filter(a => a.currentDriverId).length !== 1 ? 's' : ''} assigned`}
             </p>
           </div>
           {canAssign && remaining > 0 && (

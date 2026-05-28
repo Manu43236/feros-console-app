@@ -202,6 +202,8 @@ export interface VehicleAllocation {
   expectedLoadDate?: string; expectedDeliveryDate?: string
   actualLoadDate?: string; actualDeliveryDate?: string
   allocationStatus: string; remarks?: string
+  currentDriverId?: number; currentDriverName?: string; currentDriverPhone?: string
+  currentCleanerId?: number; currentCleanerName?: string; currentCleanerPhone?: string
   staffAllocations?: StaffAllocation[]
 }
 
