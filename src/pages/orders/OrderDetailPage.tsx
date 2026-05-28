@@ -728,6 +728,8 @@ function VehicleAllocationCard({
     },
   })
 
+  const isAllocClosed      = ['DELIVERED', 'CANCELLED'].includes(allocation.allocationStatus)
+  const canEditStaff       = canAssign && !isAllocClosed
   const canUnassign        = canAssign && allocation.allocationStatus === 'ALLOCATED' && !existingLrId
   const canReportBreakdown = canAssign && allocation.allocationStatus === 'IN_TRANSIT' && !breakdown
 
@@ -826,17 +828,17 @@ function VehicleAllocationCard({
           <StaffSlot
             label="Driver"
             person={activeDriver}
-            canAssign={canAssign}
+            canAssign={canEditStaff}
             onAssign={() => setSlotDialog('DRIVER')}
-            onUnassign={canAssign ? () => unassignDriverMutation.mutate() : undefined}
+            onUnassign={canEditStaff ? () => unassignDriverMutation.mutate() : undefined}
           />
           {/* Cleaner slot */}
           <StaffSlot
             label="Cleaner"
             person={activeCleaner}
-            canAssign={canAssign}
+            canAssign={canEditStaff}
             onAssign={() => setSlotDialog('CLEANER')}
-            onUnassign={canAssign ? () => unassignCleanerMutation.mutate() : undefined}
+            onUnassign={canEditStaff ? () => unassignCleanerMutation.mutate() : undefined}
           />
         </div>
       )}
