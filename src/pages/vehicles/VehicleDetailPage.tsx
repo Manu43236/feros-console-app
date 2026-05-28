@@ -7,6 +7,8 @@ import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi, vehicleServicesApi } from '@/api/vehicles'
+import { ordersApi } from '@/api/orders'
+import { staffApi } from '@/api/staff'
 import { servicePartsApi, sparePartsApi } from '@/api/inventory'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
 import { breakdownsApi } from '@/api/breakdowns'
@@ -14,14 +16,14 @@ import { fuelLogsApi } from '@/api/fuelLogs'
 import { tyresApi } from '@/api/tyres'
 import { meterReadingsApi } from '@/api/meterReadings'
 import { compressIfNeeded } from '@/lib/imageCompressor'
-import type { FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading } from '@/types'
+import type { FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading, Order, VehicleAllocation, StaffAllocation } from '@/types'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, Pencil, Power,
   ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ChevronUp, ExternalLink, Paperclip, Trash2,
-  Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge,
+  Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge, Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -65,7 +67,7 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 }
 
 // ── tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tyres', 'Meter Readings', 'GPS & Notes', 'Order History', 'Trip History'] as const
+const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tyres', 'Meter Readings', 'GPS & Notes', 'Assignments', 'Order History', 'Trip History'] as const
 type Tab = typeof TABS[number]
 
 // ── edit document dialog ───────────────────────────────────────────────────────
@@ -2426,6 +2428,314 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
   )
 }
 
+// ── Vehicle Assignments Tab ────────────────────────────────────────────────────
+
+const ALLOC_COLORS: Record<string, string> = {
+  PENDING:     'bg-gray-100 text-gray-700',
+  ASSIGNED:    'bg-blue-100 text-blue-700',
+  IN_PROGRESS: 'bg-amber-100 text-amber-800',
+  COMPLETED:   'bg-green-100 text-green-700',
+  CANCELLED:   'bg-red-100 text-red-700',
+}
+
+function AssignToOrderDialog({ vehicleId, eligibleOrders, open, onClose, onSuccess }: {
+  vehicleId: number; eligibleOrders: Order[]
+  open: boolean; onClose: () => void; onSuccess: () => void
+}) {
+  const [orderId, setOrderId]                       = useState('')
+  const [allocatedWeight, setAllocatedWeight]       = useState('')
+  const [expectedLoadDate, setExpectedLoadDate]     = useState('')
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('')
+  const [remarks, setRemarks]                       = useState('')
+
+  const mutation = useMutation({
+    mutationFn: () => ordersApi.assignVehicle(Number(orderId), {
+      vehicleId,
+      allocatedWeight: Number(allocatedWeight),
+      expectedLoadDate: expectedLoadDate || undefined,
+      expectedDeliveryDate: expectedDeliveryDate || undefined,
+      remarks: remarks || undefined,
+    }),
+    onSuccess: () => { toast.success('Vehicle assigned to order'); onSuccess(); handleClose() },
+    onError:   (e: unknown) => toast.error(getApiError(e, 'Failed to assign') ?? 'Failed'),
+  })
+
+  function handleClose() {
+    setOrderId(''); setAllocatedWeight(''); setExpectedLoadDate(''); setExpectedDeliveryDate(''); setRemarks('')
+    onClose()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Assign to Order</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div>
+            <Label>Order <span className="text-red-500">*</span></Label>
+            <SearchableSelect
+              value={orderId} onValueChange={setOrderId}
+              options={eligibleOrders.map(o => ({
+                value: String(o.id),
+                label: `${o.orderNumber} — ${o.clientName} · ${o.sourceCityName} → ${o.destinationCityName}`,
+              }))}
+              placeholder="Select a pending order"
+              className="mt-1"
+            />
+            {eligibleOrders.length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">No pending or partially assigned orders found.</p>
+            )}
+          </div>
+          <div>
+            <Label>Allocated Weight (tons) <span className="text-red-500">*</span></Label>
+            <Input type="number" step="0.01" min="0" placeholder="e.g. 20" value={allocatedWeight} onChange={e => setAllocatedWeight(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Expected Load Date</Label>
+              <Input type="date" value={expectedLoadDate} onChange={e => setExpectedLoadDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Expected Delivery Date</Label>
+              <Input type="date" value={expectedDeliveryDate} onChange={e => setExpectedDeliveryDate(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label>Remarks</Label>
+            <Input placeholder="Optional" value={remarks} onChange={e => setRemarks(e.target.value)} />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={handleClose}>Cancel</Button>
+            <Button
+              className="flex-1"
+              disabled={!orderId || !allocatedWeight || mutation.isPending}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending ? 'Assigning…' : 'Assign'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AssignStaffDialog({ orderId, allocationId, users, open, onClose, onSuccess }: {
+  orderId: number; allocationId: number
+  users: { id: number; name: string; role: string }[]
+  open: boolean; onClose: () => void; onSuccess: () => void
+}) {
+  const [userId, setUserId]   = useState('')
+  const [slotRole, setSlotRole] = useState<'DRIVER' | 'CLEANER'>('DRIVER')
+
+  const mutation = useMutation({
+    mutationFn: () => ordersApi.assignStaff(orderId, { vehicleAllocationId: allocationId, userId: Number(userId), slotRole }),
+    onSuccess: () => { toast.success('Staff assigned'); onSuccess(); onClose() },
+    onError:   (e: unknown) => toast.error(getApiError(e, 'Failed to assign staff') ?? 'Failed'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Assign Staff</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div>
+            <Label>Role</Label>
+            <div className="flex gap-2 mt-1">
+              {(['DRIVER', 'CLEANER'] as const).map(r => (
+                <button
+                  key={r}
+                  onClick={() => { setSlotRole(r); setUserId('') }}
+                  className={cn('flex-1 py-2 rounded-lg border text-sm font-medium transition-colors', slotRole === r ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-600 hover:border-gray-300')}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label>Staff Member <span className="text-red-500">*</span></Label>
+            <SearchableSelect
+              value={userId} onValueChange={setUserId}
+              options={users.filter(u => u.role === slotRole).map(u => ({ value: String(u.id), label: u.name }))}
+              placeholder={`Select ${slotRole.toLowerCase()}`}
+              className="mt-1"
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1" disabled={!userId || mutation.isPending} onClick={() => mutation.mutate()}>
+              {mutation.isPending ? 'Assigning…' : 'Assign'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
+  const qc = useQueryClient()
+  const [showAssignOrder, setShowAssignOrder]   = useState(false)
+  const [showAssignStaff, setShowAssignStaff]   = useState<{ allocationId: number; orderId: number } | null>(null)
+
+  const { data: ordersRes, isLoading } = useQuery({
+    queryKey: ['vehicle-assignments', vehicleId],
+    queryFn:  () => ordersApi.getAll({ size: 500 }),
+  })
+  const { data: usersRes } = useQuery({
+    queryKey: ['vehicle-assign-users', { hasAttendanceToday: true }],
+    queryFn:  () => staffApi.getUsers({ hasAttendanceToday: true }),
+  })
+
+  const allOrders   = (ordersRes?.data?.content ?? []) as Order[]
+  const allUsers    = (usersRes?.data ?? []) as { id: number; name: string; role: string }[]
+
+  const myAllocations: Array<{ order: Order; allocation: VehicleAllocation }> = []
+  allOrders.forEach(o => {
+    ;(o.vehicleAllocations ?? []).forEach(va => {
+      if (va.vehicleId === vehicleId) myAllocations.push({ order: o, allocation: va })
+    })
+  })
+
+  const eligibleOrders = allOrders.filter(o =>
+    ['PENDING', 'PARTIALLY_ASSIGNED'].includes(o.orderStatus) && o.isActive
+  )
+
+  const unassignVehicle = useMutation({
+    mutationFn: ({ orderId, allocationId }: { orderId: number; allocationId: number }) =>
+      ordersApi.unassignVehicle(orderId, allocationId),
+    onSuccess: () => {
+      toast.success('Vehicle unassigned')
+      qc.invalidateQueries({ queryKey: ['vehicle-assignments', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle', String(vehicleId)] })
+    },
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed to unassign') ?? 'Failed'),
+  })
+
+  const unassignStaff = useMutation({
+    mutationFn: ({ orderId, staffAllocationId }: { orderId: number; staffAllocationId: number }) =>
+      ordersApi.unassignStaff(orderId, staffAllocationId),
+    onSuccess: () => {
+      toast.success('Staff unassigned')
+      qc.invalidateQueries({ queryKey: ['vehicle-assignments', vehicleId] })
+    },
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed to unassign staff') ?? 'Failed'),
+  })
+
+  if (isLoading) return <div className="py-16 text-center text-gray-400 text-sm">Loading…</div>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Order Assignments</p>
+        <Button size="sm" onClick={() => setShowAssignOrder(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+          <Plus size={13} /> Assign to Order
+        </Button>
+      </div>
+
+      {myAllocations.length === 0 ? (
+        <div className="py-12 text-center">
+          <Truck size={32} className="mx-auto text-gray-200 mb-3" />
+          <p className="text-sm text-gray-500">No order assignments yet</p>
+          <p className="text-xs text-gray-400 mt-1">Assign this vehicle to a pending order to get started</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {myAllocations.map(({ order, allocation }) => (
+            <div key={allocation.id} className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-feros-navy">{order.orderNumber}</p>
+                  <p className="text-xs text-gray-500">{order.clientName} · {order.sourceCityName} → {order.destinationCityName}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', ALLOC_COLORS[allocation.allocationStatus] ?? 'bg-gray-100 text-gray-600')}>
+                    {allocation.allocationStatus}
+                  </span>
+                  {!['COMPLETED', 'CANCELLED'].includes(allocation.allocationStatus) && (
+                    <button
+                      onClick={() => unassignVehicle.mutate({ orderId: order.id, allocationId: allocation.id })}
+                      disabled={unassignVehicle.isPending}
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                      title="Unassign from order"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="px-4 py-3 space-y-3">
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div><span className="text-gray-500">Weight: </span><span className="font-medium">{allocation.allocatedWeight} T</span></div>
+                  <div><span className="text-gray-500">Load: </span><span className="font-medium">{fmtDate(allocation.expectedLoadDate)}</span></div>
+                  <div><span className="text-gray-500">Delivery: </span><span className="font-medium">{fmtDate(allocation.expectedDeliveryDate)}</span></div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-medium text-gray-500">Staff</p>
+                    {!['COMPLETED', 'CANCELLED'].includes(allocation.allocationStatus) && (
+                      <button
+                        onClick={() => setShowAssignStaff({ allocationId: allocation.id, orderId: order.id })}
+                        className="text-xs text-feros-navy hover:text-feros-navy/80 flex items-center gap-0.5"
+                      >
+                        <Plus size={11} /> Add Staff
+                      </button>
+                    )}
+                  </div>
+                  {(allocation.staffAllocations ?? []).length === 0 ? (
+                    <p className="text-xs text-amber-600">No staff assigned</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {(allocation.staffAllocations ?? []).map((sa: StaffAllocation) => (
+                        <div key={sa.id} className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-1">
+                          <span className="text-xs font-medium text-blue-800">{sa.userName}</span>
+                          <span className="text-xs text-blue-400">{sa.roleName}</span>
+                          {!['COMPLETED', 'CANCELLED'].includes(allocation.allocationStatus) && (
+                            <button
+                              onClick={() => unassignStaff.mutate({ orderId: order.id, staffAllocationId: sa.id })}
+                              className="text-blue-400 hover:text-red-500 ml-0.5"
+                              title="Remove"
+                            >
+                              <X size={11} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAssignOrder && (
+        <AssignToOrderDialog
+          vehicleId={vehicleId}
+          eligibleOrders={eligibleOrders}
+          open={showAssignOrder}
+          onClose={() => setShowAssignOrder(false)}
+          onSuccess={() => {
+            qc.invalidateQueries({ queryKey: ['vehicle-assignments', vehicleId] })
+            qc.invalidateQueries({ queryKey: ['vehicle', String(vehicleId)] })
+          }}
+        />
+      )}
+      {showAssignStaff && (
+        <AssignStaffDialog
+          orderId={showAssignStaff.orderId}
+          allocationId={showAssignStaff.allocationId}
+          users={allUsers}
+          open={!!showAssignStaff}
+          onClose={() => setShowAssignStaff(null)}
+          onSuccess={() => qc.invalidateQueries({ queryKey: ['vehicle-assignments', vehicleId] })}
+        />
+      )}
+    </div>
+  )
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
@@ -2663,6 +2973,7 @@ export function VehicleDetailPage() {
               {t === 'Service'        && <Wrench size={14} />}
               {t === 'Tyres'          && <CircleDot size={14} />}
               {t === 'Meter Readings' && <Gauge size={14} />}
+              {t === 'Assignments'    && <Users size={14} />}
               {t === 'Order History'  && <ClipboardList size={14} />}
               {t === 'Trip History'   && <Route size={14} />}
               {t}
@@ -2956,6 +3267,9 @@ export function VehicleDetailPage() {
             </div>
             </div>
           )}
+
+          {/* ── Assignments ── */}
+          {tab === 'Assignments' && <VehicleAssignmentsTab vehicleId={v.id} />}
 
           {/* ── Order History ── */}
           {tab === 'Order History' && (
