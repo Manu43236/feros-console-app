@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import {
   CalendarDays, ChevronLeft, ChevronRight, Users,
   CheckCircle, XCircle, Clock, Umbrella, Pencil, ClipboardList,
-  AlertCircle, Camera, Calendar,
+  AlertCircle, Camera, Calendar, LogIn, LogOut, Timer,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -848,13 +848,178 @@ function RejectedTab() {
   )
 }
 
+// ── Duty Times Tab ────────────────────────────────────────────────────────────
+function DutyTimesTab({
+  selectedDate,
+  records,
+  isLoading,
+  shiftDay,
+  setSelectedDate,
+}: {
+  selectedDate: string
+  records: Attendance[]
+  isLoading: boolean
+  shiftDay: (delta: number) => void
+  setSelectedDate: (d: string) => void
+}) {
+  function fmtTime(iso: string | undefined) {
+    if (!iso) return '—'
+    try {
+      return new Date(iso).toLocaleTimeString('en-IN', {
+        hour: '2-digit', minute: '2-digit', hour12: true,
+      })
+    } catch { return '—' }
+  }
+
+  const markedOutCount = records.filter(r => r.markedOutAt).length
+  const onDutyCount    = records.length - markedOutCount
+
+  return (
+    <div className="space-y-4">
+      {/* Date navigator */}
+      <div className="flex items-center gap-3">
+        <button
+          className="border rounded-lg p-2 hover:bg-gray-50 transition-colors"
+          onClick={() => shiftDay(-1)}
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <div className="flex items-center gap-2 border rounded-lg px-4 py-2 bg-white">
+          <CalendarDays size={16} className="text-gray-400" />
+          <input
+            type="date"
+            value={selectedDate}
+            max={todayStr()}
+            onChange={e => { if (e.target.value <= todayStr()) setSelectedDate(e.target.value) }}
+            className="text-sm font-medium text-gray-800 border-none outline-none bg-transparent"
+          />
+        </div>
+        <button
+          className="border rounded-lg p-2 hover:bg-gray-50 transition-colors"
+          onClick={() => shiftDay(1)}
+        >
+          <ChevronRight size={16} />
+        </button>
+        <button
+          className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+          onClick={() => setSelectedDate(todayStr())}
+        >
+          Today
+        </button>
+      </div>
+
+      {/* Summary chips */}
+      <div className="flex gap-3">
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+          <LogOut size={14} className="text-green-700" />
+          <div>
+            <p className="text-xl font-bold text-green-700 leading-none">{markedOutCount}</p>
+            <p className="text-xs text-green-600 mt-0.5">Marked Out</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
+          <Timer size={14} className="text-amber-700" />
+          <div>
+            <p className="text-xl font-bold text-amber-700 leading-none">{onDutyCount}</p>
+            <p className="text-xs text-amber-600 mt-0.5">Still On Duty</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
+          <Users size={14} className="text-gray-600" />
+          <div>
+            <p className="text-xl font-bold text-gray-700 leading-none">{records.length}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Present</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="border rounded-xl bg-white overflow-hidden">
+        <div className="px-5 py-3.5 border-b bg-gray-50">
+          <h2 className="text-sm font-semibold text-gray-700">
+            Duty Times — {selectedDate}
+          </h2>
+        </div>
+
+        {isLoading ? (
+          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+        ) : records.length === 0 ? (
+          <div className="py-12 text-center text-sm text-gray-400">
+            No attendance records for this date
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
+                  <th className="text-left px-5 py-3">Staff</th>
+                  <th className="text-left px-5 py-3">Role</th>
+                  <th className="text-left px-5 py-3">
+                    <span className="flex items-center gap-1">
+                      <LogIn size={11} />In Time
+                    </span>
+                  </th>
+                  <th className="text-left px-5 py-3">
+                    <span className="flex items-center gap-1">
+                      <LogOut size={11} />Out Time
+                    </span>
+                  </th>
+                  <th className="text-left px-5 py-3">Duty</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {records.map(r => {
+                  const isOut = !!r.markedOutAt
+                  const dutyLabel = r.dutyLabel ?? 'Full Day'
+                  return (
+                    <tr key={r.id} className="hover:bg-gray-50">
+                      <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
+                      <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
+                      <td className="px-5 py-3">
+                        <span className="flex items-center gap-1 text-gray-600 text-xs">
+                          <LogIn size={12} className="text-green-500" />
+                          {fmtTime(r.markedAt)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        {isOut ? (
+                          <span className="flex items-center gap-1 text-xs text-red-600">
+                            <LogOut size={12} />
+                            {fmtTime(r.markedOutAt)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={cn(
+                          'text-xs font-semibold px-2.5 py-0.5 rounded-full border',
+                          isOut
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200',
+                        )}>
+                          {dutyLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function AttendancePage() {
   const { locked } = useSubscription()
   const role = useAuthStore(s => s.role)
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
 
-  type Tab = 'daily' | 'my' | 'pending' | 'rejected'
+  type Tab = 'daily' | 'duty' | 'my' | 'pending' | 'rejected'
   const [activeTab, setActiveTab]       = useState<Tab>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [markOpen, setMarkOpen]         = useState(false)
@@ -865,7 +1030,7 @@ export function AttendancePage() {
   const { data: attendanceData, isLoading } = useQuery({
     queryKey: ['attendance', selectedDate],
     queryFn: () => attendanceApi.getByDate(selectedDate),
-    enabled: activeTab === 'daily',
+    enabled: activeTab === 'daily' || activeTab === 'duty',
   })
   const records = [...(attendanceData?.data ?? [])].sort((a, b) => b.id - a.id)
 
@@ -947,12 +1112,22 @@ export function AttendancePage() {
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
         {tabBtn('daily', 'Daily Attendance')}
+        {tabBtn('duty', 'Duty Times')}
         {tabBtn('my', 'My Attendance')}
         {isAdmin && tabBtn('pending', 'Pending Approvals', pendingCount)}
         {isAdmin && tabBtn('rejected', 'Rejected', rejectedCount)}
       </div>
 
       {/* Tab content */}
+      {activeTab === 'duty' && (
+        <DutyTimesTab
+          selectedDate={selectedDate}
+          records={records}
+          isLoading={isLoading}
+          shiftDay={shiftDay}
+          setSelectedDate={setSelectedDate}
+        />
+      )}
       {activeTab === 'my' && (
         <MyAttendanceTab attendanceTypes={attendanceTypes} leaveTypes={leaveTypes} />
       )}

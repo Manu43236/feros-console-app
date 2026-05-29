@@ -345,6 +345,7 @@ export interface Attendance {
   attendanceDate: string; attendanceTypeId: number; attendanceTypeName: string
   leaveTypeId?: number; leaveTypeName?: string; leaveReason?: string
   markedById: number; markedByName: string; markedAt: string
+  markedOutAt?: string; dutyLabel?: string; dutyHours?: number
   remarks?: string; selfieUrl?: string
   approvalStatus: AttendanceApprovalStatus
   approvedById?: number; approvedByName?: string; approvedAt?: string
