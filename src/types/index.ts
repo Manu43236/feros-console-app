@@ -360,7 +360,7 @@ export interface SalaryAdvance {
 }
 
 export interface Payroll {
-  id: number; userId: number; userName: string; userPhone: string; roleName: string
+  id: number; userId: number; userName: string; userPhone: string; roleName: string; designationName?: string
   payCycleStartDate: string; payCycleEndDate: string
   totalDays: number; presentDays: number; absentDays: number; halfDays: number; leaveDays: number
   overtimeHours: number; dailyRate: number

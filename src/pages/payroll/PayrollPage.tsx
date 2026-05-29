@@ -330,9 +330,16 @@ function PayrollRow({ payroll, onApprove, onCancel }: {
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Earnings</p>
                 <div className="space-y-1">
-                  <div className="flex justify-between"><span className="text-gray-600">Basic Pay ({p.presentDays} + {p.halfDays}×0.5 days × ₹{p.dailyRate}/day)</span><span className="font-medium">{fmt(p.basicPay)}</span></div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">
+                      Basic Pay{p.designationName ? ` — ${p.designationName}` : ''}{' '}
+                      <span className="text-xs text-gray-400">({p.presentDays} + {p.halfDays}×0.5 days × ₹{p.dailyRate}/day)</span>
+                    </span>
+                    <span className="font-medium">{fmt(p.basicPay)}</span>
+                  </div>
                   {p.overtimePay > 0 && <div className="flex justify-between"><span className="text-gray-600">Overtime ({p.overtimeHours}h)</span><span className="font-medium">{fmt(p.overtimePay)}</span></div>}
                   {p.tripBonus > 0 && <div className="flex justify-between"><span className="text-gray-600">Trip Bonus</span><span className="font-medium">{fmt(p.tripBonus)}</span></div>}
+                  {(p.vehicleExtraPay ?? 0) > 0 && <div className="flex justify-between"><span className="text-gray-600">Vehicle Extra Pay</span><span className="font-medium">{fmt(p.vehicleExtraPay!)}</span></div>}
                   <div className="flex justify-between border-t pt-1 font-semibold"><span>Gross Pay</span><span>{fmt(p.grossPay)}</span></div>
                 </div>
               </div>
