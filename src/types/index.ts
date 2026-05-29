@@ -85,12 +85,7 @@ export interface TenantMasterItem extends MasterItem {
   description?: string
   createdAt?: string; updatedAt?: string
 }
-export interface DesignationItem extends TenantMasterItem { roleType: string }
-export interface PayRateItem extends TenantMasterItem {
-  designationId: number; designationName: string
-  vehicleTypeId?: number; vehicleTypeName?: string
-  payPerDay: number; effectiveFrom: string; effectiveTo?: string
-}
+export interface DesignationItem extends TenantMasterItem { roleType: string; payPerDay?: number }
 export interface RouteItem extends TenantMasterItem {
   sourceCityId: number; sourceCityName: string
   destinationCityId: number; destinationCityName: string
@@ -320,7 +315,7 @@ export interface InvoicePayment {
 // ─── Staff ────────────────────────────────────────────────────────────────────
 export interface StaffProfile {
   userId: number; tenantId: number; userName: string; userPhone: string; roleName: string
-  designationId?: number; designationName?: string
+  designationId?: number; designationName?: string; designationPayPerDay?: number
   employmentTypeId?: number; employmentTypeName?: string
   dateOfBirth?: string; joiningDate?: string
   address?: string; cityId?: number; cityName?: string; stateId?: number; stateName?: string; pincode?: string

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
-  Truck, Users, Tag, CreditCard, MapPin, DollarSign, Settings,
+  Truck, Users, Tag, CreditCard, MapPin, Settings,
   Plus, Pencil, Trash2, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ import type { RbacEntry } from '@/api/masters'
 import { moduleAccessApi } from '@/api/moduleAccess'
 import type { ModuleAccessEntry, ModuleKey } from '@/types'
 import { useSubscription } from '@/context/SubscriptionContext'
-import type { TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
+import type { TenantMasterItem, DesignationItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
 
 // ── Section config ────────────────────────────────────────────────────────────
 const SECTIONS = [
@@ -27,7 +27,6 @@ const SECTIONS = [
   { key: 'paymentTerms',    label: 'Payment Terms',    icon: CreditCard },
   { key: 'designations',    label: 'Designations',     icon: Users      },
   { key: 'routes',          label: 'Routes',           icon: MapPin     },
-  { key: 'payRates',        label: 'Pay Rates',        icon: DollarSign },
   { key: 'settings',        label: 'Settings',         icon: Settings   },
 ] as const
 type SectionKey = typeof SECTIONS[number]['key']
@@ -333,18 +332,18 @@ function DesignationsSection() {
   const [editing, setEditing] = useState<DesignationItem | null>(null)
   const [roleType, setRoleType] = useState('')
   const [roleError, setRoleError] = useState(false)
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<{ name: string }>()
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<{ name: string; payPerDay?: number }>()
 
   const { data, isLoading } = useQuery({ queryKey: ['designations'], queryFn: tenantMastersApi.getDesignations })
   const items: DesignationItem[] = (data?.data as DesignationItem[]) ?? []
 
   const create = useMutation({
-    mutationFn: (d: { name: string; roleType: string }) => tenantMastersApi.createDesignation(d),
+    mutationFn: (d: { name: string; roleType: string; payPerDay?: number }) => tenantMastersApi.createDesignation(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['designations'] }); toast.success('Added'); setOpen(false) },
     onError: () => toast.error('Failed to add'),
   })
   const update = useMutation({
-    mutationFn: ({ id, d }: { id: number; d: { name: string; roleType: string } }) => tenantMastersApi.updateDesignation(id, d),
+    mutationFn: ({ id, d }: { id: number; d: { name: string; roleType: string; payPerDay?: number } }) => tenantMastersApi.updateDesignation(id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['designations'] }); toast.success('Updated'); setOpen(false) },
     onError: () => toast.error('Failed to update'),
   })
@@ -357,11 +356,16 @@ function DesignationsSection() {
   const { locked } = useSubscription()
 
   function openAdd() { setEditing(null); reset({}); setRoleType(''); setRoleError(false); setOpen(true) }
-  function openEdit(item: DesignationItem) { setEditing(item); reset({ name: item.name }); setRoleType(item.roleType); setRoleError(false); setOpen(true) }
-  function onSubmit(d: { name: string }) {
+  function openEdit(item: DesignationItem) {
+    setEditing(item)
+    reset({ name: item.name, payPerDay: item.payPerDay })
+    setRoleType(item.roleType); setRoleError(false); setOpen(true)
+  }
+  function onSubmit(d: { name: string; payPerDay?: number }) {
     if (!roleType) { setRoleError(true); return }
-    if (editing) update.mutate({ id: editing.id, d: { name: d.name, roleType } })
-    else create.mutate({ name: d.name, roleType })
+    const payload = { name: d.name, roleType, payPerDay: d.payPerDay ? Number(d.payPerDay) : undefined }
+    if (editing) update.mutate({ id: editing.id, d: payload })
+    else create.mutate(payload)
   }
 
   return (
@@ -378,7 +382,10 @@ function DesignationsSection() {
               <div key={item.id} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-gray-800">{item.name}</p>
-                  <p className="text-xs text-gray-500">{item.roleType.replace('_', ' ')}</p>
+                  <p className="text-xs text-gray-500">
+                    {item.roleType.replace('_', ' ')}
+                    {item.payPerDay ? ` · ₹${item.payPerDay}/day` : ''}
+                  </p>
                 </div>
                 {!locked && (
                   <div className="flex gap-1">
@@ -409,6 +416,10 @@ function DesignationsSection() {
                 className="mt-1"
               />
               {roleError && <p className="text-xs text-red-500 mt-1">Required</p>}
+            </div>
+            <div>
+              <Label>Pay Per Day (₹)</Label>
+              <Input type="number" step="0.01" min="0" {...register('payPerDay')} className="mt-1" placeholder="e.g. 800" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
@@ -582,148 +593,6 @@ function RoutesSection() {
               <div>
                 <Label>Est. Hours</Label>
                 <Input type="number" {...register('estimatedHours')} className="mt-1" placeholder="0" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit">{editing ? 'Update' : 'Add'}</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
-
-// ── Pay Rates ─────────────────────────────────────────────────────────────────
-function PayRatesSection() {
-  const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<PayRateItem | null>(null)
-  const [designationId, setDesignationId] = useState('')
-  const [vehicleTypeId, setVehicleTypeId] = useState('none')
-  const [designationError, setDesignationError] = useState(false)
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<{ payPerDay: number; effectiveFrom: string; effectiveTo?: string }>()
-
-  const { data, isLoading } = useQuery({ queryKey: ['payRates'], queryFn: tenantMastersApi.getPayRates })
-  const rates: PayRateItem[] = (data?.data as PayRateItem[]) ?? []
-
-  const { data: designationsData } = useQuery({ queryKey: ['designations'], queryFn: tenantMastersApi.getDesignations })
-  const designations = (designationsData?.data as DesignationItem[]) ?? []
-
-  const { data: vehicleTypesData } = useQuery({ queryKey: ['vehicleTypes'], queryFn: globalMastersApi.getVehicleTypes })
-  const vehicleTypes = vehicleTypesData?.data ?? []
-
-  const create = useMutation({
-    mutationFn: (d: Parameters<typeof tenantMastersApi.createPayRate>[0]) => tenantMastersApi.createPayRate(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payRates'] }); toast.success('Pay rate added'); setOpen(false) },
-    onError: () => toast.error('Failed to add'),
-  })
-  const update = useMutation({
-    mutationFn: ({ id, d }: { id: number; d: Parameters<typeof tenantMastersApi.updatePayRate>[1] }) => tenantMastersApi.updatePayRate(id, d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payRates'] }); toast.success('Pay rate updated'); setOpen(false) },
-    onError: () => toast.error('Failed to update'),
-  })
-  const remove = useMutation({
-    mutationFn: (id: number) => tenantMastersApi.deletePayRate(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payRates'] }); toast.success('Deleted') },
-    onError: () => toast.error('Failed to delete'),
-  })
-
-  const { locked } = useSubscription()
-
-  function openAdd() { setEditing(null); reset({}); setDesignationId(''); setVehicleTypeId('none'); setDesignationError(false); setOpen(true) }
-  function openEdit(item: PayRateItem) {
-    setEditing(item)
-    reset({ payPerDay: item.payPerDay, effectiveFrom: item.effectiveFrom, effectiveTo: item.effectiveTo })
-    setDesignationId(String(item.designationId))
-    setVehicleTypeId(item.vehicleTypeId ? String(item.vehicleTypeId) : 'none')
-    setDesignationError(false)
-    setOpen(true)
-  }
-  function onSubmit(d: { payPerDay: number; effectiveFrom: string; effectiveTo?: string }) {
-    if (!designationId) { setDesignationError(true); return }
-    const payload = {
-      designationId: Number(designationId),
-      vehicleTypeId: vehicleTypeId && vehicleTypeId !== 'none' ? Number(vehicleTypeId) : undefined,
-      payPerDay: Number(d.payPerDay),
-      effectiveFrom: d.effectiveFrom,
-      effectiveTo: d.effectiveTo || undefined,
-    }
-    if (editing) update.mutate({ id: editing.id, d: payload })
-    else create.mutate(payload)
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-gray-800">Pay Rates</h2>
-        {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
-      </div>
-      {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
-        : rates.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No pay rates yet</div>
-        : (
-          <div className="border rounded-lg divide-y">
-            {rates.map(r => (
-              <div key={r.id} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{r.designationName}</p>
-                  <p className="text-xs text-gray-500">
-                    ₹{r.payPerDay}/day
-                    {r.vehicleTypeName ? ` · ${r.vehicleTypeName}` : ''}
-                    {` · From ${r.effectiveFrom}`}
-                    {r.effectiveTo ? ` to ${r.effectiveTo}` : ''}
-                  </p>
-                </div>
-                {!locked && (
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}><Pencil size={13} /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(r.id)}><Trash2 size={13} /></Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Pay Rate</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-            <div>
-              <Label>Designation *</Label>
-              <SearchableSelect
-                value={designationId}
-                onValueChange={v => { setDesignationId(v); setDesignationError(false) }}
-                options={designations.map(d => ({ value: String(d.id), label: d.name }))}
-                placeholder="Select designation"
-                className="mt-1"
-              />
-              {designationError && <p className="text-xs text-red-500 mt-1">Required</p>}
-            </div>
-            <div>
-              <Label>Vehicle Type (optional)</Label>
-              <SearchableSelect
-                value={vehicleTypeId}
-                onValueChange={setVehicleTypeId}
-                options={[{ value: 'none', label: 'Any' }, ...vehicleTypes.map(v => ({ value: String(v.id), label: v.name }))]}
-                placeholder="Any vehicle type"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label>Pay Per Day (₹) *</Label>
-              <Input type="number" step="0.01" {...register('payPerDay', { required: 'Required' })} className="mt-1" />
-              {errors.payPerDay && <p className="text-xs text-red-500 mt-1">{errors.payPerDay.message}</p>}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Effective From *</Label>
-                <Input type="date" {...register('effectiveFrom', { required: 'Required' })} className="mt-1" />
-                {errors.effectiveFrom && <p className="text-xs text-red-500 mt-1">{errors.effectiveFrom.message}</p>}
-              </div>
-              <div>
-                <Label>Effective To</Label>
-                <Input type="date" {...register('effectiveTo')} className="mt-1" />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
@@ -1376,7 +1245,6 @@ export function MastersPage() {
       case 'paymentTerms':   return <PaymentTermsSection />
       case 'designations':   return <DesignationsSection />
       case 'routes':         return <RoutesSection />
-      case 'payRates':       return <PayRatesSection />
       case 'settings':       return <SettingsSection />
       default:               return null
     }

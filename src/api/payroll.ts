@@ -12,4 +12,5 @@ export const payrollApi = {
   getByUser:          (userId: number) => apiClient.get<ApiResponse<Payroll[]>>(`/payroll/user/${userId}`).then(r => r.data),
   approve:            (id: number, data: unknown) => apiClient.put<ApiResponse<Payroll>>(`/payroll/${id}/approve`, data).then(r => r.data),
   cancel:             (id: number) => apiClient.delete<ApiResponse<Payroll>>(`/payroll/${id}`).then(r => r.data),
+  getPayslipPdf:      (id: number) => apiClient.get(`/payroll/${id}/payslip-pdf`, { responseType: 'blob' }).then(r => r.data as Blob),
 }

@@ -10,7 +10,7 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   Plus, ChevronDown, ChevronRight, CheckCircle, XCircle,
-  Banknote, TrendingUp, AlertCircle, Receipt,
+  Banknote, TrendingUp, AlertCircle, Receipt, Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +20,6 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { payrollApi } from '@/api/payroll'
 import { staffApi } from '@/api/staff'
-import { tenantMastersApi } from '@/api/masters'
 import type { Payroll, SalaryAdvance, PayrollStatus, PaymentMode } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -30,7 +29,7 @@ const generateSchema = z.object({
   userId:    z.string().min(1, 'Select a staff member'),
   from:      z.string().min(1, 'Start date is required'),
   to:        z.string().min(1, 'End date is required'),
-  dailyRate: z.coerce.number().min(1, 'Daily rate is required'),
+  dailyRate: z.coerce.number().optional(),
 })
 type GenerateForm = z.infer<typeof generateSchema>
 
@@ -73,35 +72,23 @@ function GenerateDialog({ open, onClose, users }: {
   const selectedUserId = watch('userId')
   const [rateAutoFilled, setRateAutoFilled] = useState(false)
 
-  // Fetch all pay rates once
-  const { data: payRatesRes } = useQuery({
-    queryKey: ['pay-rates'],
-    queryFn: tenantMastersApi.getPayRates,
-    enabled: open,
-  })
-
-  // Fetch selected staff's profile to get their designation
+  // Fetch selected staff's profile to get their designation pay rate
   const { data: profileRes, isFetching: profileFetching } = useQuery({
     queryKey: ['staff-profile', selectedUserId],
     queryFn: () => staffApi.getByUserId(Number(selectedUserId)),
     enabled: !!selectedUserId && open,
   })
 
-  // Auto-fill daily rate when profile + pay rates are available
+  // Auto-fill daily rate from designation's payPerDay
   useEffect(() => {
-    if (!profileRes?.data?.designationId || !payRatesRes?.data) return
-    const designationId = profileRes.data.designationId
-    // Find the active pay rate for this designation (prefer no vehicle type, latest effectiveFrom)
-    const match = payRatesRes.data
-      .filter(r => r.designationId === designationId && r.isActive)
-      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0]
-    if (match) {
-      setValue('dailyRate', match.payPerDay)
+    const payPerDay = profileRes?.data?.designationPayPerDay
+    if (payPerDay) {
+      setValue('dailyRate', payPerDay)
       setRateAutoFilled(true)
     } else {
       setRateAutoFilled(false)
     }
-  }, [profileRes?.data?.designationId, payRatesRes?.data, setValue])
+  }, [profileRes?.data?.designationPayPerDay, setValue])
 
   // Clear auto-fill flag when user manually edits the rate
   function handleRateChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -163,7 +150,7 @@ function GenerateDialog({ open, onClose, users }: {
               <Label>Daily Rate (₹) <span className="text-red-500">*</span></Label>
               {profileFetching && <span className="text-xs text-gray-400 animate-pulse">Looking up rate…</span>}
               {rateAutoFilled && !profileFetching && (
-                <span className="text-xs text-green-600 font-medium">Auto-filled from pay rates</span>
+                <span className="text-xs text-green-600 font-medium">Auto-filled from designation</span>
               )}
               {selectedUserId && !profileFetching && !rateAutoFilled && profileRes?.data && !profileRes.data.designationId && (
                 <span className="text-xs text-amber-500">No designation set — enter manually</span>
@@ -264,7 +251,25 @@ function PayrollRow({ payroll, onApprove, onCancel }: {
   onCancel: (p: Payroll) => void
 }) {
   const [expanded, setExpanded] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const p = payroll
+
+  async function downloadPayslip() {
+    setDownloading(true)
+    try {
+      const blob = await payrollApi.getPayslipPdf(p.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `payslip-${p.userName.replace(/\s+/g, '-')}-${p.payCycleStartDate}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Failed to download payslip')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <>
@@ -308,6 +313,12 @@ function PayrollRow({ payroll, onApprove, onCancel }: {
                   <XCircle size={11} className="mr-1" />Cancel
                 </Button>
               </>
+            )}
+            {p.payrollStatus === 'PAID' && (
+              <Button size="sm" variant="outline" className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50"
+                onClick={downloadPayslip} disabled={downloading}>
+                <Download size={11} className="mr-1" />{downloading ? '…' : 'Payslip'}
+              </Button>
             )}
           </div>
         </td>

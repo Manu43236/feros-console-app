@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem, TenantMasterItem, DesignationItem, PayRateItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
+import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem, TenantMasterItem, DesignationItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
 
 // Global Masters
 export const globalMastersApi = {
@@ -51,8 +51,8 @@ export const tenantMastersApi = {
 
   // Designations
   getDesignations:    () => apiClient.get<ApiResponse<DesignationItem[]>>('/masters/tenant/designations').then(r => r.data),
-  createDesignation:  (data: { name: string; roleType: string }) => apiClient.post<ApiResponse<DesignationItem>>('/masters/tenant/designations', data).then(r => r.data),
-  updateDesignation:  (id: number, data: { name: string; roleType: string }) => apiClient.put<ApiResponse<DesignationItem>>(`/masters/tenant/designations/${id}`, data).then(r => r.data),
+  createDesignation:  (data: { name: string; roleType: string; payPerDay?: number }) => apiClient.post<ApiResponse<DesignationItem>>('/masters/tenant/designations', data).then(r => r.data),
+  updateDesignation:  (id: number, data: { name: string; roleType: string; payPerDay?: number }) => apiClient.put<ApiResponse<DesignationItem>>(`/masters/tenant/designations/${id}`, data).then(r => r.data),
   deleteDesignation:  (id: number) => apiClient.delete(`/masters/tenant/designations/${id}`),
 
   // Routes
@@ -60,12 +60,6 @@ export const tenantMastersApi = {
   createRoute:  (data: { name: string; sourceCityId: number; destinationCityId: number; distanceInKm?: number; estimatedHours?: number }) => apiClient.post<ApiResponse<RouteItem>>('/masters/tenant/routes', data).then(r => r.data),
   updateRoute:  (id: number, data: { name: string; sourceCityId: number; destinationCityId: number; distanceInKm?: number; estimatedHours?: number }) => apiClient.put<ApiResponse<RouteItem>>(`/masters/tenant/routes/${id}`, data).then(r => r.data),
   deleteRoute:  (id: number) => apiClient.delete(`/masters/tenant/routes/${id}`),
-
-  // Pay Rates
-  getPayRates:    () => apiClient.get<ApiResponse<PayRateItem[]>>('/masters/tenant/pay-rates').then(r => r.data),
-  createPayRate:  (data: { designationId: number; vehicleTypeId?: number; payPerDay: number; effectiveFrom: string; effectiveTo?: string }) => apiClient.post<ApiResponse<PayRateItem>>('/masters/tenant/pay-rates', data).then(r => r.data),
-  updatePayRate:  (id: number, data: { designationId: number; vehicleTypeId?: number; payPerDay: number; effectiveFrom: string; effectiveTo?: string }) => apiClient.put<ApiResponse<PayRateItem>>(`/masters/tenant/pay-rates/${id}`, data).then(r => r.data),
-  deletePayRate:  (id: number) => apiClient.delete(`/masters/tenant/pay-rates/${id}`),
 
   // Settings
   getSettings:     () => apiClient.get<ApiResponse<TenantMasterItem>>('/masters/tenant/settings').then(r => r.data),
