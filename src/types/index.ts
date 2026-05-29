@@ -134,6 +134,7 @@ export interface Vehicle {
   currentOdometerReading?: number; fuelTankCapacity?: number; currentFuelLevel?: number; notes?: string
   tyreRotationIntervalKm?: number
   isFinanced?: boolean; financerName?: string; financeStartDate?: string; financeEndDate?: string; financeMonthsRemaining?: number
+  extraPayEnabled?: boolean; extraPayPerDay?: number
   isActive: boolean; createdAt: string; updatedAt: string
   currentDriverId?: number; currentDriverName?: string
   currentCleanerId?: number; currentCleanerName?: string
@@ -363,7 +364,7 @@ export interface Payroll {
   payCycleStartDate: string; payCycleEndDate: string
   totalDays: number; presentDays: number; absentDays: number; halfDays: number; leaveDays: number
   overtimeHours: number; dailyRate: number
-  basicPay: number; overtimePay: number; tripBonus: number
+  basicPay: number; overtimePay: number; tripBonus: number; vehicleExtraPay?: number
   grossPay: number; totalDeductions: number; netPay: number
   deductions: PayrollDeduction[]
   paymentDate?: string; paymentMode?: PaymentMode; referenceNumber?: string

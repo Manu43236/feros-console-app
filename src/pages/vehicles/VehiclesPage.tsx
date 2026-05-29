@@ -201,6 +201,9 @@ const schema = z.object({
   financerName:             z.string().optional(),
   financeStartDate:         z.string().optional(),
   financeEndDate:           z.string().optional(),
+  // Extra pay
+  extraPayEnabled:          z.boolean().optional(),
+  extraPayPerDay:           z.coerce.number().min(0).optional(),
   notes:                    z.string().optional(),
 }).refine(
   data => {
@@ -440,6 +443,8 @@ export function VehicleForm({
       financerName: vehicle.financerName ?? '',
       financeStartDate: vehicle.financeStartDate ?? '',
       financeEndDate: vehicle.financeEndDate ?? '',
+      extraPayEnabled: vehicle.extraPayEnabled ?? false,
+      extraPayPerDay: vehicle.extraPayPerDay,
       notes: vehicle.notes ?? '',
     } : {},
   })
@@ -469,6 +474,8 @@ export function VehicleForm({
         financerName: vehicle.financerName ?? '',
         financeStartDate: vehicle.financeStartDate ?? '',
         financeEndDate: vehicle.financeEndDate ?? '',
+        extraPayEnabled: vehicle.extraPayEnabled ?? false,
+        extraPayPerDay: vehicle.extraPayPerDay,
         notes: vehicle.notes ?? '',
       })
       setOwnershipTypeId(vehicle.ownershipTypeId)
@@ -478,6 +485,7 @@ export function VehicleForm({
 
   const watchedTypeId    = watch('vehicleTypeId')
   const watchedFinanced  = watch('isFinanced')
+  const watchedExtraPay  = watch('extraPayEnabled')
   useEffect(() => {
     if (!watchedTypeId) return
     const vehicleType = (typesRes?.data ?? []).find(t => t.id === watchedTypeId)
@@ -726,6 +734,26 @@ export function VehicleForm({
                   <Label>Finance To</Label>
                   <Input type="date" {...register('financeEndDate')} />
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Extra Pay */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Driver Extra Pay</p>
+                <p className="text-xs text-gray-400 mt-0.5">Additional pay for the driver assigned to this vehicle</p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-sm text-gray-500">Enable extra pay</span>
+                <input type="checkbox" className="w-4 h-4 accent-feros-navy" {...register('extraPayEnabled')} />
+              </label>
+            </div>
+            {watchedExtraPay && (
+              <div className="space-y-1.5">
+                <Label>Extra Pay Per Day (₹)</Label>
+                <Input type="number" placeholder="e.g. 100" {...register('extraPayPerDay')} />
               </div>
             )}
           </div>
