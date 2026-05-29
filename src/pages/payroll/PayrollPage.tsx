@@ -10,7 +10,7 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   Plus, ChevronDown, ChevronRight, CheckCircle, XCircle,
-  Banknote, TrendingUp, AlertCircle, Receipt, Download,
+  Banknote, TrendingUp, AlertCircle, Receipt, Download, Eye,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -252,6 +252,7 @@ function PayrollRow({ payroll, onApprove, onCancel }: {
 }) {
   const [expanded, setExpanded] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
   const p = payroll
 
   async function downloadPayslip() {
@@ -268,6 +269,19 @@ function PayrollRow({ payroll, onApprove, onCancel }: {
       toast.error('Failed to download payslip')
     } finally {
       setDownloading(false)
+    }
+  }
+
+  async function viewPayslip() {
+    setPreviewing(true)
+    try {
+      const blob = await payrollApi.getPayslipPdf(p.id)
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    } catch {
+      toast.error('Failed to open payslip')
+    } finally {
+      setPreviewing(false)
     }
   }
 
@@ -315,10 +329,16 @@ function PayrollRow({ payroll, onApprove, onCancel }: {
               </>
             )}
             {p.payrollStatus === 'PAID' && (
-              <Button size="sm" variant="outline" className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50"
-                onClick={downloadPayslip} disabled={downloading}>
-                <Download size={11} className="mr-1" />{downloading ? '…' : 'Payslip'}
-              </Button>
+              <>
+                <Button size="sm" variant="outline" className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50"
+                  onClick={viewPayslip} disabled={previewing}>
+                  <Eye size={11} className="mr-1" />{previewing ? '…' : 'View'}
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs text-gray-600 border-gray-200 hover:bg-gray-50"
+                  onClick={downloadPayslip} disabled={downloading}>
+                  <Download size={11} className="mr-1" />{downloading ? '…' : 'Download'}
+                </Button>
+              </>
             )}
           </div>
         </td>
