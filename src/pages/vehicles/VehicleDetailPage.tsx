@@ -2755,6 +2755,7 @@ export function VehicleDetailPage() {
   const canManageImages = !isSupervisor
   const [imgIdx, setImgIdx] = useState(0)
   const [imgUploading, setImgUploading] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const imgFileRef = useRef<HTMLInputElement>(null)
 
   const { data: res, isLoading } = useQuery({
@@ -2821,6 +2822,13 @@ export function VehicleDetailPage() {
     const timer = setInterval(() => setImgIdx(i => (i + 1) % bannerImages.length), 4000)
     return () => clearInterval(timer)
   }, [bannerImages.length])
+
+  useEffect(() => {
+    if (!lightboxOpen) return
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightboxOpen(false) }
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [lightboxOpen])
 
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading vehicle…</div>
   if (!v) return (
@@ -2983,7 +2991,8 @@ export function VehicleDetailPage() {
                   <img
                     src={bannerImages[imgIdx].imageUrl}
                     alt={`Vehicle ${v.registrationNumber}`}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-pointer"
+                    onClick={() => setLightboxOpen(true)}
                   />
                   {bannerImages.length > 1 && (
                     <>
@@ -3027,7 +3036,7 @@ export function VehicleDetailPage() {
                 <Truck size={140} />
               </div>
             )}
-            {canManageImages && (
+            {canManageImages && bannerImages.length < 3 && (
               <button
                 onClick={() => imgFileRef.current?.click()}
                 disabled={imgUploading}
@@ -3053,6 +3062,54 @@ export function VehicleDetailPage() {
 
         </div>
       </div>
+
+      {/* ── Image lightbox ── */}
+      {lightboxOpen && bannerImages.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 transition-colors"
+            onClick={() => setLightboxOpen(false)}
+          >
+            <X size={20} />
+          </button>
+          {bannerImages.length > 1 && (
+            <>
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white rounded-full p-3 transition-colors"
+                onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + bannerImages.length) % bannerImages.length) }}
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white rounded-full p-3 transition-colors"
+                onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % bannerImages.length) }}
+              >
+                <ChevronRight size={20} />
+              </button>
+            </>
+          )}
+          <img
+            src={bannerImages[imgIdx].imageUrl}
+            alt={`Vehicle ${v.registrationNumber}`}
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+            onClick={e => e.stopPropagation()}
+          />
+          {bannerImages.length > 1 && (
+            <div className="absolute bottom-6 flex gap-2">
+              {bannerImages.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={e => { e.stopPropagation(); setImgIdx(i) }}
+                  className={cn('w-2 h-2 rounded-full transition-colors', i === imgIdx ? 'bg-white' : 'bg-white/30')}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
