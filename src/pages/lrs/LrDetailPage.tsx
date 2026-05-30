@@ -1,4 +1,5 @@
 import { getApiError } from '@/lib/apiError'
+import { TripExpenseTab } from './TripExpenseTab'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -8,7 +9,7 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   ArrowLeft, Truck, Package, AlertTriangle, CheckCircle2,
-  MapPin, DollarSign, Plus, Activity, Scale, FileText, Pencil, Trash2, XCircle,
+  MapPin, DollarSign, Plus, Activity, Scale, FileText, Pencil, Trash2, XCircle, Receipt,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import apiClient from '@/api/client'
@@ -597,7 +598,7 @@ export function LrDetailPage() {
   const navigate = useNavigate()
   const id = parseInt(lrId!)
 
-  const [tab, setTab]               = useState<'checkposts' | 'charges'>('checkposts')
+  const [tab, setTab]               = useState<'checkposts' | 'charges' | 'expenses'>('checkposts')
   const [dialog, setDialog]         = useState<ActiveDialog>(null)
   const [pdfLoading, setPdfLoading] = useState(false)
 
@@ -888,8 +889,9 @@ export function LrDetailPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="flex border-b border-gray-100 overflow-x-auto px-0">
           {([
-            { key: 'checkposts', label: 'Checkposts', icon: <MapPin className="h-4 w-4" />, count: checkposts.length },
-            { key: 'charges',    label: 'Charges',    icon: <DollarSign className="h-4 w-4" />, count: charges.length },
+            { key: 'checkposts', label: 'Checkposts',    icon: <MapPin className="h-4 w-4" />,     count: checkposts.length },
+            { key: 'charges',    label: 'Charges',      icon: <DollarSign className="h-4 w-4" />, count: charges.length },
+            ...(lr.lrStatus === 'DELIVERED' ? [{ key: 'expenses' as const, label: 'Trip Expenses', icon: <Receipt className="h-4 w-4" />, count: 0 }] : []),
           ] as const).map(t => (
             <button
               key={t.key}
@@ -909,7 +911,7 @@ export function LrDetailPage() {
             </button>
           ))}
 
-          {canAdd && (
+          {canAdd && tab !== 'expenses' && (
             <div className="ml-auto flex items-center px-3">
               <button
                 onClick={() => setDialog(tab === 'checkposts' ? 'checkpost' : 'charge')}
@@ -935,6 +937,7 @@ export function LrDetailPage() {
             </>
           )}
           {tab === 'charges' && <ChargesTab lrId={id} charges={charges} canDelete={canAdd} />}
+          {tab === 'expenses' && <TripExpenseTab lrId={id} />}
         </div>
       </div>
 

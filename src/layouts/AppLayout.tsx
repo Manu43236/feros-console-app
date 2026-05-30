@@ -35,7 +35,8 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/clients',     label: 'Clients',      icon: Users,          moduleKey: 'CLIENTS' },
         { to: '/orders',      label: 'Orders',       icon: ClipboardList,  moduleKey: 'ORDERS' },
         { to: '/assignments', label: 'Assignments',  icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
-        { to: '/lrs',         label: 'LR Register',  icon: FileText,       moduleKey: 'LR_REGISTER' },
+        { to: '/lrs',             label: 'LR Register',    icon: FileText,  moduleKey: 'LR_REGISTER' },
+        { to: '/trip-expenses',   label: 'Trip Expenses',  icon: Wallet,    moduleKey: 'LR_REGISTER' },
       ],
     },
     {
@@ -92,10 +93,11 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       section: 'Operations',
       icon: Activity,
       items: [
-        { to: '/clients',     label: 'Clients',      icon: Users,          moduleKey: 'CLIENTS' },
-        { to: '/orders',      label: 'Orders',       icon: ClipboardList,  moduleKey: 'ORDERS' },
-        { to: '/assignments', label: 'Assignments',  icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
-        { to: '/lrs',         label: 'LR Register',  icon: FileText,       moduleKey: 'LR_REGISTER' },
+        { to: '/clients',         label: 'Clients',       icon: Users,          moduleKey: 'CLIENTS' },
+        { to: '/orders',          label: 'Orders',        icon: ClipboardList,  moduleKey: 'ORDERS' },
+        { to: '/assignments',     label: 'Assignments',   icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
+        { to: '/lrs',             label: 'LR Register',   icon: FileText,       moduleKey: 'LR_REGISTER' },
+        { to: '/trip-expenses',   label: 'Trip Expenses', icon: Wallet,         moduleKey: 'LR_REGISTER' },
       ],
     },
     {
@@ -151,9 +153,10 @@ const SUPERVISOR_NAV: SectionedNav = {
       section: 'Operations',
       icon: Activity,
       items: [
-        { to: '/orders',      label: 'Orders',      icon: ClipboardList,  moduleKey: 'ORDERS' },
-        { to: '/assignments', label: 'Assignments', icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
-        { to: '/lrs',         label: 'LR Register', icon: FileText,       moduleKey: 'LR_REGISTER' },
+        { to: '/orders',          label: 'Orders',        icon: ClipboardList,  moduleKey: 'ORDERS' },
+        { to: '/assignments',     label: 'Assignments',   icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
+        { to: '/lrs',             label: 'LR Register',   icon: FileText,       moduleKey: 'LR_REGISTER' },
+        { to: '/trip-expenses',   label: 'Trip Expenses', icon: Wallet,         moduleKey: 'LR_REGISTER' },
       ],
     },
     {

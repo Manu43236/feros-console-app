@@ -101,7 +101,51 @@ export interface TenantSettings {
   maxAdvanceDeductionPerCycle: number
   isTripBonusEnabled: boolean
   tripBonusAmount: number
+  driverBattaRate: number
+  cleanerBattaRate: number
+  tripMamuluAmount: number
   isActive: boolean
+}
+
+// ─── Trip Expenses ────────────────────────────────────────────────────────────
+export type TripExpenseStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'SETTLED'
+
+export interface TripExpenseItem {
+  id: number
+  description: string
+  amount: number
+  approvedAmount?: number
+  receiptUrl?: string
+  amountChanged: boolean
+}
+
+export interface TripExpense {
+  id: number
+  lrId: number
+  lrNumber: string
+  driverName?: string
+  cleanerName?: string
+  advanceAmount: number
+  tripDays: number
+  driverBatta: number
+  cleanerBatta: number
+  tripMamulu: number
+  totalFixedAmount: number
+  totalOperationalAmount: number
+  totalSubmittedAmount: number
+  totalApprovedAmount: number
+  balanceAmount: number
+  status: TripExpenseStatus
+  submittedByName?: string
+  submittedAt?: string
+  approvedByName?: string
+  approvedAt?: string
+  settlementAmount?: number
+  settlementNote?: string
+  settledByName?: string
+  settledAt?: string
+  items: TripExpenseItem[]
+  createdAt: string
 }
 
 // ─── Client ───────────────────────────────────────────────────────────────────

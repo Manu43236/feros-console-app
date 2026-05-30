@@ -22,8 +22,9 @@ import TyreRequestsPage        from '@/pages/inventory/TyreRequestsPage'
 import { OrdersPage }       from '@/pages/orders/OrdersPage'
 import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
 import AssignmentsPage      from '@/pages/orders/AssignmentsPage'
-import { LrsPage }        from '@/pages/lrs/LrsPage'
-import { LrDetailPage }  from '@/pages/lrs/LrDetailPage'
+import { LrsPage }           from '@/pages/lrs/LrsPage'
+import { LrDetailPage }     from '@/pages/lrs/LrDetailPage'
+import { TripExpensesPage } from '@/pages/lrs/TripExpensesPage'
 import { InvoicesPage }       from '@/pages/invoices/InvoicesPage'
 import { InvoiceDetailPage } from '@/pages/invoices/InvoiceDetailPage'
 import { InvoicePrintPage }  from '@/pages/invoices/InvoicePrintPage'
@@ -113,8 +114,9 @@ export default function App() {
           <Route path="orders"          element={<OrdersPage />} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="assignments"     element={<AssignmentsPage />} />
-          <Route path="lrs"         element={<LrsPage />} />
-          <Route path="lrs/:lrId"   element={<LrDetailPage />} />
+          <Route path="lrs"              element={<LrsPage />} />
+          <Route path="lrs/:lrId"        element={<LrDetailPage />} />
+          <Route path="trip-expenses"    element={<TripExpensesPage />} />
 
           {/* Staff & HR — admin + office only */}
           <Route path="staff"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','SUPERVISOR']}><StaffPage /></ProtectedRoute>} />
