@@ -1,6 +1,6 @@
 import { getApiError } from '@/lib/apiError'
 import { useAuthStore } from '@/store/authStore'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
@@ -21,8 +21,8 @@ import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
-  AlertTriangle, Pencil, Power,
-  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ChevronUp, ExternalLink, Paperclip, Trash2,
+  AlertTriangle, Pencil, Power, Camera,
+  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge, Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -2752,6 +2752,10 @@ export function VehicleDetailPage() {
   const [confirmStatusId, setConfirmStatusId]         = useState<number | null>(null)
   const [confirmStatusName, setConfirmStatusName]     = useState('')
   const isSupervisor = useAuthStore(s => s.role) === 'SUPERVISOR'
+  const canManageImages = !isSupervisor
+  const [imgIdx, setImgIdx] = useState(0)
+  const [imgUploading, setImgUploading] = useState(false)
+  const imgFileRef = useRef<HTMLInputElement>(null)
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['vehicle', vehicleId],
@@ -2765,6 +2769,11 @@ export function VehicleDetailPage() {
   const { data: docsRes } = useQuery({
     queryKey: ['vehicle-docs', Number(vehicleId)],
     queryFn:  () => vehiclesApi.getDocuments(Number(vehicleId)),
+    enabled:  !!vehicleId,
+  })
+  const { data: imagesRes, refetch: refetchImages } = useQuery({
+    queryKey: ['vehicle-images', vehicleId],
+    queryFn:  () => vehiclesApi.getImages(Number(vehicleId)),
     enabled:  !!vehicleId,
   })
 
@@ -2805,6 +2814,13 @@ export function VehicleDetailPage() {
   })
 
   const v = res?.data
+  const bannerImages = imagesRes?.data ?? []
+
+  useEffect(() => {
+    if (bannerImages.length <= 1) return
+    const timer = setInterval(() => setImgIdx(i => (i + 1) % bannerImages.length), 4000)
+    return () => clearInterval(timer)
+  }, [bannerImages.length])
 
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading vehicle…</div>
   if (!v) return (
@@ -2818,73 +2834,120 @@ export function VehicleDetailPage() {
   const alertCount = complianceDocs.filter(d => ['expired', 'critical'].includes(expiryLevel(d.expiryDate))).length
   const isHired    = v.ownershipTypeName && !v.ownershipTypeName.toUpperCase().includes('OWN')
 
+  async function handleImageUpload(file: File) {
+    setImgUploading(true)
+    try {
+      const compressed = await compressIfNeeded(file)
+      const uploadRes  = await vehiclesApi.uploadImageFile(Number(vehicleId), compressed)
+      await vehiclesApi.addImage(Number(vehicleId), uploadRes.data.publicUrl)
+      await refetchImages()
+      toast.success('Image uploaded')
+    } catch (e) {
+      toast.error(getApiError(e))
+    } finally {
+      setImgUploading(false)
+    }
+  }
+
+  async function handleImageDelete(imageId: number) {
+    try {
+      await vehiclesApi.deleteImage(imageId)
+      setImgIdx(0)
+      await refetchImages()
+      toast.success('Image removed')
+    } catch {
+      toast.error('Failed to remove image')
+    }
+  }
+
   return (
     <div className="space-y-0">
 
       {/* ── Banner ── */}
       <div className="bg-gradient-to-br from-feros-navy via-feros-navy to-blue-900 rounded-xl overflow-hidden mb-5">
+        <div className="flex">
 
-        <div className="relative">
-          {/* decorative truck silhouette */}
-          <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
-            <Truck size={180} />
-          </div>
-
-          <div className="relative px-6 py-6">
-          {/* Top row */}
-          <div className="flex items-start justify-between gap-4">
+          {/* ── Left: text ── */}
+          <div className="flex-1 min-w-0 px-6 py-6">
             <button
               onClick={() => navigate('/vehicles')}
-              className="flex items-center gap-1.5 text-blue-300 hover:text-white text-sm transition-colors mt-0.5"
+              className="flex items-center gap-1.5 text-blue-300 hover:text-white text-sm transition-colors"
             >
               <ArrowLeft size={15} /> Fleet
             </button>
 
-            <div className="flex items-start gap-2">
-              {/* Status select */}
-              <div className="flex flex-col items-end gap-1">
+            <div className="mt-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl font-bold text-white font-mono tracking-wider">{v.registrationNumber}</h1>
+                {alertCount > 0 && (
+                  <span className="flex items-center gap-1 text-xs text-red-300 bg-red-500/20 border border-red-400/30 px-2 py-1 rounded-full">
+                    <AlertTriangle size={11} />
+                    {alertCount} compliance alert{alertCount !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+              <p className="text-blue-200 text-sm mt-1.5">
+                {[v.brandName, v.vehicleTypeName, v.capacityInTons ? `${v.capacityInTons}T` : null, v.fuelTypeName, v.color]
+                  .filter(Boolean).join(' · ')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+              {[
+                { label: 'Type',      value: v.vehicleTypeName ?? '—' },
+                { label: 'Capacity',  value: v.capacityInTons ? `${v.capacityInTons} tons` : '—' },
+                { label: 'Ownership', value: v.ownershipTypeName ?? '—' },
+                { label: 'Odometer',  value: v.currentOdometerReading ? `${v.currentOdometerReading.toLocaleString('en-IN')} km` : '—' },
+              ].map(({ label, value }) => (
+                <div key={label} className="bg-white/10 rounded-lg px-3 py-2.5">
+                  <p className="text-xs text-blue-300">{label}</p>
+                  <p className="text-sm font-semibold text-white mt-0.5 truncate">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-start gap-2 mt-4">
+              <div className="flex flex-col gap-1">
                 {v.isAssigned && (
                   <span className="text-xs text-yellow-300 font-mono">{v.assignedOrderNumber}</span>
                 )}
-                <div className="relative flex items-center">
-                  <SearchableSelect
-                    value={v.isAssigned ? 'assigned' : String(v.currentStatusId ?? '')}
-                    onValueChange={v2 => {
-                      const id = Number(v2)
-                      if (!id || id === v.currentStatusId) return
-                      const selected = statusRes?.data?.find(s => s.id === id)
-                      if (selected?.statusType === 'BREAKDOWN') {
-                        setPendingStatusId(id)
-                      } else {
-                        setConfirmStatusId(id)
-                        setConfirmStatusName(selected?.name ?? '')
-                      }
-                    }}
-                    disabled={updateStatusMutation.isPending || !!v.isAssigned || !v.isActive}
-                    showSearch={false}
-                    options={
-                      v.isAssigned
-                        ? [{ value: 'assigned', label: 'Assigned to Order', color: 'text-blue-400 font-medium' }]
-                        : [
-                            ...(!v.currentStatusId ? [{ value: '', label: '— Set Status —' }] : []),
-                            ...(statusRes?.data ?? [])
-                              .filter(s => {
-                                const cur = v.currentStatusType
-                                if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
-                                if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
-                                return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
-                              })
-                              .map(s => ({
-                                value: String(s.id),
-                                label: s.name,
-                                color: vehicleStatusOptionColor[s.statusType as VehicleStatusType],
-                              })),
-                          ]
+                <SearchableSelect
+                  value={v.isAssigned ? 'assigned' : String(v.currentStatusId ?? '')}
+                  onValueChange={v2 => {
+                    const id = Number(v2)
+                    if (!id || id === v.currentStatusId) return
+                    const selected = statusRes?.data?.find(s => s.id === id)
+                    if (selected?.statusType === 'BREAKDOWN') {
+                      setPendingStatusId(id)
+                    } else {
+                      setConfirmStatusId(id)
+                      setConfirmStatusName(selected?.name ?? '')
                     }
-                    className="h-8 w-44"
-                    triggerClassName="h-8 text-xs"
-                  />
-                </div>
+                  }}
+                  disabled={updateStatusMutation.isPending || !!v.isAssigned || !v.isActive}
+                  showSearch={false}
+                  options={
+                    v.isAssigned
+                      ? [{ value: 'assigned', label: 'Assigned to Order', color: 'text-blue-400 font-medium' }]
+                      : [
+                          ...(!v.currentStatusId ? [{ value: '', label: '— Set Status —' }] : []),
+                          ...(statusRes?.data ?? [])
+                            .filter(s => {
+                              const cur = v.currentStatusType
+                              if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
+                              if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
+                              return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
+                            })
+                            .map(s => ({
+                              value: String(s.id),
+                              label: s.name,
+                              color: vehicleStatusOptionColor[s.statusType as VehicleStatusType],
+                            })),
+                        ]
+                  }
+                  className="h-8 w-44"
+                  triggerClassName="h-8 text-xs"
+                />
                 <span className={cn(
                   'text-xs',
                   v.isAssigned ? 'text-blue-300/70 visible' : !v.isActive ? 'text-gray-400/70 visible' : 'invisible'
@@ -2893,7 +2956,6 @@ export function VehicleDetailPage() {
                 </span>
               </div>
 
-              {/* Active toggle */}
               <button
                 onClick={() => toggleActiveMutation.mutate()}
                 disabled={toggleActiveMutation.isPending || (!!v.isActive && !!v.isAssigned)}
@@ -2910,44 +2972,86 @@ export function VehicleDetailPage() {
                 <Power size={12} />
                 {v.isActive ? 'Active' : 'Inactive'}
               </button>
-
             </div>
           </div>
 
-          {/* Vehicle identity */}
-          <div className="mt-5">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-3xl font-bold text-white font-mono tracking-wider">{v.registrationNumber}</h1>
-              {alertCount > 0 && (
-                <span className="flex items-center gap-1 text-xs text-red-300 bg-red-500/20 border border-red-400/30 px-2 py-1 rounded-full">
-                  <AlertTriangle size={11} />
-                  {alertCount} compliance alert{alertCount !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            <p className="text-blue-200 text-sm mt-1.5">
-              {[v.brandName, v.vehicleTypeName, v.capacityInTons ? `${v.capacityInTons}T` : null, v.fuelTypeName, v.color]
-                .filter(Boolean).join(' · ')}
-            </p>
-          </div>
-
-          {/* Quick stats */}
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-5">
-            {[
-              { label: 'Type',       value: v.vehicleTypeName ?? '—' },
-              { label: 'Capacity',   value: v.capacityInTons ? `${v.capacityInTons} tons` : '—' },
-              { label: 'Ownership',  value: v.ownershipTypeName ?? '—' },
-              { label: 'Odometer',   value: v.currentOdometerReading ? `${v.currentOdometerReading.toLocaleString('en-IN')} km` : '—' },
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-white/10 rounded-lg px-3 py-2.5">
-                <p className="text-xs text-blue-300">{label}</p>
-                <p className="text-sm font-semibold text-white mt-0.5 truncate">{value}</p>
+          {/* ── Right: image carousel ── */}
+          <div className="w-72 shrink-0 flex flex-col items-center justify-center gap-2 p-5">
+            {bannerImages.length > 0 ? (
+              <div className="relative w-full">
+                <div className="relative w-full rounded-xl overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                  <img
+                    src={bannerImages[imgIdx].imageUrl}
+                    alt={`Vehicle ${v.registrationNumber}`}
+                    className="w-full h-full object-cover"
+                  />
+                  {bannerImages.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setImgIdx(i => (i - 1 + bannerImages.length) % bannerImages.length)}
+                        className="absolute left-1.5 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-1 transition-colors"
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      <button
+                        onClick={() => setImgIdx(i => (i + 1) % bannerImages.length)}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-1 transition-colors"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </>
+                  )}
+                  {canManageImages && (
+                    <button
+                      onClick={() => handleImageDelete(bannerImages[imgIdx].id)}
+                      className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-red-600/80 text-white rounded-full p-1 transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                {bannerImages.length > 1 && (
+                  <div className="flex justify-center gap-1.5 mt-2">
+                    {bannerImages.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setImgIdx(i)}
+                        className={cn('w-1.5 h-1.5 rounded-full transition-colors', i === imgIdx ? 'bg-white' : 'bg-white/30')}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
+            ) : (
+              <div className="w-full flex items-center justify-center opacity-5 pointer-events-none py-6">
+                <Truck size={140} />
+              </div>
+            )}
+            {canManageImages && (
+              <button
+                onClick={() => imgFileRef.current?.click()}
+                disabled={imgUploading}
+                className="flex items-center gap-1.5 text-xs text-blue-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <Camera size={13} />
+                {imgUploading ? 'Uploading…' : bannerImages.length > 0 ? 'Add photo' : 'Upload photo'}
+              </button>
+            )}
+            <input
+              ref={imgFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async e => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (!file) return
+                await handleImageUpload(file)
+              }}
+            />
           </div>
-        </div>
-        </div>
 
+        </div>
       </div>
 
       {/* ── Tabs ── */}

@@ -183,6 +183,7 @@ export interface Vehicle {
   currentDriverId?: number; currentDriverName?: string
   currentCleanerId?: number; currentCleanerName?: string
   isAssigned?: boolean; assignedOrderId?: number; assignedOrderNumber?: string
+  coverImageUrl?: string
 }
 
 export interface VehicleDocument {

@@ -1151,16 +1151,22 @@ export function VehiclesPage() {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div className={cn(
-                            'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
-                            v.currentStatusType === 'BREAKDOWN' ? 'bg-red-100' :
-                            v.currentStatusType === 'IN_REPAIR'  ? 'bg-yellow-100' :
-                            'bg-feros-navy/10'
+                            'w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden',
+                            !v.coverImageUrl && (
+                              v.currentStatusType === 'BREAKDOWN' ? 'bg-red-100' :
+                              v.currentStatusType === 'IN_REPAIR'  ? 'bg-yellow-100' :
+                              'bg-feros-navy/10'
+                            )
                           )}>
-                            <Truck size={14} className={
-                              v.currentStatusType === 'BREAKDOWN' ? 'text-red-600' :
-                              v.currentStatusType === 'IN_REPAIR'  ? 'text-yellow-600' :
-                              'text-feros-navy'
-                            } />
+                            {v.coverImageUrl ? (
+                              <img src={v.coverImageUrl} alt={v.registrationNumber} className="w-full h-full object-cover" />
+                            ) : (
+                              <Truck size={14} className={
+                                v.currentStatusType === 'BREAKDOWN' ? 'text-red-600' :
+                                v.currentStatusType === 'IN_REPAIR'  ? 'text-yellow-600' :
+                                'text-feros-navy'
+                              } />
+                            )}
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-gray-800 font-mono">{v.registrationNumber}</p>
