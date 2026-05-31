@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import {
   CalendarDays, ChevronLeft, ChevronRight, Users,
   CheckCircle, XCircle, Clock, Umbrella, Pencil, ClipboardList,
-  AlertCircle, Camera, Calendar, LogIn, LogOut, Timer,
+  AlertCircle, Camera, Calendar, LogIn, LogOut, Timer, Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1022,6 +1022,7 @@ export function AttendancePage() {
   type Tab = 'daily' | 'duty' | 'my' | 'pending' | 'rejected'
   const [activeTab, setActiveTab]       = useState<Tab>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
+  const [dailySearch, setDailySearch]   = useState('')
   const [markOpen, setMarkOpen]         = useState(false)
   const [bulkOpen, setBulkOpen]         = useState(false)
   const [editRecord, setEditRecord]     = useState<Attendance | undefined>()
@@ -1176,10 +1177,19 @@ export function AttendancePage() {
 
           {/* Table */}
           <div className="border rounded-xl bg-white overflow-hidden">
-            <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-700">Attendance for {selectedDate}</h2>
+            <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center gap-3">
+              <h2 className="text-sm font-semibold text-gray-700 shrink-0">Attendance for {selectedDate}</h2>
+              <div className="relative flex-1 max-w-xs">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  value={dailySearch}
+                  onChange={e => setDailySearch(e.target.value)}
+                  placeholder="Search by name…"
+                  className="pl-8 h-8 text-sm"
+                />
+              </div>
               {unmarked > 0 && (
-                <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full shrink-0">
                   {unmarked} not marked
                 </span>
               )}
@@ -1201,7 +1211,7 @@ export function AttendancePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {records.map(r => (
+                    {records.filter(r => !dailySearch || r.userName?.toLowerCase().includes(dailySearch.toLowerCase())).map(r => (
                       <tr key={r.id} className="hover:bg-gray-50">
                         <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
                         <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
@@ -1225,7 +1235,7 @@ export function AttendancePage() {
                         </td>
                       </tr>
                     ))}
-                    {isAdmin && allUsers.filter(u => !existingMap[u.id]).map(u => (
+                    {isAdmin && allUsers.filter(u => !existingMap[u.id] && (!dailySearch || u.name?.toLowerCase().includes(dailySearch.toLowerCase()))).map(u => (
                       <tr key={`u-${u.id}`} className="hover:bg-gray-50">
                         <td className="px-5 py-3 font-medium text-gray-700">{u.name}</td>
                         <td className="px-5 py-3 text-gray-400 text-xs">{u.role}</td>

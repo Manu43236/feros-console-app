@@ -5,7 +5,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { toast } from 'sonner'
 import {
   CheckCircle, XCircle, Clock, Umbrella, Pencil,
-  ClipboardList, Users, AlertCircle, Calendar,
+  ClipboardList, Users, AlertCircle, Calendar, Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -451,6 +451,7 @@ function MyAttendanceTab({
 export function SupervisorAttendancePage() {
   type Tab = 'today' | 'present' | 'my'
   const [activeTab, setActiveTab] = useState<Tab>('today')
+  const [todaySearch, setTodaySearch] = useState('')
   const [markUser, setMarkUser]   = useState<StaffUser | null>(null)
   const [editRecord, setEditRecord] = useState<Attendance | undefined>()
   const [bulkOpen, setBulkOpen]   = useState(false)
@@ -612,10 +613,19 @@ export function SupervisorAttendancePage() {
 
           {/* Table */}
           <div className="border rounded-xl bg-white overflow-hidden">
-            <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-700">Drivers & Cleaners — {format(new Date(), 'dd MMM yyyy')}</h2>
+            <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center gap-3">
+              <h2 className="text-sm font-semibold text-gray-700 shrink-0">Drivers & Cleaners — {format(new Date(), 'dd MMM yyyy')}</h2>
+              <div className="relative flex-1 max-w-xs">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  value={todaySearch}
+                  onChange={e => setTodaySearch(e.target.value)}
+                  placeholder="Search by name…"
+                  className="pl-8 h-8 text-sm"
+                />
+              </div>
               {unmarked > 0 && (
-                <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full shrink-0">
                   {unmarked} not marked
                 </span>
               )}
@@ -637,7 +647,7 @@ export function SupervisorAttendancePage() {
                   </thead>
                   <tbody className="divide-y">
                     {/* Marked rows */}
-                    {records.map(r => (
+                    {records.filter(r => !todaySearch || r.userName?.toLowerCase().includes(todaySearch.toLowerCase())).map(r => (
                       <tr key={r.id} className="hover:bg-gray-50">
                         <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
                         <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
@@ -656,7 +666,7 @@ export function SupervisorAttendancePage() {
                       </tr>
                     ))}
                     {/* Unmarked rows */}
-                    {crew.filter(u => !existingMap[u.id]).map(u => (
+                    {crew.filter(u => !existingMap[u.id] && (!todaySearch || u.name?.toLowerCase().includes(todaySearch.toLowerCase()))).map(u => (
                       <tr key={`u-${u.id}`} className="hover:bg-gray-50">
                         <td className="px-5 py-3 font-medium text-gray-700">{u.name}</td>
                         <td className="px-5 py-3 text-gray-400 text-xs">{u.role}</td>

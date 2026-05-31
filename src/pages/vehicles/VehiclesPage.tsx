@@ -12,7 +12,7 @@ import { getApiError } from '@/lib/apiError'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import {
-  Plus, Search, Truck, Upload, Download, CheckCircle, XCircle, Calendar,
+  Plus, Search, Truck, Upload, Download, CheckCircle, XCircle,
   Paperclip, FileText, X, UserCog,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -995,13 +995,12 @@ export function VehiclesPage() {
   const [ownerFilter, setOwnerFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [assignFilter, setAssignFilter] = useState('')
-  const [dateFilter, setDateFilter]   = useState(() => new Date().toISOString().slice(0, 10))
   const [staffDialogVehicle, setStaffDialogVehicle] = useState<Vehicle | null>(null)
   const [staffDialogRole, setStaffDialogRole]       = useState<'DRIVER' | 'CLEANER'>('DRIVER')
 
   const { data: res, isLoading }  = useQuery({
-    queryKey: ['vehicles', dateFilter],
-    queryFn: () => vehiclesApi.getAll(dateFilter),
+    queryKey: ['vehicles'],
+    queryFn: () => vehiclesApi.getAll(),
   })
   const { data: typesRes }        = useQuery({ queryKey: ['vehicle-types'],    queryFn: globalMastersApi.getVehicleTypes })
   const { data: ownershipRes }    = useQuery({ queryKey: ['ownership-types'],  queryFn: globalMastersApi.getOwnershipTypes })
@@ -1064,15 +1063,6 @@ export function VehiclesPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-9"
-          />
-        </div>
-        <div className="relative">
-          <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <Input
-            type="date"
-            value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)}
-            className="pl-9 w-44"
           />
         </div>
         <SearchableSelect
