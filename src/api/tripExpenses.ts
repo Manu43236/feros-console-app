@@ -41,6 +41,12 @@ export const tripExpensesApi = {
   approve: (id: number, data: ApproveTripExpensePayload) =>
     apiClient.put<ApiResponse<TripExpense>>(`/trip-expenses/${id}/approve`, data).then(r => r.data),
 
+  reject: (id: number, rejectionReason?: string) =>
+    apiClient.put<ApiResponse<TripExpense>>(`/trip-expenses/${id}/reject`, { rejectionReason }).then(r => r.data),
+
   settle: (id: number, data: SettleTripExpensePayload) =>
     apiClient.post<ApiResponse<TripExpense>>(`/trip-expenses/${id}/settle`, data).then(r => r.data),
+
+  deleteDraft: (lrId: number) =>
+    apiClient.delete<ApiResponse<void>>(`/lr/${lrId}/trip-expense`).then(r => r.data),
 }
