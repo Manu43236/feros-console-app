@@ -891,7 +891,7 @@ export function LrDetailPage() {
           {([
             { key: 'checkposts', label: 'Checkposts',    icon: <MapPin className="h-4 w-4" />,     count: checkposts.length },
             { key: 'charges',    label: 'Charges',      icon: <DollarSign className="h-4 w-4" />, count: charges.length },
-            ...(lr.lrStatus === 'DELIVERED' ? [{ key: 'expenses' as const, label: 'Trip Expenses', icon: <Receipt className="h-4 w-4" />, count: 0 }] : []),
+            ...(lr.lrStatus !== 'CANCELLED' ? [{ key: 'expenses' as const, label: 'Trip Expenses', icon: <Receipt className="h-4 w-4" />, count: 0 }] : []),
           ] as const).map(t => (
             <button
               key={t.key}
@@ -937,7 +937,7 @@ export function LrDetailPage() {
             </>
           )}
           {tab === 'charges' && <ChargesTab lrId={id} charges={charges} canDelete={canAdd} />}
-          {tab === 'expenses' && <TripExpenseTab lrId={id} />}
+          {tab === 'expenses' && <TripExpenseTab lrId={id} lrStatus={lr.lrStatus} />}
         </div>
       </div>
 

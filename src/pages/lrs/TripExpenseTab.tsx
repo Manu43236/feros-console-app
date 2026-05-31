@@ -5,7 +5,7 @@ import { Plus, Trash2, Receipt, CheckCircle2, Clock, Banknote, XCircle, Papercli
 import { tripExpensesApi } from '@/api/tripExpenses'
 import apiClient from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
-import type { ApiResponse, TripExpenseItem } from '@/types'
+import type { ApiResponse, TripExpenseItem, LrStatus } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -347,7 +347,7 @@ function SummaryRow({ label, value, highlight, muted }: { label: string; value: 
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
-export function TripExpenseTab({ lrId }: { lrId: number }) {
+export function TripExpenseTab({ lrId, lrStatus }: { lrId: number; lrStatus: LrStatus }) {
   const qc = useQueryClient()
   const role = useAuthStore(s => s.role)
   const isAdmin = role === 'ADMIN'
@@ -446,6 +446,7 @@ export function TripExpenseTab({ lrId }: { lrId: number }) {
   const isRejected  = expense.status === 'REJECTED'
   const isLocked    = isApproved || isSettled
   const isEditable  = isDraft || isRejected  // supervisor can edit in both states
+  const isDelivered = lrStatus === 'DELIVERED'
 
   return (
     <div className="space-y-5">
@@ -454,7 +455,7 @@ export function TripExpenseTab({ lrId }: { lrId: number }) {
       <div className="flex items-center justify-between">
         <ExpenseStatusBadge status={expense.status} />
         <div className="flex items-center gap-2">
-          {isEditable && !isAdmin && (
+          {isEditable && !isAdmin && isDelivered && (
             <Button
               size="sm"
               variant="outline"
@@ -478,6 +479,14 @@ export function TripExpenseTab({ lrId }: { lrId: number }) {
           )}
         </div>
       </div>
+
+      {/* ── Pre-delivery notice ── */}
+      {!isDelivered && isDraft && !isAdmin && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2 text-sm text-amber-700">
+          <Clock className="h-4 w-4 shrink-0" />
+          Advance recorded. You can add expense items and submit once the LR is delivered.
+        </div>
+      )}
 
       {/* ── Rejection banner (supervisor sees this) ── */}
       {isRejected && (
@@ -665,8 +674,8 @@ export function TripExpenseTab({ lrId }: { lrId: number }) {
 
       {/* ── Action buttons ── */}
       <div className="flex justify-end gap-3">
-        {/* Supervisor: Submit (DRAFT or REJECTED) */}
-        {isEditable && !isAdmin && (
+        {/* Supervisor: Submit (DRAFT or REJECTED) — only after LR is delivered */}
+        {isEditable && !isAdmin && isDelivered && (
           <Button
             onClick={() => submitMutation.mutate()}
             disabled={submitMutation.isPending}
