@@ -108,7 +108,7 @@ export interface TenantSettings {
 }
 
 // ─── Trip Expenses ────────────────────────────────────────────────────────────
-export type TripExpenseStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'SETTLED'
+export type TripExpenseStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'SETTLED' | 'REJECTED'
 
 export interface TripExpenseItem {
   id: number
@@ -144,6 +144,9 @@ export interface TripExpense {
   settlementNote?: string
   settledByName?: string
   settledAt?: string
+  rejectedByName?: string
+  rejectedAt?: string
+  rejectionReason?: string
   items: TripExpenseItem[]
   createdAt: string
 }

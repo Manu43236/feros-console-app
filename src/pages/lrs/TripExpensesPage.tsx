@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Receipt, ChevronRight, X, CheckCircle2, Clock, Banknote, ExternalLink } from 'lucide-react'
+import { Receipt, ChevronRight, X, CheckCircle2, Clock, Banknote, ExternalLink, XCircle } from 'lucide-react'
 import { tripExpensesApi } from '@/api/tripExpenses'
 import { useAuthStore } from '@/store/authStore'
 import type { TripExpense, TripExpenseStatus } from '@/types'
@@ -18,6 +18,7 @@ const STATUS_CFG: Record<TripExpenseStatus, { label: string; bg: string; text: s
   SUBMITTED: { label: 'Submitted', bg: 'bg-amber-100',  text: 'text-amber-700' },
   APPROVED:  { label: 'Approved',  bg: 'bg-green-100',  text: 'text-green-700' },
   SETTLED:   { label: 'Settled',   bg: 'bg-blue-100',   text: 'text-blue-700'  },
+  REJECTED:  { label: 'Rejected',  bg: 'bg-red-100',    text: 'text-red-700'   },
 }
 
 const FILTER_TABS: { key: TripExpenseStatus | 'ALL'; label: string }[] = [
@@ -26,6 +27,7 @@ const FILTER_TABS: { key: TripExpenseStatus | 'ALL'; label: string }[] = [
   { key: 'SUBMITTED', label: 'Submitted' },
   { key: 'APPROVED',  label: 'Approved'  },
   { key: 'SETTLED',   label: 'Settled'   },
+  { key: 'REJECTED',  label: 'Rejected'  },
 ]
 
 function StatusBadge({ status }: { status: TripExpenseStatus }) {
@@ -114,11 +116,26 @@ function ExpenseDetailPanel({ expense, onClose }: { expense: TripExpense; onClos
   const navigate = useNavigate()
   const [approvedAmounts, setApprovedAmounts] = useState<Record<number, string>>({})
   const [showSettle, setShowSettle] = useState(false)
+  const [showReject, setShowReject] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
 
   const isSubmitted = expense.status === 'SUBMITTED'
   const isApproved  = expense.status === 'APPROVED'
   const isSettled   = expense.status === 'SETTLED'
+  const isRejected  = expense.status === 'REJECTED'
   const isLocked    = isApproved || isSettled
+
+  const rejectMutation = useMutation({
+    mutationFn: () => tripExpensesApi.reject(expense.id, rejectReason || undefined),
+    onSuccess: () => {
+      toast.success('Expense sheet rejected and sent back')
+      qc.invalidateQueries({ queryKey: ['trip-expenses'] })
+      setRejectReason('')
+      setShowReject(false)
+      onClose()
+    },
+    onError: (e) => toast.error(getApiError(e, 'Failed to reject')),
+  })
 
   const approveMutation = useMutation({
     mutationFn: () => {
@@ -181,6 +198,24 @@ function ExpenseDetailPanel({ expense, onClose }: { expense: TripExpense; onClos
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+          {/* Rejection banner */}
+          {isRejected && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <XCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-red-800">Rejected</p>
+                {expense.rejectionReason && (
+                  <p className="text-sm text-red-700 mt-0.5">{expense.rejectionReason}</p>
+                )}
+                {expense.rejectedByName && (
+                  <p className="text-xs text-red-400 mt-1">
+                    By {expense.rejectedByName} · {expense.rejectedAt ? new Date(expense.rejectedAt).toLocaleString() : ''}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Fixed Allowances */}
           <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
@@ -367,13 +402,22 @@ function ExpenseDetailPanel({ expense, onClose }: { expense: TripExpense; onClos
         {(isSubmitted || isApproved) && (
           <div className="px-5 py-4 border-t border-gray-100 bg-white shrink-0">
             {isSubmitted && (
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => approveMutation.mutate()}
-                disabled={approveMutation.isPending}
-              >
-                {approveMutation.isPending ? 'Approving…' : 'Approve Expenses'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                  onClick={() => setShowReject(true)}
+                >
+                  Reject
+                </Button>
+                <Button
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => approveMutation.mutate()}
+                  disabled={approveMutation.isPending}
+                >
+                  {approveMutation.isPending ? 'Approving…' : 'Approve'}
+                </Button>
+              </div>
             )}
             {isApproved && (
               <Button
@@ -396,6 +440,37 @@ function ExpenseDetailPanel({ expense, onClose }: { expense: TripExpense; onClos
           onSettled={onClose}
         />
       )}
+
+      {/* Reject dialog */}
+      <Dialog open={showReject} onOpenChange={v => !v && setShowReject(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Reject Expense Sheet</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-gray-600">This will send the sheet back to the supervisor for correction.</p>
+            <div className="space-y-1.5">
+              <Label>Reason (optional)</Label>
+              <textarea
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                rows={3}
+                autoFocus
+                className="w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background"
+                placeholder="e.g. Toll amount seems incorrect, please verify receipts"
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowReject(false)}>Cancel</Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => rejectMutation.mutate()}
+                disabled={rejectMutation.isPending}
+              >
+                {rejectMutation.isPending ? 'Rejecting…' : 'Reject & Send Back'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -479,7 +554,7 @@ export function TripExpensesPage() {
 
   const sorted = isAdmin && filter === 'ALL'
     ? [...expenses].sort((a, b) => {
-        const order = { SUBMITTED: 0, APPROVED: 1, DRAFT: 2, SETTLED: 3 }
+        const order = { SUBMITTED: 0, REJECTED: 1, APPROVED: 2, DRAFT: 3, SETTLED: 4 }
         return (order[a.status] ?? 9) - (order[b.status] ?? 9)
       })
     : expenses
