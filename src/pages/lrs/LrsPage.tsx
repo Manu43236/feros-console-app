@@ -203,29 +203,28 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
 export function LrsPage() {
   const { locked } = useSubscription()
   const navigate    = useNavigate()
-  const [search, setSearch]       = useState('')
-  const [statusFilter, setStatus] = useState<string>('')
+  const [search, setSearch]         = useState('')
+  const [statusFilter, setStatus]   = useState<string>('')
+  const [page, setPage]             = useState(0)
   const [showCreate, setShowCreate] = useState(false)
+  const PAGE_SIZE = 20
 
   const { data: lrsRes, isLoading } = useQuery({
-    queryKey: ['lrs'],
-    queryFn: lrsApi.getAll,
+    queryKey: ['lrs', page, search, statusFilter],
+    queryFn: () => lrsApi.getAll({
+      page,
+      size: PAGE_SIZE,
+      search: search || undefined,
+      status: statusFilter || undefined,
+    }),
   })
-  const lrs = [...(lrsRes?.data ?? [])].sort((a, b) => b.id - a.id)
+  const pageData    = lrsRes?.data
+  const lrs         = pageData?.content ?? []
+  const totalPages  = pageData?.totalPages ?? 0
+  const totalCount  = pageData?.totalElements ?? 0
 
-  const filtered = lrs.filter(lr => {
-    if (statusFilter && lr.lrStatus !== statusFilter) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return (
-        lr.lrNumber.toLowerCase().includes(q) ||
-        lr.orderNumber.toLowerCase().includes(q) ||
-        lr.vehicleRegistrationNumber.toLowerCase().includes(q) ||
-        (lr.clientName ?? '').toLowerCase().includes(q)
-      )
-    }
-    return true
-  })
+  const handleStatusChange = (s: string) => { setStatus(s); setPage(0) }
+  const handleSearch = (v: string) => { setSearch(v); setPage(0) }
 
   return (
     <div className="space-y-5">
@@ -252,14 +251,14 @@ export function LrsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Search LR#, Order#, Vehicle, Client…"
+            placeholder="Search LR#, Vehicle…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => handleSearch(e.target.value)}
           />
         </div>
         <SearchableSelect
           value={statusFilter}
-          onValueChange={setStatus}
+          onValueChange={handleStatusChange}
           options={[
             { value: '', label: 'All Statuses' },
             { value: 'CREATED', label: 'Created' },
@@ -274,16 +273,17 @@ export function LrsPage() {
       {/* Summary strip */}
       <div className="grid grid-cols-4 gap-4">
         {(['CREATED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'] as LrStatus[]).map(s => {
-          const count = lrs.filter(l => l.lrStatus === s).length
           const cfg = STATUS_CFG[s]
           return (
             <button
               key={s}
-              onClick={() => setStatus(statusFilter === s ? '' : s)}
+              onClick={() => handleStatusChange(statusFilter === s ? '' : s)}
               className={`rounded-xl border p-3 text-left transition-colors ${statusFilter === s ? `${cfg.bg} border-current` : 'bg-white hover:bg-gray-50'}`}
             >
-              <p className={`text-2xl font-bold ${cfg.text}`}>{count}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{cfg.label}</p>
+              <p className={`text-sm font-semibold ${cfg.text}`}>{cfg.label}</p>
+              {statusFilter === s && (
+                <p className="text-xs text-gray-500 mt-0.5">{totalCount} total</p>
+              )}
             </button>
           )
         })}
@@ -293,7 +293,7 @@ export function LrsPage() {
       <div className="bg-white rounded-xl border overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading LRs…</div>
-        ) : filtered.length === 0 ? (
+        ) : lrs.length === 0 ? (
           <div className="p-12 text-center">
             <FileText className="h-10 w-10 text-gray-300 mx-auto mb-2" />
             <p className="text-gray-500 text-sm">No LRs found</p>
@@ -309,7 +309,7 @@ export function LrsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map(lr => (
+              {lrs.map(lr => (
                 <tr
                   key={lr.id}
                   onClick={() => navigate(`/lrs/${lr.id}`)}
@@ -336,6 +336,32 @@ export function LrsPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <span>{totalCount} LRs total</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setPage(p => p - 1)}
+              disabled={page === 0}
+              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="font-medium text-gray-700">
+              Page {page + 1} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       <CreateLrDialog open={showCreate} onClose={() => setShowCreate(false)} />
     </div>
