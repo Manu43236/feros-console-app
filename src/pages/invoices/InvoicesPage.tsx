@@ -68,10 +68,10 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const [selectedLrIds, setSelectedLrIds] = useState<Set<number>>(new Set())
 
   const { data: clientsRes } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
-  const { data: lrsRes } = useQuery({ queryKey: ['lrs'], queryFn: lrsApi.getAll })
+  const { data: lrsRes } = useQuery({ queryKey: ['lrs-delivered'], queryFn: () => lrsApi.getAll({ status: 'DELIVERED', size: 1000 }) })
   const { data: invoicedIdsRes } = useQuery({ queryKey: ['invoiced-lr-ids'], queryFn: invoicesApi.getInvoicedLrIds })
   const { data: tenantRes } = useQuery({ queryKey: ['my-tenant'], queryFn: () => tenantsApi.getMy() })
-  const allLrs        = lrsRes?.data ?? []
+  const allLrs        = lrsRes?.data?.content ?? []
   const invoicedLrIds = new Set(invoicedIdsRes?.data ?? [])
   const tenantState   = tenantRes?.data?.state ?? ''
 
