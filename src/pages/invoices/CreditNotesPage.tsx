@@ -46,10 +46,10 @@ function AddCreditNoteDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   const { data: invoicesRes } = useQuery({
     queryKey: ['invoices-by-client', selectedClientId],
-    queryFn: () => invoicesApi.getAll(),
+    queryFn: () => invoicesApi.getAll({ size: 1000 }),
     enabled: selectedClientId != null,
   })
-  const invoices = (invoicesRes?.data ?? []).filter(i => i.clientId === selectedClientId)
+  const invoices = (invoicesRes?.data?.content ?? []).filter(i => i.clientId === selectedClientId)
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
