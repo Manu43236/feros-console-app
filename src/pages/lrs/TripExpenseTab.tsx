@@ -112,7 +112,7 @@ function AddItemDialog({ lrId, currentItems, open, onClose }: {
     try {
       const form = new FormData()
       form.append('file', file)
-      form.append('folder', 'tenants/trip-expense-receipts')
+      form.append('folder', 'tenants/images/trip-expense-receipts')
       const res = await apiClient.post<ApiResponse<{ publicUrl: string }>>('/upload', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
