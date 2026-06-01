@@ -245,8 +245,8 @@ export function LrsPage() {
         )}
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      {/* Filters + Pagination */}
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-60">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -268,29 +268,32 @@ export function LrsPage() {
           ]}
           className="h-10 w-40"
         />
-      </div>
-
-      {/* Summary strip */}
-      <div className="grid grid-cols-4 gap-4">
-        {(['CREATED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'] as LrStatus[]).map(s => {
-          const cfg = STATUS_CFG[s]
-          return (
+        {totalPages > 0 && (
+          <div className="flex items-center gap-2 text-sm ml-auto">
+            <span className="text-gray-400 whitespace-nowrap">{totalCount} total</span>
             <button
-              key={s}
-              onClick={() => handleStatusChange(statusFilter === s ? '' : s)}
-              className={`rounded-xl border p-3 text-left transition-colors ${statusFilter === s ? `${cfg.bg} border-current` : 'bg-white hover:bg-gray-50'}`}
+              onClick={() => setPage(p => p - 1)}
+              disabled={page === 0}
+              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
             >
-              <p className={`text-sm font-semibold ${cfg.text}`}>{cfg.label}</p>
-              {statusFilter === s && (
-                <p className="text-xs text-gray-500 mt-0.5">{totalCount} total</p>
-              )}
+              Prev
             </button>
-          )
-        })}
+            <span className="font-medium text-gray-700 whitespace-nowrap">
+              {page + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-white rounded-xl border overflow-hidden flex flex-col max-h-[calc(100vh-16rem)]">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading LRs…</div>
         ) : lrs.length === 0 ? (
@@ -299,69 +302,43 @@ export function LrsPage() {
             <p className="text-gray-500 text-sm">No LRs found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                {['LR #', 'Order #', 'Client', 'Vehicle', 'Allocated', 'Loaded', 'Delivered', 'Status', 'LR Date'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {lrs.map(lr => (
-                <tr
-                  key={lr.id}
-                  onClick={() => navigate(`/lrs/${lr.id}`)}
-                  className="hover:bg-blue-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-4 py-3 font-medium text-blue-700">{lr.lrNumber}</td>
-                  <td className="px-4 py-3 text-gray-700">{lr.orderNumber}</td>
-                  <td className="px-4 py-3 text-gray-600">{lr.clientName || '—'}</td>
-                  <td className="px-4 py-3 text-gray-800 font-medium">
-                    <span className="flex items-center gap-1.5">
-                      <Truck className="h-3.5 w-3.5 text-gray-400" />
-                      {lr.vehicleRegistrationNumber}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{lr.allocatedWeight}T</td>
-                  <td className="px-4 py-3 text-gray-600">{lr.loadedWeight != null ? `${lr.loadedWeight}T` : '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{lr.deliveredWeight != null ? `${lr.deliveredWeight}T` : '—'}</td>
-                  <td className="px-4 py-3"><LrStatusBadge status={lr.lrStatus} /></td>
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{lr.lrDate}</td>
+          <div className="overflow-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50 sticky top-0 z-10">
+                <tr>
+                  {['LR #', 'Order #', 'Client', 'Vehicle', 'Allocated', 'Loaded', 'Delivered', 'Status', 'LR Date'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {lrs.map(lr => (
+                  <tr
+                    key={lr.id}
+                    onClick={() => navigate(`/lrs/${lr.id}`)}
+                    className="hover:bg-blue-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-3 font-medium text-blue-700">{lr.lrNumber}</td>
+                    <td className="px-4 py-3 text-gray-700">{lr.orderNumber}</td>
+                    <td className="px-4 py-3 text-gray-600">{lr.clientName || '—'}</td>
+                    <td className="px-4 py-3 text-gray-800 font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <Truck className="h-3.5 w-3.5 text-gray-400" />
+                        {lr.vehicleRegistrationNumber}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{lr.allocatedWeight}T</td>
+                    <td className="px-4 py-3 text-gray-600">{lr.loadedWeight != null ? `${lr.loadedWeight}T` : '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{lr.deliveredWeight != null ? `${lr.deliveredWeight}T` : '—'}</td>
+                    <td className="px-4 py-3"><LrStatusBadge status={lr.lrStatus} /></td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{lr.lrDate}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>{totalCount} LRs total</span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setPage(p => p - 1)}
-              disabled={page === 0}
-              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="font-medium text-gray-700">
-              Page {page + 1} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(p => p + 1)}
-              disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
 
       <CreateLrDialog open={showCreate} onClose={() => setShowCreate(false)} />
     </div>
