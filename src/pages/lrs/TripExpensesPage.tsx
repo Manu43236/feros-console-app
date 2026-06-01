@@ -262,6 +262,7 @@ function ExpenseDetailPanel({ expense, onClose }: { expense: TripExpense; onClos
                     {(isSubmitted || isLocked) && (
                       <th className="text-right px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Approved</th>
                     )}
+                    <th className="text-center px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Receipt</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -291,6 +292,13 @@ function ExpenseDetailPanel({ expense, onClose }: { expense: TripExpense; onClos
                           )}
                         </td>
                       )}
+                      <td className="px-4 py-3 text-center">
+                        {item.receiptUrl ? (
+                          <a href={item.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View</a>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
