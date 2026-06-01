@@ -1,8 +1,9 @@
 import apiClient from './client'
-import type { ApiResponse, Invoice, InvoicePayment, CreditNote } from '@/types'
+import type { ApiResponse, Invoice, InvoicePayment, CreditNote, PageResponse } from '@/types'
 
 export const invoicesApi = {
-  getAll:           ()           => apiClient.get<ApiResponse<Invoice[]>>('/invoices').then(r => r.data),
+  getAll: (params?: { page?: number; size?: number; search?: string; status?: string }) =>
+    apiClient.get<ApiResponse<PageResponse<Invoice>>>('/invoices', { params }).then(r => r.data),
   getById:          (id: number) => apiClient.get<ApiResponse<Invoice>>(`/invoices/${id}`).then(r => r.data),
   getByClient:      (clientId: number) => apiClient.get<ApiResponse<Invoice[]>>(`/invoices/client/${clientId}`).then(r => r.data),
   create:           (data: unknown) => apiClient.post<ApiResponse<Invoice>>('/invoices', data).then(r => r.data),

@@ -365,25 +365,32 @@ export function InvoicesPage() {
   const [statusFilter, setStatus]   = useState<InvoiceStatus | 'ALL'>(
     (searchParams.get('status') as InvoiceStatus) || 'ALL'
   )
+  const [page, setPage]             = useState(0)
   const [createOpen, setCreateOpen] = useState(false)
+  const PAGE_SIZE = 20
 
   const { data: invoicesRes, isLoading } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: invoicesApi.getAll,
+    queryKey: ['invoices', page, search, statusFilter],
+    queryFn: () => invoicesApi.getAll({
+      page,
+      size: PAGE_SIZE,
+      search: search || undefined,
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+    }),
   })
 
-  const invoices = [...(invoicesRes?.data ?? [])].sort((a, b) => b.id - a.id).filter(inv => {
-    const q = search.toLowerCase()
-    const matchSearch = inv.invoiceNumber.toLowerCase().includes(q) || inv.clientName.toLowerCase().includes(q)
-    const matchStatus = statusFilter === 'ALL' || inv.invoiceStatus === statusFilter
-    return matchSearch && matchStatus
-  })
+  const pageData    = invoicesRes?.data
+  const invoices    = pageData?.content ?? []
+  const totalPages  = pageData?.totalPages ?? 0
+  const totalCount  = pageData?.totalElements ?? 0
 
-  const all              = invoicesRes?.data ?? []
-  const outstanding      = all.filter(i => ['SENT','PARTIALLY_PAID','OVERDUE'].includes(i.invoiceStatus))
-  const overdue          = all.filter(i => i.invoiceStatus === 'OVERDUE')
+  const outstanding      = invoices.filter(i => ['SENT','PARTIALLY_PAID','OVERDUE'].includes(i.invoiceStatus))
+  const overdue          = invoices.filter(i => i.invoiceStatus === 'OVERDUE')
   const totalOutstanding = outstanding.reduce((s, i) => s + Number(i.balanceDue), 0)
-  const totalCollected   = all.reduce((s, i) => s + Number(i.amountPaid), 0)
+  const totalCollected   = invoices.reduce((s, i) => s + Number(i.amountPaid), 0)
+
+  const handleStatusChange = (s: InvoiceStatus | 'ALL') => { setStatus(s); setPage(0) }
+  const handleSearch = (v: string) => { setSearch(v); setPage(0) }
 
   return (
     <div className="space-y-5">
@@ -391,7 +398,7 @@ export function InvoicesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{all.length} total invoices</p>
+          <p className="text-gray-500 text-sm mt-0.5">{totalCount} total invoices</p>
         </div>
         {!locked && (
           <Button onClick={() => setCreateOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
@@ -403,7 +410,7 @@ export function InvoicesPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { icon: <Receipt size={16} className="text-gray-400" />,   label: 'Total Invoices', value: all.length, sub: undefined },
+          { icon: <Receipt size={16} className="text-gray-400" />,   label: 'Total Invoices', value: totalCount, sub: undefined },
           { icon: <TrendingUp size={16} className="text-amber-400" />,label: 'Outstanding',   value: `₹${totalOutstanding.toLocaleString('en-IN')}`, sub: `${outstanding.length} invoices` },
           { icon: <AlertCircle size={16} className="text-red-400" />, label: 'Overdue',        value: overdue.length, sub: 'past due date', accent: true },
           { icon: <CheckCircle2 size={16} className="text-green-400" />, label: 'Collected',  value: `₹${totalCollected.toLocaleString('en-IN')}`, sub: undefined },
@@ -421,29 +428,51 @@ export function InvoicesPage() {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Filters + Pagination */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
             placeholder="Search by invoice # or client…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => handleSearch(e.target.value)}
             className="pl-9 w-72"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={e => setStatus(e.target.value as InvoiceStatus | 'ALL')}
+          onChange={e => handleStatusChange(e.target.value as InvoiceStatus | 'ALL')}
           className="h-10 px-3 rounded-md border border-input bg-background text-sm"
         >
           <option value="ALL">All Statuses</option>
           {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
+        {totalPages > 0 && (
+          <div className="flex items-center gap-2 text-sm ml-auto">
+            <span className="text-gray-400 whitespace-nowrap">{totalCount} total</span>
+            <button
+              onClick={() => setPage(p => p - 1)}
+              disabled={page === 0}
+              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
+            >
+              Prev
+            </button>
+            <span className="font-medium text-gray-700 whitespace-nowrap">
+              {page + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col max-h-[calc(100vh-22rem)]">
         {isLoading ? (
           <div className="p-12 text-center text-gray-400 animate-pulse">Loading invoices…</div>
         ) : invoices.length === 0 ? (
@@ -454,9 +483,9 @@ export function InvoicesPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Invoice #</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Client</th>

@@ -320,7 +320,9 @@ export function LrsPage() {
                   >
                     <td className="px-4 py-3 font-medium text-blue-700">{lr.lrNumber}</td>
                     <td className="px-4 py-3 text-gray-700">{lr.orderNumber}</td>
-                    <td className="px-4 py-3 text-gray-600">{lr.clientName || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 max-w-[160px]">
+                      <span className="line-clamp-2">{lr.clientName || '—'}</span>
+                    </td>
                     <td className="px-4 py-3 text-gray-800 font-medium">
                       <span className="flex items-center gap-1.5">
                         <Truck className="h-3.5 w-3.5 text-gray-400" />
