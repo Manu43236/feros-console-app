@@ -205,6 +205,7 @@ const schema = z.object({
   extraPayEnabled:          z.boolean().optional(),
   extraPayPerDay:           z.coerce.number().min(0).optional(),
   notes:                    z.string().optional(),
+  tripScope:                z.enum(['INTRA_STATE', 'INTER_STATE']).optional(),
 }).refine(
   data => {
     const cap  = data.fuelTankCapacity
@@ -446,6 +447,7 @@ export function VehicleForm({
       extraPayEnabled: vehicle.extraPayEnabled ?? false,
       extraPayPerDay: vehicle.extraPayPerDay,
       notes: vehicle.notes ?? '',
+      tripScope: vehicle.tripScope ?? undefined,
     } : {},
   })
 
@@ -477,6 +479,7 @@ export function VehicleForm({
         extraPayEnabled: vehicle.extraPayEnabled ?? false,
         extraPayPerDay: vehicle.extraPayPerDay,
         notes: vehicle.notes ?? '',
+        tripScope: vehicle.tripScope ?? undefined,
       })
       setOwnershipTypeId(vehicle.ownershipTypeId)
     }
@@ -636,6 +639,25 @@ export function VehicleForm({
                     onValueChange={v => field.onChange(v ? Number(v) : undefined)}
                     options={(statusRes?.data ?? []).map(s => ({ value: String(s.id), label: s.name }))}
                     placeholder="Select status"
+                    className="mt-1"
+                  />
+                )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Trip Scope</Label>
+              <Controller
+                name="tripScope"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ?? ''}
+                    onValueChange={v => field.onChange(v || undefined)}
+                    options={[
+                      { value: 'INTRA_STATE', label: 'Intra-State' },
+                      { value: 'INTER_STATE', label: 'Inter-State' },
+                    ]}
+                    placeholder="Select trip scope"
                     className="mt-1"
                   />
                 )}

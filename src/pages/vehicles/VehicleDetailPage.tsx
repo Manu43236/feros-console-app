@@ -3167,6 +3167,7 @@ export function VehicleDetailPage() {
                 <InfoRow label="Brand"           value={v.brandName} />
                 <InfoRow label="Model"           value={v.model} />
                 <InfoRow label="Vehicle Type"    value={v.vehicleTypeName} />
+                <InfoRow label="Trip Scope"      value={v.tripScope === 'INTRA_STATE' ? 'Intra-State' : v.tripScope === 'INTER_STATE' ? 'Inter-State' : null} />
                 <InfoRow label="Fuel Type"       value={v.fuelTypeName} />
                 <InfoRow label="Ownership"       value={v.ownershipTypeName} />
                 <InfoRow label="Capacity"        value={v.capacityInTons ? `${v.capacityInTons} tons` : null} />
