@@ -29,7 +29,7 @@ const STATUS_CFG: Record<LrStatus, { label: string; bg: string; text: string }> 
 function LrStatusBadge({ status }: { status: LrStatus }) {
   const cfg = STATUS_CFG[status] ?? { label: status, bg: 'bg-gray-100', text: 'text-gray-700' }
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${cfg.bg} ${cfg.text}`}>
       {status === 'IN_TRANSIT' ? (
         <span className="relative flex h-2 w-2 shrink-0">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
@@ -307,21 +307,19 @@ export function LrsPage() {
                     onClick={() => navigate(`/lrs/${lr.id}`)}
                     className="hover:bg-blue-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-blue-700">{lr.lrNumber}</td>
-                    <td className="px-4 py-3 text-gray-700">{lr.orderNumber}</td>
-                    <td className="px-4 py-3 text-gray-600 max-w-[160px]">
-                      <span className="line-clamp-2">{lr.clientName || '—'}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-800 font-medium">
+                    <td className="px-4 py-3 font-medium text-blue-700 whitespace-nowrap">{lr.lrNumber}</td>
+                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{lr.orderNumber}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.clientName || '—'}</td>
+                    <td className="px-4 py-3 text-gray-800 font-medium whitespace-nowrap">
                       <span className="flex items-center gap-1.5">
                         <Truck className="h-3.5 w-3.5 text-gray-400" />
                         {lr.vehicleRegistrationNumber}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{lr.allocatedWeight}T</td>
-                    <td className="px-4 py-3 text-gray-600">{lr.loadedWeight != null ? `${lr.loadedWeight}T` : '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{lr.deliveredWeight != null ? `${lr.deliveredWeight}T` : '—'}</td>
-                    <td className="px-4 py-3"><LrStatusBadge status={lr.lrStatus} /></td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.allocatedWeight}T</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.loadedWeight != null ? `${lr.loadedWeight}T` : '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.deliveredWeight != null ? `${lr.deliveredWeight}T` : '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap"><LrStatusBadge status={lr.lrStatus} /></td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{lr.lrDate}</td>
                   </tr>
                 ))}
