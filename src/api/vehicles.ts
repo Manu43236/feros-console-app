@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, BreakdownDuration, BreakdownType, Vehicle, VehicleDocument, VehicleImage, VehicleServiceRecord } from '@/types'
+import type { ApiResponse, BreakdownDuration, BreakdownType, StaffAssignmentHistory, Vehicle, VehicleDocument, VehicleImage, VehicleServiceRecord } from '@/types'
 
 export interface UpdateStatusPayload {
   currentStatusId: number
@@ -23,6 +23,7 @@ export const vehiclesApi = {
   unassignDriver: (vehicleId: number) => apiClient.delete<ApiResponse<Vehicle>>(`/vehicles/${vehicleId}/staff/driver`).then(r => r.data),
   assignCleaner:  (vehicleId: number, userId: number) => apiClient.put<ApiResponse<Vehicle>>(`/vehicles/${vehicleId}/staff/cleaner`, { userId }).then(r => r.data),
   unassignCleaner:(vehicleId: number) => apiClient.delete<ApiResponse<Vehicle>>(`/vehicles/${vehicleId}/staff/cleaner`).then(r => r.data),
+  getStaffAssignmentHistory: () => apiClient.get<ApiResponse<StaffAssignmentHistory[]>>('/vehicles/staff-assignment-history').then(r => r.data),
   bulkUpload: (file: File) => {
     const form = new FormData()
     form.append('file', file)

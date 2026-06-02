@@ -1,19 +1,20 @@
 import { getApiError } from '@/lib/apiError'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ordersApi } from '@/api/orders'
 import { vehiclesApi } from '@/api/vehicles'
 import { staffApi } from '@/api/staff'
-import type { Order, Vehicle, VehicleAllocation } from '@/types'
+import type { Order, Vehicle, VehicleAllocation, VehicleAssignmentHistory, StaffAssignmentHistory } from '@/types'
 import { toast } from 'sonner'
-import { Plus, Truck, Users, Trash2 } from 'lucide-react'
+import { Plus, Truck, Users, Trash2, Clock, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { format, parseISO } from 'date-fns'
 
 // ── Flattened row types ────────────────────────────────────────────────────────
 interface VehicleAssignmentRow {
@@ -22,6 +23,7 @@ interface VehicleAssignmentRow {
   allocatedWeight: number; allocationStatus: string
   expectedLoadDate?: string; expectedDeliveryDate?: string
   driversCount: number
+  assignedByName?: string; assignedAt?: string
 }
 
 interface DriverAssignmentRow {
@@ -29,6 +31,24 @@ interface DriverAssignmentRow {
   allocationId: number; registrationNumber: string
   staffAllocationId: number; userName: string; roleName: string
   allocationStatus: string; expectedStartDate?: string
+  assignedByName?: string; assignedAt?: string
+}
+
+// ── History event row (vehicle or staff) ───────────────────────────────────────
+interface HistoryRow {
+  id: string
+  action: 'Assigned' | 'Unassigned'
+  type: 'Vehicle' | 'Staff'
+  subject: string        // vehicle reg or staff name
+  subjectRole?: string   // DRIVER/CLEANER for staff
+  orderNumber?: string
+  actionByName?: string
+  actionAt?: string
+}
+
+function fmtDateTime(iso?: string) {
+  if (!iso) return '—'
+  try { return format(parseISO(iso), 'dd MMM yyyy, hh:mm a') } catch { return iso }
 }
 
 // ── Add Vehicle Assignment Dialog ─────────────────────────────────────────────
@@ -94,6 +114,7 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
       toast.success('Vehicle assigned successfully')
       qc.invalidateQueries({ queryKey: ['assignments-orders'] })
       qc.invalidateQueries({ queryKey: ['assignments-vehicles'] })
+      qc.invalidateQueries({ queryKey: ['assignments-vehicle-history'] })
       handleClose()
     },
     onError: (e: unknown) => {
@@ -265,6 +286,7 @@ function AssignDriverDialog({ open, onClose, orders, drivers }: {
       toast.success('Driver assigned successfully')
       qc.invalidateQueries({ queryKey: ['assignments-orders'] })
       qc.invalidateQueries({ queryKey: ['assignments-users'] })
+      qc.invalidateQueries({ queryKey: ['assignments-staff-history'] })
       handleClose()
     },
     onError: (e: unknown) => {
@@ -353,6 +375,8 @@ const STATUS_COLORS: Record<string, string> = {
   IN_PROGRESS:'bg-amber-100 text-amber-800',
   COMPLETED:  'bg-green-100 text-green-700',
   CANCELLED:  'bg-red-100 text-red-700',
+  ALLOCATED:  'bg-blue-100 text-blue-700',
+  DELIVERED:  'bg-green-100 text-green-700',
 }
 
 const PAGE_SIZE = 20
@@ -360,11 +384,24 @@ const PAGE_SIZE = 20
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AssignmentsPage() {
   const { locked } = useSubscription()
-  const [tab, setTab] = useState<'vehicle' | 'driver'>('vehicle')
+  const [tab, setTab] = useState<'vehicle' | 'driver' | 'history'>('vehicle')
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [showAssignDriver, setShowAssignDriver] = useState(false)
+
+  // active tab state
   const [vPage, setVPage] = useState(0)
   const [dPage, setDPage] = useState(0)
+  const [vSearch, setVSearch] = useState('')
+  const [dSearch, setDSearch] = useState('')
+
+  // history tab state
+  const [hTab, setHTab]           = useState<'vehicle' | 'staff'>('vehicle')
+  const [hSearch, setHSearch]     = useState('')
+  const [hAction, setHAction]     = useState<'Assigned' | 'Unassigned' | ''>('')
+  const [hFrom, setHFrom]         = useState('')
+  const [hTo, setHTo]             = useState('')
+  const [hPage, setHPage]         = useState(0)
+
   const qc = useQueryClient()
 
   const { data: ordersRes, isLoading } = useQuery({
@@ -378,6 +415,16 @@ export default function AssignmentsPage() {
   const { data: usersRes } = useQuery({
     queryKey: ['assignments-users', { hasAttendanceToday: true }],
     queryFn: () => staffApi.getUsers({ hasAttendanceToday: true }),
+  })
+  const { data: vehicleHistoryRes, isLoading: historyVLoading } = useQuery({
+    queryKey: ['assignments-vehicle-history'],
+    queryFn:  () => ordersApi.getVehicleAllocationHistory(),
+    enabled:  tab === 'history',
+  })
+  const { data: staffHistoryRes, isLoading: historySLoading } = useQuery({
+    queryKey: ['assignments-staff-history'],
+    queryFn:  () => vehiclesApi.getStaffAssignmentHistory(),
+    enabled:  tab === 'history',
   })
 
   const orders = (ordersRes?.data?.content ?? []) as Order[]
@@ -400,6 +447,8 @@ export default function AssignmentsPage() {
         expectedLoadDate:   va.expectedLoadDate,
         expectedDeliveryDate: va.expectedDeliveryDate,
         driversCount: (va.staffAllocations ?? []).filter(sa => sa.roleName === 'DRIVER').length,
+        assignedByName:     va.allocatedByName,
+        assignedAt:         va.createdAt,
       })
     })
   })
@@ -421,16 +470,85 @@ export default function AssignmentsPage() {
             roleName:           sa.roleName,
             allocationStatus:   sa.allocationStatus,
             expectedStartDate:  sa.expectedStartDate,
+            assignedByName:     sa.allocatedByName,
+            assignedAt:         sa.createdAt,
           })
         })
     })
   })
 
-  const vTotalPages = Math.max(1, Math.ceil(vehicleRows.length / PAGE_SIZE))
-  const vPageRows   = vehicleRows.slice(vPage * PAGE_SIZE, (vPage + 1) * PAGE_SIZE)
+  // ── Build history rows ────────────────────────────────────────────────────────
+  const vehicleHistoryRows = useMemo((): HistoryRow[] => {
+    const records = (vehicleHistoryRes?.data ?? []) as VehicleAssignmentHistory[]
+    const rows: HistoryRow[] = []
+    for (const r of records) {
+      rows.push({ id: `v-${r.id}-a`, action: 'Assigned', type: 'Vehicle', subject: r.vehicleRegistrationNumber, orderNumber: r.orderNumber, actionByName: r.assignedByName, actionAt: r.assignedAt })
+      if (r.unassignedAt) {
+        rows.push({ id: `v-${r.id}-u`, action: 'Unassigned', type: 'Vehicle', subject: r.vehicleRegistrationNumber, orderNumber: r.orderNumber, actionByName: r.unassignedByName, actionAt: r.unassignedAt })
+      }
+    }
+    return rows.sort((a, b) => (b.actionAt ?? '').localeCompare(a.actionAt ?? ''))
+  }, [vehicleHistoryRes])
 
-  const dTotalPages = Math.max(1, Math.ceil(driverRows.length / PAGE_SIZE))
-  const dPageRows   = driverRows.slice(dPage * PAGE_SIZE, (dPage + 1) * PAGE_SIZE)
+  const staffHistoryRows = useMemo((): HistoryRow[] => {
+    const records = (staffHistoryRes?.data ?? []) as StaffAssignmentHistory[]
+    const rows: HistoryRow[] = []
+    for (const r of records) {
+      rows.push({ id: `s-${r.id}-a`, action: 'Assigned', type: 'Staff', subject: r.userName, subjectRole: r.userRole, actionByName: r.assignedByName, actionAt: r.assignedAt })
+      if (r.unassignedAt) {
+        rows.push({ id: `s-${r.id}-u`, action: 'Unassigned', type: 'Staff', subject: r.userName, subjectRole: r.userRole, actionByName: r.unassignedByName, actionAt: r.unassignedAt })
+      }
+    }
+    return rows.sort((a, b) => (b.actionAt ?? '').localeCompare(a.actionAt ?? ''))
+  }, [staffHistoryRes])
+
+  // ── Filter + paginate active tabs ─────────────────────────────────────────────
+  const filteredVehicleRows = useMemo(() => {
+    if (!vSearch) return vehicleRows
+    const q = vSearch.toLowerCase()
+    return vehicleRows.filter(r =>
+      r.orderNumber.toLowerCase().includes(q) ||
+      r.registrationNumber.toLowerCase().includes(q) ||
+      r.clientName.toLowerCase().includes(q) ||
+      (r.assignedByName ?? '').toLowerCase().includes(q)
+    )
+  }, [vehicleRows, vSearch])
+
+  const filteredDriverRows = useMemo(() => {
+    if (!dSearch) return driverRows
+    const q = dSearch.toLowerCase()
+    return driverRows.filter(r =>
+      r.orderNumber.toLowerCase().includes(q) ||
+      r.registrationNumber.toLowerCase().includes(q) ||
+      r.userName.toLowerCase().includes(q) ||
+      (r.assignedByName ?? '').toLowerCase().includes(q)
+    )
+  }, [driverRows, dSearch])
+
+  const vTotalPages = Math.max(1, Math.ceil(filteredVehicleRows.length / PAGE_SIZE))
+  const vPageRows   = filteredVehicleRows.slice(vPage * PAGE_SIZE, (vPage + 1) * PAGE_SIZE)
+  const dTotalPages = Math.max(1, Math.ceil(filteredDriverRows.length / PAGE_SIZE))
+  const dPageRows   = filteredDriverRows.slice(dPage * PAGE_SIZE, (dPage + 1) * PAGE_SIZE)
+
+  // ── Filter + paginate history ─────────────────────────────────────────────────
+  const activeHistoryRows = hTab === 'vehicle' ? vehicleHistoryRows : staffHistoryRows
+  const filteredHistoryRows = useMemo(() => {
+    return activeHistoryRows.filter(r => {
+      if (hAction && r.action !== hAction) return false
+      if (hSearch) {
+        const q = hSearch.toLowerCase()
+        if (!r.subject.toLowerCase().includes(q) &&
+            !(r.orderNumber ?? '').toLowerCase().includes(q) &&
+            !(r.actionByName ?? '').toLowerCase().includes(q)) return false
+      }
+      if (hFrom && (r.actionAt ?? '') < hFrom) return false
+      if (hTo   && (r.actionAt ?? '') > hTo + 'T23:59:59') return false
+      return true
+    })
+  }, [activeHistoryRows, hAction, hSearch, hFrom, hTo])
+
+  const hTotalPages = Math.max(1, Math.ceil(filteredHistoryRows.length / PAGE_SIZE))
+  const hPageRows   = filteredHistoryRows.slice(hPage * PAGE_SIZE, (hPage + 1) * PAGE_SIZE)
 
   const unassignVehicle = useMutation({
     mutationFn: ({ orderId, allocationId }: { orderId: number; allocationId: number }) =>
@@ -439,6 +557,7 @@ export default function AssignmentsPage() {
       toast.success('Vehicle unassigned')
       qc.invalidateQueries({ queryKey: ['assignments-orders'] })
       qc.invalidateQueries({ queryKey: ['assignments-vehicles'] })
+      qc.invalidateQueries({ queryKey: ['assignments-vehicle-history'] })
     },
     onError: (e: unknown) => {
       toast.error(getApiError(e, 'Failed to unassign vehicle') ?? 'Failed to unassign vehicle')
@@ -452,11 +571,16 @@ export default function AssignmentsPage() {
       toast.success('Driver unassigned')
       qc.invalidateQueries({ queryKey: ['assignments-orders'] })
       qc.invalidateQueries({ queryKey: ['assignments-users'] })
+      qc.invalidateQueries({ queryKey: ['assignments-staff-history'] })
     },
     onError: (e: unknown) => {
       toast.error(getApiError(e, 'Failed to unassign driver') ?? 'Failed to unassign driver')
     },
   })
+
+  function resetHistoryFilters() {
+    setHSearch(''); setHAction(''); setHFrom(''); setHTo(''); setHPage(0)
+  }
 
   return (
     <div className="space-y-6">
@@ -466,17 +590,18 @@ export default function AssignmentsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage vehicle and driver assignments for orders</p>
         </div>
-        {!locked && (tab === 'vehicle' ? (
+        {!locked && tab === 'vehicle' && (
           <Button onClick={() => setShowAddVehicle(true)}>
             <Plus size={16} className="mr-2" />
             Add Assignment
           </Button>
-        ) : (
+        )}
+        {!locked && tab === 'driver' && (
           <Button onClick={() => setShowAssignDriver(true)}>
             <Plus size={16} className="mr-2" />
             Assign Driver
           </Button>
-        ))}
+        )}
       </div>
 
       {/* Tabs */}
@@ -484,10 +609,11 @@ export default function AssignmentsPage() {
         {([
           { key: 'vehicle', label: 'Vehicle Assignments', Icon: Truck,  count: vehicleRows.length },
           { key: 'driver',  label: 'Driver Assignments',  Icon: Users,  count: driverRows.length  },
+          { key: 'history', label: 'History',             Icon: Clock,  count: null               },
         ] as const).map(({ key, label, Icon, count }) => (
           <button
             key={key}
-            onClick={() => { setTab(key); setVPage(0); setDPage(0) }}
+            onClick={() => { setTab(key); setVPage(0); setDPage(0); setHPage(0) }}
             className={cn(
               'flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
               tab === key
@@ -497,12 +623,14 @@ export default function AssignmentsPage() {
           >
             <Icon size={16} />
             {label}
-            <span className={cn(
-              'ml-1 text-xs px-1.5 py-0.5 rounded-full font-medium',
-              tab === key ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
-            )}>
-              {count}
-            </span>
+            {count !== null && (
+              <span className={cn(
+                'ml-1 text-xs px-1.5 py-0.5 rounded-full font-medium',
+                tab === key ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
+              )}>
+                {count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -512,17 +640,22 @@ export default function AssignmentsPage() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {isLoading ? (
             <div className="py-16 text-center text-gray-400 text-sm">Loading…</div>
-          ) : vehicleRows.length === 0 ? (
-            <div className="py-16 text-center">
-              <Truck size={36} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-400 text-sm">No vehicle assignments yet</p>
-              <p className="text-gray-400 text-xs mt-1">Click "Add Assignment" to assign a vehicle to an order</p>
-            </div>
           ) : (
             <>
-            {/* Pagination — top */}
-            <div className="px-4 py-3 border-b flex items-center justify-between text-sm text-gray-500">
-              <span>{vehicleRows.length} total assignments</span>
+            {/* Search bar */}
+            <div className="px-4 py-3 border-b flex items-center gap-3">
+              <div className="relative flex-1 max-w-xs">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search order, vehicle, client…"
+                  value={vSearch}
+                  onChange={e => { setVSearch(e.target.value); setVPage(0) }}
+                  className="w-full pl-8 pr-3 h-8 text-xs border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-feros-navy/30"
+                />
+                {vSearch && <button onClick={() => { setVSearch(''); setVPage(0) }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={12} /></button>}
+              </div>
+              <span className="text-xs text-gray-400 ml-auto">{filteredVehicleRows.length} assignment{filteredVehicleRows.length !== 1 ? 's' : ''}</span>
               <div className="flex items-center gap-2">
                 <button onClick={() => setVPage(p => p - 1)} disabled={vPage === 0}
                   className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
@@ -531,56 +664,65 @@ export default function AssignmentsPage() {
                   className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
               </div>
             </div>
-            {/* Scrollable table */}
-            <div className="overflow-auto max-h-[calc(100vh-18rem)]">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                  <tr>
-                    {['Order', 'Client', 'Vehicle', 'Weight (T)', 'Load Date', 'Delivery Date', 'Status', 'Drivers', ''].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {vPageRows.map(row => (
-                    <tr key={row.allocationId} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-feros-navy whitespace-nowrap">{row.orderNumber}</td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.clientName}</td>
-                      <td className="px-4 py-3 font-medium whitespace-nowrap">{row.registrationNumber}</td>
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{row.allocatedWeight}</td>
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedLoadDate ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedDeliveryDate ?? '—'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', STATUS_COLORS[row.allocationStatus] ?? 'bg-gray-100 text-gray-600')}>
-                          {row.allocationStatus}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {row.driversCount > 0 ? (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 font-medium">
-                            {row.driversCount} driver{row.driversCount > 1 ? 's' : ''}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700 font-medium">
-                            No driver
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => unassignVehicle.mutate({ orderId: row.orderId, allocationId: row.allocationId })}
-                          disabled={unassignVehicle.isPending}
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                          title="Unassign vehicle"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
+            {vehicleRows.length === 0 ? (
+              <div className="py-16 text-center">
+                <Truck size={36} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-400 text-sm">No vehicle assignments yet</p>
+                <p className="text-gray-400 text-xs mt-1">Click "Add Assignment" to assign a vehicle to an order</p>
+              </div>
+            ) : (
+              <div className="overflow-auto max-h-[calc(100vh-18rem)]">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                    <tr>
+                      {['Order', 'Client', 'Vehicle', 'Weight (T)', 'Load Date', 'Delivery Date', 'Status', 'Drivers', 'Assigned By', 'Assigned At', ''].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {vPageRows.map(row => (
+                      <tr key={row.allocationId} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-feros-navy whitespace-nowrap">{row.orderNumber}</td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.clientName}</td>
+                        <td className="px-4 py-3 font-medium whitespace-nowrap">{row.registrationNumber}</td>
+                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{row.allocatedWeight}</td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedLoadDate ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedDeliveryDate ?? '—'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', STATUS_COLORS[row.allocationStatus] ?? 'bg-gray-100 text-gray-600')}>
+                            {row.allocationStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {row.driversCount > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 font-medium">
+                              {row.driversCount} driver{row.driversCount > 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700 font-medium">
+                              No driver
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.assignedByName ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{fmtDateTime(row.assignedAt)}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => unassignVehicle.mutate({ orderId: row.orderId, allocationId: row.allocationId })}
+                            disabled={unassignVehicle.isPending}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                            title="Unassign vehicle"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             </>
           )}
         </div>
@@ -591,17 +733,22 @@ export default function AssignmentsPage() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {isLoading ? (
             <div className="py-16 text-center text-gray-400 text-sm">Loading…</div>
-          ) : driverRows.length === 0 ? (
-            <div className="py-16 text-center">
-              <Users size={36} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-400 text-sm">No driver assignments yet</p>
-              <p className="text-gray-400 text-xs mt-1">Click "Assign Driver" to assign a driver to a vehicle</p>
-            </div>
           ) : (
             <>
-            {/* Pagination — top */}
-            <div className="px-4 py-3 border-b flex items-center justify-between text-sm text-gray-500">
-              <span>{driverRows.length} total assignments</span>
+            {/* Search bar */}
+            <div className="px-4 py-3 border-b flex items-center gap-3">
+              <div className="relative flex-1 max-w-xs">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search order, driver, vehicle…"
+                  value={dSearch}
+                  onChange={e => { setDSearch(e.target.value); setDPage(0) }}
+                  className="w-full pl-8 pr-3 h-8 text-xs border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-feros-navy/30"
+                />
+                {dSearch && <button onClick={() => { setDSearch(''); setDPage(0) }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={12} /></button>}
+              </div>
+              <span className="text-xs text-gray-400 ml-auto">{filteredDriverRows.length} assignment{filteredDriverRows.length !== 1 ? 's' : ''}</span>
               <div className="flex items-center gap-2">
                 <button onClick={() => setDPage(p => p - 1)} disabled={dPage === 0}
                   className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
@@ -610,48 +757,182 @@ export default function AssignmentsPage() {
                   className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
               </div>
             </div>
-            {/* Scrollable table */}
-            <div className="overflow-auto max-h-[calc(100vh-18rem)]">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                  <tr>
-                    {['Order', 'Vehicle', 'Driver', 'Role', 'Status', 'Start Date', ''].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {dPageRows.map(row => (
-                    <tr key={row.staffAllocationId} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-feros-navy whitespace-nowrap">{row.orderNumber}</td>
-                      <td className="px-4 py-3 font-medium whitespace-nowrap">{row.registrationNumber}</td>
-                      <td className="px-4 py-3 text-gray-800 whitespace-nowrap">{row.userName}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">{row.roleName}</span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', STATUS_COLORS[row.allocationStatus] ?? 'bg-gray-100 text-gray-600')}>
-                          {row.allocationStatus}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedStartDate ?? '—'}</td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => unassignDriver.mutate({ orderId: row.orderId, staffAllocationId: row.staffAllocationId })}
-                          disabled={unassignDriver.isPending}
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                          title="Unassign driver"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
+            {driverRows.length === 0 ? (
+              <div className="py-16 text-center">
+                <Users size={36} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-400 text-sm">No driver assignments yet</p>
+                <p className="text-gray-400 text-xs mt-1">Click "Assign Driver" to assign a driver to a vehicle</p>
+              </div>
+            ) : (
+              <div className="overflow-auto max-h-[calc(100vh-18rem)]">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                    <tr>
+                      {['Order', 'Vehicle', 'Driver', 'Role', 'Status', 'Start Date', 'Assigned By', 'Assigned At', ''].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {dPageRows.map(row => (
+                      <tr key={row.staffAllocationId} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-feros-navy whitespace-nowrap">{row.orderNumber}</td>
+                        <td className="px-4 py-3 font-medium whitespace-nowrap">{row.registrationNumber}</td>
+                        <td className="px-4 py-3 text-gray-800 whitespace-nowrap">{row.userName}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">{row.roleName}</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', STATUS_COLORS[row.allocationStatus] ?? 'bg-gray-100 text-gray-600')}>
+                            {row.allocationStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedStartDate ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.assignedByName ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{fmtDateTime(row.assignedAt)}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => unassignDriver.mutate({ orderId: row.orderId, staffAllocationId: row.staffAllocationId })}
+                            disabled={unassignDriver.isPending}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                            title="Unassign driver"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             </>
           )}
+        </div>
+      )}
+
+      {/* History */}
+      {tab === 'history' && (
+        <div className="space-y-4">
+          {/* Sub-tabs: Vehicle / Staff */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium w-fit">
+            <button
+              onClick={() => { setHTab('vehicle'); setHPage(0); resetHistoryFilters() }}
+              className={cn('px-4 py-1.5 flex items-center gap-1.5 transition-colors', hTab === 'vehicle' ? 'bg-feros-navy text-white' : 'text-gray-500 hover:bg-gray-50')}
+            >
+              <Truck size={12} /> Vehicle Assignments
+            </button>
+            <button
+              onClick={() => { setHTab('staff'); setHPage(0); resetHistoryFilters() }}
+              className={cn('px-4 py-1.5 flex items-center gap-1.5 transition-colors', hTab === 'staff' ? 'bg-feros-navy text-white' : 'text-gray-500 hover:bg-gray-50')}
+            >
+              <Users size={12} /> Staff Assignments
+            </button>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative flex-1 min-w-[180px] max-w-xs">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder={hTab === 'vehicle' ? 'Search order, vehicle…' : 'Search driver, vehicle…'}
+                value={hSearch}
+                onChange={e => { setHSearch(e.target.value); setHPage(0) }}
+                className="w-full pl-8 pr-3 h-8 text-xs border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-feros-navy/30"
+              />
+            </div>
+            <select
+              value={hAction}
+              onChange={e => { setHAction(e.target.value as 'Assigned' | 'Unassigned' | ''); setHPage(0) }}
+              className="h-8 text-xs border border-gray-200 rounded-lg px-2 outline-none focus:ring-1 focus:ring-feros-navy/30 bg-white"
+            >
+              <option value="">All actions</option>
+              <option value="Assigned">Assigned</option>
+              <option value="Unassigned">Unassigned</option>
+            </select>
+            <input
+              type="date"
+              value={hFrom}
+              onChange={e => { setHFrom(e.target.value); setHPage(0) }}
+              className="h-8 text-xs border border-gray-200 rounded-lg px-2 outline-none focus:ring-1 focus:ring-feros-navy/30"
+            />
+            <input
+              type="date"
+              value={hTo}
+              onChange={e => { setHTo(e.target.value); setHPage(0) }}
+              className="h-8 text-xs border border-gray-200 rounded-lg px-2 outline-none focus:ring-1 focus:ring-feros-navy/30"
+            />
+            {(hSearch || hAction || hFrom || hTo) && (
+              <button
+                onClick={resetHistoryFilters}
+                className="h-8 px-2 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+              >
+                <X size={12} /> Clear
+              </button>
+            )}
+            <span className="ml-auto text-xs text-gray-400">{filteredHistoryRows.length} event{filteredHistoryRows.length !== 1 ? 's' : ''}</span>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {historyVLoading || historySLoading ? (
+              <div className="py-16 text-center text-gray-400 text-sm">Loading history…</div>
+            ) : filteredHistoryRows.length === 0 ? (
+              <div className="py-16 text-center">
+                <Clock size={36} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-400 text-sm">No history yet</p>
+                <p className="text-gray-400 text-xs mt-1">Assignment and unassignment actions will appear here</p>
+              </div>
+            ) : (
+              <>
+              {/* Pagination bar */}
+              {hTotalPages > 1 && (
+                <div className="px-4 py-3 border-b flex items-center justify-end gap-2 text-sm text-gray-500">
+                  <button onClick={() => setHPage(p => p - 1)} disabled={hPage === 0}
+                    className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+                  <span className="text-xs">{hPage + 1} / {hTotalPages}</span>
+                  <button onClick={() => setHPage(p => p + 1)} disabled={hPage + 1 >= hTotalPages}
+                    className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+                </div>
+              )}
+              <div className="overflow-auto max-h-[calc(100vh-20rem)]">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                    <tr>
+                      {['Action', hTab === 'vehicle' ? 'Vehicle' : 'Staff', hTab === 'vehicle' ? 'Order' : 'Role', 'Action By', 'Action At'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {hPageRows.map(row => (
+                      <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={cn(
+                            'px-2 py-0.5 rounded-full text-xs font-medium',
+                            row.action === 'Assigned' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                          )}>
+                            {row.action}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-medium whitespace-nowrap">
+                          {row.subject}
+                          {row.subjectRole && <span className="ml-1 text-xs text-gray-400">({row.subjectRole})</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {hTab === 'vehicle' ? (row.orderNumber ?? '—') : (row.subjectRole ?? '—')}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.actionByName ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{fmtDateTime(row.actionAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

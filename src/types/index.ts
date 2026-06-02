@@ -235,6 +235,7 @@ export interface StaffAllocation {
   expectedStartDate?: string; expectedEndDate?: string
   actualStartDate?: string; actualEndDate?: string
   allocationStatus: string; remarks?: string
+  allocatedById?: number; allocatedByName?: string
   createdAt: string
 }
 
@@ -254,20 +255,21 @@ export interface VehicleAllocation {
   staffAllocations?: StaffAllocation[]
 }
 
-export type AssignmentEventType = 'VEHICLE_ASSIGNED' | 'VEHICLE_UNASSIGNED' | 'STAFF_ASSIGNED' | 'STAFF_UNASSIGNED'
-
-export interface AssignmentEvent {
+export interface VehicleAssignmentHistory {
   id: number
-  vehicleId: number
-  vehicleRegistrationNumber: string
-  orderId: number
-  orderNumber: string
-  eventType: AssignmentEventType
-  personName?: string
-  personRole?: string
-  performedById: number
-  performedByName: string
-  performedAt: string
+  orderId: number; orderNumber: string
+  vehicleId: number; vehicleRegistrationNumber: string
+  allocatedWeight: number; allocationStatus: string
+  assignedByName?: string; assignedAt?: string
+  unassignedByName?: string; unassignedAt?: string
+}
+
+export interface StaffAssignmentHistory {
+  id: number
+  vehicleId: number; vehicleRegistrationNumber: string
+  userId: number; userName: string; userRole: string
+  assignedByName?: string; assignedAt?: string
+  unassignedByName?: string; unassignedAt?: string
 }
 
 // ─── Breakdown ────────────────────────────────────────────────────────────────

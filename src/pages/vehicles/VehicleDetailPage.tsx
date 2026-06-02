@@ -16,7 +16,7 @@ import { fuelLogsApi } from '@/api/fuelLogs'
 import { tyresApi } from '@/api/tyres'
 import { meterReadingsApi } from '@/api/meterReadings'
 import { compressIfNeeded } from '@/lib/imageCompressor'
-import type { AssignmentEvent, AssignmentEventType, FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading, Order, VehicleAllocation, StaffAllocation } from '@/types'
+import type { VehicleAssignmentHistory, FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading, Order, VehicleAllocation, StaffAllocation } from '@/types'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
@@ -2433,23 +2433,34 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
 
 const HISTORY_PAGE_SIZE = 20
 
-const EVENT_LABELS: Record<AssignmentEventType, string> = {
-  VEHICLE_ASSIGNED:   'Vehicle assigned to order',
-  VEHICLE_UNASSIGNED: 'Vehicle unassigned from order',
-  STAFF_ASSIGNED:     'Staff assigned',
-  STAFF_UNASSIGNED:   'Staff unassigned',
+type HistoryEventType = 'ASSIGNED' | 'UNASSIGNED'
+
+interface HistoryEvent {
+  id: string
+  type: HistoryEventType
+  orderNumber: string
+  actionByName?: string
+  actionAt?: string
 }
 
-function EventIcon({ type }: { type: AssignmentEventType }) {
-  if (type === 'VEHICLE_ASSIGNED')   return <Truck    size={14} className="text-green-600" />
-  if (type === 'VEHICLE_UNASSIGNED') return <Truck    size={14} className="text-red-500"   />
-  if (type === 'STAFF_ASSIGNED')     return <UserPlus size={14} className="text-blue-600"  />
-  return                                    <UserMinus size={14} className="text-red-500"  />
+function expandToEvents(records: VehicleAssignmentHistory[]): HistoryEvent[] {
+  const events: HistoryEvent[] = []
+  for (const r of records) {
+    events.push({ id: `${r.id}-a`, type: 'ASSIGNED', orderNumber: r.orderNumber, actionByName: r.assignedByName, actionAt: r.assignedAt })
+    if (r.unassignedAt) {
+      events.push({ id: `${r.id}-u`, type: 'UNASSIGNED', orderNumber: r.orderNumber, actionByName: r.unassignedByName, actionAt: r.unassignedAt })
+    }
+  }
+  return events.sort((a, b) => (b.actionAt ?? '').localeCompare(a.actionAt ?? ''))
 }
 
-function eventDotColor(type: AssignmentEventType) {
-  if (type === 'VEHICLE_ASSIGNED' || type === 'STAFF_ASSIGNED') return 'bg-green-500'
-  return 'bg-red-400'
+function EventIcon({ type }: { type: HistoryEventType }) {
+  if (type === 'ASSIGNED') return <Truck size={14} className="text-green-600" />
+  return <Truck size={14} className="text-red-500" />
+}
+
+function eventDotColor(type: HistoryEventType) {
+  return type === 'ASSIGNED' ? 'bg-green-500' : 'bg-red-400'
 }
 
 function fmtDateTime(iso?: string) {
@@ -2457,10 +2468,10 @@ function fmtDateTime(iso?: string) {
   try { return format(parseISO(iso), 'dd MMM yyyy, hh:mm a') } catch { return iso }
 }
 
-function groupByDate(events: AssignmentEvent[]): Array<{ date: string; label: string; items: AssignmentEvent[] }> {
-  const map = new Map<string, AssignmentEvent[]>()
+function groupByDate(events: HistoryEvent[]): Array<{ date: string; label: string; items: HistoryEvent[] }> {
+  const map = new Map<string, HistoryEvent[]>()
   for (const e of events) {
-    const day = e.performedAt ? e.performedAt.substring(0, 10) : 'unknown'
+    const day = e.actionAt ? e.actionAt.substring(0, 10) : 'unknown'
     if (!map.has(day)) map.set(day, [])
     map.get(day)!.push(e)
   }
@@ -2643,28 +2654,27 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
 
   // ── history ───────────────────────────────────────────────────────────────
   const [historySearch,    setHistorySearch]    = useState('')
-  const [historyEventType, setHistoryEventType] = useState<AssignmentEventType | ''>('')
+  const [historyEventType, setHistoryEventType] = useState<HistoryEventType | ''>('')
   const [historyFrom,      setHistoryFrom]      = useState('')
   const [historyTo,        setHistoryTo]        = useState('')
   const [historyPage,      setHistoryPage]      = useState(0)
 
   const { data: historyRes, isLoading: historyLoading } = useQuery({
     queryKey: ['vehicle-assignment-history', vehicleId],
-    queryFn:  () => ordersApi.getAssignmentHistory(vehicleId),
+    queryFn:  () => ordersApi.getVehicleAllocationHistoryByVehicle(vehicleId),
     enabled:  view === 'history',
   })
-  const allEvents = (historyRes?.data ?? []) as AssignmentEvent[]
+  const allEvents = expandToEvents((historyRes?.data ?? []) as VehicleAssignmentHistory[])
 
   const filteredEvents = allEvents.filter(e => {
-    if (historyEventType && e.eventType !== historyEventType) return false
+    if (historyEventType && e.type !== historyEventType) return false
     if (historySearch) {
       const q = historySearch.toLowerCase()
       if (!e.orderNumber.toLowerCase().includes(q) &&
-          !e.performedByName.toLowerCase().includes(q) &&
-          !(e.personName ?? '').toLowerCase().includes(q)) return false
+          !(e.actionByName ?? '').toLowerCase().includes(q)) return false
     }
-    if (historyFrom && e.performedAt < historyFrom) return false
-    if (historyTo   && e.performedAt > historyTo + 'T23:59:59') return false
+    if (historyFrom && (e.actionAt ?? '') < historyFrom) return false
+    if (historyTo   && (e.actionAt ?? '') > historyTo + 'T23:59:59') return false
     return true
   })
 
@@ -2827,14 +2837,12 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
             </div>
             <select
               value={historyEventType}
-              onChange={e => { setHistoryEventType(e.target.value as AssignmentEventType | ''); setHistoryPage(0) }}
+              onChange={e => { setHistoryEventType(e.target.value as HistoryEventType | ''); setHistoryPage(0) }}
               className="h-8 text-xs border border-gray-200 rounded-lg px-2 outline-none focus:ring-1 focus:ring-feros-navy/30 bg-white"
             >
-              <option value="">All events</option>
-              <option value="VEHICLE_ASSIGNED">Vehicle assigned</option>
-              <option value="VEHICLE_UNASSIGNED">Vehicle unassigned</option>
-              <option value="STAFF_ASSIGNED">Staff assigned</option>
-              <option value="STAFF_UNASSIGNED">Staff unassigned</option>
+              <option value="">All actions</option>
+              <option value="ASSIGNED">Assigned</option>
+              <option value="UNASSIGNED">Unassigned</option>
             </select>
             <input
               type="date"
@@ -2896,26 +2904,23 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
                     {items.map((e, idx) => (
                       <div key={e.id} className={cn('relative flex gap-3 pb-4', idx === items.length - 1 && 'pb-0')}>
                         {/* dot */}
-                        <div className={cn('absolute -left-[18px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white', eventDotColor(e.eventType))} />
+                        <div className={cn('absolute -left-[18px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white', eventDotColor(e.type))} />
                         {/* content */}
                         <div className="flex-1 bg-white border border-gray-100 rounded-lg px-3 py-2.5 shadow-sm">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <EventIcon type={e.eventType} />
+                              <EventIcon type={e.type} />
                               <span className="text-xs font-medium text-gray-800">
-                                {e.eventType === 'STAFF_ASSIGNED' || e.eventType === 'STAFF_UNASSIGNED'
-                                  ? <>{e.personName} <span className="text-gray-400 font-normal">({e.personRole})</span> {e.eventType === 'STAFF_ASSIGNED' ? 'assigned' : 'unassigned'}</>
-                                  : EVENT_LABELS[e.eventType]
-                                }
+                                {e.type === 'ASSIGNED' ? 'Vehicle assigned to order' : 'Vehicle unassigned from order'}
                               </span>
                             </div>
                             <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
-                              {e.performedAt ? format(parseISO(e.performedAt), 'hh:mm a') : '—'}
+                              {e.actionAt ? format(parseISO(e.actionAt), 'hh:mm a') : '—'}
                             </span>
                           </div>
                           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                             <span className="text-xs text-gray-500">Order: <span className="font-medium text-feros-navy">{e.orderNumber}</span></span>
-                            <span className="text-xs text-gray-400">by <span className="font-medium text-gray-600">{e.performedByName}</span></span>
+                            {e.actionByName && <span className="text-xs text-gray-400">by <span className="font-medium text-gray-600">{e.actionByName}</span></span>}
                           </div>
                         </div>
                       </div>
