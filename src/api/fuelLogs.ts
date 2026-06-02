@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, FuelLog } from '@/types'
+import type { ApiResponse, FuelLog, PageResponse } from '@/types'
 
 export const fuelLogsApi = {
   uploadReceipt: (vehicleId: number, file: File) => {
@@ -10,8 +10,8 @@ export const fuelLogsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },
-  getAll:         (vehicleId?: number) =>
-    apiClient.get<ApiResponse<FuelLog[]>>('/fuel-logs', { params: vehicleId ? { vehicleId } : {} }).then(r => r.data),
+  getAll: (params?: { page?: number; size?: number; search?: string; paymentMode?: string; fullTank?: boolean; vehicleId?: number }) =>
+    apiClient.get<ApiResponse<PageResponse<FuelLog>>>('/fuel-logs', { params }).then(r => r.data),
   getById:        (id: number) =>
     apiClient.get<ApiResponse<FuelLog>>(`/fuel-logs/${id}`).then(r => r.data),
   create:         (data: unknown) =>

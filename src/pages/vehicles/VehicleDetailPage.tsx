@@ -2061,7 +2061,7 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
 
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ['fuel-logs', vehicle.id],
-    queryFn:  () => fuelLogsApi.getAll(vehicle.id).then(r => r.data),
+    queryFn:  () => fuelLogsApi.getAll({ vehicleId: vehicle.id, size: 1000 }).then(r => r.data?.content ?? []),
   })
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FuelLogForm>({

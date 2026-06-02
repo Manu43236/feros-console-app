@@ -496,22 +496,36 @@ function FuelLogCard({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 type FilterMode = 'ALL' | FuelPaymentMode | 'FULL_TANK'
 
+function filterToParams(filter: FilterMode): { paymentMode?: string; fullTank?: boolean } {
+  if (filter === 'FULL_TANK')        return { fullTank: true }
+  if (filter === 'CASH')             return { paymentMode: 'CASH' }
+  if (filter === 'COMPANY_ACCOUNT')  return { paymentMode: 'COMPANY_ACCOUNT' }
+  if (filter === 'REIMBURSEMENT')    return { paymentMode: 'REIMBURSEMENT' }
+  return {}
+}
+
 export default function FuelLogsPage() {
   const { locked } = useSubscription()
   const [search, setSearch]     = useState('')
   const [filter, setFilter]     = useState<FilterMode>('ALL')
+  const [page, setPage]         = useState(0)
   const [showAdd, setShowAdd]   = useState(false)
   const [editing, setEditing]   = useState<FuelLog | null>(null)
   const [toDelete, setToDelete] = useState<FuelLog | null>(null)
 
+  function handleFilterChange(f: FilterMode) { setFilter(f); setPage(0) }
+  function handleSearch(v: string) { setSearch(v); setPage(0) }
+
+  const filterParams = filterToParams(filter)
+
   const { data, isLoading } = useQuery({
-    queryKey: ['fuel-logs'],
-    queryFn:  () => fuelLogsApi.getAll(),
+    queryKey: ['fuel-logs', page, filter, search],
+    queryFn:  () => fuelLogsApi.getAll({ page, size: 20, search: search || undefined, ...filterParams }),
   })
-  const logs: FuelLog[] = [...(data?.data ?? [])].sort((a, b) => {
-    const d = b.fillDate.localeCompare(a.fillDate)
-    return d !== 0 ? d : b.id - a.id
-  })
+  const pageData  = data?.data
+  const logs: FuelLog[] = pageData?.content ?? []
+  const totalPages    = pageData?.totalPages ?? 1
+  const totalElements = pageData?.totalElements ?? 0
 
   const { data: vehiclesData } = useQuery({
     queryKey: ['vehicles'],
@@ -519,18 +533,7 @@ export default function FuelLogsPage() {
   })
   const vehicles: Vehicle[] = vehiclesData?.data ?? []
 
-  const filtered = logs.filter(l => {
-    const matchSearch =
-      l.vehicleRegistrationNumber.toLowerCase().includes(search.toLowerCase()) ||
-      (l.fuelStationName ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (l.fuelStationCity ?? '').toLowerCase().includes(search.toLowerCase())
-    const matchFilter =
-      filter === 'ALL' ||
-      (filter === 'FULL_TANK' ? l.isFullTank : l.paymentMode === filter)
-    return matchSearch && matchFilter
-  })
-
-  // Stats
+  // Stats from current page
   const totalLitres = logs.reduce((s, l) => s + l.litresFilled, 0)
   const totalCost   = logs.reduce((s, l) => s + l.totalCost, 0)
   const mileageLogs = logs.filter(l => l.mileageKmPerLitre != null)
@@ -538,10 +541,10 @@ export default function FuelLogsPage() {
     ? mileageLogs.reduce((s, l) => s + (l.mileageKmPerLitre ?? 0), 0) / mileageLogs.length
     : null
 
-  const filterPills: { label: string; value: FilterMode; count?: number }[] = [
-    { label: 'All',             value: 'ALL',            count: logs.length },
-    { label: 'Full Tank',       value: 'FULL_TANK',      count: logs.filter(l => l.isFullTank).length },
-    { label: 'Cash',            value: 'CASH',           count: logs.filter(l => l.paymentMode === 'CASH').length },
+  const filterPills: { label: string; value: FilterMode }[] = [
+    { label: 'All',             value: 'ALL' },
+    { label: 'Full Tank',       value: 'FULL_TANK' },
+    { label: 'Cash',            value: 'CASH' },
     { label: 'Company Account', value: 'COMPANY_ACCOUNT' },
     { label: 'Reimbursement',   value: 'REIMBURSEMENT' },
   ]
@@ -567,7 +570,7 @@ export default function FuelLogsPage() {
           <div className="p-2.5 bg-orange-50 rounded-lg"><Fuel size={20} className="text-orange-600" /></div>
           <div>
             <p className="text-xs text-gray-500">Total Entries</p>
-            <p className="text-lg font-bold text-gray-900">{logs.length}</p>
+            <p className="text-lg font-bold text-gray-900">{totalElements}</p>
           </div>
         </div>
         <div className="bg-white rounded-xl border p-4 flex items-center gap-4">
@@ -595,13 +598,13 @@ export default function FuelLogsPage() {
         </div>
       </div>
 
-      {/* Filters + Search */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      {/* Filters + Search + Pagination */}
+      <div className="flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           {filterPills.map(p => (
             <button
               key={p.value}
-              onClick={() => setFilter(p.value)}
+              onClick={() => handleFilterChange(p.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 filter === p.value
                   ? 'bg-gray-900 text-white'
@@ -609,13 +612,6 @@ export default function FuelLogsPage() {
               }`}
             >
               {p.label}
-              {p.count != null && (
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
-                  filter === p.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {p.count}
-                </span>
-              )}
             </button>
           ))}
         </div>
@@ -624,16 +620,32 @@ export default function FuelLogsPage() {
           <Input
             placeholder="Search vehicle, station…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="border-0 shadow-none focus-visible:ring-0 p-0 h-auto text-sm w-52"
+            onChange={e => handleSearch(e.target.value)}
+            className="border-0 shadow-none focus-visible:ring-0 p-0 h-auto text-sm w-48"
           />
+        </div>
+        <div className="ml-auto flex items-center gap-2 text-sm text-gray-500">
+          <span>{totalElements} total</span>
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="px-2 py-1 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+          >Prev</button>
+          <span className="px-2 py-1 rounded border bg-gray-50 text-xs font-medium">
+            {page + 1} / {Math.max(1, totalPages)}
+          </span>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={page >= totalPages - 1}
+            className="px-2 py-1 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+          >Next</button>
         </div>
       </div>
 
       {/* List */}
       {isLoading ? (
         <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
-      ) : filtered.length === 0 ? (
+      ) : logs.length === 0 ? (
         <div className="text-center py-16">
           <Fuel size={40} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-400 text-sm">
@@ -647,7 +659,7 @@ export default function FuelLogsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(l => (
+          {logs.map(l => (
             <FuelLogCard
               key={l.id}
               log={l}
