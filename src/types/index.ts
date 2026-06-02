@@ -365,6 +365,7 @@ export interface Invoice {
   tenantAddress?: string; tenantCity?: string; tenantState?: string; tenantPincode?: string
   tenantBankName?: string; tenantAccountNumber?: string; tenantIfscCode?: string
   tenantBranchName?: string; tenantAccountHolderName?: string; transportHsnSac?: string
+  tenantInvoiceDescription?: string
   // Client (for print)
   clientGstin?: string; clientAddress?: string; clientCity?: string
   clientState?: string; clientPincode?: string
@@ -807,6 +808,7 @@ export interface Tenant {
   gstin?: string; panNumber?: string; tanNumber?: string; cinNumber?: string; transportLicenseNumber?: string
   bankName?: string; accountNumber?: string; ifscCode?: string; branchName?: string; accountHolderName?: string
   ownerName: string; ownerPhone: string; ownerEmail?: string
+  invoiceDescription?: string
   prefix?: string; logoUrl?: string; lorryCount?: number
   subscriptionStatus: SubscriptionStatus
   trialStartDate?: string; trialEndDate?: string

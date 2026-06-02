@@ -95,8 +95,8 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
     [invoice.clientState, invoice.clientPincode].filter(Boolean).join(' - ')
   ].filter(Boolean).join(', ')
 
-  // Description: use remarks or fallback
-  const description = invoice.remarks || 'Goods Transportation Services'
+  // Description: tenant master > remarks > fallback
+  const description = invoice.tenantInvoiceDescription || invoice.remarks || 'Goods Transportation Services'
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#000' }}>
