@@ -25,6 +25,7 @@ import type { Attendance } from '@/types'
 type StaffUser = { id: number; name: string; phone: string; role: string; isActive: boolean }
 
 const STAFF_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MEN', 'STORE_KEEPER']
+const PAGE_SIZE = 20
 function todayStr() { return format(new Date(), 'yyyy-MM-dd') }
 
 // ── Shared Badges ─────────────────────────────────────────────────────────────
@@ -71,6 +72,7 @@ function MyAttendanceTab({
   const qc = useQueryClient()
   const [markOpen, setMarkOpen] = useState(false)
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
 
   const from = format(startOfMonth(new Date()), 'yyyy-MM-dd')
   const to   = format(endOfMonth(new Date()), 'yyyy-MM-dd')
@@ -80,6 +82,8 @@ function MyAttendanceTab({
     queryFn: () => attendanceApi.getMyAttendance(from, to),
   })
   const records: Attendance[] = data?.data ?? []
+  const totalMyPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
+  const myPageRows   = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
   const todayRecord = records.find(r => r.attendanceDate === todayStr())
   const alreadyMarked = !!todayRecord
 
@@ -175,8 +179,15 @@ function MyAttendanceTab({
 
       {/* History table */}
       <div className="border rounded-xl bg-white overflow-hidden">
-        <div className="px-5 py-3.5 border-b bg-gray-50">
+        <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700">This Month's Records — {format(new Date(), 'MMMM yyyy')}</h2>
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+            <span className="text-xs">{page + 1} / {totalMyPages}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalMyPages - 1}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+          </div>
         </div>
         {isLoading ? (
           <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
@@ -186,22 +197,22 @@ function MyAttendanceTab({
             <p>No attendance records this month</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-18rem)]">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
-                  <th className="text-left px-5 py-3">Date</th>
-                  <th className="text-left px-5 py-3">Type</th>
-                  <th className="text-left px-5 py-3">Approval</th>
-                  <th className="text-left px-5 py-3">Leave Type</th>
-                  <th className="text-left px-5 py-3">Approved By</th>
-                  <th className="text-left px-5 py-3">Remarks</th>
+                  <th className="text-left px-5 py-3 whitespace-nowrap">Date</th>
+                  <th className="text-left px-5 py-3 whitespace-nowrap">Type</th>
+                  <th className="text-left px-5 py-3 whitespace-nowrap">Approval</th>
+                  <th className="text-left px-5 py-3 whitespace-nowrap">Leave Type</th>
+                  <th className="text-left px-5 py-3 whitespace-nowrap">Approved By</th>
+                  <th className="text-left px-5 py-3 whitespace-nowrap">Remarks</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {records.map(r => (
+                {myPageRows.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-800">
+                    <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         {format(new Date(r.attendanceDate), 'dd MMM, EEE')}
                         {r.selfieUrl && (
@@ -211,11 +222,11 @@ function MyAttendanceTab({
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
-                    <td className="px-5 py-3"><ApprovalBadge status={r.approvalStatus} /></td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{r.leaveTypeName ?? '—'}</td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{r.approvedByName ?? '—'}</td>
-                    <td className="px-5 py-3 text-gray-400 text-xs">{r.remarks || '—'}</td>
+                    <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                    <td className="px-5 py-3 whitespace-nowrap"><ApprovalBadge status={r.approvalStatus} /></td>
+                    <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.leaveTypeName ?? '—'}</td>
+                    <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.approvedByName ?? '—'}</td>
+                    <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.remarks || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -627,6 +638,7 @@ function PendingApprovalsTab() {
   const qc = useQueryClient()
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [page, setPage] = useState(0)
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-pending'],
@@ -635,6 +647,8 @@ function PendingApprovalsTab() {
   const records = [...(data?.data ?? [])].sort((a, b) =>
     new Date(b.markedAt ?? b.attendanceDate).getTime() - new Date(a.markedAt ?? a.attendanceDate).getTime()
   )
+  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
+  const pageRows   = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   function toggleSelect(id: number) {
     setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
@@ -683,49 +697,57 @@ function PendingApprovalsTab() {
             <h2 className="text-sm font-semibold text-gray-700">Pending Approvals</h2>
             <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">{records.length} pending</span>
           </div>
-          {selected.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">{selected.size} selected</span>
-              <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-3 text-xs"
-                disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
-                onClick={() => bulkApproveMutation.mutate()}>
-                <CheckCircle size={12} className="mr-1" />Approve All
-              </Button>
-              <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50 h-7 px-3 text-xs"
-                disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
-                onClick={() => bulkRejectMutation.mutate()}>
-                <XCircle size={12} className="mr-1" />Reject All
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {selected.size > 0 && (
+              <>
+                <span className="text-xs text-gray-500">{selected.size} selected</span>
+                <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-3 text-xs"
+                  disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
+                  onClick={() => bulkApproveMutation.mutate()}>
+                  <CheckCircle size={12} className="mr-1" />Approve All
+                </Button>
+                <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50 h-7 px-3 text-xs"
+                  disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
+                  onClick={() => bulkRejectMutation.mutate()}>
+                  <XCircle size={12} className="mr-1" />Reject All
+                </Button>
+                <span className="text-gray-300">|</span>
+              </>
+            )}
+            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+            <span className="text-xs text-gray-500">{page + 1} / {totalPages}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+          </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-18rem)]">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
                 <th className="px-5 py-3 w-10">
                   <input type="checkbox" checked={selected.size === records.length} onChange={toggleAll} className="rounded" />
                 </th>
-                <th className="text-left px-5 py-3">Staff</th>
-                <th className="text-left px-5 py-3">Role</th>
-                <th className="text-left px-5 py-3">Date</th>
-                <th className="text-left px-5 py-3">Type</th>
-                <th className="text-left px-5 py-3">Marked At</th>
-                <th className="text-left px-5 py-3">Selfie</th>
-                <th className="text-left px-5 py-3">Remarks</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Date</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Type</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Marked At</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Selfie</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Remarks</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {records.map(r => (
+              {pageRows.map(r => (
                 <tr key={r.id} className={cn('hover:bg-gray-50', selected.has(r.id) && 'bg-blue-50')}>
-                  <td className="px-5 py-3"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="rounded" /></td>
-                  <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
-                  <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
-                  <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
-                  <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
-                  <td className="px-5 py-3 text-gray-400 text-xs">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3 whitespace-nowrap"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="rounded" /></td>
+                  <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
+                  <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
+                  <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                  <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
+                  <td className="px-5 py-3 whitespace-nowrap">
                     {r.selfieUrl ? (
                       <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
                         <img src={r.selfieUrl} alt="selfie" className="w-full h-full object-cover" />
@@ -735,8 +757,8 @@ function PendingApprovalsTab() {
                       </button>
                     ) : <span className="text-gray-300 text-xs">—</span>}
                   </td>
-                  <td className="px-5 py-3 text-gray-400 text-xs max-w-[140px] truncate">{r.remarks || '—'}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.remarks || '—'}</td>
+                  <td className="px-5 py-3 whitespace-nowrap">
                     <div className="flex gap-1.5 justify-end">
                       <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-2.5 text-xs"
                         disabled={approveMutation.isPending} onClick={() => approveMutation.mutate(r.id)}>
@@ -763,12 +785,15 @@ function PendingApprovalsTab() {
 function RejectedTab() {
   const qc = useQueryClient()
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-rejected'],
     queryFn: attendanceApi.getRejected,
   })
   const records = data?.data ?? []
+  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
+  const pageRows   = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   const approveMutation = useMutation({
     mutationFn: (id: number) => attendanceApi.approve(id),
@@ -795,32 +820,41 @@ function RejectedTab() {
     <>
       <div className="border rounded-xl bg-white overflow-hidden">
         <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">Rejected Attendance</h2>
-          <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">{records.length} rejected</span>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-700">Rejected Attendance</h2>
+            <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">{records.length} rejected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+            <span className="text-xs text-gray-500">{page + 1} / {totalPages}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+          </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-18rem)]">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
-                <th className="text-left px-5 py-3">Staff</th>
-                <th className="text-left px-5 py-3">Role</th>
-                <th className="text-left px-5 py-3">Date</th>
-                <th className="text-left px-5 py-3">Type</th>
-                <th className="text-left px-5 py-3">Marked At</th>
-                <th className="text-left px-5 py-3">Selfie</th>
-                <th className="text-left px-5 py-3">Rejected By</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Date</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Type</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Marked At</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Selfie</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Rejected By</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {records.map(r => (
+              {pageRows.map(r => (
                 <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
-                  <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
-                  <td className="px-5 py-3 text-gray-700">{r.attendanceDate}</td>
-                  <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
-                  <td className="px-5 py-3 text-gray-400 text-xs">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
+                  <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
+                  <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                  <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
+                  <td className="px-5 py-3 whitespace-nowrap">
                     {r.selfieUrl ? (
                       <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
                         <img src={r.selfieUrl} alt="selfie" className="w-full h-full object-cover" />
@@ -830,8 +864,8 @@ function RejectedTab() {
                       </button>
                     ) : <span className="text-gray-300 text-xs">—</span>}
                   </td>
-                  <td className="px-5 py-3 text-gray-500 text-xs">{r.approvedByName ?? '—'}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.approvedByName ?? '—'}</td>
+                  <td className="px-5 py-3 whitespace-nowrap">
                     <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-2.5 text-xs"
                       disabled={approveMutation.isPending} onClick={() => approveMutation.mutate(r.id)}>
                       <CheckCircle size={12} className="mr-1" />Approve
@@ -862,6 +896,12 @@ function DutyTimesTab({
   shiftDay: (delta: number) => void
   setSelectedDate: (d: string) => void
 }) {
+  const [page, setPage] = useState(0)
+  useEffect(() => { setPage(0) }, [selectedDate])
+
+  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
+  const pageRows   = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
   function fmtTime(iso: string | undefined) {
     if (!iso) return '—'
     try {
@@ -935,10 +975,15 @@ function DutyTimesTab({
 
       {/* Table */}
       <div className="border rounded-xl bg-white overflow-hidden">
-        <div className="px-5 py-3.5 border-b bg-gray-50">
-          <h2 className="text-sm font-semibold text-gray-700">
-            Duty Times — {selectedDate}
-          </h2>
+        <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700">Duty Times — {selectedDate}</h2>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-white">Prev</button>
+            <span className="text-xs text-gray-500">{page + 1} / {totalPages}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-white">Next</button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -948,40 +993,40 @@ function DutyTimesTab({
             No attendance records for this date
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-22rem)]">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
-                  <th className="text-left px-5 py-3">Staff</th>
-                  <th className="text-left px-5 py-3">Role</th>
-                  <th className="text-left px-5 py-3">
+                  <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
+                  <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
+                  <th className="text-left px-5 py-3 whitespace-nowrap">
                     <span className="flex items-center gap-1">
                       <LogIn size={11} />In Time
                     </span>
                   </th>
-                  <th className="text-left px-5 py-3">
+                  <th className="text-left px-5 py-3 whitespace-nowrap">
                     <span className="flex items-center gap-1">
                       <LogOut size={11} />Out Time
                     </span>
                   </th>
-                  <th className="text-left px-5 py-3">Duty</th>
+                  <th className="text-left px-5 py-3 whitespace-nowrap">Duty</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {records.map(r => {
+                {pageRows.map(r => {
                   const isOut = !!r.markedOutAt
                   const dutyLabel = r.dutyLabel ?? 'Full Day'
                   return (
                     <tr key={r.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
-                      <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
+                      <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
+                      <td className="px-5 py-3 whitespace-nowrap">
                         <span className="flex items-center gap-1 text-gray-600 text-xs">
                           <LogIn size={12} className="text-green-500" />
                           {fmtTime(r.markedAt)}
                         </span>
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-3 whitespace-nowrap">
                         {isOut ? (
                           <span className="flex items-center gap-1 text-xs text-red-600">
                             <LogOut size={12} />
@@ -991,7 +1036,7 @@ function DutyTimesTab({
                           <span className="text-xs text-gray-400">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-3 whitespace-nowrap">
                         <span className={cn(
                           'text-xs font-semibold px-2.5 py-0.5 rounded-full border',
                           isOut
@@ -1023,6 +1068,7 @@ export function AttendancePage() {
   const [activeTab, setActiveTab]       = useState<Tab>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [dailySearch, setDailySearch]   = useState('')
+  const [dailyPage, setDailyPage]       = useState(0)
   const [markOpen, setMarkOpen]         = useState(false)
   const [bulkOpen, setBulkOpen]         = useState(false)
   const [editRecord, setEditRecord]     = useState<Attendance | undefined>()
@@ -1065,11 +1111,20 @@ export function AttendancePage() {
   )
   const unmarked = allUsers.length - records.length
 
+  const filteredMarked   = records.filter(r => !dailySearch || r.userName?.toLowerCase().includes(dailySearch.toLowerCase()))
+  const filteredUnmarked = isAdmin ? allUsers.filter(u => !existingMap[u.id] && (!dailySearch || u.name?.toLowerCase().includes(dailySearch.toLowerCase()))) : []
+  const allDailyRows = [
+    ...filteredMarked.map(r => ({ kind: 'marked' as const, r })),
+    ...filteredUnmarked.map(u => ({ kind: 'unmarked' as const, u })),
+  ]
+  const dailyTotalPages = Math.max(1, Math.ceil(allDailyRows.length / PAGE_SIZE))
+  const dailyPageRows   = allDailyRows.slice(dailyPage * PAGE_SIZE, (dailyPage + 1) * PAGE_SIZE)
+
   function shiftDay(delta: number) {
     const d = new Date(selectedDate)
     d.setDate(d.getDate() + delta)
     const newDate = format(d, 'yyyy-MM-dd')
-    if (newDate <= todayStr()) setSelectedDate(newDate)
+    if (newDate <= todayStr()) { setSelectedDate(newDate); setDailyPage(0) }
   }
 
   const tabBtn = (tab: Tab, label: string, badge?: number) => (
@@ -1145,7 +1200,7 @@ export function AttendancePage() {
                 type="date"
                 value={selectedDate}
                 max={todayStr()}
-                onChange={e => { if (e.target.value <= todayStr()) setSelectedDate(e.target.value) }}
+                onChange={e => { if (e.target.value <= todayStr()) { setSelectedDate(e.target.value); setDailyPage(0) } }}
                 className="text-sm font-medium text-gray-800 border-none outline-none bg-transparent"
               />
             </div>
@@ -1183,7 +1238,7 @@ export function AttendancePage() {
                 <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
                   value={dailySearch}
-                  onChange={e => setDailySearch(e.target.value)}
+                  onChange={e => { setDailySearch(e.target.value); setDailyPage(0) }}
                   placeholder="Search by name…"
                   className="pl-8 h-8 text-sm"
                 />
@@ -1193,70 +1248,84 @@ export function AttendancePage() {
                   {unmarked} not marked
                 </span>
               )}
+              <div className="ml-auto flex items-center gap-2 shrink-0">
+                <button onClick={() => setDailyPage(p => p - 1)} disabled={dailyPage === 0}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-white">Prev</button>
+                <span className="text-xs text-gray-500">{dailyPage + 1} / {dailyTotalPages}</span>
+                <button onClick={() => setDailyPage(p => p + 1)} disabled={dailyPage >= dailyTotalPages - 1}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-white">Next</button>
+              </div>
             </div>
             {isLoading ? (
               <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[calc(100vh-22rem)]">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 z-10">
                     <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
-                      <th className="text-left px-5 py-3">Staff</th>
-                      <th className="text-left px-5 py-3">Role</th>
-                      <th className="text-left px-5 py-3">Status</th>
-                      <th className="text-left px-5 py-3">Approval</th>
-                      <th className="text-left px-5 py-3">Leave Type</th>
-                      <th className="text-left px-5 py-3">Marked By</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Status</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Approval</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Leave Type</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Marked By</th>
                       <th className="px-5 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {records.filter(r => !dailySearch || r.userName?.toLowerCase().includes(dailySearch.toLowerCase())).map(r => (
-                      <tr key={r.id} className="hover:bg-gray-50">
-                        <td className="px-5 py-3 font-medium text-gray-800">{r.userName}</td>
-                        <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
-                        <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
-                        <td className="px-5 py-3"><ApprovalBadge status={r.approvalStatus} /></td>
-                        <td className="px-5 py-3 text-gray-500 text-xs">{r.leaveTypeName ?? '—'}</td>
-                        <td className="px-5 py-3 text-gray-500 text-xs">{r.markedByName}</td>
-                        <td className="px-5 py-3">
-                          <div className="flex gap-1 justify-end">
-                            {isAdmin && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7"
-                                onClick={() => { setEditRecord(r); setMarkOpen(true) }}>
-                                <Pencil size={12} />
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
-                              onClick={() => setHistoryUser(allUsers.find(u => u.id === r.userId) ?? null)}>
-                              <CalendarDays size={12} />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {isAdmin && allUsers.filter(u => !existingMap[u.id] && (!dailySearch || u.name?.toLowerCase().includes(dailySearch.toLowerCase()))).map(u => (
-                      <tr key={`u-${u.id}`} className="hover:bg-gray-50">
-                        <td className="px-5 py-3 font-medium text-gray-700">{u.name}</td>
-                        <td className="px-5 py-3 text-gray-400 text-xs">{u.role}</td>
-                        <td className="px-5 py-3"><span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Not marked</span></td>
-                        <td className="px-5 py-3 text-gray-400">—</td>
-                        <td className="px-5 py-3 text-gray-400">—</td>
-                        <td className="px-5 py-3 text-gray-400">—</td>
-                        <td className="px-5 py-3">
-                          <div className="flex gap-1 justify-end">
-                            <Button variant="ghost" size="icon" className="h-7 w-7"
-                              onClick={() => { setEditRecord(undefined); setMarkOpen(true) }}>
-                              <Pencil size={12} />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
-                              onClick={() => setHistoryUser(u)}>
-                              <CalendarDays size={12} />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {dailyPageRows.map(row => {
+                      if (row.kind === 'marked') {
+                        const r = row.r
+                        return (
+                          <tr key={r.id} className="hover:bg-gray-50">
+                            <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
+                            <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
+                            <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
+                            <td className="px-5 py-3 whitespace-nowrap"><ApprovalBadge status={r.approvalStatus} /></td>
+                            <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.leaveTypeName ?? '—'}</td>
+                            <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.markedByName}</td>
+                            <td className="px-5 py-3 whitespace-nowrap">
+                              <div className="flex gap-1 justify-end">
+                                {isAdmin && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7"
+                                    onClick={() => { setEditRecord(r); setMarkOpen(true) }}>
+                                    <Pencil size={12} />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
+                                  onClick={() => setHistoryUser(allUsers.find(u => u.id === r.userId) ?? null)}>
+                                  <CalendarDays size={12} />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      } else {
+                        const u = row.u
+                        return (
+                          <tr key={`u-${u.id}`} className="hover:bg-gray-50">
+                            <td className="px-5 py-3 font-medium text-gray-700 whitespace-nowrap">{u.name}</td>
+                            <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{u.role}</td>
+                            <td className="px-5 py-3 whitespace-nowrap"><span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Not marked</span></td>
+                            <td className="px-5 py-3 text-gray-400 whitespace-nowrap">—</td>
+                            <td className="px-5 py-3 text-gray-400 whitespace-nowrap">—</td>
+                            <td className="px-5 py-3 text-gray-400 whitespace-nowrap">—</td>
+                            <td className="px-5 py-3 whitespace-nowrap">
+                              <div className="flex gap-1 justify-end">
+                                <Button variant="ghost" size="icon" className="h-7 w-7"
+                                  onClick={() => { setEditRecord(undefined); setMarkOpen(true) }}>
+                                  <Pencil size={12} />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
+                                  onClick={() => setHistoryUser(u)}>
+                                  <CalendarDays size={12} />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      }
+                    })}
                     {allUsers.length === 0 && records.length === 0 && (
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
