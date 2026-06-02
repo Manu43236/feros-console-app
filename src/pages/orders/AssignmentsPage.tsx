@@ -520,9 +520,21 @@ export default function AssignmentsPage() {
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto">
+            {/* Pagination — top */}
+            <div className="px-4 py-3 border-b flex items-center justify-between text-sm text-gray-500">
+              <span>{vehicleRows.length} total assignments</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setVPage(p => p - 1)} disabled={vPage === 0}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+                <span className="text-xs">{vPage + 1} / {vTotalPages}</span>
+                <button onClick={() => setVPage(p => p + 1)} disabled={vPage + 1 >= vTotalPages}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+              </div>
+            </div>
+            {/* Scrollable table */}
+            <div className="overflow-auto max-h-[calc(100vh-18rem)]">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                   <tr>
                     {['Order', 'Client', 'Vehicle', 'Weight (T)', 'Load Date', 'Delivery Date', 'Status', 'Drivers', ''].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
@@ -569,16 +581,6 @@ export default function AssignmentsPage() {
                 </tbody>
               </table>
             </div>
-            <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500">
-              <span>{vehicleRows.length} total assignments</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setVPage(p => p - 1)} disabled={vPage === 0}
-                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
-                <span className="text-xs">{vPage + 1} / {vTotalPages}</span>
-                <button onClick={() => setVPage(p => p + 1)} disabled={vPage + 1 >= vTotalPages}
-                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
-              </div>
-            </div>
             </>
           )}
         </div>
@@ -597,9 +599,21 @@ export default function AssignmentsPage() {
             </div>
           ) : (
             <>
-            <div className="overflow-x-auto">
+            {/* Pagination — top */}
+            <div className="px-4 py-3 border-b flex items-center justify-between text-sm text-gray-500">
+              <span>{driverRows.length} total assignments</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setDPage(p => p - 1)} disabled={dPage === 0}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+                <span className="text-xs">{dPage + 1} / {dTotalPages}</span>
+                <button onClick={() => setDPage(p => p + 1)} disabled={dPage + 1 >= dTotalPages}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+              </div>
+            </div>
+            {/* Scrollable table */}
+            <div className="overflow-auto max-h-[calc(100vh-18rem)]">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                   <tr>
                     {['Order', 'Vehicle', 'Driver', 'Role', 'Status', 'Start Date', ''].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
@@ -635,16 +649,6 @@ export default function AssignmentsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
-            <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500">
-              <span>{driverRows.length} total assignments</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setDPage(p => p - 1)} disabled={dPage === 0}
-                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
-                <span className="text-xs">{dPage + 1} / {dTotalPages}</span>
-                <button onClick={() => setDPage(p => p + 1)} disabled={dPage + 1 >= dTotalPages}
-                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
-              </div>
             </div>
             </>
           )}
