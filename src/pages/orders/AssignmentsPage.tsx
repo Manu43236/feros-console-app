@@ -355,17 +355,21 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED:  'bg-red-100 text-red-700',
 }
 
+const PAGE_SIZE = 20
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AssignmentsPage() {
   const { locked } = useSubscription()
   const [tab, setTab] = useState<'vehicle' | 'driver'>('vehicle')
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [showAssignDriver, setShowAssignDriver] = useState(false)
+  const [vPage, setVPage] = useState(0)
+  const [dPage, setDPage] = useState(0)
   const qc = useQueryClient()
 
   const { data: ordersRes, isLoading } = useQuery({
     queryKey: ['assignments-orders'],
-    queryFn: () => ordersApi.getAll(),
+    queryFn: () => ordersApi.getAll({ size: 1000 }),
   })
   const { data: vehiclesRes } = useQuery({
     queryKey: ['assignments-vehicles'],
@@ -422,6 +426,12 @@ export default function AssignmentsPage() {
     })
   })
 
+  const vTotalPages = Math.max(1, Math.ceil(vehicleRows.length / PAGE_SIZE))
+  const vPageRows   = vehicleRows.slice(vPage * PAGE_SIZE, (vPage + 1) * PAGE_SIZE)
+
+  const dTotalPages = Math.max(1, Math.ceil(driverRows.length / PAGE_SIZE))
+  const dPageRows   = driverRows.slice(dPage * PAGE_SIZE, (dPage + 1) * PAGE_SIZE)
+
   const unassignVehicle = useMutation({
     mutationFn: ({ orderId, allocationId }: { orderId: number; allocationId: number }) =>
       ordersApi.unassignVehicle(orderId, allocationId),
@@ -477,7 +487,7 @@ export default function AssignmentsPage() {
         ] as const).map(({ key, label, Icon, count }) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => { setTab(key); setVPage(0); setDPage(0) }}
             className={cn(
               'flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
               tab === key
@@ -509,6 +519,7 @@ export default function AssignmentsPage() {
               <p className="text-gray-400 text-xs mt-1">Click "Add Assignment" to assign a vehicle to an order</p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -519,20 +530,20 @@ export default function AssignmentsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {vehicleRows.map(row => (
+                  {vPageRows.map(row => (
                     <tr key={row.allocationId} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-feros-navy whitespace-nowrap">{row.orderNumber}</td>
-                      <td className="px-4 py-3 text-gray-600">{row.clientName}</td>
-                      <td className="px-4 py-3 font-medium">{row.registrationNumber}</td>
-                      <td className="px-4 py-3 text-gray-700">{row.allocatedWeight}</td>
-                      <td className="px-4 py-3 text-gray-500">{row.expectedLoadDate ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">{row.expectedDeliveryDate ?? '—'}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.clientName}</td>
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">{row.registrationNumber}</td>
+                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{row.allocatedWeight}</td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedLoadDate ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedDeliveryDate ?? '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', STATUS_COLORS[row.allocationStatus] ?? 'bg-gray-100 text-gray-600')}>
                           {row.allocationStatus}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {row.driversCount > 0 ? (
                           <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 font-medium">
                             {row.driversCount} driver{row.driversCount > 1 ? 's' : ''}
@@ -558,6 +569,17 @@ export default function AssignmentsPage() {
                 </tbody>
               </table>
             </div>
+            <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500">
+              <span>{vehicleRows.length} total assignments</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setVPage(p => p - 1)} disabled={vPage === 0}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+                <span className="text-xs">{vPage + 1} / {vTotalPages}</span>
+                <button onClick={() => setVPage(p => p + 1)} disabled={vPage + 1 >= vTotalPages}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+              </div>
+            </div>
+            </>
           )}
         </div>
       )}
@@ -574,6 +596,7 @@ export default function AssignmentsPage() {
               <p className="text-gray-400 text-xs mt-1">Click "Assign Driver" to assign a driver to a vehicle</p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -584,20 +607,20 @@ export default function AssignmentsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {driverRows.map(row => (
+                  {dPageRows.map(row => (
                     <tr key={row.staffAllocationId} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-feros-navy whitespace-nowrap">{row.orderNumber}</td>
-                      <td className="px-4 py-3 font-medium">{row.registrationNumber}</td>
-                      <td className="px-4 py-3 text-gray-800">{row.userName}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">{row.registrationNumber}</td>
+                      <td className="px-4 py-3 text-gray-800 whitespace-nowrap">{row.userName}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">{row.roleName}</span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', STATUS_COLORS[row.allocationStatus] ?? 'bg-gray-100 text-gray-600')}>
                           {row.allocationStatus}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{row.expectedStartDate ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedStartDate ?? '—'}</td>
                       <td className="px-4 py-3">
                         <button
                           onClick={() => unassignDriver.mutate({ orderId: row.orderId, staffAllocationId: row.staffAllocationId })}
@@ -613,6 +636,17 @@ export default function AssignmentsPage() {
                 </tbody>
               </table>
             </div>
+            <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500">
+              <span>{driverRows.length} total assignments</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setDPage(p => p - 1)} disabled={dPage === 0}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+                <span className="text-xs">{dPage + 1} / {dTotalPages}</span>
+                <button onClick={() => setDPage(p => p + 1)} disabled={dPage + 1 >= dTotalPages}
+                  className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+              </div>
+            </div>
+            </>
           )}
         </div>
       )}
