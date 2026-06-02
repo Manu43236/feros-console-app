@@ -468,12 +468,18 @@ export function PayrollPage() {
   const [approveTarget, setApprove] = useState<Payroll | null>(null)
   const [advOpen, setAdvOpen]       = useState(false)
   const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
+  const [search, setSearch]         = useState('')
+  const [page, setPage]             = useState(0)
+
+  function handleSearch(v: string) { setSearch(v); setPage(0) }
 
   const { data: payrollsData, isLoading: loadingPayrolls } = useQuery({
-    queryKey: ['payrolls'],
-    queryFn: payrollApi.getAll,
+    queryKey: ['payrolls', page, search],
+    queryFn: () => payrollApi.getAll({ page, size: 20, search: search || undefined }),
   })
-  const payrolls: Payroll[] = [...(payrollsData?.data ?? [])].sort((a, b) => b.id - a.id)
+  const pageData   = payrollsData?.data
+  const payrolls: Payroll[] = pageData?.content ?? []
+  const totalPages = pageData?.totalPages ?? 1
 
   const { data: advancesData, isLoading: loadingAdvances } = useQuery({
     queryKey: ['advances'],
@@ -490,7 +496,7 @@ export function PayrollPage() {
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
-  // summary stats
+  // summary stats (current page)
   const totalNetPay = payrolls.filter(p => p.payrollStatus !== 'CANCELLED').reduce((s, p) => s + p.netPay, 0)
   const draftCount  = payrolls.filter(p => p.payrollStatus === 'DRAFT').length
   const paidCount   = payrolls.filter(p => p.payrollStatus === 'PAID').length
@@ -552,6 +558,28 @@ export function PayrollPage() {
       {/* Payrolls Tab */}
       {tab === 'payrolls' && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* Search + Pagination */}
+          <div className="px-4 py-3 border-b flex items-center gap-3">
+            <Input
+              placeholder="Search by staff name…"
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+              className="max-w-xs border-0 shadow-none focus-visible:ring-0 p-0 h-auto text-sm"
+            />
+            <div className="ml-auto flex items-center gap-2 text-sm text-gray-500">
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50"
+              >Prev</button>
+              <span className="text-xs">{page + 1} / {Math.max(1, totalPages)}</span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page + 1 >= totalPages}
+                className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50"
+              >Next</button>
+            </div>
+          </div>
           {loadingPayrolls ? (
             <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
           ) : payrolls.length === 0 ? (

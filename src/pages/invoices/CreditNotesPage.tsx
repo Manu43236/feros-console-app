@@ -41,8 +41,8 @@ function AddCreditNoteDialog({ open, onClose }: { open: boolean; onClose: () => 
   const qc = useQueryClient()
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null)
 
-  const { data: clientsRes } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
-  const clients = clientsRes?.data ?? []
+  const { data: clientsRes } = useQuery({ queryKey: ['clients-all'], queryFn: () => clientsApi.getAll({ size: 1000 }) })
+  const clients = clientsRes?.data?.content ?? []
 
   const { data: invoicesRes } = useQuery({
     queryKey: ['invoices-by-client', selectedClientId],

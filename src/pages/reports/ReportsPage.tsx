@@ -196,8 +196,8 @@ function DateRange({ from, to, onChange }: {
 
 // ─── Client Dropdown ──────────────────────────────────────────────────────────
 function ClientSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { data } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
-  const clients = data?.data ?? []
+  const { data } = useQuery({ queryKey: ['clients-all'], queryFn: () => clientsApi.getAll({ size: 1000 }) })
+  const clients = data?.data?.content ?? []
   return (
     <div>
       <Label className="text-xs text-gray-500">Client</Label>

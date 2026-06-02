@@ -67,7 +67,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
   const [selectedLrIds, setSelectedLrIds] = useState<Set<number>>(new Set())
 
-  const { data: clientsRes } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
+  const { data: clientsRes } = useQuery({ queryKey: ['clients-all'], queryFn: () => clientsApi.getAll({ size: 1000 }) })
   const { data: lrsRes } = useQuery({ queryKey: ['lrs-delivered'], queryFn: () => lrsApi.getAll({ status: 'DELIVERED', size: 1000 }) })
   const { data: invoicedIdsRes } = useQuery({ queryKey: ['invoiced-lr-ids'], queryFn: invoicesApi.getInvoicedLrIds })
   const { data: tenantRes } = useQuery({ queryKey: ['my-tenant'], queryFn: () => tenantsApi.getMy() })
@@ -84,11 +84,11 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const taxSlab = Number(watch('taxSlab') ?? 0)
   const clientId = Number(watchedClientId)
 
-  const clientOptions = (clientsRes?.data ?? [])
+  const clientOptions = (clientsRes?.data?.content ?? [])
     .filter(c => c.isActive)
     .map(c => ({ value: String(c.id), label: c.clientName }))
 
-  const selectedClient = (clientsRes?.data ?? []).find(c => c.id === clientId)
+  const selectedClient = (clientsRes?.data?.content ?? []).find(c => c.id === clientId)
   const clientState    = selectedClient?.stateName ?? ''
   // Intra-state: tenant and client are in the same state
   const isIntraState   = !!(clientId && tenantState && clientState && tenantState === clientState)

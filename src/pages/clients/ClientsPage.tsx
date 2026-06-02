@@ -395,11 +395,17 @@ export function ClientsPage() {
   const { locked } = useSubscription()
   const qc = useQueryClient()
   const [search, setSearch]     = useState('')
+  const [page, setPage]         = useState(0)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing]   = useState<Client | undefined>()
   const [bulkOpen, setBulkOpen] = useState(false)
 
-  const { data: res, isLoading } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
+  function handleSearch(v: string) { setSearch(v); setPage(0) }
+
+  const { data: res, isLoading } = useQuery({
+    queryKey: ['clients', page, search],
+    queryFn: () => clientsApi.getAll({ page, size: 20, search: search || undefined }),
+  })
 
   const statusMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) => clientsApi.toggleStatus(id, isActive),
@@ -410,10 +416,9 @@ export function ClientsPage() {
     onError: () => toast.error('Failed to update client status'),
   })
 
-  const clients = [...(res?.data ?? [])].sort((a, b) => a.clientName.localeCompare(b.clientName)).filter(c =>
-    c.clientName.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone.includes(search)
-  )
+  const clients      = res?.data?.content ?? []
+  const totalPages   = res?.data?.totalPages ?? 1
+  const totalElements = res?.data?.totalElements ?? 0
 
   function openEdit(c: Client) { setEditing(c); setFormOpen(true) }
   function openCreate()        { setEditing(undefined); setFormOpen(true) }
@@ -425,7 +430,7 @@ export function ClientsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{res?.data?.length ?? 0} total clients</p>
+          <p className="text-gray-500 text-sm mt-0.5">{totalElements} total clients</p>
         </div>
         {!locked && (
           <div className="flex gap-2">
@@ -439,19 +444,37 @@ export function ClientsPage() {
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="Search by name or phone…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + Pagination */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative max-w-sm flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Search by name or phone…"
+            value={search}
+            onChange={e => handleSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="ml-auto flex items-center gap-2 text-sm text-gray-500">
+          <span>{totalElements} total</span>
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="px-2 py-1 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+          >Prev</button>
+          <span className="px-2 py-1 rounded border bg-gray-50 text-xs font-medium">
+            {page + 1} / {Math.max(1, totalPages)}
+          </span>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={page >= totalPages - 1}
+            className="px-2 py-1 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+          >Next</button>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden max-h-[calc(100vh-18rem)]">
         {isLoading ? (
           <div className="p-12 text-center text-gray-400 animate-pulse">Loading clients…</div>
         ) : clients.length === 0 ? (
@@ -460,9 +483,9 @@ export function ClientsPage() {
             <p className="text-sm">{search ? 'No clients match your search' : 'No clients yet. Add your first client.'}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto flex-1">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Client</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Type</th>

@@ -102,7 +102,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
   const qc     = useQueryClient()
   const isEdit = !!order
 
-  const { data: clientsRes }   = useQuery({ queryKey: ['clients'],        queryFn: clientsApi.getAll })
+  const { data: clientsRes }   = useQuery({ queryKey: ['clients-all'],        queryFn: () => clientsApi.getAll({ size: 1000 }) })
   const { data: materialsRes } = useQuery({ queryKey: ['material-types'], queryFn: globalMastersApi.getMaterialTypes })
   const { data: statesRes }    = useQuery({ queryKey: ['states'],         queryFn: globalMastersApi.getStates })
 
@@ -176,12 +176,12 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
   // ── Auto-fill destination from client address ──────────────────────────────
   useEffect(() => {
     const id = Number(watchedClientId)
-    if (!id || !clientsRes?.data) return
+    if (!id || !clientsRes?.data?.content) return
     // In edit mode skip auto-fill if client hasn't changed
     if (isEdit && id === prevClientId.current) return
     prevClientId.current = id
 
-    const client = clientsRes.data.find(c => c.id === id)
+    const client = clientsRes.data?.content?.find(c => c.id === id)
     if (!client) return
 
     if (client.stateId) {
@@ -191,7 +191,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
     if (client.cityId) setValue('destinationCityId', client.cityId)
     setValue('destinationAddress', client.address ?? '')
     setClientAutoFilled(true)
-  }, [watchedClientId, clientsRes?.data])
+  }, [watchedClientId, clientsRes?.data?.content])
 
   // ── Detect "Other" synthetic option ────────────────────────────────────────
   const materials       = materialsRes?.data ?? []
@@ -236,7 +236,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               <SearchableSelect
                 value={watchedClientId ? String(watchedClientId) : ''}
                 onValueChange={v => setValue('clientId', Number(v))}
-                options={(clientsRes?.data ?? []).filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))}
+                options={(clientsRes?.data?.content ?? []).filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))}
                 placeholder="Select client"
                 className="mt-1"
               />
@@ -554,29 +554,29 @@ export function OrdersPage() {
                     className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/orders/${o.id}`)}
                   >
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <p className="text-sm font-semibold text-feros-navy">{o.orderNumber}</p>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <p className="text-sm text-gray-800">{o.clientName}</p>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-1 text-sm text-gray-600">
                         <span>{o.sourceCityName}</span>
                         <ArrowRight size={12} className="text-gray-400 flex-shrink-0" />
                         <span>{o.destinationCityName}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{o.materialTypeName}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{o.totalWeight} T</td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.materialTypeName}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.totalWeight} T</td>
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <p className="text-sm text-gray-800">₹{Number(o.freightRate).toLocaleString('en-IN')}</p>
                       <p className="text-xs text-gray-400">{o.freightRateType.replace(/_/g, ' ')}</p>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <StatusBadge status={o.orderStatus} />
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <PaymentStatusBadge status={o.orderPaymentStatus} />
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-500 whitespace-nowrap">
@@ -593,10 +593,10 @@ export function OrdersPage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {orders.length > 0 && (
         <div className="flex items-center justify-between text-sm text-gray-500">
           <span>
-            Page {page + 1} of {totalPages} &mdash; {pageData?.totalElements ?? 0} orders
+            Page {page + 1} of {Math.max(1, totalPages)} &mdash; {pageData?.totalElements ?? 0} orders
           </span>
           <div className="flex items-center gap-2">
             <Button

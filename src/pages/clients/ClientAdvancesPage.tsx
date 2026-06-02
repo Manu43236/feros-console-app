@@ -30,8 +30,8 @@ type FormData = z.infer<typeof schema>
 // ── Add Advance Dialog ────────────────────────────────────────────────────────
 function AddAdvanceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
-  const { data: clientsRes } = useQuery({ queryKey: ['clients'], queryFn: clientsApi.getAll })
-  const clients = clientsRes?.data ?? []
+  const { data: clientsRes } = useQuery({ queryKey: ['clients-all'], queryFn: () => clientsApi.getAll({ size: 1000 }) })
+  const clients = clientsRes?.data?.content ?? []
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
