@@ -444,8 +444,8 @@ export function ClientsPage() {
         )}
       </div>
 
-      {/* Search + Pagination */}
-      <div className="flex items-center gap-3 flex-wrap">
+      {/* Search */}
+      <div className="flex items-center gap-3">
         <div className="relative max-w-sm flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
@@ -455,26 +455,21 @@ export function ClientsPage() {
             className="pl-9"
           />
         </div>
-        <div className="ml-auto flex items-center gap-2 text-sm text-gray-500">
-          <span>{totalElements} total</span>
-          <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="px-2 py-1 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs"
-          >Prev</button>
-          <span className="px-2 py-1 rounded border bg-gray-50 text-xs font-medium">
-            {page + 1} / {Math.max(1, totalPages)}
-          </span>
-          <button
-            onClick={() => setPage(p => p + 1)}
-            disabled={page >= totalPages - 1}
-            className="px-2 py-1 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs"
-          >Next</button>
-        </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden max-h-[calc(100vh-18rem)]">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Pagination — top */}
+        <div className="px-4 py-3 border-b flex items-center justify-between text-sm text-gray-500">
+          <span>{totalElements} total clients</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+            <span className="text-xs">{page + 1} / {Math.max(1, totalPages)}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+          </div>
+        </div>
         {isLoading ? (
           <div className="p-12 text-center text-gray-400 animate-pulse">Loading clients…</div>
         ) : clients.length === 0 ? (
@@ -483,7 +478,7 @@ export function ClientsPage() {
             <p className="text-sm">{search ? 'No clients match your search' : 'No clients yet. Add your first client.'}</p>
           </div>
         ) : (
-          <div className="overflow-auto flex-1">
+          <div className="overflow-auto max-h-[calc(100vh-18rem)]">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>

@@ -245,7 +245,7 @@ export function LrsPage() {
         )}
       </div>
 
-      {/* Filters + Pagination */}
+      {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-60">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -268,32 +268,21 @@ export function LrsPage() {
           ]}
           className="h-10 w-40"
         />
-        {totalPages > 0 && (
-          <div className="flex items-center gap-2 text-sm ml-auto">
-            <span className="text-gray-400 whitespace-nowrap">{totalCount} total</span>
-            <button
-              onClick={() => setPage(p => p - 1)}
-              disabled={page === 0}
-              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
-            >
-              Prev
-            </button>
-            <span className="font-medium text-gray-700 whitespace-nowrap">
-              {page + 1} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(p => p + 1)}
-              disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 rounded border bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700"
-            >
-              Next
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border overflow-hidden flex flex-col max-h-[calc(100vh-16rem)]">
+      <div className="bg-white rounded-xl border overflow-hidden">
+        {/* Pagination — top */}
+        <div className="px-4 py-3 border-b flex items-center justify-between text-sm text-gray-500">
+          <span>{totalCount} total LRs</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+            <span className="text-xs">{page + 1} / {Math.max(1, totalPages)}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+          </div>
+        </div>
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading LRs…</div>
         ) : lrs.length === 0 ? (
@@ -302,7 +291,7 @@ export function LrsPage() {
             <p className="text-gray-500 text-sm">No LRs found</p>
           </div>
         ) : (
-          <div className="overflow-auto">
+          <div className="overflow-auto max-h-[calc(100vh-18rem)]">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>

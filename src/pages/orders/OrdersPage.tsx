@@ -487,7 +487,7 @@ export function OrdersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{pageData?.totalElements ?? 0} total orders</p>
+          <p className="text-gray-500 text-sm mt-0.5">Manage and track all orders</p>
         </div>
         {!locked && !isSupervisor && (
           <Button onClick={() => setFormOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
@@ -520,6 +520,17 @@ export function OrdersPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Pagination — top */}
+        <div className="px-4 py-3 border-b flex items-center justify-between text-sm text-gray-500">
+          <span>{pageData?.totalElements ?? 0} total orders</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+            <span className="text-xs">{page + 1} / {Math.max(1, totalPages)}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+          </div>
+        </div>
         {isLoading ? (
           <div className="p-12 text-center text-gray-400 animate-pulse">Loading orders…</div>
         ) : orders.length === 0 ? (
@@ -532,9 +543,9 @@ export function OrdersPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-18rem)]">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Order #</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Client</th>
@@ -591,33 +602,6 @@ export function OrdersPage() {
           </div>
         )}
       </div>
-
-      {/* Pagination */}
-      {orders.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>
-            Page {page + 1} of {Math.max(1, totalPages)} &mdash; {pageData?.totalElements ?? 0} orders
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => p - 1)}
-              disabled={page === 0}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => p + 1)}
-              disabled={page >= totalPages - 1}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
 
       <OrderForm open={formOpen} onClose={onClose} />
     </div>
