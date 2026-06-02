@@ -16,7 +16,7 @@ import { fuelLogsApi } from '@/api/fuelLogs'
 import { tyresApi } from '@/api/tyres'
 import { meterReadingsApi } from '@/api/meterReadings'
 import { compressIfNeeded } from '@/lib/imageCompressor'
-import type { FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading, Order, VehicleAllocation, StaffAllocation } from '@/types'
+import type { AssignmentEvent, AssignmentEventType, FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading, Order, VehicleAllocation, StaffAllocation } from '@/types'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
@@ -24,6 +24,7 @@ import {
   AlertTriangle, Pencil, Power, Camera,
   ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge, Users,
+  Clock, UserPlus, UserMinus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -2430,6 +2431,46 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
 
 // ── Vehicle Assignments Tab ────────────────────────────────────────────────────
 
+const HISTORY_PAGE_SIZE = 20
+
+const EVENT_LABELS: Record<AssignmentEventType, string> = {
+  VEHICLE_ASSIGNED:   'Vehicle assigned to order',
+  VEHICLE_UNASSIGNED: 'Vehicle unassigned from order',
+  STAFF_ASSIGNED:     'Staff assigned',
+  STAFF_UNASSIGNED:   'Staff unassigned',
+}
+
+function EventIcon({ type }: { type: AssignmentEventType }) {
+  if (type === 'VEHICLE_ASSIGNED')   return <Truck    size={14} className="text-green-600" />
+  if (type === 'VEHICLE_UNASSIGNED') return <Truck    size={14} className="text-red-500"   />
+  if (type === 'STAFF_ASSIGNED')     return <UserPlus size={14} className="text-blue-600"  />
+  return                                    <UserMinus size={14} className="text-red-500"  />
+}
+
+function eventDotColor(type: AssignmentEventType) {
+  if (type === 'VEHICLE_ASSIGNED' || type === 'STAFF_ASSIGNED') return 'bg-green-500'
+  return 'bg-red-400'
+}
+
+function fmtDateTime(iso?: string) {
+  if (!iso) return '—'
+  try { return format(parseISO(iso), 'dd MMM yyyy, hh:mm a') } catch { return iso }
+}
+
+function groupByDate(events: AssignmentEvent[]): Array<{ date: string; label: string; items: AssignmentEvent[] }> {
+  const map = new Map<string, AssignmentEvent[]>()
+  for (const e of events) {
+    const day = e.performedAt ? e.performedAt.substring(0, 10) : 'unknown'
+    if (!map.has(day)) map.set(day, [])
+    map.get(day)!.push(e)
+  }
+  return Array.from(map.entries()).map(([date, items]) => ({
+    date,
+    label: (() => { try { return format(parseISO(date), 'dd MMM yyyy') } catch { return date } })(),
+    items,
+  }))
+}
+
 const ALLOC_COLORS: Record<string, string> = {
   PENDING:     'bg-gray-100 text-gray-700',
   ASSIGNED:    'bg-blue-100 text-blue-700',
@@ -2575,9 +2616,11 @@ function AssignStaffDialog({ orderId, allocationId, users, open, onClose, onSucc
 
 function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
   const qc = useQueryClient()
+  const [view, setView]                         = useState<'active' | 'history'>('active')
   const [showAssignOrder, setShowAssignOrder]   = useState(false)
   const [showAssignStaff, setShowAssignStaff]   = useState<{ allocationId: number; orderId: number } | null>(null)
 
+  // ── active assignments ────────────────────────────────────────────────────
   const { data: ordersRes, isLoading } = useQuery({
     queryKey: ['vehicle-assignments', vehicleId],
     queryFn:  () => ordersApi.getAll({ size: 500 }),
@@ -2586,127 +2629,302 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
     queryKey: ['vehicle-assign-users', { hasAttendanceToday: true }],
     queryFn:  () => staffApi.getUsers({ hasAttendanceToday: true }),
   })
-
-  const allOrders   = (ordersRes?.data?.content ?? []) as Order[]
-  const allUsers    = (usersRes?.data ?? []) as { id: number; name: string; role: string }[]
-
+  const allOrders = (ordersRes?.data?.content ?? []) as Order[]
+  const allUsers  = (usersRes?.data ?? []) as { id: number; name: string; role: string }[]
   const myAllocations: Array<{ order: Order; allocation: VehicleAllocation }> = []
   allOrders.forEach(o => {
     ;(o.vehicleAllocations ?? []).forEach(va => {
       if (va.vehicleId === vehicleId) myAllocations.push({ order: o, allocation: va })
     })
   })
-
   const eligibleOrders = allOrders.filter(o =>
     ['PENDING', 'PARTIALLY_ASSIGNED'].includes(o.orderStatus) && o.isActive
   )
 
+  // ── history ───────────────────────────────────────────────────────────────
+  const [historySearch,    setHistorySearch]    = useState('')
+  const [historyEventType, setHistoryEventType] = useState<AssignmentEventType | ''>('')
+  const [historyFrom,      setHistoryFrom]      = useState('')
+  const [historyTo,        setHistoryTo]        = useState('')
+  const [historyPage,      setHistoryPage]      = useState(0)
+
+  const { data: historyRes, isLoading: historyLoading } = useQuery({
+    queryKey: ['vehicle-assignment-history', vehicleId],
+    queryFn:  () => ordersApi.getAssignmentHistory(vehicleId),
+    enabled:  view === 'history',
+  })
+  const allEvents = (historyRes?.data ?? []) as AssignmentEvent[]
+
+  const filteredEvents = allEvents.filter(e => {
+    if (historyEventType && e.eventType !== historyEventType) return false
+    if (historySearch) {
+      const q = historySearch.toLowerCase()
+      if (!e.orderNumber.toLowerCase().includes(q) &&
+          !e.performedByName.toLowerCase().includes(q) &&
+          !(e.personName ?? '').toLowerCase().includes(q)) return false
+    }
+    if (historyFrom && e.performedAt < historyFrom) return false
+    if (historyTo   && e.performedAt > historyTo + 'T23:59:59') return false
+    return true
+  })
+
+  const historyTotalPages = Math.max(1, Math.ceil(filteredEvents.length / HISTORY_PAGE_SIZE))
+  const historyPageEvents = filteredEvents.slice(historyPage * HISTORY_PAGE_SIZE, (historyPage + 1) * HISTORY_PAGE_SIZE)
+  const grouped = groupByDate(historyPageEvents)
+
+  // ── mutations ─────────────────────────────────────────────────────────────
   const unassignVehicle = useMutation({
     mutationFn: ({ orderId, allocationId }: { orderId: number; allocationId: number }) =>
       ordersApi.unassignVehicle(orderId, allocationId),
     onSuccess: () => {
       toast.success('Vehicle unassigned')
       qc.invalidateQueries({ queryKey: ['vehicle-assignments', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle-assignment-history', vehicleId] })
       qc.invalidateQueries({ queryKey: ['vehicle', String(vehicleId)] })
     },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed to unassign') ?? 'Failed'),
   })
-
   const unassignStaff = useMutation({
     mutationFn: ({ orderId, staffAllocationId }: { orderId: number; staffAllocationId: number }) =>
       ordersApi.unassignStaff(orderId, staffAllocationId),
     onSuccess: () => {
       toast.success('Staff unassigned')
       qc.invalidateQueries({ queryKey: ['vehicle-assignments', vehicleId] })
+      qc.invalidateQueries({ queryKey: ['vehicle-assignment-history', vehicleId] })
     },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed to unassign staff') ?? 'Failed'),
   })
 
-  if (isLoading) return <div className="py-16 text-center text-gray-400 text-sm">Loading…</div>
+  if (isLoading && view === 'active') return <div className="py-16 text-center text-gray-400 text-sm">Loading…</div>
 
   return (
     <div className="space-y-4">
+      {/* sub-tab toggle */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Order Assignments</p>
-        <Button size="sm" onClick={() => setShowAssignOrder(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
-          <Plus size={13} /> Assign to Order
-        </Button>
+        <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+          <button
+            onClick={() => setView('active')}
+            className={cn('px-4 py-1.5 transition-colors', view === 'active' ? 'bg-feros-navy text-white' : 'text-gray-500 hover:bg-gray-50')}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setView('history')}
+            className={cn('px-4 py-1.5 transition-colors flex items-center gap-1.5', view === 'history' ? 'bg-feros-navy text-white' : 'text-gray-500 hover:bg-gray-50')}
+          >
+            <Clock size={11} /> History
+          </button>
+        </div>
+        {view === 'active' && (
+          <Button size="sm" onClick={() => setShowAssignOrder(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
+            <Plus size={13} /> Assign to Order
+          </Button>
+        )}
       </div>
 
-      {myAllocations.length === 0 ? (
-        <div className="py-12 text-center">
-          <Truck size={32} className="mx-auto text-gray-200 mb-3" />
-          <p className="text-sm text-gray-500">No order assignments yet</p>
-          <p className="text-xs text-gray-400 mt-1">Assign this vehicle to a pending order to get started</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {myAllocations.map(({ order, allocation }) => (
-            <div key={allocation.id} className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-feros-navy">{order.orderNumber}</p>
-                  <p className="text-xs text-gray-500">{order.clientName} · {order.sourceCityName} → {order.destinationCityName}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', ALLOC_COLORS[allocation.allocationStatus] ?? 'bg-gray-100 text-gray-600')}>
-                    {allocation.allocationStatus}
-                  </span>
-                  {!['COMPLETED', 'CANCELLED'].includes(allocation.allocationStatus) && (
-                    <button
-                      onClick={() => unassignVehicle.mutate({ orderId: order.id, allocationId: allocation.id })}
-                      disabled={unassignVehicle.isPending}
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                      title="Unassign from order"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="px-4 py-3 space-y-3">
-                <div className="grid grid-cols-3 gap-3 text-xs">
-                  <div><span className="text-gray-500">Weight: </span><span className="font-medium">{allocation.allocatedWeight} T</span></div>
-                  <div><span className="text-gray-500">Load: </span><span className="font-medium">{fmtDate(allocation.expectedLoadDate)}</span></div>
-                  <div><span className="text-gray-500">Delivery: </span><span className="font-medium">{fmtDate(allocation.expectedDeliveryDate)}</span></div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-xs font-medium text-gray-500">Staff</p>
-                    {!['COMPLETED', 'CANCELLED'].includes(allocation.allocationStatus) && (
-                      <button
-                        onClick={() => setShowAssignStaff({ allocationId: allocation.id, orderId: order.id })}
-                        className="text-xs text-feros-navy hover:text-feros-navy/80 flex items-center gap-0.5"
-                      >
-                        <Plus size={11} /> Add Staff
-                      </button>
-                    )}
-                  </div>
-                  {(allocation.staffAllocations ?? []).length === 0 ? (
-                    <p className="text-xs text-amber-600">No staff assigned</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {(allocation.staffAllocations ?? []).map((sa: StaffAllocation) => (
-                        <div key={sa.id} className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-1">
-                          <span className="text-xs font-medium text-blue-800">{sa.userName}</span>
-                          <span className="text-xs text-blue-400">{sa.roleName}</span>
-                          {!['COMPLETED', 'CANCELLED'].includes(allocation.allocationStatus) && (
-                            <button
-                              onClick={() => unassignStaff.mutate({ orderId: order.id, staffAllocationId: sa.id })}
-                              className="text-blue-400 hover:text-red-500 ml-0.5"
-                              title="Remove"
-                            >
-                              <X size={11} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+      {/* ── active view ── */}
+      {view === 'active' && (
+        <>
+          {myAllocations.length === 0 ? (
+            <div className="py-12 text-center">
+              <Truck size={32} className="mx-auto text-gray-200 mb-3" />
+              <p className="text-sm text-gray-500">No active order assignments</p>
+              <p className="text-xs text-gray-400 mt-1">Assign this vehicle to a pending order to get started</p>
             </div>
-          ))}
+          ) : (
+            <div className="space-y-3">
+              {myAllocations.map(({ order, allocation }) => (
+                <div key={allocation.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-feros-navy">{order.orderNumber}</p>
+                      <p className="text-xs text-gray-500">{order.clientName} · {order.sourceCityName} → {order.destinationCityName}</p>
+                      {allocation.allocatedByName && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Assigned by <span className="font-medium text-gray-500">{allocation.allocatedByName}</span>
+                          {allocation.createdAt && <span> · {fmtDateTime(allocation.createdAt)}</span>}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', ALLOC_COLORS[allocation.allocationStatus] ?? 'bg-gray-100 text-gray-600')}>
+                        {allocation.allocationStatus}
+                      </span>
+                      {!['COMPLETED', 'CANCELLED'].includes(allocation.allocationStatus) && (
+                        <button
+                          onClick={() => unassignVehicle.mutate({ orderId: order.id, allocationId: allocation.id })}
+                          disabled={unassignVehicle.isPending}
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                          title="Unassign from order"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 space-y-3">
+                    <div className="grid grid-cols-3 gap-3 text-xs">
+                      <div><span className="text-gray-500">Weight: </span><span className="font-medium">{allocation.allocatedWeight} T</span></div>
+                      <div><span className="text-gray-500">Load: </span><span className="font-medium">{fmtDate(allocation.expectedLoadDate)}</span></div>
+                      <div><span className="text-gray-500">Delivery: </span><span className="font-medium">{fmtDate(allocation.expectedDeliveryDate)}</span></div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-xs font-medium text-gray-500">Staff</p>
+                        {!['COMPLETED', 'CANCELLED'].includes(allocation.allocationStatus) && (
+                          <button
+                            onClick={() => setShowAssignStaff({ allocationId: allocation.id, orderId: order.id })}
+                            className="text-xs text-feros-navy hover:text-feros-navy/80 flex items-center gap-0.5"
+                          >
+                            <Plus size={11} /> Add Staff
+                          </button>
+                        )}
+                      </div>
+                      {(allocation.staffAllocations ?? []).length === 0 ? (
+                        <p className="text-xs text-amber-600">No staff assigned</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {(allocation.staffAllocations ?? []).map((sa: StaffAllocation) => (
+                            <div key={sa.id} className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-1">
+                              <span className="text-xs font-medium text-blue-800">{sa.userName}</span>
+                              <span className="text-xs text-blue-400">{sa.roleName}</span>
+                              {!['COMPLETED', 'CANCELLED'].includes(allocation.allocationStatus) && (
+                                <button
+                                  onClick={() => unassignStaff.mutate({ orderId: order.id, staffAllocationId: sa.id })}
+                                  className="text-blue-400 hover:text-red-500 ml-0.5"
+                                  title="Remove"
+                                >
+                                  <X size={11} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── history view ── */}
+      {view === 'history' && (
+        <div className="space-y-3">
+          {/* filters */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative flex-1 min-w-[160px]">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search order, person…"
+                value={historySearch}
+                onChange={e => { setHistorySearch(e.target.value); setHistoryPage(0) }}
+                className="w-full pl-8 pr-3 h-8 text-xs border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-feros-navy/30"
+              />
+            </div>
+            <select
+              value={historyEventType}
+              onChange={e => { setHistoryEventType(e.target.value as AssignmentEventType | ''); setHistoryPage(0) }}
+              className="h-8 text-xs border border-gray-200 rounded-lg px-2 outline-none focus:ring-1 focus:ring-feros-navy/30 bg-white"
+            >
+              <option value="">All events</option>
+              <option value="VEHICLE_ASSIGNED">Vehicle assigned</option>
+              <option value="VEHICLE_UNASSIGNED">Vehicle unassigned</option>
+              <option value="STAFF_ASSIGNED">Staff assigned</option>
+              <option value="STAFF_UNASSIGNED">Staff unassigned</option>
+            </select>
+            <input
+              type="date"
+              value={historyFrom}
+              onChange={e => { setHistoryFrom(e.target.value); setHistoryPage(0) }}
+              className="h-8 text-xs border border-gray-200 rounded-lg px-2 outline-none focus:ring-1 focus:ring-feros-navy/30"
+            />
+            <input
+              type="date"
+              value={historyTo}
+              onChange={e => { setHistoryTo(e.target.value); setHistoryPage(0) }}
+              className="h-8 text-xs border border-gray-200 rounded-lg px-2 outline-none focus:ring-1 focus:ring-feros-navy/30"
+            />
+            {(historySearch || historyEventType || historyFrom || historyTo) && (
+              <button
+                onClick={() => { setHistorySearch(''); setHistoryEventType(''); setHistoryFrom(''); setHistoryTo(''); setHistoryPage(0) }}
+                className="h-8 px-2 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+              >
+                <X size={12} /> Clear
+              </button>
+            )}
+            <span className="ml-auto text-xs text-gray-400">{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}</span>
+          </div>
+
+          {/* pagination bar */}
+          {historyTotalPages > 1 && (
+            <div className="flex items-center justify-end gap-2">
+              <button
+                disabled={historyPage === 0}
+                onClick={() => setHistoryPage(p => p - 1)}
+                className="h-7 px-2.5 text-xs border border-gray-200 rounded-md disabled:opacity-40 hover:bg-gray-50"
+              >Prev</button>
+              <span className="text-xs text-gray-500">{historyPage + 1} / {historyTotalPages}</span>
+              <button
+                disabled={historyPage >= historyTotalPages - 1}
+                onClick={() => setHistoryPage(p => p + 1)}
+                className="h-7 px-2.5 text-xs border border-gray-200 rounded-md disabled:opacity-40 hover:bg-gray-50"
+              >Next</button>
+            </div>
+          )}
+
+          {/* timeline */}
+          {historyLoading ? (
+            <div className="py-12 text-center text-gray-400 text-sm">Loading history…</div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="py-12 text-center">
+              <Clock size={32} className="mx-auto text-gray-200 mb-3" />
+              <p className="text-sm text-gray-500">No events yet</p>
+              <p className="text-xs text-gray-400 mt-1">Assignment and unassignment actions will appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {grouped.map(({ date, label, items }) => (
+                <div key={date}>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{label}</p>
+                  <div className="relative pl-6 space-y-0">
+                    {/* vertical line */}
+                    <div className="absolute left-2 top-2 bottom-2 w-px bg-gray-200" />
+                    {items.map((e, idx) => (
+                      <div key={e.id} className={cn('relative flex gap-3 pb-4', idx === items.length - 1 && 'pb-0')}>
+                        {/* dot */}
+                        <div className={cn('absolute -left-[18px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white', eventDotColor(e.eventType))} />
+                        {/* content */}
+                        <div className="flex-1 bg-white border border-gray-100 rounded-lg px-3 py-2.5 shadow-sm">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <EventIcon type={e.eventType} />
+                              <span className="text-xs font-medium text-gray-800">
+                                {e.eventType === 'STAFF_ASSIGNED' || e.eventType === 'STAFF_UNASSIGNED'
+                                  ? <>{e.personName} <span className="text-gray-400 font-normal">({e.personRole})</span> {e.eventType === 'STAFF_ASSIGNED' ? 'assigned' : 'unassigned'}</>
+                                  : EVENT_LABELS[e.eventType]
+                                }
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
+                              {e.performedAt ? format(parseISO(e.performedAt), 'hh:mm a') : '—'}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                            <span className="text-xs text-gray-500">Order: <span className="font-medium text-feros-navy">{e.orderNumber}</span></span>
+                            <span className="text-xs text-gray-400">by <span className="font-medium text-gray-600">{e.performedByName}</span></span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -2718,6 +2936,7 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
           onClose={() => setShowAssignOrder(false)}
           onSuccess={() => {
             qc.invalidateQueries({ queryKey: ['vehicle-assignments', vehicleId] })
+            qc.invalidateQueries({ queryKey: ['vehicle-assignment-history', vehicleId] })
             qc.invalidateQueries({ queryKey: ['vehicle', String(vehicleId)] })
           }}
         />
@@ -2729,7 +2948,10 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
           users={allUsers}
           open={!!showAssignStaff}
           onClose={() => setShowAssignStaff(null)}
-          onSuccess={() => qc.invalidateQueries({ queryKey: ['vehicle-assignments', vehicleId] })}
+          onSuccess={() => {
+            qc.invalidateQueries({ queryKey: ['vehicle-assignments', vehicleId] })
+            qc.invalidateQueries({ queryKey: ['vehicle-assignment-history', vehicleId] })
+          }}
         />
       )}
     </div>

@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, Order, OrderPaymentStatus, OrderStatus, PageResponse, VehicleAllocation, StaffAllocation } from '@/types'
+import type { ApiResponse, AssignmentEvent, Order, OrderPaymentStatus, OrderStatus, PageResponse, VehicleAllocation, StaffAllocation } from '@/types'
 
 interface AssignVehicleRequest {
   vehicleId: number; allocatedWeight: number
@@ -27,4 +27,5 @@ export const ordersApi = {
   assignStaff:         (id: number, data: AssignStaffRequest)   => apiClient.post<ApiResponse<StaffAllocation>>(`/orders/${id}/assign-staff`, data).then(r => r.data),
   unassignStaff:       (id: number, staffAllocationId: number)  => apiClient.delete<ApiResponse<null>>(`/orders/${id}/staff-allocations/${staffAllocationId}`).then(r => r.data),
   updatePaymentStatus: (id: number, status: OrderPaymentStatus) => apiClient.patch<ApiResponse<Order>>(`/orders/${id}/payment-status`, null, { params: { status } }).then(r => r.data),
+  getAssignmentHistory: (vehicleId: number) => apiClient.get<ApiResponse<AssignmentEvent[]>>(`/orders/assignment-history/vehicle/${vehicleId}`).then(r => r.data),
 }
