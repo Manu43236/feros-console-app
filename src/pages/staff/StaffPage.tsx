@@ -308,7 +308,9 @@ export function StaffPage() {
   const logoUrl = useAuthStore(s => s.logoUrl)
   const role    = useAuthStore(s => s.role)
   const isSupervisor = role === 'SUPERVISOR'
+  const PAGE_SIZE = 20
   const [search, setSearch]             = useState('')
+  const [page, setPage]                 = useState(0)
   const [addOpen, setAddOpen]           = useState(false)
   const [bulkOpen, setBulkOpen]         = useState(false)
   const [roleFilter, setRoleFilter]     = useState('')
@@ -358,6 +360,8 @@ export function StaffPage() {
     const matchCrew    = !isSupervisor || s.roleName === 'DRIVER' || s.roleName === 'CLEANER'
     return matchSearch && matchRole && matchStatus && matchCrew
   })
+  const totalPages = Math.max(1, Math.ceil(staff.length / PAGE_SIZE))
+  const pageRows   = staff.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   const roles = isSupervisor
     ? ['DRIVER', 'CLEANER']
@@ -387,11 +391,11 @@ export function StaffPage() {
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input placeholder="Search by name or phone…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Search by name or phone…" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} className="pl-9" />
         </div>
         <select
           value={roleFilter}
-          onChange={e => setRoleFilter(e.target.value)}
+          onChange={e => { setRoleFilter(e.target.value); setPage(0) }}
           className="h-10 px-3 rounded-md border border-input bg-background text-sm"
         >
           <option value="">All Roles</option>
@@ -399,7 +403,7 @@ export function StaffPage() {
         </select>
         <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
+          onChange={e => { setStatusFilter(e.target.value); setPage(0) }}
           className="h-10 px-3 rounded-md border border-input bg-background text-sm"
         >
           <option value="">All Status</option>
@@ -410,6 +414,17 @@ export function StaffPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Pagination — top */}
+        <div className="px-4 py-3 border-b flex items-center justify-between text-sm text-gray-500">
+          <span>{staff.length} total staff members</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+            <span className="text-xs">{page + 1} / {totalPages}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+          </div>
+        </div>
         {isLoading ? (
           <div className="p-12 text-center text-gray-400 animate-pulse">Loading staff…</div>
         ) : staff.length === 0 ? (
@@ -418,22 +433,22 @@ export function StaffPage() {
             <p className="text-sm">No staff members found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-18rem)]">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Staff</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Role</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Designation</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</th>
-                  {!isSupervisor && <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">PIN</th>}
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Trips</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Current</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Staff</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Role</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Designation</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Phone</th>
+                  {!isSupervisor && <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">PIN</th>}
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Trips</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Current</th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
               <tbody>
-                {staff.map(s => (
+                {pageRows.map(s => (
                   <tr
                     key={s.userId}
                     onClick={() => navigate(`/staff/${s.userId}`)}
@@ -442,7 +457,7 @@ export function StaffPage() {
                       !s.isActive && 'opacity-50'
                     )}
                   >
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         {logoUrl ? (
                           <img src={logoUrl} alt="logo" className={cn('w-8 h-8 rounded-full object-contain shrink-0', attendanceBorderMap.get(s.userId) ?? 'ring-2 ring-gray-400')} />
@@ -454,27 +469,27 @@ export function StaffPage() {
                         <p className="text-sm font-semibold text-gray-800">{s.userName}</p>
                       </div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <span className={cn('text-xs font-medium px-2 py-1 rounded-full', getRoleColor(s.roleName))}>
                         {s.roleName}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{s.designationName ?? '—'}</td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{s.designationName ?? '—'}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 text-sm text-gray-600">
                         <Phone size={12} className="text-gray-400" />
                         {s.userPhone}
                       </div>
                     </td>
                     {!isSupervisor && (
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <PinCell pin={s.pin ?? null} />
                       </td>
                     )}
-                    <td className="py-3 px-4 text-sm text-gray-600 font-medium">
+                    <td className="py-3 px-4 text-sm text-gray-600 font-medium whitespace-nowrap">
                       {s.completedTripsCount}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       {!s.isActive ? (
                         <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-500 w-fit">Inactive</span>
                       ) : s.isAssigned ? (

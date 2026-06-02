@@ -1010,7 +1010,9 @@ export function VehiclesPage() {
   const currentRole = useAuthStore(s => s.role)
   const isSupervisor   = currentRole === 'SUPERVISOR'
   const canAssignStaff = ['ADMIN', 'OFFICE_STAFF', 'SUPERVISOR'].includes(currentRole ?? '')
+  const PAGE_SIZE = 20
   const [search, setSearch]           = useState('')
+  const [page, setPage]               = useState(0)
   const [formOpen, setFormOpen]       = useState(false)
   const [bulkOpen, setBulkOpen]       = useState(false)
   const [typeFilter, setTypeFilter]   = useState('')
@@ -1040,6 +1042,8 @@ export function VehiclesPage() {
     const matchAssign = !assignFilter || v.currentStatusType === assignFilter
     return matchSearch && matchType && matchOwner && matchStatus && matchAssign
   })
+  const totalPages = Math.max(1, Math.ceil(vehicles.length / PAGE_SIZE))
+  const pageRows   = vehicles.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   function openCreate() { setFormOpen(true) }
   function onClose()    { setFormOpen(false) }
@@ -1083,13 +1087,13 @@ export function VehiclesPage() {
           <Input
             placeholder="Search by registration, brand, type…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setPage(0) }}
             className="pl-9"
           />
         </div>
         <SearchableSelect
           value={typeFilter}
-          onValueChange={setTypeFilter}
+          onValueChange={v => { setTypeFilter(v); setPage(0) }}
           options={[
             { value: '', label: 'All Types' },
             ...(typesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name })),
@@ -1098,7 +1102,7 @@ export function VehiclesPage() {
         />
         <SearchableSelect
           value={ownerFilter}
-          onValueChange={setOwnerFilter}
+          onValueChange={v => { setOwnerFilter(v); setPage(0) }}
           options={[
             { value: '', label: 'All Ownership' },
             ...(ownershipRes?.data ?? []).map(o => ({ value: String(o.id), label: o.name })),
@@ -1107,7 +1111,7 @@ export function VehiclesPage() {
         />
         <SearchableSelect
           value={statusFilter}
-          onValueChange={setStatusFilter}
+          onValueChange={v => { setStatusFilter(v); setPage(0) }}
           options={[
             { value: '', label: 'All Status' },
             { value: 'active', label: 'Active' },
@@ -1117,7 +1121,7 @@ export function VehiclesPage() {
         />
         <SearchableSelect
           value={assignFilter}
-          onValueChange={setAssignFilter}
+          onValueChange={v => { setAssignFilter(v); setPage(0) }}
           options={[
             { value: '',          label: 'All Trips' },
             { value: 'ASSIGNED',  label: 'Assigned' },
@@ -1130,6 +1134,17 @@ export function VehiclesPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Pagination — top */}
+        <div className="px-4 py-3 border-b flex items-center justify-between text-sm text-gray-500">
+          <span>{vehicles.length} total vehicles</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+            <span className="text-xs">{page + 1} / {totalPages}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+          </div>
+        </div>
         {isLoading ? (
           <div className="p-12 text-center text-gray-400 animate-pulse">Loading vehicles…</div>
         ) : vehicles.length === 0 ? (
@@ -1138,29 +1153,29 @@ export function VehiclesPage() {
             <p className="text-sm">{search ? 'No vehicles match your search' : 'No vehicles yet. Add your first vehicle.'}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-18rem)]">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Vehicle</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Type / Capacity</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Ownership</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Current Status</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Driver</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Cleaner</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Active</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Vehicle</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Type / Capacity</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Ownership</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Current Status</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Driver</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Cleaner</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Active</th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
               <tbody>
-                {vehicles.map(v => {
+                {pageRows.map(v => {
                   return (
                     <tr
                       key={v.id}
                       onClick={() => navigate(`/vehicles/${v.id}`)}
                       className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer"
                     >
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             'w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden',
@@ -1186,18 +1201,18 @@ export function VehiclesPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <p className="text-sm text-gray-700">{v.vehicleTypeName ?? '—'}</p>
                         {v.capacityInTons && (
                           <p className="text-xs text-gray-400">{v.capacityInTons}T · {v.fuelTypeName ?? ''}</p>
                         )}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <span className="text-xs bg-gray-50 text-gray-700 px-2 py-1 rounded-full">
                           {v.ownershipTypeName ?? '—'}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         {v.currentStatusType && ['ASSIGNED', 'ON_TRIP'].includes(v.currentStatusType) ? (
                           <div className="flex flex-col gap-0.5">
                             <span className={`text-xs px-2 py-1 rounded-full font-medium w-fit ${vehicleStatusBadge[v.currentStatusType as VehicleStatusType]}`}>
@@ -1225,7 +1240,7 @@ export function VehiclesPage() {
                           </div>
                         ) : <span className="text-gray-300 text-sm">—</span>}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           {v.currentDriverName
                             ? <span className="text-xs font-medium text-gray-800">{v.currentDriverName}</span>
@@ -1243,7 +1258,7 @@ export function VehiclesPage() {
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           {v.currentCleanerName
                             ? <span className="text-xs font-medium text-gray-800">{v.currentCleanerName}</span>
@@ -1261,7 +1276,7 @@ export function VehiclesPage() {
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <Badge className={cn('text-xs', v.isActive
                           ? 'bg-green-50 text-green-700 hover:bg-green-50'
                           : 'bg-red-50 text-red-700 hover:bg-red-50'
