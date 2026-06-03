@@ -191,10 +191,12 @@ export default function VehicleReportsPage() {
   const [days, setDays] = useState(30)
   const [downloading, setDownloading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [vehicleFilter, setVehicleFilter] = useState('ALL')
 
   function handleTabChange(key: TabKey) {
     setTab(key)
     setStatusFilter('ALL')
+    setVehicleFilter('ALL')
   }
 
   function applyPreset(p: DatePreset) {
@@ -307,6 +309,35 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
           )
         })()}
 
+        {/* Vehicle filter — all tabs except fleet-status */}
+        {tab !== 'fleet-status' && (() => {
+          const allRows: { registrationNumber: string }[] =
+            tab === 'fuel-mileage' ? (fuelQuery.data?.data ?? []) :
+            tab === 'breakdowns'   ? (breakdownQuery.data?.data ?? []) :
+            tab === 'doc-expiry'   ? (docExpiryQuery.data?.data ?? []) :
+            (maintenanceQuery.data?.data ?? [])
+          const vehicles = Array.from(new Set(allRows.map(r => r.registrationNumber))).sort()
+          const vehicleOptions = [
+            { value: 'ALL', label: `All Vehicles (${allRows.length})` },
+            ...vehicles.map(v => ({ value: v, label: v })),
+          ]
+          return (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
+              <Select value={vehicleFilter} onValueChange={setVehicleFilter}>
+                <SelectTrigger className="w-52">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicleOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )
+        })()}
+
         {/* Document Expiry — days ahead */}
         {tab === 'doc-expiry' && (
           <div>
@@ -378,10 +409,10 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
         rows={(fleetQuery.data?.data ?? []).filter(r => statusFilter === 'ALL' || r.currentStatus === statusFilter)}
         loading={fleetQuery.isLoading}
       />}
-{tab === 'fuel-mileage'  && <FuelMileageTable rows={fuelQuery.data?.data ?? []}        loading={fuelQuery.isLoading} />}
-      {tab === 'breakdowns'    && <BreakdownsTable  rows={breakdownQuery.data?.data ?? []}   loading={breakdownQuery.isLoading} />}
-      {tab === 'doc-expiry'    && <DocExpiryTable   rows={docExpiryQuery.data?.data ?? []}   loading={docExpiryQuery.isLoading} />}
-      {tab === 'maintenance'   && <MaintenanceTable rows={maintenanceQuery.data?.data ?? []} loading={maintenanceQuery.isLoading} />}
+{tab === 'fuel-mileage'  && <FuelMileageTable rows={(fuelQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}        loading={fuelQuery.isLoading} />}
+      {tab === 'breakdowns'    && <BreakdownsTable  rows={(breakdownQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}   loading={breakdownQuery.isLoading} />}
+      {tab === 'doc-expiry'    && <DocExpiryTable   rows={(docExpiryQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}   loading={docExpiryQuery.isLoading} />}
+      {tab === 'maintenance'   && <MaintenanceTable rows={(maintenanceQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)} loading={maintenanceQuery.isLoading} />}
     </div>
   )
 }
