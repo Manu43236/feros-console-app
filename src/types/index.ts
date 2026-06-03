@@ -493,14 +493,16 @@ export interface StaffDocumentAlert {
 // ─── Reports ──────────────────────────────────────────────────────────────────
 export interface LrRegisterRow {
   lrId: number; lrNumber: string; lrDate: string
-  orderNumber: string; clientId: number; clientName: string
+  orderNumber: string; clientName: string
   vehicleRegistrationNumber: string
+  driverName: string; cleanerName: string
   fromCity: string; fromState: string; toCity: string; toState: string
   materialType: string
   allocatedWeight?: number; loadedWeight?: number; deliveredWeight?: number
   weightVariance?: number; isOverloaded?: boolean
   loadedAt?: string; deliveredAt?: string
-  freightRateType: string; freightRate: number; lrStatus: string
+  ewayBillNumber?: string; ewayBillDate?: string; ewayBillValidUpto?: string
+  lrStatus: string; remarks?: string
 }
 export interface InvoiceOutstandingRow {
   invoiceId: number; invoiceNumber: string
@@ -1366,34 +1368,6 @@ export interface AttendanceSummaryRow {
   presentPercent: number
 }
 
-export interface LrRegisterRow {
-  lrId: number
-  lrNumber: string
-  lrDate: string
-  orderNumber: string
-  clientName: string
-  vehicleRegistrationNumber: string
-  driverName: string
-  cleanerName: string
-  fromCity: string
-  fromState: string
-  toCity: string
-  toState: string
-  materialType: string
-  allocatedWeight: number | null
-  loadedWeight: number | null
-  deliveredWeight: number | null
-  weightVariance: number | null
-  isOverloaded: boolean | null
-  loadedAt: string | null
-  deliveredAt: string | null
-  ewayBillNumber: string | null
-  ewayBillDate: string | null
-  ewayBillValidUpto: string | null
-  lrStatus: string
-  remarks: string | null
-}
-
 export interface WeightDiscrepancyRow {
   lrId: number
   lrNumber: string
@@ -1403,11 +1377,11 @@ export interface WeightDiscrepancyRow {
   fromCity: string
   toCity: string
   materialType: string
-  allocatedWeight: number | null
-  loadedWeight: number | null
-  deliveredWeight: number | null
-  weightVariance: number | null
-  isOverloaded: boolean | null
+  allocatedWeight?: number
+  loadedWeight?: number
+  deliveredWeight?: number
+  weightVariance?: number
+  isOverloaded?: boolean
   lrStatus: string
 }
 

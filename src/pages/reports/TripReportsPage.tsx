@@ -84,7 +84,7 @@ function ReportTable({ headers, rows, loading }: {
 
 // ── Formatters ─────────────────────────────────────────────────────────────────
 const dash = (v: unknown) => (v != null && v !== '' ? String(v) : '—')
-function fmtDateTime(dt: string | null) {
+function fmtDateTime(dt: string | null | undefined) {
   if (!dt) return '—'
   return new Date(dt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
 }
