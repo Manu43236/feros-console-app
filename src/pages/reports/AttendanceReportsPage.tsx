@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Download, Users, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import type { AttendanceDailyRow, AttendanceSummaryRow } from '@/types'
@@ -240,31 +240,24 @@ export default function AttendanceReportsPage() {
         {/* Vehicle filter */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
-          <Select value={vehicleFilter} onValueChange={setVehicleFilter}>
-            <SelectTrigger className="w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {vehicleOptions.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={vehicleFilter}
+            onValueChange={setVehicleFilter}
+            options={vehicleOptions}
+            className="w-52"
+          />
         </div>
 
         {/* Role filter */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ROLES.map(r => (
-                <SelectItem key={r} value={r}>{r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ')}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={roleFilter}
+            onValueChange={setRoleFilter}
+            options={ROLES.map(r => ({ value: r, label: r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ') }))}
+            showSearch={false}
+            className="w-44"
+          />
         </div>
 
         {/* Period presets */}

@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import type {
@@ -295,16 +295,13 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
           return (
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+                options={statusOptions}
+                showSearch={false}
+                className="w-52"
+              />
             </div>
           )
         })()}
@@ -324,16 +321,12 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
           return (
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
-              <Select value={vehicleFilter} onValueChange={setVehicleFilter}>
-                <SelectTrigger className="w-52">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehicleOptions.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={vehicleFilter}
+                onValueChange={setVehicleFilter}
+                options={vehicleOptions}
+                className="w-52"
+              />
             </div>
           )
         })()}
