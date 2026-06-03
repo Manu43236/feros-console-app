@@ -204,7 +204,6 @@ export default function VehicleReportsPage() {
   const [preset, setPreset] = useState<DatePreset>('this-month')
   const [startDate, setStartDate] = useState(thisMonthStart())
   const [endDate, setEndDate] = useState(todayStr())
-  const [singleDate, setSingleDate] = useState(todayStr())
   const [days, setDays] = useState(30)
   const [downloading, setDownloading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -223,8 +222,8 @@ export default function VehicleReportsPage() {
 
   // ── Queries (only active tab fetches) ──
   const fleetQuery = useQuery({
-    queryKey: ['report-fleet-status', singleDate],
-    queryFn: () => reportsApi.getFleetStatus(singleDate),
+    queryKey: ['report-fleet-status'],
+    queryFn: () => reportsApi.getFleetStatus(todayStr()),
     enabled: tab === 'fleet-status',
   })
   const utilizationQuery = useQuery({
@@ -256,7 +255,7 @@ export default function VehicleReportsPage() {
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
-      if (tab === 'fleet-status') await reportsApi.exportFleetStatus(singleDate, format)
+      if (tab === 'fleet-status') await reportsApi.exportFleetStatus(todayStr(), format)
       else if (tab === 'utilization') await reportsApi.exportVehicleUtilization(startDate, endDate, format)
       else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, endDate, format)
       else if (tab === 'breakdowns') await reportsApi.exportBreakdowns(startDate, endDate, format)
@@ -300,7 +299,7 @@ export default function VehicleReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
-        {/* Fleet Status — date + status filter */}
+        {/* Fleet Status — status filter only (always today) */}
         {tab === 'fleet-status' && (() => {
           const allRows = fleetQuery.data?.data ?? []
           const counts = allRows.reduce<Record<string, number>>((acc, r) => {
@@ -314,25 +313,19 @@ export default function VehicleReportsPage() {
               .map(s => ({ value: s, label: `${s.replace(/_/g, ' ')} (${counts[s]})` })),
           ]
           return (
-            <>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
-                <Input type="date" value={singleDate} onChange={e => setSingleDate(e.target.value)} className="w-40" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )
         })()}
 
