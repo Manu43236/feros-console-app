@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, BarChart2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import type {
@@ -195,62 +196,7 @@ function MaintenanceTable({ rows, loading }: { rows: MaintenanceServiceRow[]; lo
   />
 }
 
-// ── Status summary cards ───────────────────────────────────────────────────────
 const STATUS_ORDER = ['AVAILABLE', 'ASSIGNED', 'ON_TRIP', 'IN_REPAIR', 'BREAKDOWN', 'OTHER']
-
-function FleetStatusCards({
-  rows, activeFilter, onFilter,
-}: {
-  rows: FleetStatusRow[]
-  activeFilter: string
-  onFilter: (s: string) => void
-}) {
-  const counts = rows.reduce<Record<string, number>>((acc, r) => {
-    acc[r.currentStatus] = (acc[r.currentStatus] ?? 0) + 1
-    return acc
-  }, {})
-
-  const pills = [
-    { key: 'ALL', label: 'All Vehicles', count: rows.length, dot: 'bg-gray-400' },
-    ...STATUS_ORDER
-      .filter(s => counts[s] != null)
-      .map(s => ({ key: s, label: s.replace(/_/g, ' '), count: counts[s], dot: DOT_COLORS[s] ?? 'bg-gray-400' })),
-    ...Object.keys(counts)
-      .filter(s => !STATUS_ORDER.includes(s))
-      .map(s => ({ key: s, label: s.replace(/_/g, ' '), count: counts[s], dot: 'bg-gray-400' })),
-  ]
-
-  return (
-    <div className="flex flex-wrap gap-3">
-      {pills.map(({ key, label, count, dot }) => (
-        <button
-          key={key}
-          onClick={() => onFilter(key)}
-          className={cn(
-            'flex items-center gap-3 bg-white border rounded-xl px-4 py-3 transition-all text-left',
-            activeFilter === key
-              ? 'border-feros-navy ring-1 ring-feros-navy shadow-sm'
-              : 'hover:border-gray-300 hover:shadow-sm'
-          )}
-        >
-          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dot}`} />
-          <div>
-            <p className="text-xs text-gray-500 whitespace-nowrap">{label}</p>
-            <p className="text-xl font-bold text-gray-900 leading-tight">{count}</p>
-          </div>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-const DOT_COLORS: Record<string, string> = {
-  AVAILABLE:   'bg-green-500',
-  ASSIGNED:    'bg-blue-500',
-  ON_TRIP:     'bg-orange-500',
-  IN_REPAIR:   'bg-yellow-500',
-  BREAKDOWN:   'bg-red-500',
-}
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function VehicleReportsPage() {
@@ -354,13 +300,41 @@ export default function VehicleReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
-        {/* Fleet Status — single date */}
-        {tab === 'fleet-status' && (
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
-            <Input type="date" value={singleDate} onChange={e => setSingleDate(e.target.value)} className="w-40" />
-          </div>
-        )}
+        {/* Fleet Status — date + status filter */}
+        {tab === 'fleet-status' && (() => {
+          const allRows = fleetQuery.data?.data ?? []
+          const counts = allRows.reduce<Record<string, number>>((acc, r) => {
+            acc[r.currentStatus] = (acc[r.currentStatus] ?? 0) + 1
+            return acc
+          }, {})
+          const statusOptions = [
+            { value: 'ALL', label: `All (${allRows.length})` },
+            ...[...STATUS_ORDER, ...Object.keys(counts).filter(s => !STATUS_ORDER.includes(s))]
+              .filter(s => counts[s] != null)
+              .map(s => ({ value: s, label: `${s.replace(/_/g, ' ')} (${counts[s]})` })),
+          ]
+          return (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                <Input type="date" value={singleDate} onChange={e => setSingleDate(e.target.value)} className="w-40" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )
+        })()}
 
         {/* Document Expiry — days ahead */}
         {tab === 'doc-expiry' && (
@@ -427,15 +401,6 @@ export default function VehicleReportsPage() {
           </Button>
         </div>
       </div>
-
-      {/* Fleet status filter cards */}
-      {tab === 'fleet-status' && !fleetQuery.isLoading && (fleetQuery.data?.data?.length ?? 0) > 0 && (
-        <FleetStatusCards
-          rows={fleetQuery.data!.data}
-          activeFilter={statusFilter}
-          onFilter={setStatusFilter}
-        />
-      )}
 
       {/* Table */}
       {tab === 'fleet-status'  && <FleetTable
