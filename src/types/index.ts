@@ -808,7 +808,6 @@ export interface Tenant {
   gstin?: string; panNumber?: string; tanNumber?: string; cinNumber?: string; transportLicenseNumber?: string
   bankName?: string; accountNumber?: string; ifscCode?: string; branchName?: string; accountHolderName?: string
   ownerName: string; ownerPhone: string; ownerEmail?: string
-  invoiceDescription?: string
   prefix?: string; logoUrl?: string; lorryCount?: number
   subscriptionStatus: SubscriptionStatus
   trialStartDate?: string; trialEndDate?: string

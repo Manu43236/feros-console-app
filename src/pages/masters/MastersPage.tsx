@@ -957,6 +957,7 @@ function SettingsSection() {
   const [attendanceDeadlineTime, setAttendanceDeadlineTime] = useState('08:00')
   const [requireTyreApproval, setRequireTyreApproval] = useState(false)
   const [requireSparePartApproval, setRequireSparePartApproval] = useState(false)
+  const [invoiceDescription, setInvoiceDescription] = useState('')
   const { register, handleSubmit, reset } = useForm<{
     overtimeThresholdHours: number
     overtimeRateMultiplier: number
@@ -981,6 +982,7 @@ function SettingsSection() {
       setAttendanceDeadlineTime((s.attendanceDeadlineTime ?? '08:00:00').slice(0, 5))
       setRequireTyreApproval(s.requireTyreApproval ?? false)
       setRequireSparePartApproval(s.requireSparePartApproval ?? false)
+      setInvoiceDescription(s.invoiceDescription ?? '')
       reset({
         overtimeThresholdHours: s.overtimeThresholdHours,
         overtimeRateMultiplier: s.overtimeRateMultiplier,
@@ -1008,6 +1010,7 @@ function SettingsSection() {
       attendanceDeadlineTime: attendanceDeadlineTime + ':00',
       requireTyreApproval,
       requireSparePartApproval,
+      invoiceDescription: invoiceDescription || null,
     })
   }
 
@@ -1144,6 +1147,22 @@ function SettingsSection() {
           <p className="text-xs text-gray-500">
             When enabled, spare part requests are held for store keeper approval before stock is deducted.
           </p>
+        </div>
+
+        {/* Invoice Defaults */}
+        <div className="border rounded-lg p-4 space-y-2">
+          <p className="text-sm font-medium text-gray-700">Invoice Defaults</p>
+          <div>
+            <Label>Default Description of Goods/Service</Label>
+            <textarea
+              rows={2}
+              value={invoiceDescription}
+              onChange={e => setInvoiceDescription(e.target.value)}
+              className="w-full mt-1 border border-input rounded-md px-3 py-2 text-sm resize-none bg-background"
+              placeholder="e.g. Transportation of Iron Ore Pellets from Konsor to Kakinada"
+            />
+            <p className="text-xs text-gray-400 mt-1">Printed in the Description column on all tax invoices. Leave blank to use invoice remarks as description.</p>
+          </div>
         </div>
 
         <div className="flex justify-end">

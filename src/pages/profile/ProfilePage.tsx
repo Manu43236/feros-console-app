@@ -70,7 +70,6 @@ const companySchema = z.object({
   ownerName:                 z.string().min(1, 'Owner name is required'),
   ownerPhone:                z.string().regex(/^[0-9]{10}$/, 'Owner phone must be 10 digits'),
   ownerEmail:                z.string().email('Invalid email').optional().or(z.literal('')),
-  invoiceDescription:        z.string().optional(),
 })
 type CompanyFormData = z.infer<typeof companySchema>
 
@@ -538,7 +537,6 @@ function CompanyTab({ role }: { role: string | null }) {
       ownerName:              tenant.ownerName,
       ownerPhone:             tenant.ownerPhone,
       ownerEmail:             tenant.ownerEmail ?? '',
-      invoiceDescription:     tenant.invoiceDescription ?? '',
     } : undefined,
   })
 
@@ -716,20 +714,6 @@ function CompanyTab({ role }: { role: string | null }) {
           </div>
         </div>
 
-        {/* Invoice */}
-        <div>
-          <SectionHeader title="Invoice" />
-          <div>
-            <Label>Default Invoice Description</Label>
-            <textarea
-              {...register('invoiceDescription')}
-              rows={2}
-              className="w-full mt-1 border border-input rounded-md px-3 py-2 text-sm resize-none bg-background"
-              placeholder="e.g. Transportation of Iron Ore Pellets from Konsor to Kakinada"
-            />
-            <p className="text-xs text-gray-400 mt-1">Shown in the Description of Goods/Service column on invoices. Leave blank to use invoice remarks.</p>
-          </div>
-        </div>
       </form>
     )
   }
@@ -856,13 +840,6 @@ function CompanyTab({ role }: { role: string | null }) {
         </div>
       </div>
 
-      {/* Invoice */}
-      {tenant?.invoiceDescription && (
-        <div>
-          <SectionHeader title="Invoice" />
-          <Field label="Default Invoice Description" value={tenant.invoiceDescription} />
-        </div>
-      )}
     </div>
   )
 }
