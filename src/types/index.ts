@@ -1424,3 +1424,102 @@ export interface DelayedDeliveryRow {
   daysInTransit: number
   lrStatus: string
 }
+
+export interface OrderRegisterRow {
+  orderId: number
+  orderNumber: string
+  orderDate: string
+  expectedDeliveryDate?: string
+  clientName: string
+  materialType: string
+  fromCity: string
+  fromState: string
+  toCity: string
+  toState: string
+  totalWeight: number
+  totalWeightFulfilled?: number
+  freightRateType: string
+  freightRate?: number
+  totalFreightAmount?: number
+  orderStatus: string
+  orderPaymentStatus: string
+}
+
+export interface OpenOrderRow {
+  orderId: number
+  orderNumber: string
+  orderDate: string
+  expectedDeliveryDate?: string
+  clientName: string
+  materialType: string
+  fromCity: string
+  toCity: string
+  totalWeight: number
+  totalWeightFulfilled?: number
+  pendingWeight: number
+  orderStatus: string
+}
+
+export interface OrderClientSummaryRow {
+  clientId: number
+  clientName: string
+  totalOrders: number
+  completedOrders: number
+  inProgressOrders: number
+  cancelledOrders: number
+  totalWeight: number
+  totalWeightFulfilled: number
+  totalFreightAmount: number
+}
+
+export interface OverdueOrderRow {
+  orderId: number
+  orderNumber: string
+  orderDate: string
+  expectedDeliveryDate: string
+  daysOverdue: number
+  clientName: string
+  materialType: string
+  fromCity: string
+  toCity: string
+  totalWeight: number
+  totalWeightFulfilled?: number
+  orderStatus: string
+}
+
+export interface WeightFulfillmentRow {
+  orderId: number
+  orderNumber: string
+  orderDate: string
+  clientName: string
+  materialType: string
+  fromCity: string
+  toCity: string
+  totalWeight: number
+  totalWeightFulfilled: number
+  pendingWeight: number
+  fulfillmentPercent: number
+  orderStatus: string
+}
+
+export interface OrderRouteSummaryRow {
+  fromCity: string
+  fromState: string
+  toCity: string
+  toState: string
+  totalOrders: number
+  completedOrders: number
+  totalWeight: number
+  totalWeightFulfilled: number
+  totalFreightAmount: number
+}
+
+export interface OrderPaymentStatusRow {
+  orderId: number
+  orderNumber: string
+  orderDate: string
+  clientName: string
+  totalFreightAmount?: number
+  orderStatus: string
+  orderPaymentStatus: string
+}

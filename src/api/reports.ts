@@ -13,6 +13,13 @@ import type {
   DelayedDeliveryRow,
   VehicleTripSummaryRow,
   ClientTripSummaryRow,
+  OrderRegisterRow,
+  OpenOrderRow,
+  OrderClientSummaryRow,
+  OverdueOrderRow,
+  WeightFulfillmentRow,
+  OrderRouteSummaryRow,
+  OrderPaymentStatusRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -179,5 +186,94 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `client-trip-summary-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Order Register ────────────────────────────────────────────────────────
+  getOrderRegister: (startDate: string, endDate: string, status?: string) =>
+    apiClient.get<ApiResponse<OrderRegisterRow[]>>('/reports/orders/register', {
+      params: { startDate, endDate, ...(status ? { status } : {}) },
+    }).then(r => r.data),
+
+  exportOrderRegister: async (startDate: string, endDate: string, format: 'csv' | 'pdf', status?: string) => {
+    const res = await apiClient.get('/reports/orders/register/export', {
+      params: { startDate, endDate, format, ...(status ? { status } : {}) }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `order-register-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Open Orders ───────────────────────────────────────────────────────────
+  getOpenOrders: () =>
+    apiClient.get<ApiResponse<OpenOrderRow[]>>('/reports/orders/open').then(r => r.data),
+
+  exportOpenOrders: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/orders/open/export', {
+      params: { format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `open-orders.${format}`)
+  },
+
+  // ── Order Client Summary ──────────────────────────────────────────────────
+  getOrderClientSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<OrderClientSummaryRow[]>>('/reports/orders/client-summary', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportOrderClientSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/orders/client-summary/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `order-client-summary-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Overdue Orders ────────────────────────────────────────────────────────
+  getOverdueOrders: (thresholdDays: number) =>
+    apiClient.get<ApiResponse<OverdueOrderRow[]>>('/reports/orders/overdue', {
+      params: { thresholdDays },
+    }).then(r => r.data),
+
+  exportOverdueOrders: async (thresholdDays: number, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/orders/overdue/export', {
+      params: { thresholdDays, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `overdue-orders.${format}`)
+  },
+
+  // ── Weight Fulfillment ────────────────────────────────────────────────────
+  getWeightFulfillment: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<WeightFulfillmentRow[]>>('/reports/orders/weight-fulfillment', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportWeightFulfillment: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/orders/weight-fulfillment/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `weight-fulfillment-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Route Summary ─────────────────────────────────────────────────────────
+  getOrderRouteSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<OrderRouteSummaryRow[]>>('/reports/orders/route-summary', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportOrderRouteSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/orders/route-summary/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `order-route-summary-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Order Payment Status ──────────────────────────────────────────────────
+  getOrderPaymentStatus: (startDate: string, endDate: string, paymentStatus?: string) =>
+    apiClient.get<ApiResponse<OrderPaymentStatusRow[]>>('/reports/orders/payment-status', {
+      params: { startDate, endDate, ...(paymentStatus ? { paymentStatus } : {}) },
+    }).then(r => r.data),
+
+  exportOrderPaymentStatus: async (startDate: string, endDate: string, format: 'csv' | 'pdf', paymentStatus?: string) => {
+    const res = await apiClient.get('/reports/orders/payment-status/export', {
+      params: { startDate, endDate, format, ...(paymentStatus ? { paymentStatus } : {}) }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `order-payment-status-${startDate}-${endDate}.${format}`)
   },
 }
