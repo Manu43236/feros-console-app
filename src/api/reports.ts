@@ -8,6 +8,9 @@ import type {
   MaintenanceServiceRow,
   AttendanceDailyRow,
   AttendanceSummaryRow,
+  LrRegisterRow,
+  WeightDiscrepancyRow,
+  DelayedDeliveryRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -109,5 +112,44 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `attendance-summary-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── LR Register ───────────────────────────────────────────────────────────
+  getLrRegister: (startDate: string, endDate: string, clientId?: number) =>
+    apiClient.get<ApiResponse<LrRegisterRow[]>>('/reports/trips/lr-register', {
+      params: { startDate, endDate, ...(clientId ? { clientId } : {}) },
+    }).then(r => r.data),
+
+  exportLrRegister: async (startDate: string, endDate: string, format: 'csv' | 'pdf', clientId?: number) => {
+    const res = await apiClient.get('/reports/trips/lr-register/export', {
+      params: { startDate, endDate, format, ...(clientId ? { clientId } : {}) }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `lr-register-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Weight Discrepancy ────────────────────────────────────────────────────
+  getWeightDiscrepancy: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<WeightDiscrepancyRow[]>>('/reports/trips/weight-discrepancy', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportWeightDiscrepancy: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/trips/weight-discrepancy/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `weight-discrepancy-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Delayed Deliveries ────────────────────────────────────────────────────
+  getDelayedDeliveries: (startDate: string, endDate: string, thresholdDays: number) =>
+    apiClient.get<ApiResponse<DelayedDeliveryRow[]>>('/reports/trips/delayed-deliveries', {
+      params: { startDate, endDate, thresholdDays },
+    }).then(r => r.data),
+
+  exportDelayedDeliveries: async (startDate: string, endDate: string, thresholdDays: number, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/trips/delayed-deliveries/export', {
+      params: { startDate, endDate, thresholdDays, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `delayed-deliveries-${startDate}-${endDate}.${format}`)
   },
 }

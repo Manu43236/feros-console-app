@@ -80,6 +80,7 @@ const ADMIN_NAV: SectionedNav = {
       items: [
         { to: '/reports',            label: 'Vehicle Reports',    icon: Truck },
         { to: '/reports/attendance', label: 'Attendance Reports', icon: Calendar },
+        { to: '/reports/trips',      label: 'Trip Reports',       icon: FileText },
       ],
     },
     {
@@ -140,6 +141,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       items: [
         { to: '/reports',            label: 'Vehicle Reports',    icon: Truck },
         { to: '/reports/attendance', label: 'Attendance Reports', icon: Calendar },
+        { to: '/reports/trips',      label: 'Trip Reports',       icon: FileText },
       ],
     },
   ],

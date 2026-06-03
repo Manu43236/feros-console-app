@@ -1365,3 +1365,63 @@ export interface AttendanceSummaryRow {
   totalRecords: number
   presentPercent: number
 }
+
+export interface LrRegisterRow {
+  lrId: number
+  lrNumber: string
+  lrDate: string
+  orderNumber: string
+  clientName: string
+  vehicleRegistrationNumber: string
+  driverName: string
+  cleanerName: string
+  fromCity: string
+  fromState: string
+  toCity: string
+  toState: string
+  materialType: string
+  allocatedWeight: number | null
+  loadedWeight: number | null
+  deliveredWeight: number | null
+  weightVariance: number | null
+  isOverloaded: boolean | null
+  loadedAt: string | null
+  deliveredAt: string | null
+  ewayBillNumber: string | null
+  ewayBillDate: string | null
+  ewayBillValidUpto: string | null
+  lrStatus: string
+  remarks: string | null
+}
+
+export interface WeightDiscrepancyRow {
+  lrId: number
+  lrNumber: string
+  lrDate: string
+  clientName: string
+  vehicleRegistrationNumber: string
+  fromCity: string
+  toCity: string
+  materialType: string
+  allocatedWeight: number | null
+  loadedWeight: number | null
+  deliveredWeight: number | null
+  weightVariance: number | null
+  isOverloaded: boolean | null
+  lrStatus: string
+}
+
+export interface DelayedDeliveryRow {
+  lrId: number
+  lrNumber: string
+  lrDate: string
+  clientName: string
+  vehicleRegistrationNumber: string
+  driverName: string
+  fromCity: string
+  toCity: string
+  materialType: string
+  loadedAt: string
+  daysInTransit: number
+  lrStatus: string
+}
