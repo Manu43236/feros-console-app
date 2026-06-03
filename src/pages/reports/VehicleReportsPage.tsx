@@ -195,6 +195,63 @@ function MaintenanceTable({ rows, loading }: { rows: MaintenanceServiceRow[]; lo
   />
 }
 
+// ── Status summary cards ───────────────────────────────────────────────────────
+const STATUS_ORDER = ['AVAILABLE', 'ASSIGNED', 'ON_TRIP', 'IN_REPAIR', 'BREAKDOWN', 'OTHER']
+
+function FleetStatusCards({
+  rows, activeFilter, onFilter,
+}: {
+  rows: FleetStatusRow[]
+  activeFilter: string
+  onFilter: (s: string) => void
+}) {
+  const counts = rows.reduce<Record<string, number>>((acc, r) => {
+    acc[r.currentStatus] = (acc[r.currentStatus] ?? 0) + 1
+    return acc
+  }, {})
+
+  const pills = [
+    { key: 'ALL', label: 'All Vehicles', count: rows.length, dot: 'bg-gray-400' },
+    ...STATUS_ORDER
+      .filter(s => counts[s] != null)
+      .map(s => ({ key: s, label: s.replace(/_/g, ' '), count: counts[s], dot: DOT_COLORS[s] ?? 'bg-gray-400' })),
+    ...Object.keys(counts)
+      .filter(s => !STATUS_ORDER.includes(s))
+      .map(s => ({ key: s, label: s.replace(/_/g, ' '), count: counts[s], dot: 'bg-gray-400' })),
+  ]
+
+  return (
+    <div className="flex flex-wrap gap-3">
+      {pills.map(({ key, label, count, dot }) => (
+        <button
+          key={key}
+          onClick={() => onFilter(key)}
+          className={cn(
+            'flex items-center gap-3 bg-white border rounded-xl px-4 py-3 transition-all text-left',
+            activeFilter === key
+              ? 'border-feros-navy ring-1 ring-feros-navy shadow-sm'
+              : 'hover:border-gray-300 hover:shadow-sm'
+          )}
+        >
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dot}`} />
+          <div>
+            <p className="text-xs text-gray-500 whitespace-nowrap">{label}</p>
+            <p className="text-xl font-bold text-gray-900 leading-tight">{count}</p>
+          </div>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+const DOT_COLORS: Record<string, string> = {
+  AVAILABLE:   'bg-green-500',
+  ASSIGNED:    'bg-blue-500',
+  ON_TRIP:     'bg-orange-500',
+  IN_REPAIR:   'bg-yellow-500',
+  BREAKDOWN:   'bg-red-500',
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function VehicleReportsPage() {
   const [tab, setTab] = useState<TabKey>('fleet-status')
@@ -204,6 +261,12 @@ export default function VehicleReportsPage() {
   const [singleDate, setSingleDate] = useState(todayStr())
   const [days, setDays] = useState(30)
   const [downloading, setDownloading] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('ALL')
+
+  function handleTabChange(key: TabKey) {
+    setTab(key)
+    setStatusFilter('ALL')
+  }
 
   function applyPreset(p: DatePreset) {
     setPreset(p)
@@ -275,7 +338,7 @@ export default function VehicleReportsPage() {
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => handleTabChange(key)}
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
               tab === key
@@ -365,8 +428,20 @@ export default function VehicleReportsPage() {
         </div>
       </div>
 
+      {/* Fleet status filter cards */}
+      {tab === 'fleet-status' && !fleetQuery.isLoading && (fleetQuery.data?.data?.length ?? 0) > 0 && (
+        <FleetStatusCards
+          rows={fleetQuery.data!.data}
+          activeFilter={statusFilter}
+          onFilter={setStatusFilter}
+        />
+      )}
+
       {/* Table */}
-      {tab === 'fleet-status'  && <FleetTable       rows={fleetQuery.data?.data ?? []}       loading={fleetQuery.isLoading} />}
+      {tab === 'fleet-status'  && <FleetTable
+        rows={(fleetQuery.data?.data ?? []).filter(r => statusFilter === 'ALL' || r.currentStatus === statusFilter)}
+        loading={fleetQuery.isLoading}
+      />}
       {tab === 'utilization'   && <UtilizationTable rows={utilizationQuery.data?.data ?? []} loading={utilizationQuery.isLoading} />}
       {tab === 'fuel-mileage'  && <FuelMileageTable rows={fuelQuery.data?.data ?? []}        loading={fuelQuery.isLoading} />}
       {tab === 'breakdowns'    && <BreakdownsTable  rows={breakdownQuery.data?.data ?? []}   loading={breakdownQuery.isLoading} />}
