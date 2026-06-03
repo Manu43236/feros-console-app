@@ -11,7 +11,7 @@ import {
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
-  Activity, Banknote, Package, Wrench,
+  Activity, Banknote, Package, Wrench, BarChart2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
@@ -77,6 +77,7 @@ const ADMIN_NAV: SectionedNav = {
     {
       section: '',
       items: [
+        { to: '/reports',       label: 'Reports',      icon: BarChart2  },
         { to: '/masters',       label: 'Masters',      icon: Settings },
         { to: '/subscription',  label: 'Subscription', icon: BadgeCheck },
       ],
@@ -124,6 +125,12 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/staff',      label: 'Staff',      icon: UserCheck },
         { to: '/attendance', label: 'Attendance', icon: Calendar,  moduleKey: 'ATTENDANCE' },
         { to: '/payroll',    label: 'Payroll',    icon: Wallet },
+      ],
+    },
+    {
+      section: '',
+      items: [
+        { to: '/reports', label: 'Reports', icon: BarChart2 },
       ],
     },
   ],

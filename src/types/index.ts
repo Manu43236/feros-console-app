@@ -1270,3 +1270,79 @@ export interface TyreRotationLog {
   createdAt: string
   updatedAt: string
 }
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+export interface FleetStatusRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  ownershipType: string
+  currentStatus: string
+  currentDriverName: string
+  currentCleanerName: string
+  tripScope: string
+}
+
+export interface VehicleUtilizationRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  totalTrips: number
+  daysOnTrip: number
+  totalDaysInPeriod: number
+  utilizationPercent: number
+  lastTripDate: string | null
+}
+
+export interface FuelMileageRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  fillCount: number
+  totalLitresFilled: number | null
+  totalFuelCost: number | null
+  openingOdometer: number | null
+  closingOdometer: number | null
+  totalKm: number | null
+  mileageKmPerLitre: number | null
+}
+
+export interface BreakdownReportRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  breakdownDate: string | null
+  location: string | null
+  breakdownType: string
+  reason: string | null
+  status: string
+  daysLost: number | null
+  reportedBy: string
+}
+
+export interface DocumentExpiryRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  documentType: string
+  documentNumber: string | null
+  expiryDate: string
+  daysLeft: number
+  expiryStatus: 'GREEN' | 'AMBER' | 'RED'
+}
+
+export interface MaintenanceServiceRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  serviceNumber: string | null
+  serviceDate: string | null
+  completedDate: string | null
+  serviceType: string
+  triggeredBy: string
+  taskCount: number
+  totalCost: number | null
+  status: string
+  vendorName: string | null
+  nextServiceDueOdometer: number | null
+}
