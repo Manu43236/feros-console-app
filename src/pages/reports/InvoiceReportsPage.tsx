@@ -7,7 +7,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import type {
-  InvoiceRegisterRow, OutstandingInvoiceRow, InvoiceAgingRow,
+  InvoiceRegisterRow, OutstandingInvoiceRow, InvoiceAgingReportRow,
   CollectionRow, CreditNoteRegisterRow,
 } from '@/types'
 
@@ -135,7 +135,7 @@ function OutstandingTable({ rows, loading }: { rows: OutstandingInvoiceRow[]; lo
   />
 }
 
-function AgingTable({ rows, loading }: { rows: InvoiceAgingRow[]; loading: boolean }) {
+function AgingTable({ rows, loading }: { rows: InvoiceAgingReportRow[]; loading: boolean }) {
   return <ReportTable loading={loading}
     headers={['Invoice No.', 'Invoice Date', 'Due Date', 'Client', 'Balance Due', 'Days Overdue', 'Bucket']}
     rows={rows.map(r => [

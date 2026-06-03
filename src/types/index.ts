@@ -1551,7 +1551,7 @@ export interface OutstandingInvoiceRow {
   daysOverdue?: number
 }
 
-export interface InvoiceAgingRow {
+export interface InvoiceAgingReportRow {
   invoiceId: number
   invoiceNumber: string
   invoiceDate: string

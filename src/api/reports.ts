@@ -22,7 +22,7 @@ import type {
   OrderPaymentStatusRow,
   InvoiceRegisterRow,
   OutstandingInvoiceRow,
-  InvoiceAgingRow,
+  InvoiceAgingReportRow,
   CollectionRow,
   CreditNoteRegisterRow,
 } from '@/types'
@@ -308,7 +308,7 @@ export const reportsApi = {
 
   // ── Invoice Aging ─────────────────────────────────────────────────────────────
   getInvoiceAging: () =>
-    apiClient.get<ApiResponse<InvoiceAgingRow[]>>('/reports/invoices/aging').then(r => r.data),
+    apiClient.get<ApiResponse<InvoiceAgingReportRow[]>>('/reports/invoices/aging').then(r => r.data),
 
   exportInvoiceAging: async (format: 'csv' | 'pdf') => {
     const res = await apiClient.get('/reports/invoices/aging/export', {
