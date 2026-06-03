@@ -82,6 +82,7 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/reports/attendance', label: 'Attendance Reports', icon: Calendar },
         { to: '/reports/trips',      label: 'Trip Reports',       icon: FileText },
         { to: '/reports/orders',     label: 'Order Reports',      icon: ClipboardList },
+        { to: '/reports/invoices',   label: 'Invoice Reports',    icon: Receipt },
       ],
     },
     {
@@ -144,6 +145,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/reports/attendance', label: 'Attendance Reports', icon: Calendar },
         { to: '/reports/trips',      label: 'Trip Reports',       icon: FileText },
         { to: '/reports/orders',     label: 'Order Reports',      icon: ClipboardList },
+        { to: '/reports/invoices',   label: 'Invoice Reports',    icon: Receipt },
       ],
     },
   ],

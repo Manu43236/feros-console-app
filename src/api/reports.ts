@@ -20,6 +20,11 @@ import type {
   WeightFulfillmentRow,
   OrderRouteSummaryRow,
   OrderPaymentStatusRow,
+  InvoiceRegisterRow,
+  OutstandingInvoiceRow,
+  InvoiceAgingRow,
+  CollectionRow,
+  CreditNoteRegisterRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -275,5 +280,66 @@ export const reportsApi = {
       params: { startDate, endDate, format, ...(paymentStatus ? { paymentStatus } : {}) }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `order-payment-status-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Invoice Register ──────────────────────────────────────────────────────────
+  getInvoiceRegister: (startDate: string, endDate: string, status?: string) =>
+    apiClient.get<ApiResponse<InvoiceRegisterRow[]>>('/reports/invoices/register', {
+      params: { startDate, endDate, ...(status ? { status } : {}) },
+    }).then(r => r.data),
+
+  exportInvoiceRegister: async (startDate: string, endDate: string, format: 'csv' | 'pdf', status?: string) => {
+    const res = await apiClient.get('/reports/invoices/register/export', {
+      params: { startDate, endDate, format, ...(status ? { status } : {}) }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `invoice-register-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Outstanding Invoices ──────────────────────────────────────────────────────
+  getOutstandingInvoices: () =>
+    apiClient.get<ApiResponse<OutstandingInvoiceRow[]>>('/reports/invoices/outstanding').then(r => r.data),
+
+  exportOutstandingInvoices: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/invoices/outstanding/export', {
+      params: { format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `outstanding-invoices.${format}`)
+  },
+
+  // ── Invoice Aging ─────────────────────────────────────────────────────────────
+  getInvoiceAging: () =>
+    apiClient.get<ApiResponse<InvoiceAgingRow[]>>('/reports/invoices/aging').then(r => r.data),
+
+  exportInvoiceAging: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/invoices/aging/export', {
+      params: { format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `invoice-aging.${format}`)
+  },
+
+  // ── Collections ───────────────────────────────────────────────────────────────
+  getCollections: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<CollectionRow[]>>('/reports/invoices/collections', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportCollections: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/invoices/collections/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `collections-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Credit Note Register ──────────────────────────────────────────────────────
+  getCreditNoteRegister: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<CreditNoteRegisterRow[]>>('/reports/invoices/credit-notes', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportCreditNoteRegister: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/invoices/credit-notes/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `credit-notes-${startDate}-${endDate}.${format}`)
   },
 }

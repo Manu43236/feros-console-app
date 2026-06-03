@@ -214,12 +214,14 @@ export default function OrderReportsPage() {
   const [downloading, setDownloading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [paymentFilter, setPaymentFilter] = useState('ALL')
+  const [clientFilter, setClientFilter] = useState('ALL')
   const [thresholdDays, setThresholdDays] = useState(1)
 
   function handleTabChange(key: TabKey) {
     setTab(key)
     setStatusFilter('ALL')
     setPaymentFilter('ALL')
+    setClientFilter('ALL')
   }
 
   function applyPreset(p: DatePreset) {
@@ -284,12 +286,37 @@ export default function OrderReportsPage() {
   }
 
   // ── Apply filters ──
-  const registerRows = (registerQuery.data?.data ?? []).filter(r =>
-    statusFilter === 'ALL' || r.orderStatus === statusFilter
+  const allRegisterRows  = registerQuery.data?.data ?? []
+  const allOpenRows      = openQuery.data?.data ?? []
+  const allOverdueRows   = overdueQuery.data?.data ?? []
+  const allPaymentRows   = paymentQuery.data?.data ?? []
+
+  const registerRows = allRegisterRows.filter(r =>
+    (statusFilter === 'ALL' || r.orderStatus === statusFilter) &&
+    (clientFilter === 'ALL' || r.clientName === clientFilter)
   )
-  const paymentRows = (paymentQuery.data?.data ?? []).filter(r =>
-    paymentFilter === 'ALL' || r.orderPaymentStatus === paymentFilter
+  const openRows = allOpenRows.filter(r =>
+    clientFilter === 'ALL' || r.clientName === clientFilter
   )
+  const overdueRows = allOverdueRows.filter(r =>
+    clientFilter === 'ALL' || r.clientName === clientFilter
+  )
+  const paymentRows = allPaymentRows.filter(r =>
+    (paymentFilter === 'ALL' || r.orderPaymentStatus === paymentFilter) &&
+    (clientFilter === 'ALL' || r.clientName === clientFilter)
+  )
+
+  // ── Client options per tab ──
+  const tabClientSource: string[] =
+    tab === 'register'      ? allRegisterRows.map(r => r.clientName) :
+    tab === 'open'          ? allOpenRows.map(r => r.clientName) :
+    tab === 'overdue'       ? allOverdueRows.map(r => r.clientName) :
+    tab === 'payment-status'? allPaymentRows.map(r => r.clientName) : []
+  const clientOptions = [
+    { value: 'ALL', label: 'All Clients' },
+    ...Array.from(new Set(tabClientSource.filter(Boolean))).sort().map(c => ({ value: c, label: c })),
+  ]
+  const showClientFilter = ['register', 'open', 'overdue', 'payment-status'].includes(tab)
 
   // ── Date-range tabs (show/hide date controls) ──
   const noDateFilter = tab === 'open' || tab === 'overdue'
@@ -331,6 +358,19 @@ export default function OrderReportsPage() {
                 ...ORDER_STATUSES.map(s => ({ value: s, label: s.replace(/_/g, ' ') })),
               ]}
               showSearch={false}
+              className="w-48"
+            />
+          </div>
+        )}
+
+        {/* Client filter */}
+        {showClientFilter && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Client</label>
+            <SearchableSelect
+              value={clientFilter}
+              onValueChange={setClientFilter}
+              options={clientOptions}
               className="w-48"
             />
           </div>
@@ -416,9 +456,9 @@ export default function OrderReportsPage() {
 
       {/* Tables */}
       {tab === 'register'       && <OrderRegisterTable  rows={registerRows}                            loading={registerQuery.isLoading} />}
-      {tab === 'open'           && <OpenOrderTable       rows={openQuery.data?.data ?? []}              loading={openQuery.isLoading} />}
+      {tab === 'open'           && <OpenOrderTable       rows={openRows}                                loading={openQuery.isLoading} />}
       {tab === 'client-summary' && <ClientSummaryTable   rows={clientSummaryQuery.data?.data ?? []}     loading={clientSummaryQuery.isLoading} />}
-      {tab === 'overdue'        && <OverdueTable          rows={overdueQuery.data?.data ?? []}           loading={overdueQuery.isLoading} />}
+      {tab === 'overdue'        && <OverdueTable          rows={overdueRows}                             loading={overdueQuery.isLoading} />}
       {tab === 'fulfillment'    && <FulfillmentTable      rows={fulfillmentQuery.data?.data ?? []}       loading={fulfillmentQuery.isLoading} />}
       {tab === 'route-summary'  && <RouteSummaryTable     rows={routeSummaryQuery.data?.data ?? []}      loading={routeSummaryQuery.isLoading} />}
       {tab === 'payment-status' && <PaymentStatusTable    rows={paymentRows}                             loading={paymentQuery.isLoading} />}

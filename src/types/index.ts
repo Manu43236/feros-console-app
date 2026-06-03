@@ -1523,3 +1523,63 @@ export interface OrderPaymentStatusRow {
   orderStatus: string
   orderPaymentStatus: string
 }
+
+export interface InvoiceRegisterRow {
+  invoiceId: number
+  invoiceNumber: string
+  invoiceDate: string
+  dueDate?: string
+  clientName: string
+  subtotal?: number
+  taxAmount?: number
+  totalAmount?: number
+  amountPaid?: number
+  balanceDue?: number
+  invoiceStatus: string
+}
+
+export interface OutstandingInvoiceRow {
+  invoiceId: number
+  invoiceNumber: string
+  invoiceDate: string
+  dueDate?: string
+  clientName: string
+  totalAmount?: number
+  amountPaid?: number
+  balanceDue?: number
+  invoiceStatus: string
+  daysOverdue?: number
+}
+
+export interface InvoiceAgingRow {
+  invoiceId: number
+  invoiceNumber: string
+  invoiceDate: string
+  dueDate?: string
+  clientName: string
+  balanceDue?: number
+  daysOverdue: number
+  agingBucket: string
+}
+
+export interface CollectionRow {
+  paymentId: number
+  paymentDate: string
+  invoiceNumber: string
+  clientName: string
+  amount?: number
+  paymentMode: string
+  referenceNumber?: string
+  remarks?: string
+}
+
+export interface CreditNoteRegisterRow {
+  creditNoteId: number
+  creditNoteNumber: string
+  creditNoteDate: string
+  clientName: string
+  linkedInvoiceNumber?: string
+  amount?: number
+  reason: string
+  creditNoteStatus: string
+}
