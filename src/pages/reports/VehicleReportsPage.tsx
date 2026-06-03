@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, BarChart2 } from 'lucide-react'
+import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import type {
-  FleetStatusRow, VehicleUtilizationRow, FuelMileageRow,
+  FleetStatusRow, FuelMileageRow,
   BreakdownReportRow, DocumentExpiryRow, MaintenanceServiceRow,
 } from '@/types'
 
@@ -28,7 +28,6 @@ const thisMonthStart = () => {
 // ── Tab config ─────────────────────────────────────────────────────────────────
 const TABS = [
   { key: 'fleet-status',    label: 'Fleet Status',      icon: Truck         },
-  { key: 'utilization',     label: 'Utilization',       icon: BarChart2     },
   { key: 'fuel-mileage',    label: 'Fuel & Mileage',    icon: Fuel          },
   { key: 'breakdowns',      label: 'Breakdowns',        icon: AlertTriangle },
   { key: 'doc-expiry',      label: 'Document Expiry',   icon: FileText      },
@@ -118,21 +117,6 @@ function FleetTable({ rows, loading }: { rows: FleetStatusRow[]; loading: boolea
   />
 }
 
-function UtilizationTable({ rows, loading }: { rows: VehicleUtilizationRow[]; loading: boolean }) {
-  return <ReportTable
-    loading={loading}
-    headers={['Vehicle No.', 'Type', 'Total Trips', 'Days On Trip', 'Total Days', 'Utilization %', 'Last Trip']}
-    rows={rows.map(r => [
-      <span className="font-medium">{r.registrationNumber}</span>,
-      dash(r.vehicleType),
-      r.totalTrips, r.daysOnTrip, r.totalDaysInPeriod,
-      <span className={r.utilizationPercent >= 70 ? 'text-green-700 font-medium' : r.utilizationPercent >= 40 ? 'text-amber-600 font-medium' : 'text-red-600 font-medium'}>
-        {r.utilizationPercent}%
-      </span>,
-      dash(r.lastTripDate),
-    ])}
-  />
-}
 
 function FuelMileageTable({ rows, loading }: { rows: FuelMileageRow[]; loading: boolean }) {
   return <ReportTable
@@ -226,12 +210,7 @@ export default function VehicleReportsPage() {
     queryFn: () => reportsApi.getFleetStatus(todayStr()),
     enabled: tab === 'fleet-status',
   })
-  const utilizationQuery = useQuery({
-    queryKey: ['report-utilization', startDate, endDate],
-    queryFn: () => reportsApi.getVehicleUtilization(startDate, endDate),
-    enabled: tab === 'utilization',
-  })
-  const fuelQuery = useQuery({
+const fuelQuery = useQuery({
     queryKey: ['report-fuel-mileage', startDate, endDate],
     queryFn: () => reportsApi.getFuelMileage(startDate, endDate),
     enabled: tab === 'fuel-mileage',
@@ -256,8 +235,7 @@ export default function VehicleReportsPage() {
     setDownloading(true)
     try {
       if (tab === 'fleet-status') await reportsApi.exportFleetStatus(todayStr(), format)
-      else if (tab === 'utilization') await reportsApi.exportVehicleUtilization(startDate, endDate, format)
-      else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, endDate, format)
+else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, endDate, format)
       else if (tab === 'breakdowns') await reportsApi.exportBreakdowns(startDate, endDate, format)
       else if (tab === 'doc-expiry') await reportsApi.exportDocumentExpiry(days, format)
       else if (tab === 'maintenance') await reportsApi.exportMaintenanceService(startDate, endDate, format)
@@ -400,8 +378,7 @@ export default function VehicleReportsPage() {
         rows={(fleetQuery.data?.data ?? []).filter(r => statusFilter === 'ALL' || r.currentStatus === statusFilter)}
         loading={fleetQuery.isLoading}
       />}
-      {tab === 'utilization'   && <UtilizationTable rows={utilizationQuery.data?.data ?? []} loading={utilizationQuery.isLoading} />}
-      {tab === 'fuel-mileage'  && <FuelMileageTable rows={fuelQuery.data?.data ?? []}        loading={fuelQuery.isLoading} />}
+{tab === 'fuel-mileage'  && <FuelMileageTable rows={fuelQuery.data?.data ?? []}        loading={fuelQuery.isLoading} />}
       {tab === 'breakdowns'    && <BreakdownsTable  rows={breakdownQuery.data?.data ?? []}   loading={breakdownQuery.isLoading} />}
       {tab === 'doc-expiry'    && <DocExpiryTable   rows={docExpiryQuery.data?.data ?? []}   loading={docExpiryQuery.isLoading} />}
       {tab === 'maintenance'   && <MaintenanceTable rows={maintenanceQuery.data?.data ?? []} loading={maintenanceQuery.isLoading} />}

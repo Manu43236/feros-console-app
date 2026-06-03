@@ -2,7 +2,6 @@ import apiClient from './client'
 import type { ApiResponse } from '@/types'
 import type {
   FleetStatusRow,
-  VehicleUtilizationRow,
   FuelMileageRow,
   BreakdownReportRow,
   DocumentExpiryRow,
@@ -30,19 +29,6 @@ export const reportsApi = {
       params: { date, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `fleet-status-${date}.${format}`)
-  },
-
-  // ── Vehicle Utilization ───────────────────────────────────────────────────
-  getVehicleUtilization: (startDate: string, endDate: string) =>
-    apiClient.get<ApiResponse<VehicleUtilizationRow[]>>('/reports/vehicles/utilization', {
-      params: { startDate, endDate },
-    }).then(r => r.data),
-
-  exportVehicleUtilization: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
-    const res = await apiClient.get('/reports/vehicles/utilization/export', {
-      params: { startDate, endDate, format }, responseType: 'blob',
-    })
-    triggerDownload(res.data as Blob, `vehicle-utilization-${startDate}-${endDate}.${format}`)
   },
 
   // ── Fuel & Mileage ────────────────────────────────────────────────────────

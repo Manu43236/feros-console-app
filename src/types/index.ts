@@ -1283,17 +1283,6 @@ export interface FleetStatusRow {
   tripScope: string
 }
 
-export interface VehicleUtilizationRow {
-  vehicleId: number
-  registrationNumber: string
-  vehicleType: string
-  totalTrips: number
-  daysOnTrip: number
-  totalDaysInPeriod: number
-  utilizationPercent: number
-  lastTripDate: string | null
-}
-
 export interface FuelMileageRow {
   vehicleId: number
   registrationNumber: string
