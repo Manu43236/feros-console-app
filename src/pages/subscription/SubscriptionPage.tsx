@@ -314,9 +314,8 @@ export function SubscriptionPage() {
           <FeatureBadge label="Attendance"         enabled={sub.hasAttendance} />
           <FeatureBadge label="Payroll"            enabled={sub.hasPayroll} />
           <FeatureBadge label="Inventory"          enabled={sub.hasInventory} />
-          <FeatureBadge label="Reports"            enabled={sub.hasReports} />
         </div>
-        {!isTrial && [sub.hasFuelLogs, sub.hasPayroll, sub.hasInventory, sub.hasReports].some(f => !f) && (
+        {!isTrial && [sub.hasFuelLogs, sub.hasPayroll, sub.hasInventory].some(f => !f) && (
           <p className="mt-3 text-xs text-gray-500 flex items-center gap-1.5">
             <Lock size={11} />
             Upgrade to a paid plan to unlock all features — starting at ₹499/vehicle/month.

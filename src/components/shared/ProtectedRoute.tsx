@@ -12,7 +12,6 @@ const ROUTE_MODULE_MAP: Record<string, ModuleKey> = {
   '/credit-notes':           'CREDIT_NOTES',
   '/service-invoices':       'SERVICE_INVOICES',
   '/attendance':             'ATTENDANCE',
-  '/reports':                'REPORTS',
   '/inventory':              'SPARE_PARTS',
   '/inventory/tyres':        'TYRES',
   '/inventory/part-requests':'PART_REQUESTS',

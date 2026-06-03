@@ -22,7 +22,6 @@ const ROLE_CONFIG: {
       { key: 'CREDIT_NOTES',     label: 'Credit Notes' },
       { key: 'SERVICE_INVOICES', label: 'Service Invoices' },
       { key: 'ATTENDANCE',       label: 'Attendance' },
-      { key: 'REPORTS',          label: 'Reports' },
     ],
   },
   {

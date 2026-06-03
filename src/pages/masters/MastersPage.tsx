@@ -634,7 +634,6 @@ const RBAC_MODULE_ROWS: { key: string; label: string; section: string; roles: st
   { key: 'CREDIT_NOTES',     label: 'Credit Notes',     section: 'Finance',    roles: ['OFFICE_STAFF'] },
   { key: 'SERVICE_INVOICES', label: 'Service Invoices', section: 'Finance',    roles: ['OFFICE_STAFF'] },
   { key: 'ATTENDANCE',       label: 'Attendance',       section: 'HR',         roles: ['OFFICE_STAFF'] },
-  { key: 'REPORTS',          label: 'Reports',          section: 'Analytics',  roles: ['OFFICE_STAFF'] },
   { key: 'SPARE_PARTS',      label: 'Spare Parts',      section: 'Inventory',  roles: ['STORE_KEEPER'] },
   { key: 'TYRES',            label: 'Tyres',            section: 'Inventory',  roles: ['STORE_KEEPER'] },
   { key: 'PART_REQUESTS',    label: 'Part Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },

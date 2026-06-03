@@ -93,7 +93,6 @@ const FEATURE_LABELS: { key: keyof SubscriptionPlan; label: string }[] = [
   { key: 'hasAttendance',      label: 'Attendance' },
   { key: 'hasPayroll',         label: 'Payroll' },
   { key: 'hasInventory',       label: 'Inventory' },
-  { key: 'hasReports',         label: 'Reports' },
   { key: 'hasCreditNotes',     label: 'Credit Notes' },
 ]
 
@@ -102,7 +101,7 @@ function PlansTab() {
   const [editPlan, setEditPlan] = useState<SubscriptionPlan | null>(null)
   const emptyForm = { pricePerVehicle: '', minVehicles: '', maxVehicles: '', maxUsers: '',
     hasFuelLogs: true, hasMeterReadings: true, hasVehicleServices: true,
-    hasAttendance: true, hasPayroll: true, hasInventory: true, hasReports: true, hasCreditNotes: true }
+    hasAttendance: true, hasPayroll: true, hasInventory: true, hasCreditNotes: true }
   const [editForm, setEditForm] = useState(emptyForm)
 
   const { data: plansRes, isLoading } = useQuery({
@@ -134,7 +133,7 @@ function PlansTab() {
       hasFuelLogs: data.hasFuelLogs, hasMeterReadings: data.hasMeterReadings,
       hasVehicleServices: data.hasVehicleServices, hasAttendance: data.hasAttendance,
       hasPayroll: data.hasPayroll, hasInventory: data.hasInventory,
-      hasReports: data.hasReports, hasCreditNotes: data.hasCreditNotes,
+      hasCreditNotes: data.hasCreditNotes,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['sa-plans-all'] }); setEditPlan(null) },
   })
@@ -149,7 +148,7 @@ function PlansTab() {
       hasFuelLogs: p.hasFuelLogs ?? true, hasMeterReadings: p.hasMeterReadings ?? true,
       hasVehicleServices: p.hasVehicleServices ?? true, hasAttendance: p.hasAttendance ?? true,
       hasPayroll: p.hasPayroll ?? true, hasInventory: p.hasInventory ?? true,
-      hasReports: p.hasReports ?? true, hasCreditNotes: p.hasCreditNotes ?? true,
+      hasCreditNotes: p.hasCreditNotes ?? true,
     })
   }
 

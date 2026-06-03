@@ -7,7 +7,7 @@ import { notificationsApi, subscriptionsApi } from '@/api/superadmin'
 import { authApi } from '@/api/auth'
 import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
-  Receipt, UserCheck, Calendar, Wallet, BarChart3, Settings,
+  Receipt, UserCheck, Calendar, Wallet, Settings,
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
@@ -77,7 +77,6 @@ const ADMIN_NAV: SectionedNav = {
     {
       section: '',
       items: [
-        { to: '/reports',       label: 'Reports',      icon: BarChart3 },
         { to: '/masters',       label: 'Masters',      icon: Settings },
         { to: '/subscription',  label: 'Subscription', icon: BadgeCheck },
       ],
@@ -125,12 +124,6 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/staff',      label: 'Staff',      icon: UserCheck },
         { to: '/attendance', label: 'Attendance', icon: Calendar,  moduleKey: 'ATTENDANCE' },
         { to: '/payroll',    label: 'Payroll',    icon: Wallet },
-      ],
-    },
-    {
-      section: '',
-      items: [
-        { to: '/reports', label: 'Reports', icon: BarChart3, moduleKey: 'REPORTS' },
       ],
     },
   ],
@@ -277,11 +270,7 @@ function NavSectionGroup({
   if (section === '') {
     return (
       <div className="space-y-0.5 mt-1">
-        {items.map(item =>
-          item.to === '/reports'
-            ? <ReportsNavGroup key="reports" onNavClick={onNavClick} />
-            : <NavItemLink key={item.to} {...item} onClick={onNavClick} />
-        )}
+        {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} />)}
       </div>
     )
   }
@@ -306,69 +295,13 @@ function NavSectionGroup({
       </button>
       {open && (
         <div className="ml-7 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
-          {items.map(item =>
-            item.to === '/reports'
-              ? <ReportsNavGroup key="reports" onNavClick={onNavClick} />
-              : <NavItemLink key={item.to} {...item} onClick={onNavClick} />
-          )}
+          {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} />)}
         </div>
       )}
     </div>
   )
 }
 
-// ─── Reports sub-menu ────────────────────────────────────────────────────────
-const REPORTS_SUB_ITEMS = [
-  { to: '/reports/daily-operations',      label: 'Daily Operations' },
-  { to: '/reports/orders',                label: 'Orders & Assignments' },
-  { to: '/reports/trips',                 label: 'Trips & LRs' },
-  { to: '/reports/vehicle-performance',   label: 'Vehicle Performance' },
-  { to: '/reports/driver-staff',          label: 'Driver & Staff' },
-  { to: '/reports/financial',             label: 'Financial' },
-  { to: '/reports/business-intelligence', label: 'Business Intelligence' },
-  { to: '/reports/inventory',             label: 'Inventory' },
-  { to: '/reports/tyres',                 label: 'Tyres' },
-  { to: '/reports/periodic',              label: 'Periodic Reports' },
-]
-
-function ReportsNavGroup({ onNavClick }: { onNavClick?: () => void }) {
-  const { pathname } = useLocation()
-  const isOnReports = pathname.startsWith('/reports')
-  const [open, setOpen] = useState(isOnReports)
-
-  return (
-    <div>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className={cn(
-          'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-          isOnReports ? 'bg-feros-orange text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'
-        )}
-      >
-        <BarChart3 size={18} className="shrink-0" />
-        <span className="flex-1 text-left">Reports</span>
-        {open ? <ChevronDown size={14} className="shrink-0" /> : <ChevronRight size={14} className="shrink-0" />}
-      </button>
-      {open && (
-        <div className="ml-7 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
-          {REPORTS_SUB_ITEMS.map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={onNavClick}
-              className={({ isActive }) => cn(
-                'block px-3 py-2 rounded-lg text-sm transition-colors',
-                isActive ? 'bg-white/20 text-white font-medium' : 'text-gray-400 hover:text-white hover:bg-white/10'
-              )}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function getRoleLabel(role: string | null) {
   if (!role) return ''
@@ -473,7 +406,6 @@ export function AppLayout() {
     '/payroll':          subFeatures?.hasPayroll,
     '/inventory':        subFeatures?.hasInventory,
     '/inventory/tyres':  subFeatures?.hasInventory,
-    '/reports':          subFeatures?.hasReports,
     '/credit-notes':     subFeatures?.hasCreditNotes,
   }
 
