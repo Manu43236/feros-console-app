@@ -1385,6 +1385,31 @@ export interface WeightDiscrepancyRow {
   lrStatus: string
 }
 
+export interface VehicleTripSummaryRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  totalTrips: number
+  completedTrips: number
+  inTransitTrips: number
+  cancelledTrips: number
+  totalAllocatedWeight: number
+  totalLoadedWeight: number
+  totalDeliveredWeight: number
+}
+
+export interface ClientTripSummaryRow {
+  clientId: number
+  clientName: string
+  totalTrips: number
+  completedTrips: number
+  inTransitTrips: number
+  cancelledTrips: number
+  totalAllocatedWeight: number
+  totalLoadedWeight: number
+  totalDeliveredWeight: number
+}
+
 export interface DelayedDeliveryRow {
   lrId: number
   lrNumber: string

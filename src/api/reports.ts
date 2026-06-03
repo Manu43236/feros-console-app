@@ -11,6 +11,8 @@ import type {
   LrRegisterRow,
   WeightDiscrepancyRow,
   DelayedDeliveryRow,
+  VehicleTripSummaryRow,
+  ClientTripSummaryRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -151,5 +153,31 @@ export const reportsApi = {
       params: { startDate, endDate, thresholdDays, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `delayed-deliveries-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Vehicle Trip Summary ──────────────────────────────────────────────────
+  getVehicleTripSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<VehicleTripSummaryRow[]>>('/reports/trips/vehicle-summary', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportVehicleTripSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/trips/vehicle-summary/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `vehicle-trip-summary-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Client Trip Summary ───────────────────────────────────────────────────
+  getClientTripSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<ClientTripSummaryRow[]>>('/reports/trips/client-summary', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportClientTripSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/trips/client-summary/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `client-trip-summary-${startDate}-${endDate}.${format}`)
   },
 }

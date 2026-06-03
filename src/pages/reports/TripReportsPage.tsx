@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, FileText, AlertTriangle, Clock } from 'lucide-react'
+import { Download, FileText, AlertTriangle, Clock, Truck, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { LrRegisterRow, WeightDiscrepancyRow, DelayedDeliveryRow } from '@/types'
+import type { LrRegisterRow, WeightDiscrepancyRow, DelayedDeliveryRow, VehicleTripSummaryRow, ClientTripSummaryRow } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -23,9 +23,11 @@ const thisMonthStart = () => {
 
 // ── Tab config ─────────────────────────────────────────────────────────────────
 const TABS = [
-  { key: 'lr-register',       label: 'LR Register',       icon: FileText },
-  { key: 'weight-discrepancy', label: 'Weight Discrepancy', icon: AlertTriangle },
-  { key: 'delayed-deliveries', label: 'Delayed Deliveries', icon: Clock },
+  { key: 'lr-register',        label: 'LR Register',        icon: FileText },
+  { key: 'weight-discrepancy', label: 'Weight Discrepancy',  icon: AlertTriangle },
+  { key: 'delayed-deliveries', label: 'Delayed Deliveries',  icon: Clock },
+  { key: 'vehicle-summary',    label: 'Vehicle Summary',     icon: Truck },
+  { key: 'client-summary',     label: 'Client Summary',      icon: Users },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -175,6 +177,43 @@ function DelayedDeliveriesTable({ rows, loading }: { rows: DelayedDeliveryRow[];
   />
 }
 
+function VehicleSummaryTable({ rows, loading }: { rows: VehicleTripSummaryRow[]; loading: boolean }) {
+  return <ReportTable
+    loading={loading}
+    headers={['Vehicle No.', 'Type', 'Total Trips', 'Completed', 'In Transit', 'Cancelled',
+      'Total Alloc. Wt', 'Total Loaded Wt', 'Total Delivered Wt']}
+    rows={rows.map(r => [
+      <span className="font-medium">{r.registrationNumber}</span>,
+      <span className="text-xs text-gray-500">{r.vehicleType}</span>,
+      <span className="font-medium">{r.totalTrips}</span>,
+      <span className="text-green-700 font-medium">{r.completedTrips}</span>,
+      <span className={r.inTransitTrips > 0 ? 'text-amber-600 font-medium' : 'text-gray-400'}>{r.inTransitTrips}</span>,
+      <span className={r.cancelledTrips > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>{r.cancelledTrips}</span>,
+      dash(r.totalAllocatedWeight),
+      dash(r.totalLoadedWeight),
+      dash(r.totalDeliveredWeight),
+    ])}
+  />
+}
+
+function ClientSummaryTable({ rows, loading }: { rows: ClientTripSummaryRow[]; loading: boolean }) {
+  return <ReportTable
+    loading={loading}
+    headers={['Client', 'Total Trips', 'Completed', 'In Transit', 'Cancelled',
+      'Total Alloc. Wt', 'Total Loaded Wt', 'Total Delivered Wt']}
+    rows={rows.map(r => [
+      <span className="font-medium">{r.clientName}</span>,
+      <span className="font-medium">{r.totalTrips}</span>,
+      <span className="text-green-700 font-medium">{r.completedTrips}</span>,
+      <span className={r.inTransitTrips > 0 ? 'text-amber-600 font-medium' : 'text-gray-400'}>{r.inTransitTrips}</span>,
+      <span className={r.cancelledTrips > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>{r.cancelledTrips}</span>,
+      dash(r.totalAllocatedWeight),
+      dash(r.totalLoadedWeight),
+      dash(r.totalDeliveredWeight),
+    ])}
+  />
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function TripReportsPage() {
   const [tab, setTab] = useState<TabKey>('lr-register')
@@ -215,6 +254,16 @@ export default function TripReportsPage() {
     queryFn: () => reportsApi.getDelayedDeliveries(startDate, endDate, thresholdDays),
     enabled: tab === 'delayed-deliveries',
   })
+  const vehicleSummaryQuery = useQuery({
+    queryKey: ['report-vehicle-trip-summary', startDate, endDate],
+    queryFn: () => reportsApi.getVehicleTripSummary(startDate, endDate),
+    enabled: tab === 'vehicle-summary',
+  })
+  const clientSummaryQuery = useQuery({
+    queryKey: ['report-client-trip-summary', startDate, endDate],
+    queryFn: () => reportsApi.getClientTripSummary(startDate, endDate),
+    enabled: tab === 'client-summary',
+  })
 
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
@@ -224,8 +273,12 @@ export default function TripReportsPage() {
         await reportsApi.exportLrRegister(startDate, endDate, format, clientId)
       } else if (tab === 'weight-discrepancy') {
         await reportsApi.exportWeightDiscrepancy(startDate, endDate, format)
-      } else {
+      } else if (tab === 'delayed-deliveries') {
         await reportsApi.exportDelayedDeliveries(startDate, endDate, thresholdDays, format)
+      } else if (tab === 'vehicle-summary') {
+        await reportsApi.exportVehicleTripSummary(startDate, endDate, format)
+      } else {
+        await reportsApi.exportClientTripSummary(startDate, endDate, format)
       }
     } catch {
       toast.error('Export failed')
@@ -300,16 +353,18 @@ export default function TripReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
-        {/* Vehicle filter — all tabs */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
-          <SearchableSelect
-            value={vehicleFilter}
-            onValueChange={setVehicleFilter}
-            options={vehicleOptions}
-            className="w-52"
-          />
-        </div>
+        {/* Vehicle filter — detail tabs only */}
+        {tab !== 'client-summary' && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
+            <SearchableSelect
+              value={vehicleFilter}
+              onValueChange={setVehicleFilter}
+              options={vehicleOptions}
+              className="w-52"
+            />
+          </div>
+        )}
 
         {/* Client filter — only on LR Register */}
         {tab === 'lr-register' && (
@@ -390,9 +445,11 @@ export default function TripReportsPage() {
       </div>
 
       {/* Tables */}
-      {tab === 'lr-register'        && <LrRegisterTable        rows={filteredLrRows}        loading={lrRegisterQuery.isLoading} />}
-      {tab === 'weight-discrepancy' && <WeightDiscrepancyTable rows={filteredWeightRows}    loading={weightDiscrepancyQuery.isLoading} />}
-      {tab === 'delayed-deliveries' && <DelayedDeliveriesTable rows={filteredDelayedRows}   loading={delayedQuery.isLoading} />}
+      {tab === 'lr-register'        && <LrRegisterTable        rows={filteredLrRows}                              loading={lrRegisterQuery.isLoading} />}
+      {tab === 'weight-discrepancy' && <WeightDiscrepancyTable rows={filteredWeightRows}                          loading={weightDiscrepancyQuery.isLoading} />}
+      {tab === 'delayed-deliveries' && <DelayedDeliveriesTable rows={filteredDelayedRows}                         loading={delayedQuery.isLoading} />}
+      {tab === 'vehicle-summary'    && <VehicleSummaryTable    rows={vehicleSummaryQuery.data?.data ?? []}        loading={vehicleSummaryQuery.isLoading} />}
+      {tab === 'client-summary'     && <ClientSummaryTable     rows={clientSummaryQuery.data?.data ?? []}         loading={clientSummaryQuery.isLoading} />}
     </div>
   )
 }
