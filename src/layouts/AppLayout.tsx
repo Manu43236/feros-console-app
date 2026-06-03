@@ -75,9 +75,15 @@ const ADMIN_NAV: SectionedNav = {
       ],
     },
     {
+      section: 'Reports',
+      icon: BarChart2,
+      items: [
+        { to: '/reports', label: 'Vehicle Reports', icon: Truck },
+      ],
+    },
+    {
       section: '',
       items: [
-        { to: '/reports',       label: 'Reports',      icon: BarChart2  },
         { to: '/masters',       label: 'Masters',      icon: Settings },
         { to: '/subscription',  label: 'Subscription', icon: BadgeCheck },
       ],
@@ -128,9 +134,10 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       ],
     },
     {
-      section: '',
+      section: 'Reports',
+      icon: BarChart2,
       items: [
-        { to: '/reports', label: 'Reports', icon: BarChart2 },
+        { to: '/reports', label: 'Vehicle Reports', icon: Truck },
       ],
     },
   ],
