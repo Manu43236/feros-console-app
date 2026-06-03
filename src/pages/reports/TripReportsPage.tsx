@@ -183,7 +183,14 @@ export default function TripReportsPage() {
   const [endDate, setEndDate] = useState(todayStr())
   const [downloading, setDownloading] = useState(false)
   const [clientFilter, setClientFilter] = useState('ALL')
+  const [vehicleFilter, setVehicleFilter] = useState('ALL')
   const [thresholdDays, setThresholdDays] = useState(3)
+
+  function handleTabChange(key: TabKey) {
+    setTab(key)
+    setClientFilter('ALL')
+    setVehicleFilter('ALL')
+  }
 
   function applyPreset(p: DatePreset) {
     setPreset(p)
@@ -227,19 +234,41 @@ export default function TripReportsPage() {
     }
   }
 
-  // ── Client filter options (derived from LR register data) ──
-  const lrRows = lrRegisterQuery.data?.data ?? []
-  const clients = Array.from(
-    new Map(lrRows.map(r => [r.clientName, r.clientName])).entries()
-  ).sort((a, b) => a[0].localeCompare(b[0]))
-  const clientOptions = [
-    { value: 'ALL', label: `All Clients (${lrRows.length})` },
-    ...clients.map(([name]) => ({ value: name, label: name })),
+  // ── Derive filter options from active tab data ──
+  const lrRows           = lrRegisterQuery.data?.data ?? []
+  const weightRows       = weightDiscrepancyQuery.data?.data ?? []
+  const delayedRows      = delayedQuery.data?.data ?? []
+
+  const activeRows: { vehicleRegistrationNumber: string; clientName: string }[] =
+    tab === 'lr-register' ? lrRows :
+    tab === 'weight-discrepancy' ? weightRows : delayedRows
+
+  const vehicles = Array.from(new Set(
+    activeRows.map(r => r.vehicleRegistrationNumber).filter(v => v && v !== '—')
+  )).sort()
+  const vehicleOptions = [
+    { value: 'ALL', label: `All Vehicles (${activeRows.length})` },
+    ...vehicles.map(v => ({ value: v, label: v })),
   ]
 
-  // ── Apply client filter ──
+  const clients = Array.from(new Set(
+    lrRows.map(r => r.clientName).filter(Boolean)
+  )).sort()
+  const clientOptions = [
+    { value: 'ALL', label: `All Clients (${lrRows.length})` },
+    ...clients.map(c => ({ value: c, label: c })),
+  ]
+
+  // ── Apply filters ──
   const filteredLrRows = lrRows.filter(r =>
-    clientFilter === 'ALL' || r.clientName === clientFilter
+    (clientFilter === 'ALL' || r.clientName === clientFilter) &&
+    (vehicleFilter === 'ALL' || r.vehicleRegistrationNumber === vehicleFilter)
+  )
+  const filteredWeightRows = weightRows.filter(r =>
+    vehicleFilter === 'ALL' || r.vehicleRegistrationNumber === vehicleFilter
+  )
+  const filteredDelayedRows = delayedRows.filter(r =>
+    vehicleFilter === 'ALL' || r.vehicleRegistrationNumber === vehicleFilter
   )
 
   return (
@@ -255,7 +284,7 @@ export default function TripReportsPage() {
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => handleTabChange(key)}
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
               tab === key
@@ -271,6 +300,17 @@ export default function TripReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
+        {/* Vehicle filter — all tabs */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
+          <SearchableSelect
+            value={vehicleFilter}
+            onValueChange={setVehicleFilter}
+            options={vehicleOptions}
+            className="w-52"
+          />
+        </div>
+
         {/* Client filter — only on LR Register */}
         {tab === 'lr-register' && (
           <div>
@@ -279,7 +319,7 @@ export default function TripReportsPage() {
               value={clientFilter}
               onValueChange={setClientFilter}
               options={clientOptions}
-              className="w-52"
+              className="w-44"
             />
           </div>
         )}
@@ -350,9 +390,9 @@ export default function TripReportsPage() {
       </div>
 
       {/* Tables */}
-      {tab === 'lr-register'        && <LrRegisterTable        rows={filteredLrRows}                          loading={lrRegisterQuery.isLoading} />}
-      {tab === 'weight-discrepancy' && <WeightDiscrepancyTable rows={weightDiscrepancyQuery.data?.data ?? []} loading={weightDiscrepancyQuery.isLoading} />}
-      {tab === 'delayed-deliveries' && <DelayedDeliveriesTable rows={delayedQuery.data?.data ?? []}           loading={delayedQuery.isLoading} />}
+      {tab === 'lr-register'        && <LrRegisterTable        rows={filteredLrRows}        loading={lrRegisterQuery.isLoading} />}
+      {tab === 'weight-discrepancy' && <WeightDiscrepancyTable rows={filteredWeightRows}    loading={weightDiscrepancyQuery.isLoading} />}
+      {tab === 'delayed-deliveries' && <DelayedDeliveriesTable rows={filteredDelayedRows}   loading={delayedQuery.isLoading} />}
     </div>
   )
 }
