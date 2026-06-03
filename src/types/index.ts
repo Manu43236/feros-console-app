@@ -1335,3 +1335,33 @@ export interface MaintenanceServiceRow {
   vendorName: string | null
   nextServiceDueOdometer: number | null
 }
+
+// ─── Attendance Report rows ────────────────────────────────────────────────────
+export interface AttendanceDailyRow {
+  employeeId: number
+  employeeName: string
+  role: string
+  vehicleRegistrationNumber: string
+  attendanceDate: string
+  attendanceType: string
+  markedAt: string | null
+  markedOutAt: string | null
+  hoursWorked: number | null
+  approvalStatus: string
+  leaveType: string | null
+  remarks: string | null
+}
+
+export interface AttendanceSummaryRow {
+  employeeId: number
+  employeeName: string
+  role: string
+  vehicleRegistrationNumber: string
+  presentDays: number
+  absentDays: number
+  leaveDays: number
+  halfDays: number
+  otherDays: number
+  totalRecords: number
+  presentPercent: number
+}

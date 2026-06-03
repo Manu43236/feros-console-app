@@ -38,7 +38,8 @@ import { SupervisorAttendancePage } from '@/pages/attendance/SupervisorAttendanc
 import { PayrollPage }    from '@/pages/payroll/PayrollPage'
 import { MastersPage }    from '@/pages/masters/MastersPage'
 import InventoryPage      from '@/pages/inventory/InventoryPage'
-import VehicleReportsPage from '@/pages/reports/VehicleReportsPage'
+import VehicleReportsPage    from '@/pages/reports/VehicleReportsPage'
+import AttendanceReportsPage from '@/pages/reports/AttendanceReportsPage'
 
 // Super Admin pages
 import { SADashboardPage }   from '@/pages/superadmin/SADashboardPage'
@@ -125,7 +126,8 @@ export default function App() {
           <Route path="payroll"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PayrollPage /></ProtectedRoute>} />
 
           {/* Reports — admin + office only */}
-          <Route path="reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><VehicleReportsPage /></ProtectedRoute>} />
+          <Route path="reports"            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><VehicleReportsPage /></ProtectedRoute>} />
+          <Route path="reports/attendance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><AttendanceReportsPage /></ProtectedRoute>} />
 
           {/* Masters — admin + office only */}
           <Route path="masters"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><MastersPage /></ProtectedRoute>} />

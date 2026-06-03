@@ -6,6 +6,8 @@ import type {
   BreakdownReportRow,
   DocumentExpiryRow,
   MaintenanceServiceRow,
+  AttendanceDailyRow,
+  AttendanceSummaryRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -81,5 +83,31 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `maintenance-service-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Attendance Daily ──────────────────────────────────────────────────────
+  getAttendanceDaily: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<AttendanceDailyRow[]>>('/reports/attendance/daily', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportAttendanceDaily: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/attendance/daily/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `attendance-daily-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Attendance Summary ────────────────────────────────────────────────────
+  getAttendanceSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<AttendanceSummaryRow[]>>('/reports/attendance/summary', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportAttendanceSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/attendance/summary/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `attendance-summary-${startDate}-${endDate}.${format}`)
   },
 }

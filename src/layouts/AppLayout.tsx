@@ -78,7 +78,8 @@ const ADMIN_NAV: SectionedNav = {
       section: 'Reports',
       icon: BarChart2,
       items: [
-        { to: '/reports', label: 'Vehicle Reports', icon: Truck },
+        { to: '/reports',            label: 'Vehicle Reports',    icon: Truck },
+        { to: '/reports/attendance', label: 'Attendance Reports', icon: Calendar },
       ],
     },
     {
@@ -137,7 +138,8 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       section: 'Reports',
       icon: BarChart2,
       items: [
-        { to: '/reports', label: 'Vehicle Reports', icon: Truck },
+        { to: '/reports',            label: 'Vehicle Reports',    icon: Truck },
+        { to: '/reports/attendance', label: 'Attendance Reports', icon: Calendar },
       ],
     },
   ],
