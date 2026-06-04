@@ -86,6 +86,8 @@ function EditDocumentDialog({ vehicleId, doc, open, onClose }: { vehicleId: numb
       issueDate:      doc.issueDate ?? '',
       expiryDate:     doc.expiryDate ?? '',
       remarks:        doc.remarks ?? '',
+      cost:           doc.cost != null ? String(doc.cost) : '',
+      paidOn:         doc.paidOn ?? '',
     },
   })
 
@@ -96,6 +98,8 @@ function EditDocumentDialog({ vehicleId, doc, open, onClose }: { vehicleId: numb
       issueDate:      doc.issueDate ?? '',
       expiryDate:     doc.expiryDate ?? '',
       remarks:        doc.remarks ?? '',
+      cost:           doc.cost != null ? String(doc.cost) : '',
+      paidOn:         doc.paidOn ?? '',
     })
   }, [open, doc.id])
 
@@ -123,7 +127,7 @@ function EditDocumentDialog({ vehicleId, doc, open, onClose }: { vehicleId: numb
       }
       setUploading(false)
     }
-    mutation.mutate({ ...data, ...(fileUrl ? { fileUrl } : {}) })
+    mutation.mutate({ ...data, ...(fileUrl ? { fileUrl } : {}), cost: (data as Record<string, unknown>).cost ? Number((data as Record<string, unknown>).cost) : undefined })
   }
 
   const busy = uploading || mutation.isPending
@@ -156,6 +160,16 @@ function EditDocumentDialog({ vehicleId, doc, open, onClose }: { vehicleId: numb
           <div className="space-y-1.5">
             <Label>Remarks</Label>
             <Input placeholder="Optional remarks" {...register('remarks')} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Cost (₹)</Label>
+              <Input type="number" min="0" step="0.01" placeholder="0.00" {...register('cost')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Paid On</Label>
+              <Input type="date" {...register('paidOn')} />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Replace File</Label>
@@ -195,6 +209,8 @@ const docSchema = z.object({
   issueDate:      z.string().optional(),
   expiryDate:     z.string().optional(),
   remarks:        z.string().optional(),
+  cost:           z.string().optional(),
+  paidOn:         z.string().optional(),
 })
 type DocForm = z.infer<typeof docSchema>
 
@@ -244,7 +260,7 @@ function AddDocumentDialog({ vehicleId, open, onClose, existingDocs }: { vehicle
       }
       setUploading(false)
     }
-    mutation.mutate({ ...data, fileUrl })
+    mutation.mutate({ ...data, fileUrl, cost: data.cost ? Number(data.cost) : undefined })
   }
 
   function handleClose() { reset(); setFile(null); onClose() }
@@ -323,6 +339,16 @@ function AddDocumentDialog({ vehicleId, open, onClose, existingDocs }: { vehicle
           <div className="space-y-1.5">
             <Label>Remarks</Label>
             <Input placeholder="Optional remarks" {...register('remarks')} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Cost (₹)</Label>
+              <Input type="number" min="0" step="0.01" placeholder="0.00" {...register('cost')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Paid On</Label>
+              <Input type="date" {...register('paidOn')} />
+            </div>
           </div>
 
           {/* File attachment */}

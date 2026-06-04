@@ -25,6 +25,10 @@ import type {
   InvoiceAgingReportRow,
   CollectionRow,
   CreditNoteRegisterRow,
+  TripExpenseReportRow,
+  FuelCostRow,
+  MaintenanceCostRow,
+  DocumentCostRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -341,5 +345,57 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `credit-notes-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Trip Expenses ─────────────────────────────────────────────────────────────
+  getTripExpenses: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<TripExpenseReportRow[]>>('/reports/expenses/trips', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportTripExpenses: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/expenses/trips/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `trip-expenses-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Fuel Cost Summary ─────────────────────────────────────────────────────────
+  getFuelCostSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<FuelCostRow[]>>('/reports/expenses/fuel', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportFuelCostSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/expenses/fuel/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `fuel-cost-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Maintenance Cost Summary ──────────────────────────────────────────────────
+  getMaintenanceCostSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<MaintenanceCostRow[]>>('/reports/expenses/maintenance', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportMaintenanceCostSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/expenses/maintenance/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `maintenance-cost-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Document Cost Summary ──────────────────────────────────────────────────────
+  getDocumentCostSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<DocumentCostRow[]>>('/reports/expenses/documents', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportDocumentCostSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/expenses/documents/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `document-cost-${startDate}-${endDate}.${format}`)
   },
 }

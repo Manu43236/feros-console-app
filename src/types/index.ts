@@ -196,6 +196,7 @@ export interface VehicleDocument {
   documentNumber?: string; issuerName?: string; permitType?: string
   issueDate?: string; expiryDate?: string
   fileUrl?: string; isVerified: boolean; remarks?: string
+  cost?: number; paidOn?: string
   isActive: boolean; createdAt: string
 }
 
@@ -1582,4 +1583,51 @@ export interface CreditNoteRegisterRow {
   amount?: number
   reason: string
   creditNoteStatus: string
+}
+
+export interface TripExpenseReportRow {
+  lrId: number
+  lrNumber: string
+  lrDate: string
+  vehicleNumber: string
+  driverName: string
+  cleanerName: string
+  fromCity: string
+  toCity: string
+  advanceAmount?: number
+  driverBatta?: number
+  cleanerBatta?: number
+  tripMamulu?: number
+  itemsTotal?: number
+  totalExpense?: number
+  settlementAmount?: number
+  status: string
+}
+
+export interface FuelCostRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  totalFills: number
+  totalLitres?: number
+  totalCost?: number
+}
+
+export interface MaintenanceCostRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  totalServices: number
+  totalCost?: number
+}
+
+export interface DocumentCostRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  documentTypeName: string
+  documentNumber?: string
+  issuerName?: string
+  paidOn?: string
+  cost?: number
 }
