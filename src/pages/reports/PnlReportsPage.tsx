@@ -61,7 +61,7 @@ function ReportTable({ headers, rows, loading }: {
   if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
   if (rows.length === 0) return <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
         <thead>
           <tr>{headers.map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>)}</tr>
@@ -96,7 +96,7 @@ function ClientVehicleTable({ rows, loading }: { rows: ClientVehiclePnlRow[]; lo
   const headers = ['Vehicle', 'Type', 'Trips', 'Revenue', 'Trip Expenses', 'Net P&L']
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
         <thead>
           <tr>{headers.map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>)}</tr>
@@ -336,7 +336,7 @@ export default function PnlReportsPage() {
           ))}
         </div>
 
-        <div className="p-4">
+        <div>
           {tab === 'clients' && (
             <ReportTable
               loading={clientQuery.isLoading}
@@ -370,7 +370,7 @@ export default function PnlReportsPage() {
 
           {tab === 'trips' && (
             <>
-              <p className="text-xs text-gray-400 mb-3">
+              <p className="text-xs text-gray-400 px-4 pt-3 pb-2">
                 Revenue shown is 0 for trips not yet invoiced (amber). Trip expenses shown only if expense sheet exists.
               </p>
               <ReportTable
