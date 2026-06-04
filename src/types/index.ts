@@ -1631,3 +1631,71 @@ export interface DocumentCostRow {
   paidOn?: string
   cost?: number
 }
+
+export interface DriverPerformanceRow {
+  driverId: number
+  driverName: string
+  totalTrips: number
+  totalWeight?: number
+  deliveredTrips: number
+  onTimeDeliveries: number
+  onTimePct?: number
+  presentDays: number
+  totalAttendanceDays: number
+  attendancePct?: number
+}
+
+export interface CleanerPerformanceRow {
+  cleanerId: number
+  cleanerName: string
+  totalTrips: number
+  totalWeight?: number
+  presentDays: number
+  totalAttendanceDays: number
+  attendancePct?: number
+}
+
+export interface PnlSummaryRow {
+  totalInvoiced: number
+  totalCollected: number
+  balanceDue: number
+  tripExpenses: number
+  fuelExpenses: number
+  maintenanceExpenses: number
+  documentExpenses: number
+  totalExpenses: number
+  grossPnl: number
+  netPnl: number
+}
+
+export interface ClientPnlRow {
+  clientId: number
+  clientName: string
+  totalInvoiced: number
+  totalCollected: number
+  balanceDue: number
+  tripExpenses: number
+  netPnl: number
+}
+
+export interface VehiclePnlRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  revenue: number
+  tripExpenses: number
+  fuelCost: number
+  maintenanceCost: number
+  documentCost: number
+  totalExpenses: number
+  netPnl: number
+}
+
+export interface RoutePnlRow {
+  fromCity: string
+  toCity: string
+  totalTrips: number
+  revenue: number
+  tripExpenses: number
+  netPnl: number
+}

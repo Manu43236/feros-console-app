@@ -29,6 +29,12 @@ import type {
   FuelCostRow,
   MaintenanceCostRow,
   DocumentCostRow,
+  DriverPerformanceRow,
+  CleanerPerformanceRow,
+  PnlSummaryRow,
+  ClientPnlRow,
+  VehiclePnlRow,
+  RoutePnlRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -397,5 +403,78 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `document-cost-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Staff Performance ─────────────────────────────────────────────────────────
+  getDriverPerformance: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<DriverPerformanceRow[]>>('/reports/staff/drivers', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportDriverPerformance: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/staff/drivers/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `driver-performance-${startDate}-${endDate}.${format}`)
+  },
+
+  getCleanerPerformance: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<CleanerPerformanceRow[]>>('/reports/staff/cleaners', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportCleanerPerformance: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/staff/cleaners/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `cleaner-performance-${startDate}-${endDate}.${format}`)
+  },
+
+  getPnlSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<PnlSummaryRow>>('/reports/pnl/summary', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportPnlSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/pnl/summary/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `pnl-summary-${startDate}-${endDate}.${format}`)
+  },
+
+  getClientPnl: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<ClientPnlRow[]>>('/reports/pnl/clients', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportClientPnl: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/pnl/clients/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `client-pnl-${startDate}-${endDate}.${format}`)
+  },
+
+  getVehiclePnl: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<VehiclePnlRow[]>>('/reports/pnl/vehicles', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportVehiclePnl: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/pnl/vehicles/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `vehicle-pnl-${startDate}-${endDate}.${format}`)
+  },
+
+  getRoutePnl: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<RoutePnlRow[]>>('/reports/pnl/routes', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportRoutePnl: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/pnl/routes/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `route-pnl-${startDate}-${endDate}.${format}`)
   },
 }

@@ -11,7 +11,7 @@ import {
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
-  Activity, Banknote, Package, Wrench, BarChart2,
+  Activity, Banknote, Package, Wrench, BarChart2, TrendingUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
@@ -84,6 +84,8 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/reports/orders',     label: 'Order Reports',      icon: ClipboardList },
         { to: '/reports/invoices',   label: 'Invoice Reports',    icon: Receipt },
         { to: '/reports/expenses',   label: 'Expense Reports',    icon: Wrench },
+        { to: '/reports/staff',      label: 'Staff Performance',  icon: Users },
+        { to: '/reports/pnl',        label: 'P&L',                icon: TrendingUp },
       ],
     },
     {
@@ -148,6 +150,8 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/reports/orders',     label: 'Order Reports',      icon: ClipboardList },
         { to: '/reports/invoices',   label: 'Invoice Reports',    icon: Receipt },
         { to: '/reports/expenses',   label: 'Expense Reports',    icon: Wrench },
+        { to: '/reports/staff',      label: 'Staff Performance',  icon: Users },
+        { to: '/reports/pnl',        label: 'P&L',                icon: TrendingUp },
       ],
     },
   ],
