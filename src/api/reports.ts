@@ -37,6 +37,17 @@ import type {
   RoutePnlRow,
   ClientVehiclePnlRow,
   TripPnlRow,
+  StockSummaryRow,
+  StockInwardRow,
+  StockOutwardRow,
+  PartRequestRow,
+  ConsumptionByVehicleRow,
+  TyreInventoryRow,
+  TyreFittingRow,
+  TyreRemovalRow,
+  TyreLifeRow,
+  TyreRequestRow,
+  TyreRotationRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -502,5 +513,95 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `trip-pnl-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Inventory Reports ─────────────────────────────────────────────────────────
+  getStockSummary: () =>
+    apiClient.get<ApiResponse<StockSummaryRow[]>>('/reports/inventory/stock-summary').then(r => r.data),
+
+  exportStockSummary: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/inventory/stock-summary/export', { params: { format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `stock-summary.${format}`)
+  },
+
+  getStockInward: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<StockInwardRow[]>>('/reports/inventory/inward', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportStockInward: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/inventory/inward/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `stock-inward-${startDate}-${endDate}.${format}`)
+  },
+
+  getStockOutward: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<StockOutwardRow[]>>('/reports/inventory/outward', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportStockOutward: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/inventory/outward/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `stock-outward-${startDate}-${endDate}.${format}`)
+  },
+
+  getPartRequests: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<PartRequestRow[]>>('/reports/inventory/part-requests', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportPartRequests: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/inventory/part-requests/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `part-requests-${startDate}-${endDate}.${format}`)
+  },
+
+  getConsumptionByVehicle: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<ConsumptionByVehicleRow[]>>('/reports/inventory/consumption', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportConsumptionByVehicle: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/inventory/consumption/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `consumption-by-vehicle-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Tyre Reports ──────────────────────────────────────────────────────────────
+  getTyreInventory: () =>
+    apiClient.get<ApiResponse<TyreInventoryRow[]>>('/reports/tyres/inventory').then(r => r.data),
+
+  exportTyreInventory: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/tyres/inventory/export', { params: { format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `tyre-inventory.${format}`)
+  },
+
+  getTyreFittingRegister: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<TyreFittingRow[]>>('/reports/tyres/fittings', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportTyreFittingRegister: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/tyres/fittings/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `tyre-fittings-${startDate}-${endDate}.${format}`)
+  },
+
+  getTyreRemovalRegister: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<TyreRemovalRow[]>>('/reports/tyres/removals', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportTyreRemovalRegister: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/tyres/removals/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `tyre-removals-${startDate}-${endDate}.${format}`)
+  },
+
+  getTyreLifeReport: () =>
+    apiClient.get<ApiResponse<TyreLifeRow[]>>('/reports/tyres/life').then(r => r.data),
+
+  exportTyreLifeReport: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/tyres/life/export', { params: { format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `tyre-life.${format}`)
+  },
+
+  getTyreRequests: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<TyreRequestRow[]>>('/reports/tyres/requests', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportTyreRequests: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/tyres/requests/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `tyre-requests-${startDate}-${endDate}.${format}`)
+  },
+
+  getTyreRotationLog: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<TyreRotationRow[]>>('/reports/tyres/rotations', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportTyreRotationLog: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/tyres/rotations/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `tyre-rotations-${startDate}-${endDate}.${format}`)
   },
 }

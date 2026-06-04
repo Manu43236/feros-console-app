@@ -1724,3 +1724,168 @@ export interface TripPnlRow {
   tripExpenses: number
   netPnl: number
 }
+
+// ─── Inventory Report rows ─────────────────────────────────────────────────────
+export interface StockSummaryRow {
+  partId: number
+  partName: string
+  partNumber?: string
+  category?: string
+  unit: string
+  quantityOnHand: number
+  minStockLevel: number
+  stockStatus: 'OK' | 'LOW' | 'OUT'
+}
+
+export interface StockInwardRow {
+  transactionId: number
+  transactionDate: string
+  partName: string
+  partNumber?: string
+  category?: string
+  unit: string
+  quantity: number
+  unitCost?: number
+  totalCost?: number
+  supplierName?: string
+  referenceType: string
+  receivedBy: string
+  notes?: string
+}
+
+export interface StockOutwardRow {
+  transactionId: number
+  transactionDate: string
+  partName: string
+  partNumber?: string
+  category?: string
+  unit: string
+  quantity: number
+  totalCost?: number
+  transactionType: string
+  vehicleRegistration?: string
+  requestedBy?: string
+  approvedBy?: string
+  notes?: string
+}
+
+export interface PartRequestRow {
+  servicePartId: number
+  serviceDate?: string
+  partName: string
+  partNumber?: string
+  category?: string
+  unit: string
+  quantityRequested: number
+  quantityApproved: number
+  vehicleRegistration?: string
+  vehicleType?: string
+  requestedBy?: string
+  approvedBy?: string
+  approvedAt?: string
+  status: string
+}
+
+export interface ConsumptionByVehicleRow {
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  totalPartsConsumed: number
+  totalCost?: number
+}
+
+// ─── Tyre Report rows ──────────────────────────────────────────────────────────
+export interface TyreInventoryRow {
+  tyreId: number
+  serialNumber: string
+  brand: string
+  size: string
+  tyreType: string
+  plyRating?: string
+  purchaseDate?: string
+  purchaseCost?: number
+  status: string
+  totalLifetimeKm: number
+  maxLifetimeKm: number
+  percentLifeUsed: number
+  retreadCount: number
+  expiryDate?: string
+  fittedOnVehicle?: string
+  fittedPosition?: string
+}
+
+export interface TyreFittingRow {
+  fittingId: number
+  fittedDate: string
+  vehicleRegistration: string
+  vehicleType: string
+  tyreSerial: string
+  tyreBrand: string
+  tyreSize: string
+  tyreType: string
+  position: string
+  fittedAtKm: number
+  fittedBy: string
+}
+
+export interface TyreRemovalRow {
+  fittingId: number
+  removedDate: string
+  vehicleRegistration: string
+  vehicleType: string
+  tyreSerial: string
+  tyreBrand: string
+  tyreSize: string
+  position: string
+  fittedAtKm: number
+  removedAtKm: number
+  kmDriven: number
+  removalReason: string
+  removedBy: string
+}
+
+export interface TyreLifeRow {
+  tyreId: number
+  serialNumber: string
+  brand: string
+  size: string
+  tyreType: string
+  totalLifetimeKm: number
+  maxLifetimeKm: number
+  percentLifeUsed: number
+  retreadCount: number
+  status: string
+}
+
+export interface TyreRequestRow {
+  requestId: number
+  createdAt: string
+  vehicleRegistration: string
+  vehicleType: string
+  position: string
+  requestedBy: string
+  approvedBy?: string
+  approvedAt?: string
+  issuedTyreSerial?: string
+  issuedTyreBrand?: string
+  fittedAtKm: number
+  status: string
+}
+
+export interface TyreMovement {
+  tyreSerial: string
+  tyreBrand: string
+  fromPosition: string
+  toPosition: string
+}
+
+export interface TyreRotationRow {
+  rotationLogId: number
+  rotationDate: string
+  vehicleRegistration: string
+  vehicleType: string
+  odometerKm: number
+  performedBy: string
+  tyresRotated: number
+  movements: TyreMovement[]
+}

@@ -86,6 +86,8 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/reports/expenses',   label: 'Expense Reports',    icon: Wrench },
         { to: '/reports/staff',      label: 'Staff Performance',  icon: Users },
         { to: '/reports/pnl',        label: 'P&L',                icon: TrendingUp },
+        { to: '/reports/inventory',  label: 'Inventory Reports',  icon: Boxes },
+        { to: '/reports/tyres',      label: 'Tyre Reports',       icon: CircleDot },
       ],
     },
     {
@@ -152,6 +154,8 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/reports/expenses',   label: 'Expense Reports',    icon: Wrench },
         { to: '/reports/staff',      label: 'Staff Performance',  icon: Users },
         { to: '/reports/pnl',        label: 'P&L',                icon: TrendingUp },
+        { to: '/reports/inventory',  label: 'Inventory Reports',  icon: Boxes },
+        { to: '/reports/tyres',      label: 'Tyre Reports',       icon: CircleDot },
       ],
     },
   ],

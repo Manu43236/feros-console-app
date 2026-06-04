@@ -45,7 +45,9 @@ import OrderReportsPage      from '@/pages/reports/OrderReportsPage'
 import InvoiceReportsPage   from '@/pages/reports/InvoiceReportsPage'
 import ExpenseReportsPage   from '@/pages/reports/ExpenseReportsPage'
 import StaffReportsPage     from '@/pages/reports/StaffReportsPage'
-import PnlReportsPage      from '@/pages/reports/PnlReportsPage'
+import PnlReportsPage           from '@/pages/reports/PnlReportsPage'
+import InventoryReportsPage    from '@/pages/reports/InventoryReportsPage'
+import TyreReportsPage         from '@/pages/reports/TyreReportsPage'
 
 // Super Admin pages
 import { SADashboardPage }   from '@/pages/superadmin/SADashboardPage'
@@ -139,7 +141,9 @@ export default function App() {
           <Route path="reports/invoices"   element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><InvoiceReportsPage /></ProtectedRoute>} />
           <Route path="reports/expenses"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ExpenseReportsPage /></ProtectedRoute>} />
           <Route path="reports/staff"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><StaffReportsPage /></ProtectedRoute>} />
-          <Route path="reports/pnl"     element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PnlReportsPage /></ProtectedRoute>} />
+          <Route path="reports/pnl"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PnlReportsPage /></ProtectedRoute>} />
+          <Route path="reports/inventory" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><InventoryReportsPage /></ProtectedRoute>} />
+          <Route path="reports/tyres"     element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><TyreReportsPage /></ProtectedRoute>} />
 
           {/* Masters — admin + office only */}
           <Route path="masters"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><MastersPage /></ProtectedRoute>} />
