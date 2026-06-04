@@ -127,7 +127,8 @@ function EditDocumentDialog({ vehicleId, doc, open, onClose }: { vehicleId: numb
       }
       setUploading(false)
     }
-    mutation.mutate({ ...data, ...(fileUrl ? { fileUrl } : {}), cost: (data as Record<string, unknown>).cost ? Number((data as Record<string, unknown>).cost) : undefined })
+    const cost = data.cost ? Number(data.cost) : undefined
+    mutation.mutate({ ...data, ...(fileUrl ? { fileUrl } : {}), cost })
   }
 
   const busy = uploading || mutation.isPending
@@ -237,7 +238,7 @@ function AddDocumentDialog({ vehicleId, open, onClose, existingDocs }: { vehicle
   const showPermitType = false
 
   const mutation = useMutation({
-    mutationFn: (data: DocForm & { fileUrl?: string }) => vehiclesApi.addDocument(vehicleId, data),
+    mutationFn: (data: Omit<DocForm, 'cost'> & { fileUrl?: string; cost?: number }) => vehiclesApi.addDocument(vehicleId, data),
     onSuccess: () => {
       toast.success('Document added')
       qc.invalidateQueries({ queryKey: ['vehicle-docs', vehicleId] })
@@ -260,7 +261,8 @@ function AddDocumentDialog({ vehicleId, open, onClose, existingDocs }: { vehicle
       }
       setUploading(false)
     }
-    mutation.mutate({ ...data, fileUrl, cost: data.cost ? Number(data.cost) : undefined })
+    const { cost: costStr, ...docData } = data
+    mutation.mutate({ ...docData, fileUrl, cost: costStr ? Number(costStr) : undefined })
   }
 
   function handleClose() { reset(); setFile(null); onClose() }
