@@ -35,6 +35,8 @@ import type {
   ClientPnlRow,
   VehiclePnlRow,
   RoutePnlRow,
+  ClientVehiclePnlRow,
+  TripPnlRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -476,5 +478,29 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `route-pnl-${startDate}-${endDate}.${format}`)
+  },
+
+  getClientVehiclePnl: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<ClientVehiclePnlRow[]>>('/reports/pnl/client-vehicle', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportClientVehiclePnl: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/pnl/client-vehicle/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `client-vehicle-pnl-${startDate}-${endDate}.${format}`)
+  },
+
+  getTripPnl: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<TripPnlRow[]>>('/reports/pnl/trips', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportTripPnl: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/pnl/trips/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `trip-pnl-${startDate}-${endDate}.${format}`)
   },
 }

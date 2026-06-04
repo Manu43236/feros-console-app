@@ -1699,3 +1699,28 @@ export interface RoutePnlRow {
   tripExpenses: number
   netPnl: number
 }
+
+export interface ClientVehiclePnlRow {
+  clientId: number
+  clientName: string
+  vehicleId: number
+  registrationNumber: string
+  vehicleType: string
+  totalTrips: number
+  revenue: number
+  tripExpenses: number
+  netPnl: number
+}
+
+export interface TripPnlRow {
+  lrId: number
+  lrNumber: string
+  lrDate: string
+  registrationNumber: string
+  clientName: string
+  fromCity: string
+  toCity: string
+  revenue: number
+  tripExpenses: number
+  netPnl: number
+}
