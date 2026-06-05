@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import type { StaffProfile, BulkUploadResult } from '@/types'
@@ -66,11 +67,15 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [createdName, setCreatedName] = useState('')
 
   const { data: rolesData } = useQuery({ queryKey: ['roles'], queryFn: globalMastersApi.getRoles })
-  const roleOptions = rolesData?.data?.filter(r => r.name !== 'SUPER_ADMIN') ?? []
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<AddStaffForm>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AddStaffForm>({
     resolver: zodResolver(addStaffSchema) as Resolver<AddStaffForm>,
   })
+
+  const roleOptions = (rolesData?.data?.filter(r => r.name !== 'SUPER_ADMIN') ?? []).map(r => ({
+    value: r.name,
+    label: r.description || r.name,
+  }))
 
   const mutation = useMutation({
     mutationFn: (data: AddStaffForm) => staffApi.createUser(data),
@@ -138,10 +143,13 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
             <div className="space-y-1.5">
               <Label>Role *</Label>
-              <select {...register('role')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                <option value="">Select role</option>
-                {roleOptions.map(r => <option key={r.name} value={r.name}>{r.description || r.name}</option>)}
-              </select>
+              <SearchableSelect
+                placeholder="Select role"
+                options={roleOptions}
+                value={watch('role') ?? ''}
+                onValueChange={v => setValue('role', v, { shouldValidate: true })}
+                triggerClassName={errors.role ? 'border-red-400' : ''}
+              />
               {errors.role && <p className="text-red-500 text-xs">{errors.role.message}</p>}
             </div>
             <p className="text-xs text-gray-400">A login PIN will be auto-generated and shown after creation.</p>
