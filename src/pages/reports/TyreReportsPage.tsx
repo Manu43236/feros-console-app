@@ -475,13 +475,13 @@ function RotationsTab({ rows, loading }: { rows?: TyreRotationRow[]; loading: bo
                   <td colSpan={2} />
                   <Td muted><span className="font-mono text-xs">{m.tyreSerial}</span></Td>
                   <Td muted>{m.tyreBrand}</Td>
-                  <Td colSpan={3}>
+                  <td colSpan={3} className="px-3 py-2 text-sm">
                     <span className="text-xs text-gray-600">
                       <span className="font-medium">{m.fromPosition}</span>
                       <span className="mx-2 text-gray-400">→</span>
                       <span className="font-medium">{m.toPosition}</span>
                     </span>
-                  </Td>
+                  </td>
                 </tr>
               ))}
             </>
