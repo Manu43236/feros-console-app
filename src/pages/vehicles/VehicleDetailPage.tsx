@@ -3142,6 +3142,64 @@ export function VehicleDetailPage() {
             <div className="mt-4">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-3xl font-bold text-white font-mono tracking-wider">{v.registrationNumber}</h1>
+                <div className="flex items-center gap-2">
+                  {v.isAssigned && (
+                    <span className="text-xs text-yellow-300 font-mono">{v.assignedOrderNumber}</span>
+                  )}
+                  <SearchableSelect
+                    value={v.isAssigned ? 'assigned' : String(v.currentStatusId ?? '')}
+                    onValueChange={v2 => {
+                      const id = Number(v2)
+                      if (!id || id === v.currentStatusId) return
+                      const selected = statusRes?.data?.find(s => s.id === id)
+                      if (selected?.statusType === 'BREAKDOWN') {
+                        setPendingStatusId(id)
+                      } else {
+                        setConfirmStatusId(id)
+                        setConfirmStatusName(selected?.name ?? '')
+                      }
+                    }}
+                    disabled={updateStatusMutation.isPending || !!v.isAssigned || !v.isActive}
+                    showSearch={false}
+                    options={
+                      v.isAssigned
+                        ? [{ value: 'assigned', label: 'Assigned to Order', color: 'text-blue-400 font-medium' }]
+                        : [
+                            ...(!v.currentStatusId ? [{ value: '', label: '— Set Status —' }] : []),
+                            ...(statusRes?.data ?? [])
+                              .filter(s => {
+                                const cur = v.currentStatusType
+                                if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
+                                if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
+                                return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
+                              })
+                              .map(s => ({
+                                value: String(s.id),
+                                label: s.name,
+                                color: vehicleStatusOptionColor[s.statusType as VehicleStatusType],
+                              })),
+                          ]
+                    }
+                    className="h-8 w-44"
+                    triggerClassName="h-8 text-xs"
+                  />
+                  <button
+                    onClick={() => toggleActiveMutation.mutate()}
+                    disabled={toggleActiveMutation.isPending || (!!v.isActive && !!v.isAssigned)}
+                    title={v.isActive && v.isAssigned ? 'Unassign from order before deactivating' : undefined}
+                    className={cn(
+                      'flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors',
+                      v.isActive && v.isAssigned
+                        ? 'bg-green-500/10 border-green-400/20 text-green-400/50 cursor-not-allowed'
+                        : v.isActive
+                        ? 'bg-green-500/20 border-green-400/40 text-green-300 hover:bg-green-500/30'
+                        : 'bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30'
+                    )}
+                  >
+                    <Power size={12} />
+                    {v.isActive ? 'Active' : 'Inactive'}
+                  </button>
+                </div>
                 {alertCount > 0 && (
                   <span className="flex items-center gap-1 text-xs text-red-300 bg-red-500/20 border border-red-400/30 px-2 py-1 rounded-full">
                     <AlertTriangle size={11} />
@@ -3149,6 +3207,11 @@ export function VehicleDetailPage() {
                   </span>
                 )}
               </div>
+              {(v.isAssigned || !v.isActive) && (
+                <p className="text-xs text-blue-300/70 mt-1">
+                  {v.isAssigned ? 'Unassign from order to change status' : 'Activate vehicle to change status'}
+                </p>
+              )}
               <p className="text-blue-200 text-sm mt-1.5">
                 {[v.brandName, v.vehicleTypeName, v.capacityInTons ? `${v.capacityInTons}T` : null, v.fuelTypeName, v.color]
                   .filter(Boolean).join(' · ')}
@@ -3167,74 +3230,6 @@ export function VehicleDetailPage() {
                   <p className="text-sm font-semibold text-white mt-0.5 truncate">{value}</p>
                 </div>
               ))}
-            </div>
-
-            <div className="flex items-start gap-2 mt-4">
-              <div className="flex flex-col gap-1">
-                {v.isAssigned && (
-                  <span className="text-xs text-yellow-300 font-mono">{v.assignedOrderNumber}</span>
-                )}
-                <SearchableSelect
-                  value={v.isAssigned ? 'assigned' : String(v.currentStatusId ?? '')}
-                  onValueChange={v2 => {
-                    const id = Number(v2)
-                    if (!id || id === v.currentStatusId) return
-                    const selected = statusRes?.data?.find(s => s.id === id)
-                    if (selected?.statusType === 'BREAKDOWN') {
-                      setPendingStatusId(id)
-                    } else {
-                      setConfirmStatusId(id)
-                      setConfirmStatusName(selected?.name ?? '')
-                    }
-                  }}
-                  disabled={updateStatusMutation.isPending || !!v.isAssigned || !v.isActive}
-                  showSearch={false}
-                  options={
-                    v.isAssigned
-                      ? [{ value: 'assigned', label: 'Assigned to Order', color: 'text-blue-400 font-medium' }]
-                      : [
-                          ...(!v.currentStatusId ? [{ value: '', label: '— Set Status —' }] : []),
-                          ...(statusRes?.data ?? [])
-                            .filter(s => {
-                              const cur = v.currentStatusType
-                              if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
-                              if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
-                              return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
-                            })
-                            .map(s => ({
-                              value: String(s.id),
-                              label: s.name,
-                              color: vehicleStatusOptionColor[s.statusType as VehicleStatusType],
-                            })),
-                        ]
-                  }
-                  className="h-8 w-44"
-                  triggerClassName="h-8 text-xs"
-                />
-                <span className={cn(
-                  'text-xs',
-                  v.isAssigned ? 'text-blue-300/70 visible' : !v.isActive ? 'text-gray-400/70 visible' : 'invisible'
-                )}>
-                  {v.isAssigned ? 'Unassign from order to change' : 'Activate vehicle to change status'}
-                </span>
-              </div>
-
-              <button
-                onClick={() => toggleActiveMutation.mutate()}
-                disabled={toggleActiveMutation.isPending || (!!v.isActive && !!v.isAssigned)}
-                title={v.isActive && v.isAssigned ? 'Unassign from order before deactivating' : undefined}
-                className={cn(
-                  'flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors',
-                  v.isActive && v.isAssigned
-                    ? 'bg-green-500/10 border-green-400/20 text-green-400/50 cursor-not-allowed'
-                    : v.isActive
-                    ? 'bg-green-500/20 border-green-400/40 text-green-300 hover:bg-green-500/30'
-                    : 'bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30'
-                )}
-              >
-                <Power size={12} />
-                {v.isActive ? 'Active' : 'Inactive'}
-              </button>
             </div>
           </div>
 
