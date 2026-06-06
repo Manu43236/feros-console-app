@@ -48,6 +48,11 @@ import type {
   TyreLifeRow,
   TyreRequestRow,
   TyreRotationRow,
+  PayrollSummaryReportRow,
+  SalaryRegisterRow,
+  AdvanceRegisterRow,
+  PayrollByRoleRow,
+  PayrollYtdRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -603,5 +608,47 @@ export const reportsApi = {
   exportTyreRotationLog: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
     const res = await apiClient.get('/reports/tyres/rotations/export', { params: { startDate, endDate, format }, responseType: 'blob' })
     triggerDownload(res.data as Blob, `tyre-rotations-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Payroll Reports ─────────────────────────────────────────────────────────
+
+  getPayrollSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<PayrollSummaryReportRow[]>>('/reports/payroll/summary', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportPayrollSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/payroll/summary/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `payroll-summary-${startDate}-${endDate}.${format}`)
+  },
+
+  getSalaryRegister: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<SalaryRegisterRow[]>>('/reports/payroll/salary-register', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportSalaryRegister: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/payroll/salary-register/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `salary-register-${startDate}-${endDate}.${format}`)
+  },
+
+  getAdvanceRegister: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<AdvanceRegisterRow[]>>('/reports/payroll/advances', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportAdvanceRegister: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/payroll/advances/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `advance-register-${startDate}-${endDate}.${format}`)
+  },
+
+  getPayrollByRole: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<PayrollByRoleRow[]>>('/reports/payroll/by-role', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportPayrollByRole: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/payroll/by-role/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `payroll-by-role-${startDate}-${endDate}.${format}`)
+  },
+
+  getPayrollYtd: (year: number) =>
+    apiClient.get<ApiResponse<PayrollYtdRow[]>>('/reports/payroll/ytd', { params: { year } }).then(r => r.data),
+
+  exportPayrollYtd: async (year: number, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/payroll/ytd/export', { params: { year, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `payroll-ytd-${year}.${format}`)
   },
 }

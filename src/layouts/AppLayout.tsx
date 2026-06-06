@@ -11,7 +11,7 @@ import {
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
-  Activity, Banknote, Package, Wrench, BarChart2, TrendingUp,
+  Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
@@ -88,6 +88,7 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/reports/pnl',        label: 'P&L',                icon: TrendingUp },
         { to: '/reports/inventory',  label: 'Inventory Reports',  icon: Boxes },
         { to: '/reports/tyres',      label: 'Tyre Reports',       icon: CircleDot },
+        { to: '/reports/payroll',    label: 'Payroll Reports',    icon: DollarSign },
       ],
     },
     {
@@ -156,6 +157,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/reports/pnl',        label: 'P&L',                icon: TrendingUp },
         { to: '/reports/inventory',  label: 'Inventory Reports',  icon: Boxes },
         { to: '/reports/tyres',      label: 'Tyre Reports',       icon: CircleDot },
+        { to: '/reports/payroll',    label: 'Payroll Reports',    icon: DollarSign },
       ],
     },
   ],

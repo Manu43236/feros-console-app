@@ -1889,3 +1889,99 @@ export interface TyreRotationRow {
   tyresRotated: number
   movements: TyreMovement[]
 }
+
+// ─── Payroll Reports ──────────────────────────────────────────────────────────
+
+export interface PayrollSummaryReportRow {
+  payrollId: number
+  employeeName: string
+  role: string
+  designation: string
+  payCycleStart: string
+  payCycleEnd: string
+  presentDays: number
+  absentDays: number
+  halfDays: number
+  leaveDays: number
+  totalDays: number
+  basicPay: number
+  overtimePay: number
+  tripBonus: number
+  vehicleExtraPay: number
+  grossPay: number
+  totalDeductions: number
+  netPay: number
+  payrollStatus: string
+  paymentDate: string | null
+  paymentMode: string
+  bankName: string | null
+  accountNumber: string | null
+  ifscCode: string | null
+  accountHolderName: string | null
+}
+
+export interface SalaryRegisterRow {
+  payrollId: number
+  employeeName: string
+  role: string
+  designation: string
+  payCycleStart: string
+  payCycleEnd: string
+  presentDays: number
+  absentDays: number
+  halfDays: number
+  leaveDays: number
+  totalDays: number
+  dailyRate: number
+  basicPay: number
+  overtimePay: number
+  tripBonus: number
+  vehicleExtraPay: number
+  grossPay: number
+  deductionsDetail: string
+  totalDeductions: number
+  netPay: number
+  payrollStatus: string
+  paymentDate: string | null
+  paymentMode: string
+  referenceNumber: string | null
+  bankName: string | null
+  accountNumber: string | null
+  ifscCode: string | null
+  accountHolderName: string | null
+}
+
+export interface AdvanceRegisterRow {
+  advanceId: number
+  employeeName: string
+  role: string
+  advanceDate: string
+  amount: number
+  totalRepaid: number
+  balanceAmount: number
+  fullyRepaid: boolean
+  reason: string | null
+  approvedBy: string
+}
+
+export interface PayrollByRoleRow {
+  role: string
+  employeeCount: number
+  totalGrossPay: number
+  totalDeductions: number
+  totalNetPay: number
+}
+
+export interface PayrollYtdRow {
+  employeeName: string
+  role: string
+  designation: string
+  totalPresentDays: number
+  totalGrossPay: number
+  totalDeductions: number
+  totalNetPay: number
+  bankName: string | null
+  accountNumber: string | null
+  ifscCode: string | null
+  accountHolderName: string | null
+}
