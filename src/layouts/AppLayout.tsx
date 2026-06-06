@@ -11,7 +11,7 @@ import {
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
-  Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign,
+  Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
@@ -53,6 +53,7 @@ const ADMIN_NAV: SectionedNav = {
       icon: Truck,
       items: [
         { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
+        { to: '/gps',            label: 'GPS Tracker',    icon: MapPin },
         { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
       ],
@@ -130,6 +131,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       icon: Truck,
       items: [
         { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
+        { to: '/gps',            label: 'GPS Tracker',    icon: MapPin },
         { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
       ],
@@ -191,6 +193,7 @@ const SUPERVISOR_NAV: SectionedNav = {
       icon: Truck,
       items: [
         { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
+        { to: '/gps',            label: 'GPS Tracker',    icon: MapPin },
         { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
       ],
