@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Download, Package, ArrowDownToLine, ArrowUpFromLine, ClipboardList, Truck } from 'lucide-react'
@@ -229,29 +229,85 @@ function InwardTab({ rows, loading }: { rows?: StockInwardRow[]; loading: boolea
   if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No inward transactions in this period</div>
   const total = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
+
+  // Group rows: invoiced together if same invoiceNo+supplier, ungrouped otherwise
+  type Group = { key: string; invoiceNo?: string; invoiceDate?: string; supplier?: string; rows: StockInwardRow[] }
+  const groups: Group[] = []
+  const seen = new Map<string, Group>()
+  for (const r of rows) {
+    if (r.invoiceNo) {
+      const groupKey = `${r.supplierName ?? ''}__${r.invoiceNo}`
+      if (!seen.has(groupKey)) {
+        const g: Group = { key: groupKey, invoiceNo: r.invoiceNo, invoiceDate: r.invoiceDate, supplier: r.supplierName, rows: [] }
+        seen.set(groupKey, g)
+        groups.push(g)
+      }
+      seen.get(groupKey)!.rows.push(r)
+    } else {
+      groups.push({ key: `single_${r.transactionId}`, rows: [r] })
+    }
+  }
+
   return (
     <div>
       <div className="px-4 py-2 border-b text-sm text-gray-500">
-        {rows.length} transactions · Total value: <span className="font-semibold text-gray-800">₹{fmt(total)}</span>
+        {rows.length} transaction{rows.length !== 1 ? 's' : ''} · Total value: <span className="font-semibold text-gray-800">₹{fmt(total)}</span>
       </div>
       <TableWrap>
-        <thead><tr><Th>Date & Time</Th><Th>Part</Th><Th>Category</Th><Th>Unit</Th><Th right>Qty</Th><Th right>Unit Cost</Th><Th right>Total Cost</Th><Th>Supplier</Th><Th>Type</Th><Th>Received By</Th><Th>Notes</Th></tr></thead>
+        <thead><tr><Th>Date & Time</Th><Th>Part</Th><Th>Category</Th><Th>Unit</Th><Th right>Qty</Th><Th right>Unit Cost</Th><Th right>Total Cost</Th><Th>Supplier / Invoice</Th><Th>Received By</Th><Th>Notes</Th></tr></thead>
         <tbody>
-          {rows.map(r => (
-            <tr key={r.transactionId} className="hover:bg-gray-50">
-              <Td>{fmtDt(r.transactionDate)}</Td>
-              <Td><div className="font-medium">{r.partName}</div>{r.partNumber && <div className="text-xs text-gray-400">{r.partNumber}</div>}</Td>
-              <Td muted>{r.category || '—'}</Td>
-              <Td muted>{r.unit}</Td>
-              <Td right>{r.quantity}</Td>
-              <Td right muted>{r.unitCost != null ? `₹${fmt(r.unitCost)}` : '—'}</Td>
-              <Td right>{r.totalCost != null ? `₹${fmt(r.totalCost)}` : '—'}</Td>
-              <Td muted>{r.supplierName || '—'}</Td>
-              <Td muted>{r.referenceType}</Td>
-              <Td>{r.receivedBy}</Td>
-              <Td muted>{r.notes || '—'}</Td>
-            </tr>
-          ))}
+          {groups.map(g => {
+            if (g.rows.length > 1) {
+              const groupTotal = g.rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
+              return (
+                <Fragment key={g.key}>
+                  {/* Invoice header row */}
+                  <tr className="bg-blue-50 border-t border-blue-100">
+                    <td colSpan={7} className="px-3 py-1.5 text-xs font-semibold text-blue-700">
+                      Invoice: {g.invoiceNo}
+                      {g.invoiceDate && <span className="ml-2 font-normal text-blue-500">{fmtDate(g.invoiceDate)}</span>}
+                      {g.supplier && <span className="ml-2 font-normal text-blue-500">· {g.supplier}</span>}
+                    </td>
+                    <td className="px-3 py-1.5 text-right text-xs font-semibold text-blue-700">₹{fmt(groupTotal)}</td>
+                    <td colSpan={2} />
+                  </tr>
+                  {/* Invoice line rows */}
+                  {g.rows.map(r => (
+                    <tr key={r.transactionId} className="hover:bg-gray-50 bg-blue-50/30">
+                      <Td muted>{fmtDt(r.transactionDate)}</Td>
+                      <Td><div className="font-medium pl-3">{r.partName}</div>{r.partNumber && <div className="text-xs text-gray-400 pl-3">{r.partNumber}</div>}</Td>
+                      <Td muted>{r.category || '—'}</Td>
+                      <Td muted>{r.unit}</Td>
+                      <Td right>{r.quantity}</Td>
+                      <Td right muted>{r.unitCost != null ? `₹${fmt(r.unitCost)}` : '—'}</Td>
+                      <Td right>{r.totalCost != null ? `₹${fmt(r.totalCost)}` : '—'}</Td>
+                      <Td muted>—</Td>
+                      <Td>{r.receivedBy}</Td>
+                      <Td muted>{r.notes || '—'}</Td>
+                    </tr>
+                  ))}
+                </Fragment>
+              )
+            }
+            const r = g.rows[0]
+            return (
+              <tr key={r.transactionId} className="hover:bg-gray-50">
+                <Td>{fmtDt(r.transactionDate)}</Td>
+                <Td><div className="font-medium">{r.partName}</div>{r.partNumber && <div className="text-xs text-gray-400">{r.partNumber}</div>}</Td>
+                <Td muted>{r.category || '—'}</Td>
+                <Td muted>{r.unit}</Td>
+                <Td right>{r.quantity}</Td>
+                <Td right muted>{r.unitCost != null ? `₹${fmt(r.unitCost)}` : '—'}</Td>
+                <Td right>{r.totalCost != null ? `₹${fmt(r.totalCost)}` : '—'}</Td>
+                <Td>
+                  <div>{r.supplierName || '—'}</div>
+                  {r.invoiceNo && <div className="text-xs text-gray-400">{r.invoiceNo}{r.invoiceDate ? ` · ${fmtDate(r.invoiceDate)}` : ''}</div>}
+                </Td>
+                <Td>{r.receivedBy}</Td>
+                <Td muted>{r.notes || '—'}</Td>
+              </tr>
+            )
+          })}
         </tbody>
       </TableWrap>
     </div>

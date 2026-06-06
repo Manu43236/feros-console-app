@@ -3,12 +3,13 @@ import { useState, useRef } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockApi, sparePartsApi, servicePartsApi, inventoryTransactionsApi } from '@/api/inventory'
+import type { BulkInvoiceStockInResponse } from '@/api/inventory'
 import type { ServicePart, StockTransactionType, BulkUploadResult, SparePart } from '@/types'
 import { toast } from 'sonner'
 import {
   AlertTriangle, Boxes, ArrowDownCircle, ArrowUpCircle,
   AlertOctagon, CheckCircle2, ClipboardList, Plus, Search,
-  Upload, Download, XCircle, Pencil, Trash2,
+  Upload, Download, XCircle, Pencil, Trash2, Trash,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,71 +19,172 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 
 type Tab = 'stock' | 'requests' | 'transactions' | 'catalog'
 
-// ─── Stock In Dialog ──────────────────────────────────────────────────────────
-function StockInDialog({ onClose }: { onClose: () => void }) {
+// ─── Stock Invoice Dialog ─────────────────────────────────────────────────────
+type LineItem = { sparePartId: number; quantity: number; unitCost: string; itemNotes: string }
+
+function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
-  const [form, setForm] = useState({ sparePartId: 0, quantity: 1, unitCost: '', supplierName: '', notes: '' })
+  const [header, setHeader] = useState({ supplierName: '', invoiceNo: '', invoiceDate: '', notes: '' })
+  const [items, setItems] = useState<LineItem[]>([{ sparePartId: 0, quantity: 1, unitCost: '', itemNotes: '' }])
+  const [result, setResult] = useState<BulkInvoiceStockInResponse | null>(null)
 
   const { data: partsData } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
   const parts = partsData?.data ?? []
+  const partOptions = parts.map(p => ({ value: String(p.id), label: p.name + (p.partNumber ? ` (${p.partNumber})` : '') }))
+
+  function addRow() {
+    setItems(prev => [...prev, { sparePartId: 0, quantity: 1, unitCost: '', itemNotes: '' }])
+  }
+
+  function removeRow(idx: number) {
+    setItems(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function updateItem(idx: number, patch: Partial<LineItem>) {
+    setItems(prev => prev.map((item, i) => i === idx ? { ...item, ...patch } : item))
+  }
 
   const mutation = useMutation({
-    mutationFn: () => stockApi.stockIn({
-      sparePartId: form.sparePartId,
-      quantity: form.quantity,
-      unitCost: form.unitCost ? Number(form.unitCost) : undefined,
-      supplierName: form.supplierName || undefined,
-      notes: form.notes || undefined,
+    mutationFn: () => stockApi.bulkInvoiceStockIn({
+      supplierName: header.supplierName || undefined,
+      invoiceNo: header.invoiceNo || undefined,
+      invoiceDate: header.invoiceDate || undefined,
+      notes: header.notes || undefined,
+      items: items.map(it => ({
+        sparePartId: it.sparePartId,
+        quantity: it.quantity,
+        unitCost: it.unitCost ? Number(it.unitCost) : undefined,
+        itemNotes: it.itemNotes || undefined,
+      })),
     }),
-    onSuccess: () => {
-      toast.success('Stock added successfully')
+    onSuccess: (res) => {
+      setResult(res.data)
       qc.invalidateQueries({ queryKey: ['stock'] })
       qc.invalidateQueries({ queryKey: ['inventory-transactions'] })
-      onClose()
+      if (res.data.failedCount === 0) {
+        toast.success(`${res.data.savedCount} item${res.data.savedCount !== 1 ? 's' : ''} added to stock`)
+      } else {
+        toast.warning(`${res.data.savedCount} saved, ${res.data.failedCount} failed`)
+      }
     },
     onError: (e: unknown) => {
       toast.error(getApiError(e, 'Failed to add stock') ?? 'Failed to add stock')
     },
   })
 
+  const canSubmit = items.length > 0 && items.every(it => it.sparePartId > 0 && it.quantity >= 1)
+
+  if (result) {
+    return (
+      <Dialog open onOpenChange={v => !v && onClose()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Stock Added</DialogTitle></DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-4 text-sm">
+              <span className="text-gray-500">Total: <strong>{result.totalItems}</strong></span>
+              <span className="text-green-600 flex items-center gap-1"><CheckCircle2 size={13} />{result.savedCount} saved</span>
+              {result.failedCount > 0 && <span className="text-red-600 flex items-center gap-1"><XCircle size={13} />{result.failedCount} failed</span>}
+            </div>
+            {result.saved.length > 0 && (
+              <div className="border rounded-lg divide-y">
+                {result.saved.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2">
+                    <span className="font-medium text-gray-800">{s.partName}</span>
+                    <span className="text-green-600 text-xs font-medium flex items-center gap-1"><CheckCircle2 size={12} />+{s.quantity}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {result.failed.length > 0 && (
+              <div className="border border-red-200 rounded-lg divide-y bg-red-50">
+                {result.failed.map((f, i) => (
+                  <div key={i} className="px-3 py-2">
+                    <p className="text-red-700 text-xs font-medium">Row {f.lineIndex}: {f.reason}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button onClick={onClose}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Add Stock (Stock In)</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label>Spare Part *</Label>
-            <SearchableSelect
-              className="mt-1"
-              placeholder="Select part…"
-              value={form.sparePartId ? String(form.sparePartId) : ''}
-              onValueChange={v => setForm(f => ({ ...f, sparePartId: Number(v) }))}
-              options={parts.map(p => ({ value: String(p.id), label: p.name + (p.partNumber ? ` (${p.partNumber})` : '') }))}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Quantity *</Label>
-              <Input className="mt-1" type="number" min={1} value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: Number(e.target.value) }))} />
-            </div>
-            <div>
-              <Label>Unit Cost (₹)</Label>
-              <Input className="mt-1" type="number" min={0} placeholder="Optional" value={form.unitCost} onChange={e => setForm(f => ({ ...f, unitCost: e.target.value }))} />
-            </div>
-          </div>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Add Stock — Supplier Invoice</DialogTitle></DialogHeader>
+
+        {/* Invoice header */}
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Supplier Name</Label>
-            <Input className="mt-1" value={form.supplierName} onChange={e => setForm(f => ({ ...f, supplierName: e.target.value }))} placeholder="Optional" />
+            <Input className="mt-1" placeholder="e.g. Ram Auto Parts" value={header.supplierName} onChange={e => setHeader(h => ({ ...h, supplierName: e.target.value }))} />
+          </div>
+          <div>
+            <Label>Invoice No.</Label>
+            <Input className="mt-1" placeholder="Optional" value={header.invoiceNo} onChange={e => setHeader(h => ({ ...h, invoiceNo: e.target.value }))} />
+          </div>
+          <div>
+            <Label>Invoice Date</Label>
+            <Input className="mt-1" type="date" value={header.invoiceDate} onChange={e => setHeader(h => ({ ...h, invoiceDate: e.target.value }))} />
           </div>
           <div>
             <Label>Notes</Label>
-            <Input className="mt-1" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
+            <Input className="mt-1" placeholder="Optional" value={header.notes} onChange={e => setHeader(h => ({ ...h, notes: e.target.value }))} />
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-2">
+
+        {/* Line items */}
+        <div className="mt-4 space-y-2">
+          <div className="grid grid-cols-[1fr_80px_100px_1fr_32px] gap-2 px-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <span>Part *</span><span>Qty *</span><span>Unit Cost (₹)</span><span>Notes</span><span />
+          </div>
+          {items.map((item, idx) => (
+            <div key={idx} className="grid grid-cols-[1fr_80px_100px_1fr_32px] gap-2 items-center">
+              <SearchableSelect
+                placeholder="Select part…"
+                value={item.sparePartId ? String(item.sparePartId) : ''}
+                onValueChange={v => updateItem(idx, { sparePartId: Number(v) })}
+                options={partOptions}
+              />
+              <Input
+                type="number" min={1} value={item.quantity}
+                onChange={e => updateItem(idx, { quantity: Number(e.target.value) })}
+              />
+              <Input
+                type="number" min={0} placeholder="0.00" value={item.unitCost}
+                onChange={e => updateItem(idx, { unitCost: e.target.value })}
+              />
+              <Input
+                placeholder="Optional" value={item.itemNotes}
+                onChange={e => updateItem(idx, { itemNotes: e.target.value })}
+              />
+              <button
+                onClick={() => removeRow(idx)}
+                disabled={items.length === 1}
+                className="flex items-center justify-center h-9 w-8 rounded text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <Trash size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={addRow}
+          className="mt-2 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+        >
+          <Plus size={15} /> Add Row
+        </button>
+
+        <div className="flex justify-end gap-2 pt-2 border-t mt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={mutation.isPending || form.sparePartId === 0 || form.quantity < 1} onClick={() => mutation.mutate()}>
-            {mutation.isPending ? 'Adding…' : 'Add Stock'}
+          <Button disabled={mutation.isPending || !canSubmit} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Saving…' : `Save ${items.length} Item${items.length !== 1 ? 's' : ''}`}
           </Button>
         </div>
       </DialogContent>
@@ -342,7 +444,7 @@ function StockTab() {
         )}
       </div>
 
-      {showStockIn && <StockInDialog onClose={() => setShowStockIn(false)} />}
+      {showStockIn && <StockInvoiceDialog onClose={() => setShowStockIn(false)} />}
       {showBulkIn  && <BulkStockInDialog onClose={() => setShowBulkIn(false)} />}
     </div>
   )

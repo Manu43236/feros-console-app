@@ -1748,6 +1748,8 @@ export interface StockInwardRow {
   unitCost?: number
   totalCost?: number
   supplierName?: string
+  invoiceNo?: string
+  invoiceDate?: string
   referenceType: string
   receivedBy: string
   notes?: string
