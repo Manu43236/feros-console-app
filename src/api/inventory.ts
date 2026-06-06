@@ -27,6 +27,7 @@ export type BulkInvoiceStockInRequest = {
   supplierName?: string
   invoiceNo?: string
   invoiceDate?: string
+  receivedDate?: string
   notes?: string
   items: BulkInvoiceLineItem[]
 }

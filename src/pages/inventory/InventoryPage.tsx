@@ -24,7 +24,8 @@ type LineItem = { sparePartId: number; quantity: number; unitCost: string; itemN
 
 function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
-  const [header, setHeader] = useState({ supplierName: '', invoiceNo: '', invoiceDate: '', notes: '' })
+  const todayStr = new Date().toISOString().split('T')[0]
+  const [header, setHeader] = useState({ supplierName: '', invoiceNo: '', invoiceDate: '', receivedDate: todayStr, notes: '' })
   const [items, setItems] = useState<LineItem[]>([{ sparePartId: 0, quantity: 1, unitCost: '', itemNotes: '' }])
   const [result, setResult] = useState<BulkInvoiceStockInResponse | null>(null)
 
@@ -49,6 +50,7 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
       supplierName: header.supplierName || undefined,
       invoiceNo: header.invoiceNo || undefined,
       invoiceDate: header.invoiceDate || undefined,
+      receivedDate: header.receivedDate || undefined,
       notes: header.notes || undefined,
       items: items.map(it => ({
         sparePartId: it.sparePartId,
@@ -129,10 +131,14 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
             <Input className="mt-1" placeholder="Optional" value={header.invoiceNo} onChange={e => setHeader(h => ({ ...h, invoiceNo: e.target.value }))} />
           </div>
           <div>
+            <Label>Received Date <span className="text-red-500">*</span></Label>
+            <Input className="mt-1" type="date" value={header.receivedDate} onChange={e => setHeader(h => ({ ...h, receivedDate: e.target.value }))} />
+          </div>
+          <div>
             <Label>Invoice Date</Label>
             <Input className="mt-1" type="date" value={header.invoiceDate} onChange={e => setHeader(h => ({ ...h, invoiceDate: e.target.value }))} />
           </div>
-          <div>
+          <div className="col-span-2">
             <Label>Notes</Label>
             <Input className="mt-1" placeholder="Optional" value={header.notes} onChange={e => setHeader(h => ({ ...h, notes: e.target.value }))} />
           </div>
