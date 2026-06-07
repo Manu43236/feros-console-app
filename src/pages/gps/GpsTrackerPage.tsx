@@ -8,26 +8,35 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { gpsApi } from '@/api/gps'
 import type { GpsFleetVehicle, GpsVehicleStatus } from '@/types'
-import truckSvgRaw from '@/assets/map-truck.svg?raw'
-
 // ─── Status config ─────────────────────────────────────────────────────────────
-const STATUS_CONFIG: Record<GpsVehicleStatus, { color: string; fill: string; label: string; icon: React.ElementType }> = {
-  MOVING:  { color: '#16a34a', fill: '#22c55e', label: 'Moving',  icon: Truck },
-  IDLE:    { color: '#ca8a04', fill: '#eab308', label: 'Idle',    icon: Zap },
-  STOPPED: { color: '#dc2626', fill: '#ef4444', label: 'Stopped', icon: Square },
-  OFFLINE: { color: '#6b7280', fill: '#9ca3af', label: 'Offline', icon: WifiOff },
+const STATUS_CONFIG: Record<GpsVehicleStatus, { color: string; fill: string; label: string; icon: React.ElementType; cabColor: string }> = {
+  MOVING:  { color: '#1e3a5f', fill: '#1e3a5f', label: 'Moving',  icon: Truck,  cabColor: '#1e3a5f' },
+  IDLE:    { color: '#b45309', fill: '#f59e0b', label: 'Idle',    icon: Zap,    cabColor: '#f59e0b' },
+  STOPPED: { color: '#dc2626', fill: '#ef4444', label: 'Stopped', icon: Square, cabColor: '#dc2626' },
+  OFFLINE: { color: '#6b7280', fill: '#9ca3af', label: 'Offline', icon: WifiOff, cabColor: '#9ca3af' },
 }
 
 // ─── Truck map icon ────────────────────────────────────────────────────────────
-function createTruckIcon(color: string, isSelected: boolean): L.DivIcon {
-  const size = isSelected ? 40 : 30
-  const svg = truckSvgRaw
-    .replace('fill="#000000"', `fill="${color}"`)
-    .replace('width="800px"', `width="${size}px"`)
-    .replace('height="800px"', `height="${size}px"`)
+function createTruckIcon(cabColor: string, isSelected: boolean): L.DivIcon {
+  const size = isSelected ? 44 : 36
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 36 36">
+    <!-- Body / trailer -->
+    <rect x="10" y="14" width="16" height="18" rx="2" fill="#e5e7eb"/>
+    <rect x="10" y="14" width="16" height="18" rx="2" fill="none" stroke="#9ca3af" stroke-width="0.6"/>
+    <!-- Cab -->
+    <rect x="10" y="3" width="16" height="13" rx="3" fill="${cabColor}"/>
+    <!-- Windshield -->
+    <rect x="13" y="5.5" width="10" height="6" rx="1.5" fill="rgba(255,255,255,0.3)"/>
+    <!-- Front wheels -->
+    <rect x="5.5" y="5" width="4.5" height="7" rx="1.5" fill="#1f2937"/>
+    <rect x="26" y="5" width="4.5" height="7" rx="1.5" fill="#1f2937"/>
+    <!-- Rear wheels -->
+    <rect x="5.5" y="22" width="4.5" height="7" rx="1.5" fill="#1f2937"/>
+    <rect x="26" y="22" width="4.5" height="7" rx="1.5" fill="#1f2937"/>
+  </svg>`
   const shadow = isSelected
-    ? 'filter:drop-shadow(0 0 5px rgba(0,0,0,0.55));'
-    : 'filter:drop-shadow(0 1px 3px rgba(0,0,0,0.35));'
+    ? 'filter:drop-shadow(0 0 6px rgba(0,0,0,0.6));'
+    : 'filter:drop-shadow(0 1px 3px rgba(0,0,0,0.3));'
   return L.divIcon({
     html: `<div style="${shadow}">${svg}</div>`,
     className: '',
@@ -210,7 +219,7 @@ export default function GpsTrackerPage() {
                 <Marker
                   key={v.vehicleId}
                   position={[v.latitude!, v.longitude!]}
-                  icon={createTruckIcon(cfg.fill, isSelected)}
+                  icon={createTruckIcon(cfg.cabColor, isSelected)}
                   ref={el => { if (el) markerRefs.current[v.vehicleId] = el }}
                   eventHandlers={{ click: () => setSelectedId(v.vehicleId) }}
                 >
