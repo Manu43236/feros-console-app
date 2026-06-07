@@ -13,7 +13,7 @@ import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import {
   Plus, Search, Truck, Upload, Download, CheckCircle, XCircle,
-  Paperclip, FileText, X, UserCog,
+  Paperclip, FileText, X, UserCog, Wifi,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1050,6 +1050,7 @@ export function VehiclesPage() {
   const [ownerFilter, setOwnerFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [assignFilter, setAssignFilter] = useState('')
+  const [iotFilter, setIotFilter]     = useState('')
   const [staffDialogVehicle, setStaffDialogVehicle] = useState<Vehicle | null>(null)
   const [staffDialogRole, setStaffDialogRole]       = useState<'DRIVER' | 'CLEANER'>('DRIVER')
 
@@ -1071,7 +1072,8 @@ export function VehiclesPage() {
     const matchOwner  = !ownerFilter || String(v.ownershipTypeId) === ownerFilter
     const matchStatus = !statusFilter || (statusFilter === 'active' ? v.isActive : !v.isActive)
     const matchAssign = !assignFilter || v.currentStatusType === assignFilter
-    return matchSearch && matchType && matchOwner && matchStatus && matchAssign
+    const matchIot    = !iotFilter || (iotFilter === 'iot' ? !!v.isIot : !v.isIot)
+    return matchSearch && matchType && matchOwner && matchStatus && matchAssign && matchIot
   })
   const totalPages = Math.max(1, Math.ceil(vehicles.length / PAGE_SIZE))
   const pageRows   = vehicles.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -1161,6 +1163,16 @@ export function VehiclesPage() {
           ]}
           className="h-10 w-36"
         />
+        <SearchableSelect
+          value={iotFilter}
+          onValueChange={v => { setIotFilter(v); setPage(0) }}
+          options={[
+            { value: '',      label: 'All Vehicles' },
+            { value: 'iot',   label: 'IoT Only' },
+            { value: 'non-iot', label: 'Non-IoT' },
+          ]}
+          className="h-10 w-36"
+        />
       </div>
 
       {/* Table */}
@@ -1208,22 +1220,29 @@ export function VehiclesPage() {
                     >
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className={cn(
-                            'w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden',
-                            !v.coverImageUrl && (
-                              v.currentStatusType === 'BREAKDOWN' ? 'bg-red-100' :
-                              v.currentStatusType === 'IN_REPAIR'  ? 'bg-yellow-100' :
-                              'bg-feros-navy/10'
-                            )
-                          )}>
-                            {v.coverImageUrl ? (
-                              <img src={v.coverImageUrl} alt={v.registrationNumber} className="w-full h-full object-cover" />
-                            ) : (
-                              <Truck size={14} className={
-                                v.currentStatusType === 'BREAKDOWN' ? 'text-red-600' :
-                                v.currentStatusType === 'IN_REPAIR'  ? 'text-yellow-600' :
-                                'text-feros-navy'
-                              } />
+                          <div className="relative shrink-0">
+                            <div className={cn(
+                              'w-8 h-8 rounded-full flex items-center justify-center overflow-hidden',
+                              !v.coverImageUrl && (
+                                v.currentStatusType === 'BREAKDOWN' ? 'bg-red-100' :
+                                v.currentStatusType === 'IN_REPAIR'  ? 'bg-yellow-100' :
+                                'bg-feros-navy/10'
+                              )
+                            )}>
+                              {v.coverImageUrl ? (
+                                <img src={v.coverImageUrl} alt={v.registrationNumber} className="w-full h-full object-cover" />
+                              ) : (
+                                <Truck size={14} className={
+                                  v.currentStatusType === 'BREAKDOWN' ? 'text-red-600' :
+                                  v.currentStatusType === 'IN_REPAIR'  ? 'text-yellow-600' :
+                                  'text-feros-navy'
+                                } />
+                              )}
+                            </div>
+                            {v.isIot && (
+                              <span className="absolute -top-1 -right-1 bg-cyan-500 rounded-full p-0.5 flex items-center justify-center">
+                                <Wifi size={8} className="text-white" />
+                              </span>
                             )}
                           </div>
                           <div>
