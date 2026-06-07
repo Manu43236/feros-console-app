@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
@@ -88,10 +88,17 @@ export default function GpsTrackerPage() {
   const { data, isLoading, refetch, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['gps-fleet'],
     queryFn: () => gpsApi.getFleet().then(r => r.data ?? []),
-    refetchInterval: 15_000,
+    refetchInterval: 30_000,
+    placeholderData: (prev) => prev, // keep previous data while refetching — prevents map from unmounting
   })
 
-  const vehicles = data ?? []
+  // If the latest response is empty but we had vehicles before, keep showing the last known data
+  const lastKnownVehicles = useRef<GpsFleetVehicle[]>([])
+  const vehicles = useMemo(() => {
+    const current = data ?? []
+    if (current.length > 0) lastKnownVehicles.current = current
+    return lastKnownVehicles.current
+  }, [data])
   const filtered = filterStatus ? vehicles.filter(v => v.gpsStatus === filterStatus) : vehicles
   const positioned = filtered.filter(v => v.latitude != null && v.longitude != null)
 
