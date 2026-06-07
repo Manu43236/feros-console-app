@@ -1,13 +1,15 @@
 import { useRef, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import L from 'leaflet'
 import { Settings, RefreshCw, MapPin, Truck, Zap, Square, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { gpsApi } from '@/api/gps'
 import type { GpsFleetVehicle, GpsVehicleStatus } from '@/types'
+import truckSvgRaw from '@/assets/map-truck.svg?raw'
 
 // ─── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<GpsVehicleStatus, { color: string; fill: string; label: string; icon: React.ElementType }> = {
@@ -15,6 +17,25 @@ const STATUS_CONFIG: Record<GpsVehicleStatus, { color: string; fill: string; lab
   IDLE:    { color: '#ca8a04', fill: '#eab308', label: 'Idle',    icon: Zap },
   STOPPED: { color: '#dc2626', fill: '#ef4444', label: 'Stopped', icon: Square },
   OFFLINE: { color: '#6b7280', fill: '#9ca3af', label: 'Offline', icon: WifiOff },
+}
+
+// ─── Truck map icon ────────────────────────────────────────────────────────────
+function createTruckIcon(color: string, isSelected: boolean): L.DivIcon {
+  const size = isSelected ? 40 : 30
+  const svg = truckSvgRaw
+    .replace('fill="#000000"', `fill="${color}"`)
+    .replace('width="800px"', `width="${size}px"`)
+    .replace('height="800px"', `height="${size}px"`)
+  const shadow = isSelected
+    ? 'filter:drop-shadow(0 0 5px rgba(0,0,0,0.55));'
+    : 'filter:drop-shadow(0 1px 3px rgba(0,0,0,0.35));'
+  return L.divIcon({
+    html: `<div style="${shadow}">${svg}</div>`,
+    className: '',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -(size / 2 + 4)],
+  })
 }
 
 // ─── Auto-fit bounds when vehicles load ────────────────────────────────────────
@@ -83,7 +104,7 @@ export default function GpsTrackerPage() {
   const navigate = useNavigate()
   const [filterStatus, setFilterStatus] = useState<GpsVehicleStatus | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const markerRefs = useRef<Record<number, L.CircleMarker>>({}  as Record<number, L.CircleMarker>)
+  const markerRefs = useRef<Record<number, L.Marker>>({} as Record<number, L.Marker>)
 
   const { data, isLoading, refetch, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['gps-fleet'],
@@ -182,16 +203,10 @@ export default function GpsTrackerPage() {
               const cfg = STATUS_CONFIG[v.gpsStatus]
               const isSelected = selectedId === v.vehicleId
               return (
-                <CircleMarker
+                <Marker
                   key={v.vehicleId}
-                  center={[v.latitude!, v.longitude!]}
-                  radius={isSelected ? 10 : 8}
-                  pathOptions={{
-                    color: cfg.color,
-                    fillColor: cfg.fill,
-                    fillOpacity: 0.9,
-                    weight: isSelected ? 3 : 2,
-                  }}
+                  position={[v.latitude!, v.longitude!]}
+                  icon={createTruckIcon(cfg.fill, isSelected)}
                   ref={el => { if (el) markerRefs.current[v.vehicleId] = el }}
                   eventHandlers={{ click: () => setSelectedId(v.vehicleId) }}
                 >
@@ -219,7 +234,7 @@ export default function GpsTrackerPage() {
                       </div>
                     </div>
                   </Popup>
-                </CircleMarker>
+                </Marker>
               )
             })}
           </MapContainer>
