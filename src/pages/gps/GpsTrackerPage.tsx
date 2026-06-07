@@ -113,21 +113,39 @@ export default function GpsTrackerPage() {
     placeholderData: (prev) => prev, // keep previous data while refetching — prevents map from unmounting
   })
 
-  // If the latest response is empty but we had vehicles before, keep showing the last known data
+  // Keep last known good vehicle list (prevents empty flicker when TATA returns [])
   const lastKnownVehicles = useRef<GpsFleetVehicle[]>([])
+  // Keep last known coordinates per vehicleId (so truck stays on map even when TATA returns null coords)
+  const lastKnownPositions = useRef<Map<number, { lat: number; lng: number }>>(new Map())
+
   const vehicles = useMemo(() => {
     const current = data ?? []
     if (current.length > 0) lastKnownVehicles.current = current
     return lastKnownVehicles.current
   }, [data])
-  const filtered = filterStatus ? vehicles.filter(v => v.gpsStatus === filterStatus) : vehicles
+
+  // Merge current vehicles with cached positions — truck stays on map even when TATA fails
+  const vehiclesWithPositions = useMemo(() => {
+    return vehicles.map(v => {
+      if (v.latitude != null && v.longitude != null) {
+        lastKnownPositions.current.set(v.vehicleId, { lat: v.latitude, lng: v.longitude })
+        return v
+      }
+      const cached = lastKnownPositions.current.get(v.vehicleId)
+      return cached ? { ...v, latitude: cached.lat, longitude: cached.lng } : v
+    })
+  }, [vehicles])
+
+  const filtered = filterStatus
+    ? vehiclesWithPositions.filter(v => v.gpsStatus === filterStatus)
+    : vehiclesWithPositions
   const positioned = filtered.filter(v => v.latitude != null && v.longitude != null)
 
   const counts = {
-    MOVING:  vehicles.filter(v => v.gpsStatus === 'MOVING').length,
-    IDLE:    vehicles.filter(v => v.gpsStatus === 'IDLE').length,
-    STOPPED: vehicles.filter(v => v.gpsStatus === 'STOPPED').length,
-    OFFLINE: vehicles.filter(v => v.gpsStatus === 'OFFLINE').length,
+    MOVING:  vehiclesWithPositions.filter(v => v.gpsStatus === 'MOVING').length,
+    IDLE:    vehiclesWithPositions.filter(v => v.gpsStatus === 'IDLE').length,
+    STOPPED: vehiclesWithPositions.filter(v => v.gpsStatus === 'STOPPED').length,
+    OFFLINE: vehiclesWithPositions.filter(v => v.gpsStatus === 'OFFLINE').length,
   }
 
   function handleRowClick(v: GpsFleetVehicle) {
