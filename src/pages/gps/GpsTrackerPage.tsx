@@ -1,9 +1,8 @@
 import { useRef, useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Settings, RefreshCw, MapPin, Truck, Zap, Square, WifiOff } from 'lucide-react'
+import { RefreshCw, MapPin, Truck, Zap, Square, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -101,7 +100,6 @@ function providerLabel(type: string) {
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function GpsTrackerPage() {
-  const navigate = useNavigate()
   const [filterStatus, setFilterStatus] = useState<GpsVehicleStatus | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const markerRefs = useRef<Record<number, L.Marker>>({} as Record<number, L.Marker>)
@@ -176,15 +174,6 @@ export default function GpsTrackerPage() {
           >
             <RefreshCw size={13} className={cn(isFetching && 'animate-spin')} />
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="bg-white/90 backdrop-blur-sm shadow-sm h-8"
-            onClick={() => navigate('/gps/settings')}
-          >
-            <Settings size={13} className="mr-1" />
-            Settings
-          </Button>
         </div>
 
         {isLoading ? (
@@ -199,10 +188,7 @@ export default function GpsTrackerPage() {
             <div className="text-center text-gray-500">
               <MapPin size={32} className="mx-auto mb-2 opacity-40" />
               <p className="text-sm font-medium">No GPS vehicles configured</p>
-              <p className="text-xs mt-1">Go to Settings to connect your GPS provider</p>
-              <Button size="sm" className="mt-3" onClick={() => navigate('/gps/settings')}>
-                Configure GPS
-              </Button>
+              <p className="text-xs mt-1">Go to Masters → GPS Providers to connect your provider</p>
             </div>
           </div>
         ) : (

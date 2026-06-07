@@ -68,8 +68,7 @@ import { ProfilePage } from '@/pages/profile/ProfilePage'
 import { NotificationsPage } from '@/pages/notifications/NotificationsPage'
 
 // GPS
-import GpsTrackerPage  from '@/pages/gps/GpsTrackerPage'
-import GpsSettingsPage from '@/pages/gps/GpsSettingsPage'
+import GpsTrackerPage from '@/pages/gps/GpsTrackerPage'
 
 // Staff portal pages
 import { MyTripsPage }      from '@/pages/staff-portal/MyTripsPage'
@@ -113,8 +112,7 @@ export default function App() {
           <Route path="service-invoices"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ServiceInvoicesPage /></ProtectedRoute>} />
 
           {/* GPS Tracker */}
-          <Route path="gps"          element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><GpsTrackerPage /></ProtectedRoute>} />
-          <Route path="gps/settings" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN']}><GpsSettingsPage /></ProtectedRoute>} />
+          <Route path="gps" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><GpsTrackerPage /></ProtectedRoute>} />
 
           {/* Vehicles — admin + office + supervisor + driver (read) */}
           <Route path="vehicles"            element={<VehiclesPage />} />
