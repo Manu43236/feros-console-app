@@ -183,6 +183,7 @@ export interface Vehicle {
   isFinanced?: boolean; financerName?: string; financeStartDate?: string; financeEndDate?: string; financeMonthsRemaining?: number
   extraPayEnabled?: boolean; extraPayPerDay?: number
   tripScope?: 'INTRA_STATE' | 'INTER_STATE'
+  isIot?: boolean
   isActive: boolean; createdAt: string; updatedAt: string
   currentDriverId?: number; currentDriverName?: string
   currentCleanerId?: number; currentCleanerName?: string

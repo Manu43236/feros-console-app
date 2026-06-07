@@ -206,6 +206,7 @@ const schema = z.object({
   extraPayPerDay:           z.coerce.number().min(0).optional(),
   notes:                    z.string().optional(),
   tripScope:                z.enum(['INTRA_STATE', 'INTER_STATE']).optional(),
+  isIot:                    z.boolean().optional(),
 }).refine(
   data => {
     const cap  = data.fuelTankCapacity
@@ -448,6 +449,7 @@ export function VehicleForm({
       extraPayPerDay: vehicle.extraPayPerDay,
       notes: vehicle.notes ?? '',
       tripScope: vehicle.tripScope ?? undefined,
+      isIot: vehicle.isIot ?? false,
     } : {},
   })
 
@@ -480,6 +482,7 @@ export function VehicleForm({
         extraPayPerDay: vehicle.extraPayPerDay,
         notes: vehicle.notes ?? '',
         tripScope: vehicle.tripScope ?? undefined,
+        isIot: vehicle.isIot ?? false,
       })
       setOwnershipTypeId(vehicle.ownershipTypeId)
     }
@@ -489,6 +492,7 @@ export function VehicleForm({
   const watchedTypeId    = watch('vehicleTypeId')
   const watchedFinanced  = watch('isFinanced')
   const watchedExtraPay  = watch('extraPayEnabled')
+  const watchedIot       = watch('isIot')
   useEffect(() => {
     if (!watchedTypeId) return
     const vehicleType = (typesRes?.data ?? []).find(t => t.id === watchedTypeId)
@@ -778,6 +782,33 @@ export function VehicleForm({
                 <Input type="number" placeholder="e.g. 100" {...register('extraPayPerDay')} />
               </div>
             )}
+          </div>
+
+          {/* IoT */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">IoT Device</p>
+                <p className="text-xs text-gray-400 mt-0.5">Vehicle has an IoT device installed</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!watchedIot}
+                onClick={() => setValue('isIot', !watchedIot)}
+                className={cn(
+                  'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                  watchedIot ? 'bg-feros-navy' : 'bg-gray-200'
+                )}
+              >
+                <span
+                  className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition duration-200 ease-in-out',
+                    watchedIot ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
+            </div>
           </div>
 
           {/* GPS & Notes */}

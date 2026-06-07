@@ -24,7 +24,7 @@ import {
   AlertTriangle, Pencil, Power, Camera,
   ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge, Users,
-  Clock,
+  Clock, Wifi,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -3200,6 +3200,12 @@ export function VehicleDetailPage() {
                     {v.isActive ? 'Active' : 'Inactive'}
                   </button>
                 </div>
+                {v.isIot && (
+                  <span className="flex items-center gap-1 text-xs text-cyan-300 bg-cyan-500/20 border border-cyan-400/30 px-2 py-1 rounded-full">
+                    <Wifi size={11} />
+                    IoT
+                  </span>
+                )}
                 {alertCount > 0 && (
                   <span className="flex items-center gap-1 text-xs text-red-300 bg-red-500/20 border border-red-400/30 px-2 py-1 rounded-full">
                     <AlertTriangle size={11} />
