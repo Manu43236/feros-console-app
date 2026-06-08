@@ -33,7 +33,8 @@ function taskChip(status: ServiceTaskStatus) {
   return <span className={cn('px-2 py-0.5 rounded text-xs font-medium', cls)}>{label}</span>
 }
 
-function serviceStatusChip(s: string) {
+function serviceStatusChip(s?: string) {
+  if (!s) return null
   const map: Record<string, string> = {
     OPEN:        'bg-blue-50 text-blue-700',
     IN_PROGRESS: 'bg-amber-50 text-amber-700',
@@ -41,7 +42,7 @@ function serviceStatusChip(s: string) {
   }
   return (
     <span className={cn('px-2 py-0.5 rounded text-xs font-medium', map[s] ?? 'bg-gray-100 text-gray-600')}>
-      {s.replace('_', ' ')}
+      {s.replace(/_/g, ' ')}
     </span>
   )
 }
@@ -412,7 +413,7 @@ function ServiceCard({
           <span className="font-semibold text-sm text-gray-900">{service.vehicleRegistrationNumber}</span>
           <span className="text-xs text-gray-400 font-mono">{service.serviceNumber}</span>
           {serviceStatusChip(service.serviceStatus)}
-          <span className="text-xs text-gray-400 capitalize">{service.serviceType.replace('_', ' ').toLowerCase()}</span>
+          {service.serviceType && <span className="text-xs text-gray-400 capitalize">{service.serviceType.replace(/_/g, ' ').toLowerCase()}</span>}
         </div>
 
         <div className="flex items-center gap-2 shrink-0 ml-3" onClick={e => e.stopPropagation()}>
@@ -470,9 +471,11 @@ function BreakdownCard({ breakdown, mechanics }: { breakdown: SmBreakdownItem; m
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-sm text-gray-900">{breakdown.vehicleRegistrationNumber}</span>
-              <span className={cn('px-2 py-0.5 rounded text-xs font-medium', statusCls[breakdown.status] ?? 'bg-gray-100 text-gray-600')}>
-                {breakdown.status.replace('_', ' ')}
-              </span>
+              {breakdown.status && (
+                <span className={cn('px-2 py-0.5 rounded text-xs font-medium', statusCls[breakdown.status] ?? 'bg-gray-100 text-gray-600')}>
+                  {breakdown.status.replace(/_/g, ' ')}
+                </span>
+              )}
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
               {breakdown.breakdownType} · {fmtDate(breakdown.breakdownDate)}
