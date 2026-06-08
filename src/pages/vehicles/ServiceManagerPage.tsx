@@ -146,7 +146,7 @@ function RequestPartModal({
             >
               <option value="">Select part…</option>
               {parts.map(p => (
-                <option key={p.id} value={p.id}>{p.partName} ({p.partNumber ?? '—'})</option>
+                <option key={p.id} value={p.id}>{p.name} ({p.partNumber ?? '—'})</option>
               ))}
             </select>
           </div>
