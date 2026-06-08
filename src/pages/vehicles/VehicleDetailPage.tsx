@@ -1063,6 +1063,7 @@ function InProgressNotesSection({ service, onSave, saving }: { service: VehicleS
 
 // ── service tab content ────────────────────────────────────────────────────────
 function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicleId: number; vehicleReg: string; currentOdometer?: number }) {
+  const isSupervisor = useAuthStore(s => s.role) === 'SUPERVISOR'
   const qc = useQueryClient()
   const [subTab, setSubTab]         = useState<'general' | 'breakdown'>('general')
   const [filter, setFilter]         = useState<'all' | 'open' | 'in_progress' | 'due_soon' | 'overdue' | 'completed'>('all')
@@ -1171,10 +1172,12 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
               <Input placeholder="Search services…" className="pl-8 h-9"
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Button size="sm" onClick={() => { setCreateBreakdownId(undefined); setCreateOpen(true) }}
-              className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-9 text-xs">
-              <Plus size={13} /> New Service
-            </Button>
+            {!isSupervisor && (
+              <Button size="sm" onClick={() => { setCreateBreakdownId(undefined); setCreateOpen(true) }}
+                className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-9 text-xs">
+                <Plus size={13} /> New Service
+              </Button>
+            )}
           </div>
 
           {/* Filter pills */}
@@ -1271,14 +1274,14 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 shrink-0">
-                        {s.status === 'OPEN' && (
+                        {!isSupervisor && s.status === 'OPEN' && (
                           <Button size="sm" onClick={() => startMutation.mutate(s.id)}
                             disabled={startMutation.isPending}
                             className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white gap-1">
                             <Wrench size={12} /> Start
                           </Button>
                         )}
-                        {s.status === 'IN_PROGRESS' && (
+                        {!isSupervisor && s.status === 'IN_PROGRESS' && (
                           <>
                             <Button size="sm" onClick={() => cancelMutation.mutate(s.id)}
                               disabled={cancelMutation.isPending}
@@ -1297,10 +1300,12 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
                           title="View details">
                           <Info size={14} />
                         </button>
-                        <button onClick={() => setDeleteId(s.id)}
-                          className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors">
-                          <Trash2 size={14} />
-                        </button>
+                        {!isSupervisor && (
+                          <button onClick={() => setDeleteId(s.id)}
+                            className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1357,7 +1362,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
                         {b.orderNumber && <span>Order: {b.orderNumber}</span>}
                       </div>
                     </div>
-                    {(isOpen || isReplaced) && !isInRepair && (
+                    {!isSupervisor && (isOpen || isReplaced) && !isInRepair && (
                       <Button size="sm" onClick={() => { setCreateBreakdownId(b.id); setCreateOpen(true) }}
                         className="h-7 text-xs bg-feros-navy hover:bg-feros-navy/90 text-white gap-1 shrink-0">
                         <Wrench size={12} /> Log Service
@@ -3171,6 +3176,7 @@ export function VehicleDetailPage() {
                                 const cur = v.currentStatusType
                                 if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
                                 if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
+                                if (isSupervisor) return s.statusType === 'BREAKDOWN'
                                 return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
                               })
                               .map(s => ({
