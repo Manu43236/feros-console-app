@@ -24,7 +24,7 @@ import type { Attendance } from '@/types'
 
 type StaffUser = { id: number; name: string; phone: string; role: string; isActive: boolean }
 
-const STAFF_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MEN', 'STORE_KEEPER']
+const STAFF_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MANAGER', 'STORE_KEEPER']
 const PAGE_SIZE = 20
 function todayStr() { return format(new Date(), 'yyyy-MM-dd') }
 

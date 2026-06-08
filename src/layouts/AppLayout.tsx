@@ -229,8 +229,11 @@ const STORE_KEEPER_NAV: FlatNav = [
   { to: '/my/payslip',              label: 'My Payslip',    icon: Wallet },
 ]
 
-const SERVICE_MEN_NAV: FlatNav = [
+const SERVICE_MANAGER_NAV: FlatNav = [
+  { to: '/dashboard',        label: 'Dashboard',        icon: LayoutDashboard },
+  { to: '/service-manager',  label: 'Service Manager',  icon: Wrench },
   { to: '/vehicle-services', label: 'Vehicle Services', icon: Truck, moduleKey: 'VEHICLE_SERVICES' },
+  { to: '/inventory',        label: 'Spare Parts',      icon: Boxes, moduleKey: 'SPARE_PARTS' },
   { to: '/my/attendance',    label: 'My Attendance',    icon: Calendar },
   { to: '/my/payslip',       label: 'My Payslip',       icon: Wallet },
 ]
@@ -349,7 +352,7 @@ function getRoleLabel(role: string | null) {
   if (role === 'DRIVER')       return 'Driver'
   if (role === 'CLEANER')      return 'Cleaner'
   if (role === 'STORE_KEEPER') return 'Store Keeper'
-  if (role === 'SERVICE_MEN')  return 'Service Men'
+  if (role === 'SERVICE_MANAGER') return 'Service Manager'
   return role
 }
 
@@ -386,8 +389,8 @@ export function AppLayout() {
     role === 'SUPERVISOR'   ? SUPERVISOR_NAV :
     role === 'DRIVER'       ? DRIVER_CLEANER_NAV :
     role === 'CLEANER'      ? DRIVER_CLEANER_NAV :
-    role === 'STORE_KEEPER' ? STORE_KEEPER_NAV :
-    role === 'SERVICE_MEN'  ? SERVICE_MEN_NAV :
+    role === 'STORE_KEEPER'    ? STORE_KEEPER_NAV :
+    role === 'SERVICE_MANAGER' ? SERVICE_MANAGER_NAV :
     ADMIN_NAV
 
   const location = useLocation()

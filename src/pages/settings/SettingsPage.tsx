@@ -44,8 +44,8 @@ const ROLE_CONFIG: {
     ],
   },
   {
-    role: 'SERVICE_MEN',
-    label: 'Service Men',
+    role: 'SERVICE_MANAGER',
+    label: 'Service Manager',
     modules: [
       { key: 'VEHICLE_SERVICES', label: 'Vehicle Services' },
     ],

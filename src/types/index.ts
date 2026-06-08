@@ -926,7 +926,7 @@ export type VehicleServiceType = 'INTERNAL' | 'THIRD_PARTY' | 'OEM_CENTER'
 export type ServicePayerType = 'OWN_EXPENSE' | 'WARRANTY_OEM' | 'WARRANTY_ANC' | 'INSURANCE' | 'AMC'
 export type ServiceStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
 export type ServiceDisplayStatus = 'OPEN' | 'IN_PROGRESS' | 'DUE_SOON' | 'OVERDUE' | 'COMPLETED'
-export type ServiceTaskStatus = 'PENDING' | 'COMPLETED'
+export type ServiceTaskStatus = 'PENDING' | 'ASSIGNED' | 'IN_PROGRESS' | 'MECHANIC_CLOSED' | 'COMPLETED'
 
 export interface VehicleServiceTask {
   id: number
@@ -938,6 +938,9 @@ export interface VehicleServiceTask {
   frequencyKm?: number
   cost?: number
   status: ServiceTaskStatus
+  assignedMechanicId?: number
+  assignedMechanicName?: string
+  mechanicClosedAt?: string
 }
 
 export interface VehicleServiceRecord {
@@ -1106,6 +1109,50 @@ export interface ServicePart {
   requestedById: number; requestedByName: string
   approvedById?: number; approvedByName?: string
   approvedAt?: string; createdAt: string
+  taskId?: number; taskDisplayName?: string
+}
+
+// ─── Service Manager ──────────────────────────────────────────────────────────
+export interface MechanicSummary {
+  id: number
+  name: string
+  phone: string
+  userNumber: string
+}
+
+export interface SmTaskItem {
+  taskId: number
+  displayName: string
+  status: ServiceTaskStatus
+  assignedMechanicId?: number
+  assignedMechanicName?: string
+  mechanicClosedAt?: string
+}
+
+export interface SmServiceItem {
+  serviceId: number
+  serviceNumber: string
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  serviceStatus: ServiceStatus
+  serviceType: VehicleServiceType
+  tasks: SmTaskItem[]
+}
+
+export interface SmBreakdownItem {
+  breakdownId: number
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  breakdownDate: string
+  location?: string
+  breakdownType: BreakdownType
+  status: BreakdownStatus
+  service?: SmServiceItem
+}
+
+export interface ServiceManagerDashboard {
+  breakdowns: SmBreakdownItem[]
+  generalServices: SmServiceItem[]
 }
 
 export interface SparePartsTransaction {

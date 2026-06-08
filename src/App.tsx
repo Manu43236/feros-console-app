@@ -15,6 +15,7 @@ import ClientAdvancesPage from '@/pages/clients/ClientAdvancesPage'
 import { VehiclesPage }        from '@/pages/vehicles/VehiclesPage'
 import { VehicleDetailPage }   from '@/pages/vehicles/VehicleDetailPage'
 import VehicleServicesPage     from '@/pages/vehicles/VehicleServicesPage'
+import ServiceManagerPage      from '@/pages/vehicles/ServiceManagerPage'
 import FuelLogsPage            from '@/pages/vehicles/FuelLogsPage'
 import MeterReadingsPage       from '@/pages/vehicles/MeterReadingsPage'
 import TyreInventoryPage       from '@/pages/inventory/TyreInventoryPage'
@@ -118,13 +119,14 @@ export default function App() {
           <Route path="vehicles"            element={<VehiclesPage />} />
           <Route path="vehicles/:vehicleId" element={<VehicleDetailPage />} />
           <Route path="vehicle-services"    element={<VehicleServicesPage />} />
+          <Route path="service-manager"     element={<ProtectedRoute allowedRoles={['ADMIN','SERVICE_MANAGER']}><ServiceManagerPage /></ProtectedRoute>} />
           <Route path="fuel-logs"           element={<FuelLogsPage />} />
           <Route path="meter-readings"      element={<MeterReadingsPage />} />
 
           {/* Inventory */}
           <Route path="inventory/tyres"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER']}><TyreInventoryPage /></ProtectedRoute>} />
           <Route path="inventory/tyre-requests" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','STORE_KEEPER']}><TyreRequestsPage /></ProtectedRoute>} />
-          <Route path="inventory" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER','SERVICE_MEN']}><InventoryPage /></ProtectedRoute>} />
+          <Route path="inventory" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER','SERVICE_MANAGER']}><InventoryPage /></ProtectedRoute>} />
 
           {/* Orders & LRs */}
           <Route path="orders"          element={<OrdersPage />} />
@@ -174,9 +176,9 @@ export default function App() {
           <Route path="notifications" element={<NotificationsPage />} />
 
           {/* STAFF self-service */}
-          <Route path="my/trips"      element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyTripsPage /></ProtectedRoute>} />
-          <Route path="my/attendance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'OFFICE_STAFF', 'DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyAttendancePage /></ProtectedRoute>} />
-          <Route path="my/payslip"    element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MEN', 'STORE_KEEPER']}><MyPayslipPage /></ProtectedRoute>} />
+          <Route path="my/trips"      element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MANAGER', 'STORE_KEEPER']}><MyTripsPage /></ProtectedRoute>} />
+          <Route path="my/attendance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'OFFICE_STAFF', 'DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MANAGER', 'STORE_KEEPER']}><MyAttendancePage /></ProtectedRoute>} />
+          <Route path="my/payslip"    element={<ProtectedRoute allowedRoles={['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MANAGER', 'STORE_KEEPER']}><MyPayslipPage /></ProtectedRoute>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -162,7 +162,7 @@ function BulkUploadUsersDialog({ open, onClose, tenants }: {
               <p className="font-medium mb-1">Download CSV Template</p>
               <p className="text-xs text-blue-600 mb-2">
                 Columns: <span className="font-mono">name, phone, roleName</span>.
-                Valid roles: ADMIN, OFFICE_STAFF, SUPERVISOR, DRIVER, CLEANER, SERVICE_MEN, STORE_KEEPER.
+                Valid roles: ADMIN, OFFICE_STAFF, SUPERVISOR, DRIVER, CLEANER, SERVICE_MANAGER, STORE_KEEPER.
               </p>
               <button onClick={downloadUserTemplate} className="text-xs underline font-medium hover:text-blue-700">
                 Download template.csv

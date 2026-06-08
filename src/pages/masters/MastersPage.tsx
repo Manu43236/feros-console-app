@@ -617,15 +617,15 @@ const RBAC_ROLES = [
   { key: 'DRIVER',       label: 'Driver' },
   { key: 'CLEANER',      label: 'Cleaner' },
   { key: 'STORE_KEEPER', label: 'Store Keeper' },
-  { key: 'SERVICE_MEN',  label: 'Service Men' },
+  { key: 'SERVICE_MANAGER', label: 'Service Manager' },
 ]
 
 // Roles shown in Module Access tab (DRIVER/CLEANER have nothing configurable)
 const MODULE_ACCESS_ROLES = [
-  { key: 'OFFICE_STAFF', label: 'Office Staff' },
-  { key: 'SUPERVISOR',   label: 'Supervisor' },
-  { key: 'STORE_KEEPER', label: 'Store Keeper' },
-  { key: 'SERVICE_MEN',  label: 'Service Men' },
+  { key: 'OFFICE_STAFF',    label: 'Office Staff' },
+  { key: 'SUPERVISOR',      label: 'Supervisor' },
+  { key: 'STORE_KEEPER',    label: 'Store Keeper' },
+  { key: 'SERVICE_MANAGER', label: 'Service Manager' },
 ]
 
 // Module rows — keys match backend ModuleKey enum, roles = which roles can configure this module
@@ -642,7 +642,7 @@ const RBAC_MODULE_ROWS: { key: string; label: string; section: string; roles: st
   { key: 'TYRES',            label: 'Tyres',            section: 'Inventory',  roles: ['STORE_KEEPER'] },
   { key: 'PART_REQUESTS',    label: 'Part Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },
   { key: 'TYRE_REQUESTS',    label: 'Tyre Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },
-  { key: 'VEHICLE_SERVICES', label: 'Vehicle Services', section: 'Fleet',      roles: ['SERVICE_MEN'] },
+  { key: 'VEHICLE_SERVICES', label: 'Vehicle Services', section: 'Fleet',      roles: ['SERVICE_MANAGER'] },
 ]
 
 const RBAC_MODULE_SECTIONS = ['Operations', 'Finance', 'HR', 'Analytics', 'Inventory', 'Fleet']

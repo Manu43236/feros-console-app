@@ -28,7 +28,7 @@ function getRoleColor(role: string) {
   if (role === 'DRIVER')       return 'bg-blue-50 text-blue-700'
   if (role === 'SUPERVISOR')   return 'bg-orange-50 text-orange-700'
   if (role === 'OFFICE_STAFF') return 'bg-teal-50 text-teal-700'
-  if (role === 'SERVICE_MEN')  return 'bg-red-50 text-red-700'
+  if (role === 'SERVICE_MANAGER') return 'bg-red-50 text-red-700'
   if (role === 'STORE_KEEPER') return 'bg-emerald-50 text-emerald-700'
   return 'bg-gray-50 text-gray-700'
 }
@@ -221,7 +221,7 @@ function StaffBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () =
             <p className="font-medium">CSV Format</p>
             <p>Required: <code className="bg-blue-100 px-1 rounded">name</code>, <code className="bg-blue-100 px-1 rounded">phone</code>, <code className="bg-blue-100 px-1 rounded">role</code></p>
             <p>Optional: <code className="bg-blue-100 px-1 rounded">joiningDate</code>, <code className="bg-blue-100 px-1 rounded">licenseNumber</code>, <code className="bg-blue-100 px-1 rounded">licenseExpiryDate</code></p>
-            <p className="text-blue-600 text-xs mt-1">Roles: DRIVER, CLEANER, SUPERVISOR, OFFICE_STAFF, SERVICE_MEN, STORE_KEEPER · Dates: YYYY-MM-DD</p>
+            <p className="text-blue-600 text-xs mt-1">Roles: DRIVER, CLEANER, SUPERVISOR, OFFICE_STAFF, SERVICE_MANAGER, STORE_KEEPER · Dates: YYYY-MM-DD</p>
           </div>
 
           <Button variant="outline" size="sm" className="w-full gap-2" onClick={downloadTemplate}>

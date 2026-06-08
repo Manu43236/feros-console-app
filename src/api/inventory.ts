@@ -60,8 +60,9 @@ export const stockApi = {
 export const servicePartsApi = {
   getPending:       () => apiClient.get<ApiResponse<ServicePart[]>>('/inventory/service-parts/pending').then(r => r.data),
   getByService:     (serviceId: number) => apiClient.get<ApiResponse<ServicePart[]>>(`/inventory/service-parts/service/${serviceId}`).then(r => r.data),
-  request:          (serviceId: number, data: { sparePartId: number; quantityRequested: number }) =>
+  request:          (serviceId: number, data: { sparePartId: number; quantityRequested: number; taskId?: number }) =>
     apiClient.post<ApiResponse<ServicePart>>(`/inventory/service-parts/service/${serviceId}`, data).then(r => r.data),
+  getByTask:        (taskId: number) => apiClient.get<ApiResponse<ServicePart[]>>(`/inventory/service-parts/task/${taskId}`).then(r => r.data),
   approve:          (servicePartId: number, data: { status: string; quantityApproved?: number; rejectionReason?: string }) =>
     apiClient.put<ApiResponse<ServicePart>>(`/inventory/service-parts/${servicePartId}/approve`, data).then(r => r.data),
   remove:           (servicePartId: number) => apiClient.delete<ApiResponse<void>>(`/inventory/service-parts/${servicePartId}`).then(r => r.data),

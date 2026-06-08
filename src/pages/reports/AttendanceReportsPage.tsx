@@ -29,7 +29,7 @@ const TABS = [
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
 
-const ROLES = ['ALL', 'DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MEN', 'STORE_KEEPER']
+const ROLES = ['ALL', 'DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MANAGER', 'STORE_KEEPER']
 
 // ── Status / type badges ───────────────────────────────────────────────────────
 const TYPE_COLORS: Record<string, string> = {
