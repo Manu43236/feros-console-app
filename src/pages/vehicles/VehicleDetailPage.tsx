@@ -405,7 +405,8 @@ const statusLabel: Record<string, string> = {
   OPEN: 'Open', IN_PROGRESS: 'In Progress', DUE_SOON: 'Due Soon', OVERDUE: 'Overdue', COMPLETED: 'Completed',
 }
 
-// ── task row inside create dialog ─────────────────────────────────────────────
+// ── CreateServiceDialog is now a shared component ─────────────────────────────
+// (kept here for legacy reference — imported below)
 interface TaskDraft {
   taskTypeId?: number
   customName?: string

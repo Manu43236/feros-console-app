@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { CreateServiceDialog } from '@/components/shared/CreateServiceDialog'
 import type { SmServiceItem, SmTaskItem, SmBreakdownItem, MechanicSummary, ServiceTaskStatus } from '@/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -47,90 +48,6 @@ function serviceStatusChip(s?: string) {
   )
 }
 
-// ── Log Service Dialog ────────────────────────────────────────────────────────
-function LogServiceDialog({
-  breakdown, onClose,
-}: {
-  breakdown: SmBreakdownItem
-  onClose: () => void
-}) {
-  const qc = useQueryClient()
-  const [serviceType, setServiceType] = useState<'INTERNAL' | 'THIRD_PARTY' | 'OEM_CENTER'>('INTERNAL')
-  const [notes, setNotes] = useState('')
-
-  const mutation = useMutation({
-    mutationFn: () => vehicleServicesApi.create({
-      vehicleId:   breakdown.vehicleId,
-      triggeredBy: 'BREAKDOWN',
-      serviceType,
-      notes:       notes || undefined,
-    }),
-    onSuccess: () => {
-      toast.success('Service logged for breakdown')
-      qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
-      onClose()
-    },
-    onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to log service')
-    },
-  })
-
-  return (
-    <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Log Service for Breakdown</DialogTitle>
-        </DialogHeader>
-
-        <div className="bg-red-50 rounded-lg p-3 text-sm space-y-1">
-          <p><span className="text-gray-500">Vehicle:</span> <strong className="text-gray-900">{breakdown.vehicleRegistrationNumber}</strong></p>
-          <p><span className="text-gray-500">Type:</span> <span className="text-gray-700">{breakdown.breakdownType}</span></p>
-          <p><span className="text-gray-500">Date:</span> <span className="text-gray-700">{fmtDate(breakdown.breakdownDate)}</span></p>
-          {breakdown.location && <p><span className="text-gray-500">Location:</span> <span className="text-gray-700">{breakdown.location}</span></p>}
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <Label className="mb-1.5 block">Service Type *</Label>
-            <div className="flex gap-2">
-              {(['INTERNAL', 'THIRD_PARTY', 'OEM_CENTER'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setServiceType(t)}
-                  className={cn(
-                    'flex-1 py-2 text-xs font-medium rounded-lg border transition-colors',
-                    serviceType === t
-                      ? 'border-feros-navy bg-feros-navy text-white'
-                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                  )}
-                >
-                  {t === 'INTERNAL' ? 'Internal' : t === 'THIRD_PARTY' ? '3rd Party' : 'OEM Center'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <Label className="mb-1.5 block">Notes (optional)</Label>
-            <Input
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Describe the issue…"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={mutation.isPending} onClick={() => mutation.mutate()}>
-            {mutation.isPending ? 'Creating…' : 'Log Service'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 // ── Assign Mechanic Dialog ────────────────────────────────────────────────────
 function AssignMechanicDialog({
@@ -453,6 +370,7 @@ function ServiceCard({
 
 // ── Breakdown Card ────────────────────────────────────────────────────────────
 function BreakdownCard({ breakdown, mechanics }: { breakdown: SmBreakdownItem; mechanics: MechanicSummary[] }) {
+  const qc = useQueryClient()
   const [logOpen, setLogOpen] = useState(false)
 
   const statusCls: Record<string, string> = {
@@ -511,7 +429,14 @@ function BreakdownCard({ breakdown, mechanics }: { breakdown: SmBreakdownItem; m
       )}
 
       {logOpen && (
-        <LogServiceDialog breakdown={breakdown} onClose={() => setLogOpen(false)} />
+        <CreateServiceDialog
+          vehicleId={breakdown.vehicleId}
+          vehicleReg={breakdown.vehicleRegistrationNumber}
+          breakdownId={breakdown.breakdownId}
+          open={logOpen}
+          onClose={() => setLogOpen(false)}
+          onSuccess={() => qc.invalidateQueries({ queryKey: ['sm-dashboard'] })}
+        />
       )}
     </div>
   )
