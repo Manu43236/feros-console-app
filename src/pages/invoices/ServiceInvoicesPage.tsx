@@ -208,6 +208,8 @@ function InvoiceDetailDialog({ invoice, onClose }: { invoice: ServiceInvoice; on
                     <tr>
                       <th className="text-left py-2 px-3 text-xs font-medium text-gray-500">Part</th>
                       <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">Qty</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">Unit Cost</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -218,6 +220,8 @@ function InvoiceDetailDialog({ invoice, onClose }: { invoice: ServiceInvoice; on
                           <p className="text-xs text-gray-400">{p.partNumber}</p>
                         </td>
                         <td className="py-2 px-3 text-right text-gray-600">{p.quantity} {p.unit}</td>
+                        <td className="py-2 px-3 text-right text-gray-600">{fmt(p.unitCost)}</td>
+                        <td className="py-2 px-3 text-right text-gray-700 font-medium">{fmt(p.totalCost)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -232,6 +236,9 @@ function InvoiceDetailDialog({ invoice, onClose }: { invoice: ServiceInvoice; on
             {isInternal ? (
               <>
                 <SummaryRow label="Tasks Total"     value={fmt(invoice.tasksTotal)} />
+                {(invoice.partsTotal ?? 0) > 0 && (
+                  <SummaryRow label="Parts Total" value={fmt(invoice.partsTotal)} />
+                )}
                 <SummaryRow label="Labour Charges"  value={fmt(invoice.labourCharges)} />
                 <SummaryRow label="Sub Total"       value={fmt(invoice.subTotal)} />
                 <SummaryRow label={`GST (${invoice.gstRate ?? 18}%)`} value={fmt(invoice.gstAmount)} />

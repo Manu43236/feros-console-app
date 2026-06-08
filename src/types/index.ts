@@ -987,6 +987,8 @@ export interface ServiceInvoicePartLine {
   partNumber: string
   unit:       string
   quantity:   number
+  unitCost?:  number
+  totalCost?: number
 }
 
 export interface ServiceInvoice {
@@ -1001,6 +1003,7 @@ export interface ServiceInvoice {
   vendorName?:               string
   completedDate?:            string
   tasksTotal?:       number
+  partsTotal?:       number
   labourCharges?:    number
   subTotal?:         number
   gstRate?:          number
