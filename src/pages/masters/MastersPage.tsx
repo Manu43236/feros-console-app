@@ -960,6 +960,7 @@ function SettingsSection() {
   const [attendanceDeadlineTime, setAttendanceDeadlineTime] = useState('08:00')
   const [requireTyreApproval, setRequireTyreApproval] = useState(false)
   const [requireSparePartApproval, setRequireSparePartApproval] = useState(false)
+  const [serviceInvoiceGstEnabled, setServiceInvoiceGstEnabled] = useState(true)
   const [invoiceDescription, setInvoiceDescription] = useState('')
   const { register, handleSubmit, reset } = useForm<{
     overtimeThresholdHours: number
@@ -985,6 +986,7 @@ function SettingsSection() {
       setAttendanceDeadlineTime((s.attendanceDeadlineTime ?? '08:00:00').slice(0, 5))
       setRequireTyreApproval(s.requireTyreApproval ?? false)
       setRequireSparePartApproval(s.requireSparePartApproval ?? false)
+      setServiceInvoiceGstEnabled(s.serviceInvoiceGstEnabled ?? true)
       setInvoiceDescription(s.invoiceDescription ?? '')
       reset({
         overtimeThresholdHours: s.overtimeThresholdHours,
@@ -1013,6 +1015,7 @@ function SettingsSection() {
       attendanceDeadlineTime: attendanceDeadlineTime + ':00',
       requireTyreApproval,
       requireSparePartApproval,
+      serviceInvoiceGstEnabled,
       invoiceDescription: invoiceDescription || null,
     })
   }
@@ -1153,8 +1156,23 @@ function SettingsSection() {
         </div>
 
         {/* Invoice Defaults */}
-        <div className="border rounded-lg p-4 space-y-2">
+        <div className="border rounded-lg p-4 space-y-3">
           <p className="text-sm font-medium text-gray-700">Invoice Defaults</p>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="serviceInvoiceGstEnabled"
+              checked={serviceInvoiceGstEnabled}
+              onChange={e => setServiceInvoiceGstEnabled(e.target.checked)}
+              className="h-4 w-4 accent-blue-600"
+            />
+            <Label htmlFor="serviceInvoiceGstEnabled" className="cursor-pointer">
+              Apply GST on Service Invoices
+            </Label>
+          </div>
+          <p className="text-xs text-gray-500">
+            When disabled, GST will not be calculated or shown on internal service invoices. Useful for in-house workshops that are not GST registered.
+          </p>
           <div>
             <Label>Default Description of Goods/Service</Label>
             <textarea
