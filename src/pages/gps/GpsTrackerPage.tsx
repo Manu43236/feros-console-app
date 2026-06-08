@@ -2,7 +2,7 @@ import { useRef, useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { RefreshCw, MapPin, Truck, Zap, Square, WifiOff } from 'lucide-react'
+import { RefreshCw, MapPin, Truck, Zap, Square, WifiOff, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -111,6 +111,7 @@ function providerLabel(type: string) {
 export default function GpsTrackerPage() {
   const [filterStatus, setFilterStatus] = useState<GpsVehicleStatus | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [satellite, setSatellite] = useState(false)
   const markerRefs = useRef<Record<number, L.Marker>>({} as Record<number, L.Marker>)
 
   const { data, isLoading, refetch, isFetching, dataUpdatedAt } = useQuery({
@@ -183,6 +184,15 @@ export default function GpsTrackerPage() {
           >
             <RefreshCw size={13} className={cn(isFetching && 'animate-spin')} />
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className={cn('backdrop-blur-sm shadow-sm h-8', satellite ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white/90')}
+            onClick={() => setSatellite(s => !s)}
+          >
+            <Layers size={13} className="mr-1" />
+            {satellite ? 'Street' : 'Satellite'}
+          </Button>
         </div>
 
         {isLoading ? (
@@ -207,10 +217,18 @@ export default function GpsTrackerPage() {
             className="h-full w-full"
             zoomControl={true}
           >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            />
+            {satellite ? (
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                attribution="Tiles &copy; Esri &mdash; Source: Esri, Maxar, GeoEye, Earthstar Geographics"
+                maxZoom={19}
+              />
+            ) : (
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              />
+            )}
             <FitBounds vehicles={positioned} />
             {positioned.map(v => {
               const cfg = STATUS_CONFIG[v.gpsStatus]
