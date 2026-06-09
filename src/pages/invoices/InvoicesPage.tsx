@@ -122,7 +122,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
     })
   }
 
-  function toggleOrderLrs(orderId: number, lrIds: number[]) {
+  function toggleOrderLrs(_orderId: number, lrIds: number[]) {
     const allSelected = lrIds.every(id => selectedLrIds.has(id))
     setSelectedLrIds(prev => {
       const next = new Set(prev)
