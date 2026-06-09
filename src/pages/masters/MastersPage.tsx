@@ -35,7 +35,7 @@ const SECTIONS = [
 ] as const
 type SectionKey = typeof SECTIONS[number]['key']
 
-const ROLE_TYPES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'ADMIN']
+
 const PAY_CYCLES = ['DAILY', 'WEEKLY', 'MONTHLY']
 
 const VEHICLE_STATUS_TYPES: { value: VehicleStatusType; label: string }[] = [
@@ -341,6 +341,11 @@ function DesignationsSection() {
   const { data, isLoading } = useQuery({ queryKey: ['designations'], queryFn: tenantMastersApi.getDesignations })
   const items: DesignationItem[] = (data?.data as DesignationItem[]) ?? []
 
+  const { data: rolesData } = useQuery({ queryKey: ['roles'], queryFn: globalMastersApi.getRoles })
+  const roleOptions = (rolesData?.data ?? [])
+    .filter(r => r.name !== 'SUPER_ADMIN')
+    .map(r => ({ value: r.name, label: r.description || r.name.replace(/_/g, ' ') }))
+
   const create = useMutation({
     mutationFn: (d: { name: string; roleType: string; payPerDay?: number }) => tenantMastersApi.createDesignation(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['designations'] }); toast.success('Added'); setOpen(false) },
@@ -415,7 +420,7 @@ function DesignationsSection() {
               <SearchableSelect
                 value={roleType}
                 onValueChange={v => { setRoleType(v); setRoleError(false) }}
-                options={ROLE_TYPES.map(r => ({ value: r, label: r.replace('_', ' ') }))}
+                options={roleOptions}
                 placeholder="Select role"
                 className="mt-1"
               />
