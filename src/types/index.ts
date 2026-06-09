@@ -1121,6 +1121,15 @@ export interface MechanicSummary {
   designation?: string
 }
 
+export interface SmPartItem {
+  partId: number
+  partName: string
+  partNumber?: string
+  quantityRequested: number
+  quantityApproved?: number
+  status: 'REQUESTED' | 'APPROVED' | 'REJECTED'
+}
+
 export interface SmTaskItem {
   taskId: number
   displayName: string
@@ -1129,6 +1138,7 @@ export interface SmTaskItem {
   assignedMechanicName?: string
   mechanicStartedAt?: string
   mechanicClosedAt?: string
+  parts?: SmPartItem[]
 }
 
 export interface SmServiceItem {

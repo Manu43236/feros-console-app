@@ -13,4 +13,10 @@ export const serviceManagerApi = {
       `/vehicle-services/${serviceId}/tasks/${taskId}/assign`,
       { mechanicId }
     ).then(r => r.data),
+
+  addTask: (serviceId: number, body: { taskTypeId?: number; customName?: string }) =>
+    apiClient.post<ApiResponse<unknown>>(
+      `/vehicle-services/${serviceId}/tasks`,
+      body
+    ).then(r => r.data),
 }

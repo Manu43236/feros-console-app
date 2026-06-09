@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { CreateServiceDialog } from '@/components/shared/CreateServiceDialog'
-import type { SmServiceItem, SmTaskItem, SmBreakdownItem, MechanicSummary, ServiceTaskStatus } from '@/types'
+import type { SmServiceItem, SmTaskItem, SmBreakdownItem, MechanicSummary, ServiceTaskStatus, SmPartItem } from '@/types'
+import { globalMastersApi } from '@/api/masters'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -276,6 +277,93 @@ function CompleteServiceDialog({ serviceId, onClose }: { serviceId: number; onCl
   )
 }
 
+// ── Part status badge ─────────────────────────────────────────────────────────
+function partStatusBadge(status: SmPartItem['status']) {
+  const cfg: Record<SmPartItem['status'], string> = {
+    REQUESTED: 'bg-amber-50 text-amber-700',
+    APPROVED:  'bg-green-50 text-green-700',
+    REJECTED:  'bg-red-50 text-red-700',
+  }
+  return (
+    <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded', cfg[status])}>
+      {status}
+    </span>
+  )
+}
+
+// ── Add Task Dialog ───────────────────────────────────────────────────────────
+function AddTaskDialog({ serviceId, onClose }: { serviceId: number; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [taskTypeId, setTaskTypeId] = useState<number | null>(null)
+  const [customName, setCustomName] = useState('')
+
+  const { data: taskTypesRes } = useQuery({
+    queryKey: ['service-task-types'],
+    queryFn: globalMastersApi.getServiceTaskTypes,
+  })
+  const taskTypes = taskTypesRes?.data ?? []
+
+  const mutation = useMutation({
+    mutationFn: () => serviceManagerApi.addTask(serviceId, {
+      taskTypeId: taskTypeId ?? undefined,
+      customName: customName.trim() || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Task added')
+      qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
+      onClose()
+    },
+    onError: () => toast.error('Failed to add task'),
+  })
+
+  const canSubmit = taskTypeId !== null || customName.trim().length > 0
+
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Add Task</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div>
+            <Label className="mb-1.5 block">Task Type</Label>
+            <SearchableSelect
+              value={taskTypeId ? String(taskTypeId) : ''}
+              onValueChange={v => { setTaskTypeId(v ? Number(v) : null); setCustomName('') }}
+              options={taskTypes.map(t => ({ value: String(t.id), label: t.name }))}
+              placeholder="Select task type…"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs text-gray-400">or</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block">Custom Task Name</Label>
+            <Input
+              placeholder="e.g. Replace front brake pads"
+              value={customName}
+              onChange={e => { setCustomName(e.target.value); setTaskTypeId(null) }}
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={!canSubmit || mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? 'Adding…' : 'Add Task'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Task Row ──────────────────────────────────────────────────────────────────
 function TaskRow({ task, serviceId, mechanics }: { task: SmTaskItem; serviceId: number; mechanics: MechanicSummary[] }) {
   const [assignOpen, setAssignOpen] = useState(false)
@@ -335,6 +423,23 @@ function TaskRow({ task, serviceId, mechanics }: { task: SmTaskItem; serviceId: 
         </div>
       )}
 
+      {task.parts && task.parts.length > 0 && (
+        <div className="mt-1.5 space-y-1">
+          {task.parts.map((p, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0" />
+              <span className="font-medium text-gray-700">{p.partName}</span>
+              {p.partNumber && <span className="text-gray-400">({p.partNumber})</span>}
+              <span>×{p.quantityRequested}</span>
+              {p.quantityApproved != null && p.quantityApproved !== p.quantityRequested && (
+                <span className="text-green-600">approved: {p.quantityApproved}</span>
+              )}
+              {partStatusBadge(p.status)}
+            </div>
+          ))}
+        </div>
+      )}
+
       {assignOpen && (
         <AssignMechanicDialog
           task={task} serviceId={serviceId} mechanics={mechanics}
@@ -361,6 +466,7 @@ function ServiceCard({
 }) {
   const [expanded,      setExpanded]      = useState(true)
   const [completeOpen,  setCompleteOpen]  = useState(false)
+  const [addTaskOpen,   setAddTaskOpen]   = useState(false)
 
   const allClosed = service.tasks.length > 0 &&
     service.tasks.every(t => t.status === 'MECHANIC_CLOSED' || t.status === 'COMPLETED')
@@ -386,15 +492,25 @@ function ServiceCard({
 
         <div className="flex items-center gap-2 shrink-0 ml-3" onClick={e => e.stopPropagation()}>
           {service.serviceStatus !== 'COMPLETED' && (
-            <Button
-              size="sm"
-              variant={allClosed ? 'default' : 'outline'}
-              className={cn('h-7 text-xs', allClosed && 'bg-green-600 hover:bg-green-700 border-green-600')}
-              onClick={() => setCompleteOpen(true)}
-            >
-              <CheckCircle2 size={12} className="mr-1" />
-              Complete
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1"
+                onClick={() => setAddTaskOpen(true)}
+              >
+                <Plus size={11} /> Add Task
+              </Button>
+              <Button
+                size="sm"
+                variant={allClosed ? 'default' : 'outline'}
+                className={cn('h-7 text-xs', allClosed && 'bg-green-600 hover:bg-green-700 border-green-600')}
+                onClick={() => setCompleteOpen(true)}
+              >
+                <CheckCircle2 size={12} className="mr-1" />
+                Complete
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -414,6 +530,9 @@ function ServiceCard({
 
       {completeOpen && (
         <CompleteServiceDialog serviceId={service.serviceId} onClose={() => setCompleteOpen(false)} />
+      )}
+      {addTaskOpen && (
+        <AddTaskDialog serviceId={service.serviceId} onClose={() => setAddTaskOpen(false)} />
       )}
     </div>
   )
