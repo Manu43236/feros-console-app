@@ -1118,8 +1118,7 @@ export interface ServicePart {
 export interface MechanicSummary {
   id: number
   name: string
-  phone: string
-  userNumber: string
+  designation?: string
 }
 
 export interface SmTaskItem {

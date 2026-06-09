@@ -60,6 +60,12 @@ function AssignMechanicDialog({
 }) {
   const qc = useQueryClient()
   const [selected, setSelected] = useState<number | null>(task.assignedMechanicId ?? null)
+  const [search, setSearch] = useState('')
+
+  const filtered = mechanics.filter(m =>
+    m.name.toLowerCase().includes(search.toLowerCase()) ||
+    (m.designation ?? '').toLowerCase().includes(search.toLowerCase())
+  )
 
   const mutation = useMutation({
     mutationFn: (mechanicId: number) => serviceManagerApi.assignMechanic(serviceId, task.taskId, mechanicId),
@@ -81,10 +87,19 @@ function AssignMechanicDialog({
           Task: <span className="font-medium text-gray-700">{task.displayName}</span>
         </p>
 
-        <div className="space-y-2 max-h-60 overflow-y-auto">
+        <Input
+          placeholder="Search by name or designation…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="h-8 text-sm"
+        />
+
+        <div className="space-y-2 max-h-56 overflow-y-auto">
           {mechanics.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">No mechanics registered</p>
-          ) : mechanics.map(m => (
+          ) : filtered.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">No results</p>
+          ) : filtered.map(m => (
             <button
               key={m.id}
               onClick={() => setSelected(m.id)}
@@ -98,9 +113,9 @@ function AssignMechanicDialog({
               <div className="w-8 h-8 rounded-full bg-feros-navy/10 flex items-center justify-center text-feros-navy text-sm font-bold shrink-0">
                 {m.name[0]}
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900">{m.name}</p>
-                <p className="text-xs text-gray-500">{m.phone} · {m.userNumber}</p>
+                {m.designation && <p className="text-xs text-gray-500">{m.designation}</p>}
               </div>
               {selected === m.id && <CheckCircle2 size={16} className="ml-auto text-feros-navy shrink-0" />}
             </button>
