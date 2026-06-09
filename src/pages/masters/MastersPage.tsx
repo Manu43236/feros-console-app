@@ -426,10 +426,12 @@ function DesignationsSection() {
               />
               {roleError && <p className="text-xs text-red-500 mt-1">Required</p>}
             </div>
-            <div>
-              <Label>Pay Per Day (₹)</Label>
-              <Input type="number" step="0.01" min="0" {...register('payPerDay')} className="mt-1" placeholder="e.g. 800" />
-            </div>
+            {['DRIVER', 'CLEANER'].includes(roleType) && (
+              <div>
+                <Label>Pay Per Day (₹)</Label>
+                <Input type="number" step="0.01" min="0" {...register('payPerDay')} className="mt-1" placeholder="e.g. 800" />
+              </div>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit">{editing ? 'Update' : 'Add'}</Button>
