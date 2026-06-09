@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 import {
   Plus, Search, Eye, FileText,
   Receipt, TrendingUp, AlertCircle, CheckCircle2,
-  Percent, CalendarDays, StickyNote, Truck,
+  Percent, CalendarDays, StickyNote, Truck, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,6 +66,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [selectedLrIds, setSelectedLrIds] = useState<Set<number>>(new Set())
+  const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set())
 
   const { data: clientsRes } = useQuery({ queryKey: ['clients-all'], queryFn: () => clientsApi.getAll({ size: 1000 }) })
   const { data: lrsRes } = useQuery({ queryKey: ['lrs-delivered'], queryFn: () => lrsApi.getAll({ status: 'DELIVERED', size: 1000 }) })
@@ -97,10 +98,36 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
     lr => lr.clientId === clientId && lr.lrStatus === 'DELIVERED' && !invoicedLrIds.has(lr.id)
   )
 
+  // Group eligible LRs by order
+  const lrsByOrder = eligibleLrs.reduce<Record<number, { orderNumber: string; lrs: typeof eligibleLrs }>>((acc, lr) => {
+    if (!acc[lr.orderId]) acc[lr.orderId] = { orderNumber: lr.orderNumber, lrs: [] }
+    acc[lr.orderId].lrs.push(lr)
+    return acc
+  }, {})
+  const orderGroups = Object.entries(lrsByOrder).map(([id, val]) => ({ orderId: Number(id), ...val }))
+
   function toggleLr(id: number) {
     setSelectedLrIds(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleOrder(orderId: number) {
+    setExpandedOrders(prev => {
+      const next = new Set(prev)
+      next.has(orderId) ? next.delete(orderId) : next.add(orderId)
+      return next
+    })
+  }
+
+  function toggleOrderLrs(orderId: number, lrIds: number[]) {
+    const allSelected = lrIds.every(id => selectedLrIds.has(id))
+    setSelectedLrIds(prev => {
+      const next = new Set(prev)
+      if (allSelected) lrIds.forEach(id => next.delete(id))
+      else lrIds.forEach(id => next.add(id))
       return next
     })
   }
@@ -252,7 +279,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
           <div className="border-t pt-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <Truck className="h-3.5 w-3.5" /> Select Delivered LRs
+                <Truck className="h-3.5 w-3.5" /> Select LRs by Order
                 {selectedLrIds.size > 0 && (
                   <span className="ml-1 bg-feros-navy text-white text-xs rounded-full px-2 py-0.5 font-medium normal-case">
                     {selectedLrIds.size} selected
@@ -285,53 +312,97 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
                 <p className="text-sm">No uninvoiced delivered LRs for this client</p>
               </div>
             ) : (
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="w-10 py-2.5 px-3" />
-                      <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">LR #</th>
-                      <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle</th>
-                      <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {eligibleLrs.map(lr => (
-                      <tr
-                        key={lr.id}
-                        onClick={() => toggleLr(lr.id)}
+              <div className="space-y-2">
+                {orderGroups.map(({ orderId, orderNumber, lrs }) => {
+                  const orderLrIds = lrs.map(lr => lr.id)
+                  const selectedCount = orderLrIds.filter(id => selectedLrIds.has(id)).length
+                  const allSelected = selectedCount === orderLrIds.length
+                  const isExpanded = expandedOrders.has(orderId)
+
+                  return (
+                    <div key={orderId} className="border rounded-lg overflow-hidden">
+                      {/* Order header row */}
+                      <div
                         className={cn(
-                          'border-b last:border-0 cursor-pointer transition-colors',
-                          selectedLrIds.has(lr.id)
-                            ? 'bg-blue-50 hover:bg-blue-100'
-                            : 'hover:bg-gray-50'
+                          'flex items-center justify-between px-3 py-2.5 cursor-pointer select-none transition-colors',
+                          selectedCount > 0 ? 'bg-blue-50' : 'bg-gray-50 hover:bg-gray-100'
                         )}
+                        onClick={() => toggleOrder(orderId)}
                       >
-                        <td className="py-2.5 px-3">
-                          <div className={cn(
-                            'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
-                            selectedLrIds.has(lr.id)
-                              ? 'bg-feros-navy border-feros-navy'
-                              : 'border-gray-300'
-                          )}>
-                            {selectedLrIds.has(lr.id) && (
-                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-2.5 px-3 font-semibold text-feros-navy text-xs max-w-[180px] truncate">{lr.lrNumber}</td>
-                        <td className="py-2.5 px-3 text-gray-600 text-xs">{lr.vehicleRegistrationNumber}</td>
-                        <td className="py-2.5 px-3 text-gray-500 text-xs">
-                          {lr.lrDate
-                            ? new Date(lr.lrDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-                            : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        <div className="flex items-center gap-2">
+                          {isExpanded
+                            ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                            : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
+                          }
+                          <span className="text-sm font-semibold text-feros-navy">{orderNumber}</span>
+                          <span className="text-xs text-gray-400">{lrs.length} LR{lrs.length !== 1 ? 's' : ''}</span>
+                          {selectedCount > 0 && (
+                            <span className="bg-feros-navy text-white text-xs rounded-full px-1.5 py-0.5 font-medium">
+                              {selectedCount} selected
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); toggleOrderLrs(orderId, orderLrIds) }}
+                          className="text-xs text-feros-navy hover:underline font-medium"
+                        >
+                          {allSelected ? 'Deselect all' : 'Select all'}
+                        </button>
+                      </div>
+
+                      {/* LR rows — shown when expanded */}
+                      {isExpanded && (
+                        <table className="w-full text-sm border-t">
+                          <thead className="bg-white border-b">
+                            <tr>
+                              <th className="w-10 py-2 px-3" />
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">LR #</th>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle</th>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lrs.map(lr => (
+                              <tr
+                                key={lr.id}
+                                onClick={() => toggleLr(lr.id)}
+                                className={cn(
+                                  'border-b last:border-0 cursor-pointer transition-colors',
+                                  selectedLrIds.has(lr.id)
+                                    ? 'bg-blue-50 hover:bg-blue-100'
+                                    : 'hover:bg-gray-50'
+                                )}
+                              >
+                                <td className="py-2.5 px-3">
+                                  <div className={cn(
+                                    'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
+                                    selectedLrIds.has(lr.id)
+                                      ? 'bg-feros-navy border-feros-navy'
+                                      : 'border-gray-300'
+                                  )}>
+                                    {selectedLrIds.has(lr.id) && (
+                                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3 font-semibold text-feros-navy text-xs">{lr.lrNumber}</td>
+                                <td className="py-2.5 px-3 text-gray-600 text-xs">{lr.vehicleRegistrationNumber}</td>
+                                <td className="py-2.5 px-3 text-gray-500 text-xs">
+                                  {lr.lrDate
+                                    ? new Date(lr.lrDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                                    : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
