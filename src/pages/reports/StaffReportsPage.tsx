@@ -5,7 +5,7 @@ import { Download, UserCheck, Users, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { DriverPerformanceRow, CleanerPerformanceRow, MechanicPerformanceRow } from '@/types'
+import type { DriverPerformanceRow, CleanerPerformanceRow, TechnicianPerformanceRow } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -22,7 +22,7 @@ const thisMonthStart = () => {
 const TABS = [
   { key: 'drivers',   label: 'Driver Performance',   icon: UserCheck },
   { key: 'cleaners',  label: 'Cleaner Performance',  icon: Users },
-  { key: 'mechanics', label: 'Mechanic Performance', icon: Wrench },
+  { key: 'mechanics', label: 'Technician Performance', icon: Wrench },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -96,16 +96,16 @@ function CleanerTable({ rows, loading }: { rows: CleanerPerformanceRow[]; loadin
   )
 }
 
-function MechanicTable({ rows, loading }: { rows: MechanicPerformanceRow[]; loading: boolean }) {
+function MechanicTable({ rows, loading }: { rows: TechnicianPerformanceRow[]; loading: boolean }) {
   return (
     <ReportTable loading={loading}
       headers={['Mechanic', 'Designation', 'Tasks Assigned', 'Completed', 'Mech. Closed', 'In Progress', 'Services', 'Avg Duration']}
       rows={rows.map(r => [
-        <span className="font-medium text-feros-navy">{r.mechanicName}</span>,
+        <span className="font-medium text-feros-navy">{r.technicianName}</span>,
         dash(r.designation),
         <span className="font-medium">{r.tasksAssigned}</span>,
         <span className="text-green-700 font-medium">{r.tasksCompleted}</span>,
-        <span className="text-purple-700">{r.tasksMechanicClosed}</span>,
+        <span className="text-purple-700">{r.tasksTechnicianClosed}</span>,
         <span className="text-orange-600">{r.tasksInProgress}</span>,
         r.servicesWorkedOn,
         r.avgDurationMinutes != null
@@ -142,7 +142,7 @@ export default function StaffReportsPage() {
   })
   const mechanicQuery = useQuery({
     queryKey: ['report-mechanic-performance', startDate, endDate],
-    queryFn: () => reportsApi.getMechanicPerformance(startDate, endDate),
+    queryFn: () => reportsApi.getTechnicianPerformance(startDate, endDate),
     enabled: tab === 'mechanics',
   })
 
@@ -155,7 +155,7 @@ export default function StaffReportsPage() {
     try {
       if (tab === 'drivers')   await reportsApi.exportDriverPerformance(startDate, endDate, format)
       else if (tab === 'cleaners')  await reportsApi.exportCleanerPerformance(startDate, endDate, format)
-      else                          await reportsApi.exportMechanicPerformance(startDate, endDate, format)
+      else                          await reportsApi.exportTechnicianPerformance(startDate, endDate, format)
     } catch { toast.error('Export failed') }
     finally  { setDownloading(false) }
   }

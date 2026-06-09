@@ -31,7 +31,7 @@ import type {
   DocumentCostRow,
   DriverPerformanceRow,
   CleanerPerformanceRow,
-  MechanicPerformanceRow,
+  TechnicianPerformanceRow,
   PnlSummaryRow,
   ClientPnlRow,
   VehiclePnlRow,
@@ -449,16 +449,16 @@ export const reportsApi = {
     triggerDownload(res.data as Blob, `cleaner-performance-${startDate}-${endDate}.${format}`)
   },
 
-  getMechanicPerformance: (startDate: string, endDate: string) =>
-    apiClient.get<ApiResponse<MechanicPerformanceRow[]>>('/reports/staff/mechanics', {
+  getTechnicianPerformance: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<TechnicianPerformanceRow[]>>('/reports/staff/technicians', {
       params: { startDate, endDate },
     }).then(r => r.data),
 
-  exportMechanicPerformance: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
-    const res = await apiClient.get('/reports/staff/mechanics/export', {
+  exportTechnicianPerformance: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/staff/technicians/export', {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
-    triggerDownload(res.data as Blob, `mechanic-performance-${startDate}-${endDate}.${format}`)
+    triggerDownload(res.data as Blob, `technician-performance-${startDate}-${endDate}.${format}`)
   },
 
   getPnlSummary: (startDate: string, endDate: string) =>

@@ -1116,7 +1116,7 @@ export interface ServicePart {
 }
 
 // ─── Service Manager ──────────────────────────────────────────────────────────
-export interface MechanicSummary {
+export interface TechnicianSummary {
   id: number
   name: string
   designation?: string
@@ -1709,13 +1709,13 @@ export interface DriverPerformanceRow {
   attendancePct?: number
 }
 
-export interface MechanicPerformanceRow {
-  mechanicId: number
-  mechanicName: string
+export interface TechnicianPerformanceRow {
+  technicianId: number
+  technicianName: string
   designation: string
   tasksAssigned: number
   tasksCompleted: number
-  tasksMechanicClosed: number
+  tasksTechnicianClosed: number
   tasksInProgress: number
   servicesWorkedOn: number
   avgDurationMinutes?: number

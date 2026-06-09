@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { CreateServiceDialog } from '@/components/shared/CreateServiceDialog'
-import type { SmServiceItem, SmTaskItem, SmBreakdownItem, MechanicSummary, ServiceTaskStatus, SmPartItem } from '@/types'
+import type { SmServiceItem, SmTaskItem, SmBreakdownItem, TechnicianSummary, ServiceTaskStatus, SmPartItem } from '@/types'
 import { globalMastersApi } from '@/api/masters'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -64,39 +64,39 @@ function serviceStatusChip(s?: string) {
 }
 
 
-// ── Assign Mechanic Dialog ────────────────────────────────────────────────────
-function AssignMechanicDialog({
-  task, serviceId, mechanics, onClose,
+// ── Assign Technician Dialog ──────────────────────────────────────────────────
+function AssignTechnicianDialog({
+  task, serviceId, technicians, onClose,
 }: {
   task: SmTaskItem
   serviceId: number
-  mechanics: MechanicSummary[]
+  technicians: TechnicianSummary[]
   onClose: () => void
 }) {
   const qc = useQueryClient()
   const [selected, setSelected] = useState<number | null>(task.assignedMechanicId ?? null)
   const [search, setSearch] = useState('')
 
-  const filtered = mechanics.filter(m =>
+  const filtered = technicians.filter(m =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
     (m.designation ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   const mutation = useMutation({
-    mutationFn: (mechanicId: number) => serviceManagerApi.assignMechanic(serviceId, task.taskId, mechanicId),
+    mutationFn: (technicianId: number) => serviceManagerApi.assignTechnician(serviceId, task.taskId, technicianId),
     onSuccess: () => {
-      toast.success('Mechanic assigned')
+      toast.success('Technician assigned')
       qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
       onClose()
     },
-    onError: () => toast.error('Failed to assign mechanic'),
+    onError: () => toast.error('Failed to assign technician'),
   })
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Assign Mechanic</DialogTitle>
+          <DialogTitle>Assign Technician</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-gray-500 -mt-1">
           Task: <span className="font-medium text-gray-700">{task.displayName}</span>
@@ -110,8 +110,8 @@ function AssignMechanicDialog({
         />
 
         <div className="space-y-2 max-h-56 overflow-y-auto">
-          {mechanics.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">No mechanics registered</p>
+          {technicians.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">No technicians registered</p>
           ) : filtered.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">No results</p>
           ) : filtered.map(m => (
@@ -365,7 +365,7 @@ function AddTaskDialog({ serviceId, onClose }: { serviceId: number; onClose: () 
 }
 
 // ── Task Row ──────────────────────────────────────────────────────────────────
-function TaskRow({ task, serviceId, mechanics }: { task: SmTaskItem; serviceId: number; mechanics: MechanicSummary[] }) {
+function TaskRow({ task, serviceId, technicians }: { task: SmTaskItem; serviceId: number; technicians: TechnicianSummary[] }) {
   const [assignOpen, setAssignOpen] = useState(false)
   const [partOpen,   setPartOpen]   = useState(false)
 
@@ -441,8 +441,8 @@ function TaskRow({ task, serviceId, mechanics }: { task: SmTaskItem; serviceId: 
       )}
 
       {assignOpen && (
-        <AssignMechanicDialog
-          task={task} serviceId={serviceId} mechanics={mechanics}
+        <AssignTechnicianDialog
+          task={task} serviceId={serviceId} technicians={technicians}
           onClose={() => setAssignOpen(false)}
         />
       )}
@@ -458,10 +458,10 @@ function TaskRow({ task, serviceId, mechanics }: { task: SmTaskItem; serviceId: 
 
 // ── Service Card ──────────────────────────────────────────────────────────────
 function ServiceCard({
-  service, mechanics, isBreakdownService = false,
+  service, technicians, isBreakdownService = false,
 }: {
   service: SmServiceItem
-  mechanics: MechanicSummary[]
+  technicians: TechnicianSummary[]
   isBreakdownService?: boolean
 }) {
   const [expanded,      setExpanded]      = useState(true)
@@ -522,7 +522,7 @@ function ServiceCard({
             <p className="text-xs text-gray-400 py-3">No tasks on this service</p>
           ) : (
             service.tasks.map(task => (
-              <TaskRow key={task.taskId} task={task} serviceId={service.serviceId} mechanics={mechanics} />
+              <TaskRow key={task.taskId} task={task} serviceId={service.serviceId} technicians={technicians} />
             ))
           )}
         </div>
@@ -539,7 +539,7 @@ function ServiceCard({
 }
 
 // ── Breakdown Card ────────────────────────────────────────────────────────────
-function BreakdownCard({ breakdown, mechanics }: { breakdown: SmBreakdownItem; mechanics: MechanicSummary[] }) {
+function BreakdownCard({ breakdown, technicians }: { breakdown: SmBreakdownItem; technicians: TechnicianSummary[] }) {
   const qc = useQueryClient()
   const [logOpen, setLogOpen] = useState(false)
 
@@ -587,7 +587,7 @@ function BreakdownCard({ breakdown, mechanics }: { breakdown: SmBreakdownItem; m
       {/* Linked service */}
       {breakdown.service ? (
         <div className="ml-5">
-          <ServiceCard service={breakdown.service} mechanics={mechanics} isBreakdownService />
+          <ServiceCard service={breakdown.service} technicians={technicians} isBreakdownService />
         </div>
       ) : (
         <div className="ml-5 py-2">
@@ -622,13 +622,13 @@ export default function ServiceManagerPage() {
     refetchInterval: 60_000,
   })
 
-  const { data: mechanicsRes } = useQuery({
-    queryKey: ['sm-mechanics'],
-    queryFn: serviceManagerApi.getMechanics,
+  const { data: techniciansRes } = useQuery({
+    queryKey: ['sm-technicians'],
+    queryFn: serviceManagerApi.getTechnicians,
   })
 
-  const dashboard = dashRes?.data
-  const mechanics = mechanicsRes?.data ?? []
+  const dashboard    = dashRes?.data
+  const technicians  = techniciansRes?.data ?? []
 
   const breakdownCount = dashboard?.breakdowns.length ?? 0
   const serviceCount   = dashboard?.generalServices.length ?? 0
@@ -639,7 +639,7 @@ export default function ServiceManagerPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Service Manager</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Examine breakdowns, log services, and assign mechanics</p>
+          <p className="text-sm text-gray-500 mt-0.5">Examine breakdowns, log services, and assign technicians</p>
         </div>
 
         {/* Summary pills */}
@@ -651,7 +651,7 @@ export default function ServiceManagerPage() {
             <Wrench size={13} /> {serviceCount} services
           </span>
           <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg font-medium">
-            <User size={13} /> {mechanics.length} mechanics
+            <User size={13} /> {technicians.length} technicians
           </span>
         </div>
       </div>
@@ -699,7 +699,7 @@ export default function ServiceManagerPage() {
             <EmptyState icon={CheckCircle2} message="No active breakdowns" />
           ) : (
             dashboard.breakdowns.map(bd => (
-              <BreakdownCard key={bd.breakdownId} breakdown={bd} mechanics={mechanics} />
+              <BreakdownCard key={bd.breakdownId} breakdown={bd} technicians={technicians} />
             ))
           )}
         </div>
@@ -709,7 +709,7 @@ export default function ServiceManagerPage() {
             <EmptyState icon={CheckCircle2} message="No active general services" />
           ) : (
             dashboard.generalServices.map(svc => (
-              <ServiceCard key={svc.serviceId} service={svc} mechanics={mechanics} />
+              <ServiceCard key={svc.serviceId} service={svc} technicians={technicians} />
             ))
           )}
         </div>
