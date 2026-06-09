@@ -190,17 +190,17 @@ export function LrPdfDocument({
             <View style={S.fromToRow}>
               <Text style={S.fromToLabel}>From</Text>
               <View style={S.fromToDot}>
-                {order?.sourceCityName
+                {(order?.sourceAddress || order?.sourceCityName)
                   ? <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY, textAlign: 'center' }}>
-                      {order.sourceCityName}
+                      {order.sourceAddress || order.sourceCityName}
                     </Text>
                   : null}
               </View>
               <Text style={S.fromToLabel}>To</Text>
               <View style={S.fromToDot}>
-                {order?.destinationCityName
+                {(order?.destinationAddress || order?.destinationCityName)
                   ? <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY, textAlign: 'center' }}>
-                      {order.destinationCityName}
+                      {order.destinationAddress || order.destinationCityName}
                     </Text>
                   : null}
               </View>
