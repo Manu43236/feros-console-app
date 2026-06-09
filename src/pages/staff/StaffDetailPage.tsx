@@ -45,6 +45,11 @@ const profileSchema = z.object({
   accountHolderName:     z.string().optional(),
   licenseNumber:         z.string().optional(),
   licenseExpiryDate:     z.string().optional(),
+  salaryType:            z.enum(['DAILY', 'MONTHLY']).optional(),
+  monthlySalary:         z.preprocess(
+    v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+    z.number().positive('Must be a positive amount').optional()
+  ),
 })
 type ProfileFormData = z.infer<typeof profileSchema>
 
@@ -359,6 +364,8 @@ export function StaffDetailPage() {
         accountHolderName:     profile.accountHolderName ?? '',
         licenseNumber:         profile.licenseNumber ?? '',
         licenseExpiryDate:     profile.licenseExpiryDate?.split('T')[0] ?? '',
+        salaryType:            profile.salaryType ?? 'DAILY',
+        monthlySalary:         profile.monthlySalary,
       })
     }
   }, [profile, reset])
@@ -644,6 +651,55 @@ export function StaffDetailPage() {
                 <Input placeholder="SBIN0001234" {...register('ifscCode')} />
               </div>
             </div>
+          </div>
+
+          {/* Payroll */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <p className="text-sm font-semibold text-gray-700">Payroll</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Salary Type</Label>
+                <div className="flex gap-2 h-10 items-center">
+                  {(['DAILY', 'MONTHLY'] as const).map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => {
+                        setValue('salaryType', type, { shouldDirty: true })
+                        if (type === 'DAILY') setValue('monthlySalary', undefined, { shouldDirty: true })
+                      }}
+                      className={cn(
+                        'px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                        watch('salaryType') === type
+                          ? 'bg-feros-navy text-white border-feros-navy'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                      )}
+                    >
+                      {type === 'DAILY' ? 'Daily Rate' : 'Monthly Salary'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {watch('salaryType') === 'MONTHLY' && (
+                <div className="space-y-1.5">
+                  <Label>Monthly Salary (₹)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={100}
+                    placeholder="e.g. 18000"
+                    {...register('monthlySalary')}
+                  />
+                  {errors.monthlySalary && <p className="text-red-500 text-xs">{errors.monthlySalary.message}</p>}
+                </div>
+              )}
+            </div>
+            {watch('salaryType') === 'DAILY' && (
+              <p className="text-xs text-gray-400">Daily rate is configured on the designation. Override it per-payroll when generating.</p>
+            )}
+            {watch('salaryType') === 'MONTHLY' && (
+              <p className="text-xs text-gray-400">LOP deduction = (monthly salary ÷ working days) × absent days. Sundays excluded.</p>
+            )}
           </div>
 
           {/* Save button — enabled only when form is dirty */}

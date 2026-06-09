@@ -395,7 +395,9 @@ export interface StaffProfile {
   emergencyContactName?: string; emergencyContactPhone?: string
   bankName?: string; accountNumber?: string; ifscCode?: string; accountHolderName?: string
   licenseNumber?: string; licenseExpiryDate?: string
-  profilePhotoUrl?: string; isActive: boolean
+  profilePhotoUrl?: string
+  salaryType?: 'DAILY' | 'MONTHLY'; monthlySalary?: number
+  isActive: boolean
   createdAt: string; updatedAt: string
 }
 
@@ -435,7 +437,7 @@ export interface Payroll {
   id: number; userId: number; userName: string; userPhone: string; roleName: string; designationName?: string
   payCycleStartDate: string; payCycleEndDate: string
   totalDays: number; presentDays: number; absentDays: number; halfDays: number; leaveDays: number
-  overtimeHours: number; dailyRate: number
+  overtimeHours: number; salaryType?: 'DAILY' | 'MONTHLY'; dailyRate?: number; monthlySalary?: number
   basicPay: number; overtimePay: number; tripBonus: number; vehicleExtraPay?: number
   grossPay: number; totalDeductions: number; netPay: number
   deductions: PayrollDeduction[]

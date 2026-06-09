@@ -26,10 +26,11 @@ import type { Payroll, SalaryAdvance, PayrollStatus, PaymentMode } from '@/types
 type StaffUser = { id: number; name: string; role: string; isActive: boolean }
 
 const generateSchema = z.object({
-  userId:    z.string().min(1, 'Select a staff member'),
-  from:      z.string().min(1, 'Start date is required'),
-  to:        z.string().min(1, 'End date is required'),
-  dailyRate: z.coerce.number().optional(),
+  userId:        z.string().min(1, 'Select a staff member'),
+  from:          z.string().min(1, 'Start date is required'),
+  to:            z.string().min(1, 'End date is required'),
+  dailyRate:     z.coerce.number().optional(),
+  monthlySalary: z.coerce.number().optional(),
 })
 type GenerateForm = z.infer<typeof generateSchema>
 
@@ -79,16 +80,29 @@ function GenerateDialog({ open, onClose, users }: {
     enabled: !!selectedUserId && open,
   })
 
-  // Auto-fill daily rate from designation's payPerDay
+  const selectedProfile = profileRes?.data
+  const isMonthly = selectedProfile?.salaryType === 'MONTHLY'
+
+  // Auto-fill rate from profile
   useEffect(() => {
-    const payPerDay = profileRes?.data?.designationPayPerDay
-    if (payPerDay) {
-      setValue('dailyRate', payPerDay)
-      setRateAutoFilled(true)
+    if (!selectedProfile) { setRateAutoFilled(false); return }
+    if (isMonthly) {
+      if (selectedProfile.monthlySalary) {
+        setValue('monthlySalary', selectedProfile.monthlySalary)
+        setRateAutoFilled(true)
+      } else {
+        setRateAutoFilled(false)
+      }
     } else {
-      setRateAutoFilled(false)
+      const payPerDay = selectedProfile.designationPayPerDay
+      if (payPerDay) {
+        setValue('dailyRate', payPerDay)
+        setRateAutoFilled(true)
+      } else {
+        setRateAutoFilled(false)
+      }
     }
-  }, [profileRes?.data?.designationPayPerDay, setValue])
+  }, [selectedProfile, isMonthly, setValue])
 
   // Clear auto-fill flag when user manually edits the rate
   function handleRateChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -96,12 +110,18 @@ function GenerateDialog({ open, onClose, users }: {
     register('dailyRate').onChange(e)
   }
 
+  function handleMonthlyChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setRateAutoFilled(false)
+    register('monthlySalary').onChange(e)
+  }
+
   const mutation = useMutation({
     mutationFn: (d: GenerateForm) => payrollApi.generate({
       userId:            Number(d.userId),
       payCycleStartDate: d.from,
       payCycleEndDate:   d.to,
-      dailyRate:         d.dailyRate,
+      dailyRate:         isMonthly ? undefined : d.dailyRate,
+      monthlySalary:     isMonthly ? d.monthlySalary : undefined,
     }),
     onSuccess: () => {
       toast.success('Payroll generated')
@@ -144,28 +164,50 @@ function GenerateDialog({ open, onClose, users }: {
             </div>
           </div>
 
-          {/* Daily Rate — auto-filled from pay rates */}
-          <div>
-            <div className="flex items-center justify-between">
-              <Label>Daily Rate (₹) <span className="text-red-500">*</span></Label>
-              {profileFetching && <span className="text-xs text-gray-400 animate-pulse">Looking up rate…</span>}
-              {rateAutoFilled && !profileFetching && (
-                <span className="text-xs text-green-600 font-medium">Auto-filled from designation</span>
-              )}
-              {selectedUserId && !profileFetching && !rateAutoFilled && profileRes?.data && !profileRes.data.designationId && (
-                <span className="text-xs text-amber-500">No designation set — enter manually</span>
-              )}
+          {/* Rate — daily or monthly based on staff salary type */}
+          {!isMonthly ? (
+            <div>
+              <div className="flex items-center justify-between">
+                <Label>Daily Rate (₹)</Label>
+                {profileFetching && <span className="text-xs text-gray-400 animate-pulse">Looking up rate…</span>}
+                {rateAutoFilled && !profileFetching && (
+                  <span className="text-xs text-green-600 font-medium">Auto-filled from designation</span>
+                )}
+                {selectedUserId && !profileFetching && !rateAutoFilled && selectedProfile && !selectedProfile.designationId && (
+                  <span className="text-xs text-amber-500">No designation set — enter manually</span>
+                )}
+              </div>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="e.g. 800"
+                {...register('dailyRate')}
+                onChange={handleRateChange}
+                className={`mt-1 ${errors.dailyRate ? 'border-red-400' : rateAutoFilled ? 'border-green-400 bg-green-50' : ''}`}
+              />
+              {errors.dailyRate && <p className="text-red-500 text-xs mt-1">{errors.dailyRate.message}</p>}
             </div>
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="e.g. 800"
-              {...register('dailyRate')}
-              onChange={handleRateChange}
-              className={`mt-1 ${errors.dailyRate ? 'border-red-400' : rateAutoFilled ? 'border-green-400 bg-green-50' : ''}`}
-            />
-            {errors.dailyRate && <p className="text-red-500 text-xs mt-1">{errors.dailyRate.message}</p>}
-          </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between">
+                <Label>Monthly Salary (₹)</Label>
+                {profileFetching && <span className="text-xs text-gray-400 animate-pulse">Looking up salary…</span>}
+                {rateAutoFilled && !profileFetching && (
+                  <span className="text-xs text-green-600 font-medium">Auto-filled from profile</span>
+                )}
+              </div>
+              <Input
+                type="number"
+                step="100"
+                placeholder="e.g. 18000"
+                {...register('monthlySalary')}
+                onChange={handleMonthlyChange}
+                className={`mt-1 ${errors.monthlySalary ? 'border-red-400' : rateAutoFilled ? 'border-green-400 bg-green-50' : ''}`}
+              />
+              <p className="text-xs text-gray-400 mt-1">LOP deduction applied for absent days (Sundays excluded)</p>
+              {errors.monthlySalary && <p className="text-red-500 text-xs mt-1">{errors.monthlySalary.message}</p>}
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={() => { reset(); setRateAutoFilled(false); onClose() }}>Cancel</Button>
@@ -353,7 +395,10 @@ function PayrollRow({ payroll, onApprove, onCancel }: {
                   <div className="flex justify-between">
                     <span className="text-gray-600">
                       Basic Pay{p.designationName ? ` — ${p.designationName}` : ''}{' '}
-                      <span className="text-xs text-gray-400">({p.presentDays} + {p.halfDays}×0.5 days × ₹{p.dailyRate}/day)</span>
+                      {p.salaryType === 'MONTHLY'
+                        ? <span className="text-xs text-gray-400">(₹{p.monthlySalary}/month − LOP for {p.absentDays}A {p.halfDays > 0 ? `+ ${p.halfDays}×0.5H` : ''})</span>
+                        : <span className="text-xs text-gray-400">({p.presentDays} + {p.halfDays}×0.5 days × ₹{p.dailyRate}/day)</span>
+                      }
                     </span>
                     <span className="font-medium">{fmt(p.basicPay)}</span>
                   </div>
