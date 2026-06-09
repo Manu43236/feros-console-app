@@ -22,6 +22,20 @@ function fmtDate(d?: string) {
   catch { return d }
 }
 
+function fmtDateTime(d?: string) {
+  if (!d) return '—'
+  try { return new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }) }
+  catch { return d }
+}
+
+function calcDuration(start?: string, end?: string): string | null {
+  if (!start || !end) return null
+  const mins = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000)
+  if (mins < 60) return `${mins}m`
+  const h = Math.floor(mins / 60), m = mins % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
+
 function taskChip(status: ServiceTaskStatus) {
   const cfg: Record<ServiceTaskStatus, { label: string; cls: string }> = {
     PENDING:         { label: 'Pending',     cls: 'bg-gray-100 text-gray-600' },
@@ -268,7 +282,8 @@ function TaskRow({ task, serviceId, mechanics }: { task: SmTaskItem; serviceId: 
   const [partOpen,   setPartOpen]   = useState(false)
 
   return (
-    <div className="flex items-center justify-between py-2.5 border-b last:border-0 border-gray-50">
+    <div className="py-2.5 border-b last:border-0 border-gray-50">
+      <div className="flex items-center justify-between">
       <div className="flex items-center gap-2.5 min-w-0">
         {taskChip(task.status)}
         <span className="text-sm text-gray-800 font-medium truncate">{task.displayName}</span>
@@ -298,6 +313,27 @@ function TaskRow({ task, serviceId, mechanics }: { task: SmTaskItem; serviceId: 
           {task.assignedMechanicId ? 'Reassign' : 'Assign'}
         </Button>
       </div>
+      </div>
+
+      {(task.mechanicStartedAt || task.mechanicClosedAt) && (
+        <div className="mt-1.5 flex items-center gap-3 text-xs flex-wrap">
+          {task.mechanicStartedAt && (
+            <span className="flex items-center gap-1 text-blue-600">
+              <span>▶</span> {fmtDateTime(task.mechanicStartedAt)}
+            </span>
+          )}
+          {task.mechanicClosedAt && (
+            <span className="flex items-center gap-1 text-purple-600">
+              <span>✓</span> {fmtDateTime(task.mechanicClosedAt)}
+            </span>
+          )}
+          {calcDuration(task.mechanicStartedAt, task.mechanicClosedAt) && (
+            <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">
+              {calcDuration(task.mechanicStartedAt, task.mechanicClosedAt)}
+            </span>
+          )}
+        </div>
+      )}
 
       {assignOpen && (
         <AssignMechanicDialog

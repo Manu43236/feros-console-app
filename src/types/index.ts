@@ -1127,6 +1127,7 @@ export interface SmTaskItem {
   status: ServiceTaskStatus
   assignedMechanicId?: number
   assignedMechanicName?: string
+  mechanicStartedAt?: string
   mechanicClosedAt?: string
 }
 
