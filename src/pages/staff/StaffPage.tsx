@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { staffApi } from '@/api/staff'
 import { attendanceApi } from '@/api/attendance'
-import { globalMastersApi } from '@/api/masters'
+import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import {
   Plus, Search, UserCheck, Phone, ChevronRight, Copy, KeyRound, Eye, EyeOff,
@@ -53,10 +53,18 @@ function PinCell({ pin }: { pin: string | null }) {
 }
 
 // ── add staff form ────────────────────────────────────────────────────────────
+const DAILY_ROLES = ['DRIVER', 'CLEANER']
+
 const addStaffSchema = z.object({
-  name:  z.string().min(2, 'Name is required'),
-  phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter valid 10-digit phone number'),
-  role:  z.string().min(1, 'Select role'),
+  name:          z.string().min(2, 'Name is required'),
+  phone:         z.string().regex(/^[6-9]\d{9}$/, 'Enter valid 10-digit phone number'),
+  role:          z.string().min(1, 'Select role'),
+  designationId: z.coerce.number().optional(),
+  salaryType:    z.enum(['DAILY', 'MONTHLY']).optional(),
+  monthlySalary: z.preprocess(
+    v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+    z.number().positive('Must be a positive amount').optional()
+  ),
 })
 type AddStaffForm = z.infer<typeof addStaffSchema>
 
@@ -66,10 +74,12 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [createdPin, setCreatedPin] = useState<string | null>(null)
   const [createdName, setCreatedName] = useState('')
 
-  const { data: rolesData } = useQuery({ queryKey: ['roles'], queryFn: globalMastersApi.getRoles })
+  const { data: rolesData }        = useQuery({ queryKey: ['roles'],        queryFn: globalMastersApi.getRoles })
+  const { data: designationsRes }  = useQuery({ queryKey: ['designations'], queryFn: tenantMastersApi.getDesignations })
 
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AddStaffForm>({
     resolver: zodResolver(addStaffSchema) as Resolver<AddStaffForm>,
+    defaultValues: { salaryType: 'MONTHLY' },
   })
 
   const roleOptions = (rolesData?.data?.filter(r => r.name !== 'SUPER_ADMIN') ?? []).map(r => ({
@@ -77,14 +87,33 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
     label: r.description || r.name,
   }))
 
+  const selectedRole   = watch('role') ?? ''
+  const isDailyRole    = DAILY_ROLES.includes(selectedRole)
+  const isMonthly      = watch('salaryType') === 'MONTHLY'
+
   const mutation = useMutation({
-    mutationFn: (data: AddStaffForm) => staffApi.createUser(data),
+    mutationFn: async (data: AddStaffForm) => {
+      const res = await staffApi.createUser({ name: data.name, phone: data.phone, role: data.role })
+      const userId = res.data?.id
+      if (userId) {
+        const hasDesignation  = isDailyRole && data.designationId
+        const hasSalaryInfo   = !isDailyRole && (data.salaryType || data.monthlySalary)
+        if (hasDesignation || hasSalaryInfo) {
+          await staffApi.upsert(userId, {
+            designationId: data.designationId,
+            salaryType:    !isDailyRole ? (data.salaryType ?? 'MONTHLY') : undefined,
+            monthlySalary: !isDailyRole ? data.monthlySalary : undefined,
+          })
+        }
+      }
+      return res
+    },
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['staff'] })
       qc.invalidateQueries({ queryKey: ['users'] })
       setCreatedPin(res.data?.generatedPin ?? '????')
       setCreatedName(res.data?.name ?? '')
-      reset()
+      reset({ salaryType: 'MONTHLY' })
     },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -95,7 +124,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
   function handleClose() {
     setCreatedPin(null)
     setCreatedName('')
-    reset()
+    reset({ salaryType: 'MONTHLY' })
     onClose()
   }
 
@@ -146,12 +175,73 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
               <SearchableSelect
                 placeholder="Select role"
                 options={roleOptions}
-                value={watch('role') ?? ''}
-                onValueChange={v => setValue('role', v, { shouldValidate: true })}
+                value={selectedRole}
+                onValueChange={v => {
+                  setValue('role', v, { shouldValidate: true })
+                  setValue('designationId', undefined)
+                  setValue('monthlySalary', undefined)
+                }}
                 triggerClassName={errors.role ? 'border-red-400' : ''}
               />
               {errors.role && <p className="text-red-500 text-xs">{errors.role.message}</p>}
             </div>
+
+            {/* Driver / Cleaner — designation */}
+            {isDailyRole && (
+              <div className="space-y-1.5">
+                <Label>Designation</Label>
+                <SearchableSelect
+                  placeholder="Select designation"
+                  value={watch('designationId') ? String(watch('designationId')) : ''}
+                  onValueChange={v => setValue('designationId', v ? Number(v) : undefined)}
+                  options={(designationsRes?.data ?? []).map(d => ({ value: String(d.id), label: d.name }))}
+                />
+                <p className="text-xs text-gray-400">Daily rate will be taken from the designation.</p>
+              </div>
+            )}
+
+            {/* Other roles — salary type + monthly salary */}
+            {selectedRole && !isDailyRole && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>Salary Type</Label>
+                  <div className="flex gap-2">
+                    {(['DAILY', 'MONTHLY'] as const).map(type => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          setValue('salaryType', type, { shouldDirty: true })
+                          if (type === 'DAILY') setValue('monthlySalary', undefined)
+                        }}
+                        className={cn(
+                          'px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                          watch('salaryType') === type
+                            ? 'bg-feros-navy text-white border-feros-navy'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                        )}
+                      >
+                        {type === 'DAILY' ? 'Daily Rate' : 'Monthly Salary'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {isMonthly && (
+                  <div className="space-y-1.5">
+                    <Label>Monthly Salary (₹)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={100}
+                      placeholder="e.g. 18000"
+                      {...register('monthlySalary')}
+                    />
+                    {errors.monthlySalary && <p className="text-red-500 text-xs">{errors.monthlySalary.message}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
             <p className="text-xs text-gray-400">A login PIN will be auto-generated and shown after creation.</p>
             <div className="flex justify-end gap-3 pt-1">
               <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
