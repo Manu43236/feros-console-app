@@ -31,6 +31,7 @@ import type {
   DocumentCostRow,
   DriverPerformanceRow,
   CleanerPerformanceRow,
+  MechanicPerformanceRow,
   PnlSummaryRow,
   ClientPnlRow,
   VehiclePnlRow,
@@ -446,6 +447,18 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `cleaner-performance-${startDate}-${endDate}.${format}`)
+  },
+
+  getMechanicPerformance: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<MechanicPerformanceRow[]>>('/reports/staff/mechanics', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportMechanicPerformance: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/staff/mechanics/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `mechanic-performance-${startDate}-${endDate}.${format}`)
   },
 
   getPnlSummary: (startDate: string, endDate: string) =>

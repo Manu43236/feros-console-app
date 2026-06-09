@@ -1709,6 +1709,18 @@ export interface DriverPerformanceRow {
   attendancePct?: number
 }
 
+export interface MechanicPerformanceRow {
+  mechanicId: number
+  mechanicName: string
+  designation: string
+  tasksAssigned: number
+  tasksCompleted: number
+  tasksMechanicClosed: number
+  tasksInProgress: number
+  servicesWorkedOn: number
+  avgDurationMinutes?: number
+}
+
 export interface CleanerPerformanceRow {
   cleanerId: number
   cleanerName: string

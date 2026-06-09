@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, UserCheck, Users } from 'lucide-react'
+import { Download, UserCheck, Users, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { DriverPerformanceRow, CleanerPerformanceRow } from '@/types'
+import type { DriverPerformanceRow, CleanerPerformanceRow, MechanicPerformanceRow } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -20,8 +20,9 @@ const thisMonthStart = () => {
 }
 
 const TABS = [
-  { key: 'drivers',  label: 'Driver Performance',  icon: UserCheck },
-  { key: 'cleaners', label: 'Cleaner Performance', icon: Users },
+  { key: 'drivers',   label: 'Driver Performance',   icon: UserCheck },
+  { key: 'cleaners',  label: 'Cleaner Performance',  icon: Users },
+  { key: 'mechanics', label: 'Mechanic Performance', icon: Wrench },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -95,6 +96,26 @@ function CleanerTable({ rows, loading }: { rows: CleanerPerformanceRow[]; loadin
   )
 }
 
+function MechanicTable({ rows, loading }: { rows: MechanicPerformanceRow[]; loading: boolean }) {
+  return (
+    <ReportTable loading={loading}
+      headers={['Mechanic', 'Designation', 'Tasks Assigned', 'Completed', 'Mech. Closed', 'In Progress', 'Services', 'Avg Duration']}
+      rows={rows.map(r => [
+        <span className="font-medium text-feros-navy">{r.mechanicName}</span>,
+        dash(r.designation),
+        <span className="font-medium">{r.tasksAssigned}</span>,
+        <span className="text-green-700 font-medium">{r.tasksCompleted}</span>,
+        <span className="text-purple-700">{r.tasksMechanicClosed}</span>,
+        <span className="text-orange-600">{r.tasksInProgress}</span>,
+        r.servicesWorkedOn,
+        r.avgDurationMinutes != null
+          ? <span className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-medium">{r.avgDurationMinutes} min</span>
+          : <span className="text-gray-400">—</span>,
+      ])}
+    />
+  )
+}
+
 export default function StaffReportsPage() {
   const [tab, setTab]         = useState<TabKey>('drivers')
   const [preset, setPreset]   = useState<DatePreset>('this-month')
@@ -119,15 +140,22 @@ export default function StaffReportsPage() {
     queryFn: () => reportsApi.getCleanerPerformance(startDate, endDate),
     enabled: tab === 'cleaners',
   })
+  const mechanicQuery = useQuery({
+    queryKey: ['report-mechanic-performance', startDate, endDate],
+    queryFn: () => reportsApi.getMechanicPerformance(startDate, endDate),
+    enabled: tab === 'mechanics',
+  })
 
-  const driverRows  = driverQuery.data?.data  ?? []
-  const cleanerRows = cleanerQuery.data?.data ?? []
+  const driverRows   = driverQuery.data?.data   ?? []
+  const cleanerRows  = cleanerQuery.data?.data  ?? []
+  const mechanicRows = mechanicQuery.data?.data ?? []
 
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
-      if (tab === 'drivers') await reportsApi.exportDriverPerformance(startDate, endDate, format)
-      else                   await reportsApi.exportCleanerPerformance(startDate, endDate, format)
+      if (tab === 'drivers')   await reportsApi.exportDriverPerformance(startDate, endDate, format)
+      else if (tab === 'cleaners')  await reportsApi.exportCleanerPerformance(startDate, endDate, format)
+      else                          await reportsApi.exportMechanicPerformance(startDate, endDate, format)
     } catch { toast.error('Export failed') }
     finally  { setDownloading(false) }
   }
@@ -195,8 +223,9 @@ export default function StaffReportsPage() {
         </div>
       </div>
 
-      {tab === 'drivers'  && <DriverTable  rows={driverRows}  loading={driverQuery.isLoading} />}
-      {tab === 'cleaners' && <CleanerTable rows={cleanerRows} loading={cleanerQuery.isLoading} />}
+      {tab === 'drivers'   && <DriverTable   rows={driverRows}   loading={driverQuery.isLoading} />}
+      {tab === 'cleaners'  && <CleanerTable  rows={cleanerRows}  loading={cleanerQuery.isLoading} />}
+      {tab === 'mechanics' && <MechanicTable rows={mechanicRows} loading={mechanicQuery.isLoading} />}
     </div>
   )
 }
