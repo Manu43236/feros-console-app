@@ -1301,7 +1301,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
                           title="View details">
                           <Info size={14} />
                         </button>
-                        {!isSupervisor && (
+                        {!isSupervisor && s.status === 'OPEN' && (
                           <button onClick={() => setDeleteId(s.id)}
                             className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors">
                             <Trash2 size={14} />

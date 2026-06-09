@@ -2,12 +2,23 @@ import { useQuery } from '@tanstack/react-query'
 import { format, parseISO, isValid } from 'date-fns'
 import {
   Wrench, MapPin, Calendar, IndianRupee, FileText,
-  CheckCircle, Clock, Circle, Package, User,
+  CheckCircle, Clock, Circle, Package, User, Play, CheckCircle2,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { servicePartsApi } from '@/api/inventory'
 import type { VehicleServiceRecord, ServicePart } from '@/types'
 import { cn } from '@/lib/utils'
+
+function calcDuration(start?: string | null, end?: string | null): string | null {
+  if (!start || !end) return null
+  try {
+    const mins = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000)
+    if (mins < 1) return null
+    if (mins < 60) return `${mins}m`
+    const h = Math.floor(mins / 60), m = mins % 60
+    return m > 0 ? `${h}h ${m}m` : `${h}h`
+  } catch { return null }
+}
 
 function fmtDt(d?: string | null) {
   if (!d) return null
@@ -213,26 +224,58 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
           {service.tasks.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Tasks</p>
-              <div className="space-y-1.5">
-                {service.tasks.map(t => (
-                  <div key={t.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        'w-1.5 h-1.5 rounded-full shrink-0',
-                        t.status === 'COMPLETED' ? 'bg-green-500' : 'bg-gray-300'
-                      )} />
-                      <span className="text-sm text-gray-700">{t.displayName}</span>
-                      {t.isRecurring && t.frequencyKm && (
-                        <span className="text-xs text-gray-400">🔄 {t.frequencyKm.toLocaleString('en-IN')} km</span>
+              <div className="space-y-2">
+                {service.tasks.map(t => {
+                  const duration = calcDuration(t.mechanicStartedAt, t.mechanicClosedAt)
+                  return (
+                    <div key={t.id} className="py-1.5 border-b border-gray-50 last:border-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={cn(
+                            'w-1.5 h-1.5 rounded-full shrink-0',
+                            t.status === 'COMPLETED' ? 'bg-green-500' :
+                            t.status === 'MECHANIC_CLOSED' ? 'bg-purple-400' : 'bg-gray-300'
+                          )} />
+                          <span className="text-sm text-gray-700">{t.displayName}</span>
+                          {t.isRecurring && t.frequencyKm && (
+                            <span className="text-xs text-gray-400">🔄 {t.frequencyKm.toLocaleString('en-IN')} km</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                          {duration && (
+                            <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{duration}</span>
+                          )}
+                          {(t.cost ?? 0) > 0 && (
+                            <span className="text-sm text-gray-600 flex items-center gap-0.5">
+                              <IndianRupee size={11} />{t.cost?.toLocaleString('en-IN')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Mechanic + timing */}
+                      {(t.assignedMechanicName || t.mechanicStartedAt || t.mechanicClosedAt) && (
+                        <div className="mt-1 ml-3.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                          {t.assignedMechanicName && (
+                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                              <User size={10} className="text-gray-400" /> {t.assignedMechanicName}
+                            </span>
+                          )}
+                          {t.mechanicStartedAt && (
+                            <span className="flex items-center gap-1 text-xs text-blue-500">
+                              <Play size={9} /> {fmtDt(t.mechanicStartedAt)}
+                            </span>
+                          )}
+                          {t.mechanicClosedAt && (
+                            <span className="flex items-center gap-1 text-xs text-purple-500">
+                              <CheckCircle2 size={9} /> {fmtDt(t.mechanicClosedAt)}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
-                    {(t.cost ?? 0) > 0 && (
-                      <span className="text-sm text-gray-600 flex items-center gap-0.5">
-                        <IndianRupee size={11} />{t.cost?.toLocaleString('en-IN')}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
                 {totalTaskCost > 0 && (
                   <div className="flex justify-between pt-1 text-sm font-semibold text-gray-800">
                     <span>Total Cost</span>

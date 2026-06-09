@@ -942,6 +942,7 @@ export interface VehicleServiceTask {
   status: ServiceTaskStatus
   assignedMechanicId?: number
   assignedMechanicName?: string
+  mechanicStartedAt?: string
   mechanicClosedAt?: string
 }
 

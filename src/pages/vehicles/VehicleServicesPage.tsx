@@ -283,13 +283,15 @@ function ServiceCard({ record, onDelete }: { record: VehicleServiceRecord; onDel
             >
               {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
-            <button
-              onClick={onDelete}
-              className="p-1.5 text-gray-400 hover:text-red-600 rounded transition-colors"
-              title="Delete"
-            >
-              <Trash2 size={15} />
-            </button>
+            {record.status === 'OPEN' && (
+              <button
+                onClick={onDelete}
+                className="p-1.5 text-gray-400 hover:text-red-600 rounded transition-colors"
+                title="Delete"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
           </div>
         </div>
       </div>
