@@ -15,6 +15,7 @@ import ClientAdvancesPage from '@/pages/clients/ClientAdvancesPage'
 import { VehiclesPage }        from '@/pages/vehicles/VehiclesPage'
 import { VehicleDetailPage }   from '@/pages/vehicles/VehicleDetailPage'
 import VehicleServicesPage     from '@/pages/vehicles/VehicleServicesPage'
+import ServiceManagerPage      from '@/pages/vehicles/ServiceManagerPage'
 import FuelLogsPage            from '@/pages/vehicles/FuelLogsPage'
 import MeterReadingsPage       from '@/pages/vehicles/MeterReadingsPage'
 import TyreInventoryPage       from '@/pages/inventory/TyreInventoryPage'
@@ -118,6 +119,7 @@ export default function App() {
           <Route path="vehicles"            element={<VehiclesPage />} />
           <Route path="vehicles/:vehicleId" element={<VehicleDetailPage />} />
           <Route path="vehicle-services"    element={<VehicleServicesPage />} />
+          <Route path="service-manager"     element={<ProtectedRoute allowedRoles={['ADMIN','SERVICE_MANAGER']}><ServiceManagerPage /></ProtectedRoute>} />
           <Route path="fuel-logs"           element={<FuelLogsPage />} />
           <Route path="meter-readings"      element={<MeterReadingsPage />} />
 

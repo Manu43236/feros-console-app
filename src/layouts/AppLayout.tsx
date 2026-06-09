@@ -230,7 +230,7 @@ const STORE_KEEPER_NAV: FlatNav = [
 ]
 
 const SERVICE_MANAGER_NAV: FlatNav = [
-  { to: '/dashboard',        label: 'Dashboard',        icon: LayoutDashboard },
+  { to: '/service-manager',  label: 'Service Manager',  icon: Wrench },
   { to: '/vehicle-services', label: 'Vehicle Services', icon: Truck, moduleKey: 'VEHICLE_SERVICES' },
   { to: '/inventory',        label: 'Spare Parts',      icon: Boxes, moduleKey: 'SPARE_PARTS' },
   { to: '/my/attendance',    label: 'My Attendance',    icon: Calendar },

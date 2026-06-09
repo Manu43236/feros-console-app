@@ -7,6 +7,6 @@ export function RoleRedirect() {
   if (role === 'SUPERVISOR') return <Navigate to="/dashboard" replace />
   if (role === 'DRIVER' || role === 'CLEANER') return <Navigate to="/my/trips" replace />
   if (role === 'STORE_KEEPER') return <Navigate to="/inventory" replace />
-  if (role === 'SERVICE_MANAGER') return <Navigate to="/vehicle-services" replace />
+  if (role === 'SERVICE_MANAGER') return <Navigate to="/service-manager" replace />
   return <Navigate to="/dashboard" replace />
 }
