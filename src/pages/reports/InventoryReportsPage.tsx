@@ -394,13 +394,11 @@ function ConsumptionTab({ rows, loading }: { rows?: ConsumptionByVehicleRow[]; l
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No consumption data in this period</div>
 
   const vehicles = new Set(rows.map(r => r.registrationNumber)).size
-  const totalCost = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
   return (
     <div>
       <div className="px-4 py-2 border-b text-sm text-gray-500 flex gap-4">
         <span>{vehicles} vehicle{vehicles !== 1 ? 's' : ''}</span>
         <span>{rows.length} part line{rows.length !== 1 ? 's' : ''}</span>
-        <span>Total cost: <span className="font-semibold text-gray-800">₹{fmt(totalCost)}</span></span>
       </div>
       <TableWrap>
         <thead>

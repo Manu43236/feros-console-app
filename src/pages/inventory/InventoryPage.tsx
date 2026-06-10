@@ -422,7 +422,6 @@ function StockTab() {
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">Part</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">Category</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">Unit</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-gray-600">Unit Cost</th>
                   <th className="text-right px-4 py-2.5 font-medium text-gray-600">Qty</th>
                   <th className="text-right px-4 py-2.5 font-medium text-gray-600">Min</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">Status</th>
@@ -437,11 +436,6 @@ function StockTab() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{item.category ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{item.unit}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">
-                      {item.lastUnitCost != null && item.lastUnitCost > 0
-                        ? `₹${item.lastUnitCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : '—'}
-                    </td>
                     <td className="px-4 py-3 text-right font-semibold">{item.quantity}</td>
                     <td className="px-4 py-3 text-right text-gray-500">{item.minStockLevel}</td>
                     <td className="px-4 py-3">
