@@ -1558,7 +1558,14 @@ function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: num
 
 // ── Tyre tab ──────────────────────────────────────────────────────────────────
 const POSITION_TYPE_ORDER: TyrePositionType[] = ['STEER', 'DRIVE', 'TRAILER', 'SPARE']
-const REMOVAL_REASONS: TyreRemovalReason[] = ['ROTATION', 'WORN', 'PUNCTURE', 'DAMAGE', 'RETREAD', 'SCRAP', 'OTHER']
+const REMOVAL_REASONS: { value: TyreRemovalReason; label: string }[] = [
+  { value: 'WORN',     label: 'Worn Out' },
+  { value: 'PUNCTURE', label: 'Puncture' },
+  { value: 'DAMAGE',   label: 'Damage' },
+  { value: 'RETREAD',  label: 'Send for Retread' },
+  { value: 'SCRAP',    label: 'Scrap' },
+  { value: 'OTHER',    label: 'Other' },
+]
 
 function FitTyreDialog({ open, onClose, vehicleId, positionId, availableTyres, currentKm }: {
   open: boolean; onClose: () => void; vehicleId: number; positionId: number; availableTyres: Tyre[]; currentKm?: number
@@ -1638,13 +1645,25 @@ function RemoveTyreDialog({ open, onClose, fitting, currentKm }: {
   open: boolean; onClose: () => void; fitting: TyreFitting; currentKm?: number
 }) {
   const qc = useQueryClient()
-  const [km, setKm] = useState(currentKm?.toString() ?? '')
+  const [km, setKm]     = useState(currentKm?.toString() ?? '')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [reason, setReason] = useState<TyreRemovalReason>('WORN')
+  const [reason, setReason]               = useState<TyreRemovalReason | ''>('')
+  const [retreaderName, setRetreaderName] = useState('')
+  const [expectedReturnDate, setExpectedReturnDate] = useState('')
   const [notes, setNotes] = useState('')
 
+  const isRetread = reason === 'RETREAD'
+  const isScrap   = reason === 'SCRAP'
+
   const mutation = useMutation({
-    mutationFn: () => tyresApi.removeTyre(fitting.id, { removedAtKm: Number(km), removedDate: date, removalReason: reason, notes }),
+    mutationFn: () => tyresApi.removeTyre(fitting.id, {
+      removedAtKm:        Number(km),
+      removedDate:        date || undefined,
+      removalReason:      reason as TyreRemovalReason,
+      retreaderName:      retreaderName || undefined,
+      expectedReturnDate: expectedReturnDate || undefined,
+      notes:              notes || undefined,
+    }),
     onSuccess: () => {
       toast.success('Tyre removed')
       qc.invalidateQueries({ queryKey: ['tyre-positions-current', fitting.vehicleId] })
@@ -1656,26 +1675,51 @@ function RemoveTyreDialog({ open, onClose, fitting, currentKm }: {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Remove Tyre</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="p-3 bg-gray-50 rounded-lg text-sm">
             <p className="font-medium">{fitting.tyreSerialNumber}</p>
             <p className="text-gray-500">{fitting.tyreBrand} · {fitting.tyreSize}</p>
           </div>
-          <div className="space-y-1.5">
-            <Label>Odometer at Removal (km) *</Label>
-            <Input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="e.g. 87000" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Date *</Label>
-            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
-          </div>
+          {(isRetread || isScrap) && (
+            <div className={`rounded-lg px-3 py-2 text-sm border ${isRetread ? 'bg-yellow-50 border-yellow-200 text-yellow-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+              {isRetread
+                ? 'Tyre will be sent for retreading. Status will change to Retreading.'
+                : 'Tyre will be permanently scrapped. This cannot be undone.'}
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Removal Reason *</Label>
-            <select className="w-full border rounded-md px-3 py-2 text-sm" value={reason} onChange={e => setReason(e.target.value as TyreRemovalReason)}>
-              {REMOVAL_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
+            <SearchableSelect
+              value={reason}
+              onValueChange={val => { setReason(val as TyreRemovalReason); setRetreaderName(''); setExpectedReturnDate('') }}
+              options={REMOVAL_REASONS.map(r => ({ value: r.value, label: r.label }))}
+              placeholder="Select reason…"
+              showSearch={false}
+            />
+          </div>
+          {isRetread && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Retreader Name</Label>
+                <Input value={retreaderName} onChange={e => setRetreaderName(e.target.value)} placeholder="e.g. MRF Retread Centre" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Expected Return Date</Label>
+                <Input type="date" value={expectedReturnDate} onChange={e => setExpectedReturnDate(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Odometer at Removal (km) *</Label>
+              <Input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="e.g. 87000" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Date</Label>
+              <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Notes</Label>
@@ -1683,7 +1727,11 @@ function RemoveTyreDialog({ open, onClose, fitting, currentKm }: {
           </div>
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button disabled={!km || mutation.isPending} onClick={() => mutation.mutate()} className="bg-red-600 hover:bg-red-700 text-white">
+            <Button
+              disabled={!km || !reason || mutation.isPending}
+              onClick={() => mutation.mutate()}
+              className={`${isScrap ? 'bg-red-600 hover:bg-red-700' : 'bg-feros-navy hover:bg-feros-navy/90'} text-white`}
+            >
               {mutation.isPending ? 'Removing…' : 'Remove Tyre'}
             </Button>
           </div>
