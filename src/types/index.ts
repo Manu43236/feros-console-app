@@ -1868,7 +1868,10 @@ export interface ConsumptionByVehicleRow {
   vehicleId: number
   registrationNumber: string
   vehicleType: string
-  totalPartsConsumed: number
+  partId: number
+  partName: string
+  partCategory?: string
+  timesConsumed: number
   totalCost?: number
 }
 

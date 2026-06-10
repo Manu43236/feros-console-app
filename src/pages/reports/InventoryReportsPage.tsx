@@ -392,26 +392,61 @@ function PartRequestsTab({ rows, loading }: { rows?: PartRequestRow[]; loading: 
 function ConsumptionTab({ rows, loading }: { rows?: ConsumptionByVehicleRow[]; loading: boolean }) {
   if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No consumption data in this period</div>
-  const totalParts = rows.reduce((s, r) => s + r.totalPartsConsumed, 0)
+
+  const vehicles = new Set(rows.map(r => r.registrationNumber)).size
   const totalCost = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
+
+  // Group rows by vehicle for alternating vehicle sections
+  const grouped = rows.reduce<{ reg: string; type: string; rows: ConsumptionByVehicleRow[] }[]>((acc, r) => {
+    const last = acc[acc.length - 1]
+    if (last && last.reg === r.registrationNumber) {
+      last.rows.push(r)
+    } else {
+      acc.push({ reg: r.registrationNumber, type: r.vehicleType, rows: [r] })
+    }
+    return acc
+  }, [])
+
   return (
     <div>
       <div className="px-4 py-2 border-b text-sm text-gray-500 flex gap-4">
-        <span>{rows.length} vehicles</span>
-        <span>Total parts: <span className="font-semibold text-gray-800">{totalParts}</span></span>
+        <span>{vehicles} vehicle{vehicles !== 1 ? 's' : ''}</span>
+        <span>{rows.length} part line{rows.length !== 1 ? 's' : ''}</span>
         <span>Total cost: <span className="font-semibold text-gray-800">₹{fmt(totalCost)}</span></span>
       </div>
       <TableWrap>
-        <thead><tr><Th>Vehicle</Th><Th>Type</Th><Th right>Parts Consumed</Th><Th right>Total Cost (₹)</Th></tr></thead>
+        <thead>
+          <tr>
+            <Th>Vehicle</Th>
+            <Th>Vehicle Type</Th>
+            <Th>Part Name</Th>
+            <Th>Category</Th>
+            <Th right>Qty Consumed</Th>
+            <Th right>Total Cost (₹)</Th>
+          </tr>
+        </thead>
         <tbody>
-          {rows.map(r => (
-            <tr key={r.vehicleId} className="hover:bg-gray-50">
-              <Td><span className="font-medium">{r.registrationNumber}</span></Td>
-              <Td muted>{r.vehicleType}</Td>
-              <Td right>{r.totalPartsConsumed}</Td>
-              <Td right>{r.totalCost != null ? `₹${fmt(r.totalCost)}` : '—'}</Td>
-            </tr>
-          ))}
+          {grouped.map(group =>
+            group.rows.map((r, i) => (
+              <tr key={`${r.vehicleId}-${r.partId}`} className="hover:bg-gray-50">
+                {i === 0 ? (
+                  <>
+                    <Td><span className="font-semibold">{r.registrationNumber}</span></Td>
+                    <Td muted>{r.vehicleType}</Td>
+                  </>
+                ) : (
+                  <>
+                    <td className="px-4 py-2.5 border-b border-gray-100" />
+                    <td className="px-4 py-2.5 border-b border-gray-100" />
+                  </>
+                )}
+                <Td>{r.partName}</Td>
+                <Td muted>{r.partCategory || '—'}</Td>
+                <Td right><span className="font-medium">{r.timesConsumed}</span></Td>
+                <Td right>{r.totalCost != null ? `₹${fmt(r.totalCost)}` : '—'}</Td>
+              </tr>
+            ))
+          )}
         </tbody>
       </TableWrap>
     </div>
