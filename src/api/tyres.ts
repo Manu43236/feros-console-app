@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, Tyre, TyrePosition, TyreFitting, TyreRotationLog } from '@/types'
+import type { ApiResponse, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRetreadLog } from '@/types'
 
 export const tyresApi = {
   // Tyre CRUD
@@ -13,8 +13,12 @@ export const tyresApi = {
     apiClient.put<ApiResponse<Tyre>>(`/tyres/${id}`, data).then(r => r.data),
   getTyreHistory: (id: number) =>
     apiClient.get<ApiResponse<TyreFitting[]>>(`/tyres/${id}/history`).then(r => r.data),
-  backToStock: (id: number) =>
-    apiClient.patch<ApiResponse<Tyre>>(`/tyres/${id}/back-to-stock`).then(r => r.data),
+  backToStock: (id: number, data?: { retreadingCost?: number; newMaxLifetimeKm?: number; actualReturnDate?: string; notes?: string }) =>
+    apiClient.patch<ApiResponse<Tyre>>(`/tyres/${id}/back-to-stock`, data ?? {}).then(r => r.data),
+  scrapTyre: (id: number, data: { scrapReason?: string; scrapDate?: string; notes?: string }) =>
+    apiClient.patch<ApiResponse<Tyre>>(`/tyres/${id}/scrap`, data).then(r => r.data),
+  getRetreadHistory: (id: number) =>
+    apiClient.get<ApiResponse<TyreRetreadLog[]>>(`/tyres/${id}/retread-history`).then(r => r.data),
 
   // Positions
   getPositions: (vehicleId: number) =>

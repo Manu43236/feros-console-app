@@ -1243,6 +1243,7 @@ export type TyreStatus = 'IN_STOCK' | 'FITTED' | 'RETREADING' | 'SCRAPPED' | 'DI
 export type TyreType = 'RADIAL' | 'BIAS' | 'TUBELESS' | 'TUBE_TYPE'
 export type TyrePositionType = 'STEER' | 'DRIVE' | 'TRAILER' | 'SPARE'
 export type TyreRemovalReason = 'ROTATION' | 'WORN' | 'PUNCTURE' | 'DAMAGE' | 'RETREAD' | 'SCRAP' | 'OTHER'
+export type TyrePurchaseCondition = 'NEW' | 'SECOND_HAND' | 'RETREADED'
 
 export interface Tyre {
   id: number
@@ -1266,6 +1267,27 @@ export interface Tyre {
   currentFittingId?: number
   currentVehicleRegistrationNumber?: string
   currentPositionCode?: string
+  purchaseCondition?: TyrePurchaseCondition
+  kmAtPurchase?: number
+  totalRetreadingCost?: number
+  scrapReason?: string
+  scrapDate?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TyreRetreadLog {
+  id: number
+  tyreId: number
+  tyreSerialNumber: string
+  retreadNumber: number
+  sentDate?: string
+  returnDate?: string
+  retreaderName?: string
+  kmAtSend?: number
+  retreadingCost?: number
+  newMaxLifetimeKm?: number
+  notes?: string
   createdAt: string
   updatedAt: string
 }

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tyresApi } from '@/api/tyres'
 import { vehiclesApi } from '@/api/vehicles'
 import { meterReadingsApi } from '@/api/meterReadings'
-import type { Tyre, TyreStatus, TyreType, TyreFitting, TyrePosition, TyreRemovalReason } from '@/types'
+import type { Tyre, TyreStatus, TyreType, TyreFitting, TyrePosition, TyreRemovalReason, TyrePurchaseCondition, TyreRetreadLog } from '@/types'
 import { toast } from 'sonner'
 import { Plus, Search, RefreshCw, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -42,6 +42,12 @@ const TYRE_TYPE_LABELS: Record<TyreType, string> = {
   RADIAL: 'Radial', BIAS: 'Bias', TUBELESS: 'Tubeless', TUBE_TYPE: 'Tube Type',
 }
 
+const PURCHASE_CONDITIONS: { value: TyrePurchaseCondition; label: string }[] = [
+  { value: 'NEW',        label: 'New' },
+  { value: 'SECOND_HAND', label: 'Second Hand' },
+  { value: 'RETREADED',  label: 'Retreaded (Pre-used)' },
+]
+
 const REMOVAL_REASONS: { value: TyreRemovalReason; label: string }[] = [
   { value: 'WORN',     label: 'Worn Out' },
   { value: 'PUNCTURE', label: 'Puncture' },
@@ -57,16 +63,19 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
   const isEdit = !!tyre
 
   const [form, setForm] = useState({
-    serialNumber:  tyre?.serialNumber ?? '',
-    brand:         tyre?.brand ?? '',
-    size:          tyre?.size ?? '',
-    tyreType:      (tyre?.tyreType ?? 'RADIAL') as TyreType,
-    plyRating:     tyre?.plyRating ?? '',
-    purchaseDate:  tyre?.purchaseDate ?? '',
-    purchaseCost:  tyre?.purchaseCost?.toString() ?? '',
-    tyreLifeYears: tyre?.tyreLifeYears?.toString() ?? '',
-    maxLifetimeKm: tyre?.maxLifetimeKm?.toString() ?? '',
-    notes:         tyre?.notes ?? '',
+    serialNumber:          tyre?.serialNumber ?? '',
+    brand:                 tyre?.brand ?? '',
+    size:                  tyre?.size ?? '',
+    tyreType:              (tyre?.tyreType ?? 'RADIAL') as TyreType,
+    plyRating:             tyre?.plyRating ?? '',
+    purchaseDate:          tyre?.purchaseDate ?? '',
+    purchaseCost:          tyre?.purchaseCost?.toString() ?? '',
+    tyreLifeYears:         tyre?.tyreLifeYears?.toString() ?? '',
+    maxLifetimeKm:         tyre?.maxLifetimeKm?.toString() ?? '',
+    notes:                 tyre?.notes ?? '',
+    purchaseCondition:     (tyre?.purchaseCondition ?? 'NEW') as TyrePurchaseCondition,
+    kmAtPurchase:          tyre?.kmAtPurchase?.toString() ?? '',
+    retreadCountAtPurchase: tyre?.retreadCount?.toString() ?? '',
   })
 
 
@@ -84,10 +93,12 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
     e.preventDefault()
     mutation.mutate({
       ...form,
-      purchaseCost:  form.purchaseCost  ? Number(form.purchaseCost)  : undefined,
-      purchaseDate:  form.purchaseDate  || undefined,
-      tyreLifeYears: form.tyreLifeYears ? Number(form.tyreLifeYears) : undefined,
-      maxLifetimeKm: form.maxLifetimeKm ? Number(form.maxLifetimeKm) : undefined,
+      purchaseCost:           form.purchaseCost  ? Number(form.purchaseCost)  : undefined,
+      purchaseDate:           form.purchaseDate  || undefined,
+      tyreLifeYears:          form.tyreLifeYears ? Number(form.tyreLifeYears) : undefined,
+      maxLifetimeKm:          form.maxLifetimeKm ? Number(form.maxLifetimeKm) : undefined,
+      kmAtPurchase:           form.kmAtPurchase  ? Number(form.kmAtPurchase)  : undefined,
+      retreadCountAtPurchase: form.retreadCountAtPurchase ? Number(form.retreadCountAtPurchase) : undefined,
     })
   }
 
@@ -140,6 +151,38 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
               <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
             </div>
           </div>
+
+          {/* Purchase condition — shown only when adding a new tyre */}
+          {!isEdit && (
+            <div className="border-t pt-3 space-y-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Condition</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5 col-span-2">
+                  <Label>Condition at Purchase</Label>
+                  <select
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    value={form.purchaseCondition}
+                    onChange={e => setForm(f => ({ ...f, purchaseCondition: e.target.value as TyrePurchaseCondition, kmAtPurchase: '', retreadCountAtPurchase: '' }))}
+                  >
+                    {PURCHASE_CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
+                {(form.purchaseCondition === 'SECOND_HAND' || form.purchaseCondition === 'RETREADED') && (
+                  <div className="space-y-1.5">
+                    <Label>KM Already on Tyre</Label>
+                    <Input type="number" value={form.kmAtPurchase} onChange={e => setForm(f => ({ ...f, kmAtPurchase: e.target.value }))} placeholder="e.g. 30000" />
+                  </div>
+                )}
+                {form.purchaseCondition === 'RETREADED' && (
+                  <div className="space-y-1.5">
+                    <Label>Retread Count at Purchase</Label>
+                    <Input type="number" value={form.retreadCountAtPurchase} onChange={e => setForm(f => ({ ...f, retreadCountAtPurchase: e.target.value }))} placeholder="e.g. 1" min="1" max="5" />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 justify-end pt-1">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
@@ -378,11 +421,23 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
   )
 }
 
-// ── Back to Stock Dialog ────────────────────────────────────────────────────
+// ── Back to Stock Dialog (enhanced with retread details) ────────────────────
 function BackToStockDialog({ open, onClose, tyre }: { open: boolean; onClose: () => void; tyre: Tyre }) {
   const qc = useQueryClient()
+  const [form, setForm] = useState({
+    retreadingCost:   '',
+    newMaxLifetimeKm: '',
+    actualReturnDate: new Date().toISOString().split('T')[0],
+    notes:            '',
+  })
+
   const mutation = useMutation({
-    mutationFn: () => tyresApi.backToStock(tyre.id),
+    mutationFn: () => tyresApi.backToStock(tyre.id, {
+      retreadingCost:   form.retreadingCost   ? Number(form.retreadingCost)   : undefined,
+      newMaxLifetimeKm: form.newMaxLifetimeKm ? Number(form.newMaxLifetimeKm) : undefined,
+      actualReturnDate: form.actualReturnDate || undefined,
+      notes:            form.notes || undefined,
+    }),
     onSuccess: () => {
       toast.success('Tyre marked as back in stock')
       qc.invalidateQueries({ queryKey: ['tyres'] })
@@ -393,16 +448,102 @@ function BackToStockDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Retread Complete</DialogTitle></DialogHeader>
-        <div className="py-2 space-y-1">
-          <p className="text-sm text-gray-700">Mark <strong>{tyre.serialNumber}</strong> as back in stock?</p>
-          <p className="text-sm text-gray-400">The tyre has returned from retreading and is ready to be fitted again.</p>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Retread Complete — Back to Stock</DialogTitle>
+          <p className="text-sm text-gray-500">{tyre.serialNumber} · Retread #{tyre.retreadCount}</p>
+        </DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
+            Tyre has returned from retreading and will be marked as In Stock.
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Retreading Cost (₹)</Label>
+              <Input type="number" value={form.retreadingCost} onChange={e => setForm(f => ({ ...f, retreadingCost: e.target.value }))} placeholder="e.g. 7500" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Actual Return Date</Label>
+              <Input type="date" value={form.actualReturnDate} onChange={e => setForm(f => ({ ...f, actualReturnDate: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5 col-span-2">
+              <Label>New Max Lifetime KM for this Retread</Label>
+              <Input
+                type="number"
+                value={form.newMaxLifetimeKm}
+                onChange={e => setForm(f => ({ ...f, newMaxLifetimeKm: e.target.value }))}
+                placeholder={tyre.maxLifetimeKm ? `Current: ${Number(tyre.maxLifetimeKm).toLocaleString('en-IN')} km` : 'e.g. 70000'}
+              />
+              <p className="text-xs text-gray-400">Retreaded tyres typically give 60–70% of original life. Leave blank to keep current value.</p>
+            </div>
+            <div className="space-y-1.5 col-span-2">
+              <Label>Notes</Label>
+              <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
+            </div>
+          </div>
         </div>
         <div className="flex gap-2 justify-end pt-1">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button disabled={mutation.isPending} onClick={() => mutation.mutate()} className="bg-green-600 hover:bg-green-700 text-white">
-            {mutation.isPending ? 'Updating…' : 'Back to Stock'}
+            {mutation.isPending ? 'Updating…' : 'Mark Back to Stock'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Scrap Tyre Dialog ────────────────────────────────────────────────────────
+function ScrapTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () => void; tyre: Tyre }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({
+    scrapReason: '',
+    scrapDate:   new Date().toISOString().split('T')[0],
+    notes:       '',
+  })
+
+  const mutation = useMutation({
+    mutationFn: () => tyresApi.scrapTyre(tyre.id, {
+      scrapReason: form.scrapReason || undefined,
+      scrapDate:   form.scrapDate   || undefined,
+      notes:       form.notes       || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Tyre marked as scrapped')
+      qc.invalidateQueries({ queryKey: ['tyres'] })
+      onClose()
+    },
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to scrap tyre'); if (_m) toast.error(_m) },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Scrap Tyre</DialogTitle>
+          <p className="text-sm text-gray-500">{tyre.serialNumber} — {tyre.brand} {tyre.size}</p>
+        </DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+            This tyre will be permanently scrapped. This action cannot be undone.
+          </div>
+          <div className="space-y-1.5">
+            <Label>Scrap Reason</Label>
+            <Input value={form.scrapReason} onChange={e => setForm(f => ({ ...f, scrapReason: e.target.value }))} placeholder="e.g. Burst, Sidewall damage, Expired, Casing too weak" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Scrap Date</Label>
+            <Input type="date" value={form.scrapDate} onChange={e => setForm(f => ({ ...f, scrapDate: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end pt-1">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={mutation.isPending} onClick={() => mutation.mutate()} className="bg-red-600 hover:bg-red-700 text-white">
+            {mutation.isPending ? 'Scrapping…' : 'Confirm Scrap'}
           </Button>
         </div>
       </DialogContent>
@@ -412,52 +553,112 @@ function BackToStockDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
 
 // ── Tyre History Dialog ─────────────────────────────────────────────────────
 function TyreHistoryDialog({ open, onClose, tyre }: { open: boolean; onClose: () => void; tyre: Tyre }) {
-  const { data, isLoading } = useQuery({
+  const [tab, setTab] = useState<'fittings' | 'retreads'>('fittings')
+
+  const { data: fittingData, isLoading: loadingFittings } = useQuery({
     queryKey: ['tyre-history', tyre.id],
     queryFn:  () => tyresApi.getTyreHistory(tyre.id),
     enabled:  open,
   })
-  const fittings: TyreFitting[] = data?.data ?? []
+  const { data: retreadData, isLoading: loadingRetreads } = useQuery({
+    queryKey: ['tyre-retread-history', tyre.id],
+    queryFn:  () => tyresApi.getRetreadHistory(tyre.id),
+    enabled:  open,
+  })
+  const fittings: TyreFitting[]      = fittingData?.data ?? []
+  const retreads: TyreRetreadLog[]   = retreadData?.data ?? []
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Fitting History — {tyre.serialNumber}</DialogTitle>
+          <DialogTitle>Tyre History — {tyre.serialNumber}</DialogTitle>
           <p className="text-sm text-gray-500">{tyre.brand} · {tyre.size} · {TYRE_TYPE_LABELS[tyre.tyreType]}</p>
         </DialogHeader>
         <div className="pt-2">
-          <div className="flex gap-6 text-sm text-gray-600 mb-4">
+          {/* Summary */}
+          <div className="flex gap-6 text-sm text-gray-600 mb-4 flex-wrap">
             <span>Retread count: <strong>{tyre.retreadCount}x</strong></span>
             <span>Total lifetime KM: <strong>{Number(tyre.totalLifetimeKm).toLocaleString('en-IN')} km</strong></span>
+            {(tyre.totalRetreadingCost ?? 0) > 0 && (
+              <span>Total retread cost: <strong>₹{Number(tyre.totalRetreadingCost).toLocaleString('en-IN')}</strong></span>
+            )}
           </div>
-          {isLoading ? (
-            <p className="text-sm text-gray-400 py-4 text-center">Loading…</p>
-          ) : fittings.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">No fitting history yet</p>
-          ) : (
-            <div className="space-y-3">
-              {fittings.map(f => (
-                <div key={f.id} className="border rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">{f.vehicleRegistrationNumber} — Position {f.positionCode}</span>
-                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', f.removedDate ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-700')}>
-                      {f.removedDate ? 'Removed' : 'Currently Fitted'}
-                    </span>
+
+          {/* Tab switcher */}
+          <div className="flex gap-2 mb-4">
+            {(['fittings', 'retreads'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={cn('px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  tab === t ? 'bg-feros-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}
+              >
+                {t === 'fittings' ? `Fitting History (${fittings.length})` : `Retread History (${retreads.length})`}
+              </button>
+            ))}
+          </div>
+
+          {/* Fittings tab */}
+          {tab === 'fittings' && (
+            loadingFittings ? (
+              <p className="text-sm text-gray-400 py-4 text-center">Loading…</p>
+            ) : fittings.length === 0 ? (
+              <p className="text-sm text-gray-400 py-4 text-center">No fitting history yet</p>
+            ) : (
+              <div className="space-y-3">
+                {fittings.map(f => (
+                  <div key={f.id} className="border rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{f.vehicleRegistrationNumber} — Position {f.positionCode}</span>
+                      <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', f.removedDate ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-700')}>
+                        {f.removedDate ? 'Removed' : 'Currently Fitted'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 space-y-0.5">
+                      <div>Fitted: {fmtDate(f.fittedDate)} at {Number(f.fittedAtKm).toLocaleString('en-IN')} km</div>
+                      {f.removedDate && (
+                        <div>
+                          Removed: {fmtDate(f.removedDate)} at {Number(f.removedAtKm).toLocaleString('en-IN')} km
+                          · {f.removalReason?.replace('_', ' ')}
+                          · {Number(f.kmDriven ?? 0).toLocaleString('en-IN')} km driven
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500 space-y-0.5">
-                    <div>Fitted: {fmtDate(f.fittedDate)} at {Number(f.fittedAtKm).toLocaleString('en-IN')} km</div>
-                    {f.removedDate && (
-                      <div>
-                        Removed: {fmtDate(f.removedDate)} at {Number(f.removedAtKm).toLocaleString('en-IN')} km
-                        · {f.removalReason?.replace('_', ' ')}
-                        · {Number(f.kmDriven ?? 0).toLocaleString('en-IN')} km driven
-                      </div>
-                    )}
+                ))}
+              </div>
+            )
+          )}
+
+          {/* Retreads tab */}
+          {tab === 'retreads' && (
+            loadingRetreads ? (
+              <p className="text-sm text-gray-400 py-4 text-center">Loading…</p>
+            ) : retreads.length === 0 ? (
+              <p className="text-sm text-gray-400 py-4 text-center">No retread history yet</p>
+            ) : (
+              <div className="space-y-3">
+                {retreads.map(r => (
+                  <div key={r.id} className="border rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">Retread #{r.retreadNumber}</span>
+                      {r.retreadingCost && (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
+                          ₹{Number(r.retreadingCost).toLocaleString('en-IN')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500 space-y-0.5">
+                      {r.retreaderName && <div>Retreader: {r.retreaderName}</div>}
+                      {r.sentDate && <div>Sent: {fmtDate(r.sentDate)}{r.kmAtSend ? ` at ${Number(r.kmAtSend).toLocaleString('en-IN')} km` : ''}</div>}
+                      {r.returnDate && <div>Returned: {fmtDate(r.returnDate)}</div>}
+                      {r.newMaxLifetimeKm && <div>New max life: {Number(r.newMaxLifetimeKm).toLocaleString('en-IN')} km</div>}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </DialogContent>
@@ -477,6 +678,7 @@ export default function TyreInventoryPage() {
   const [fitTyre, setFitTyre]           = useState<Tyre | null>(null)
   const [removeTyre, setRemoveTyre]     = useState<Tyre | null>(null)
   const [backToStock, setBackToStock]   = useState<Tyre | null>(null)
+  const [scrapTyre, setScrapTyre]       = useState<Tyre | null>(null)
   const [historyTyre, setHistoryTyre]   = useState<Tyre | null>(null)
 
   const { data, isLoading, refetch } = useQuery({ queryKey: ['tyres'], queryFn: tyresApi.getAll })
@@ -625,6 +827,10 @@ export default function TyreInventoryPage() {
                         {tyre.status === 'IN_STOCK' && (
                           <>
                             <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTyre(tyre)}>Edit</Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                              onClick={() => setScrapTyre(tyre)}>
+                              Scrap
+                            </Button>
                             <Button size="sm" className="h-7 text-xs bg-feros-navy hover:bg-feros-navy/90 text-white"
                               onClick={() => setFitTyre(tyre)}>
                               Fit to Vehicle
@@ -640,14 +846,18 @@ export default function TyreInventoryPage() {
                         {tyre.status === 'RETREADING' && (
                           <>
                             <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTyre(tyre)}>Edit</Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                              onClick={() => setScrapTyre(tyre)}>
+                              Scrap
+                            </Button>
                             <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
                               onClick={() => setBackToStock(tyre)}>
                               Back to Stock
                             </Button>
                           </>
                         )}
-                        {(tyre.status === 'SCRAPPED' || tyre.status === 'DISPOSED') && (
-                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTyre(tyre)}>Edit</Button>
+                        {tyre.status === 'SCRAPPED' && (
+                          <span className="text-xs text-gray-400 px-2">Scrapped</span>
                         )}
                       </div>
                     </td>
@@ -665,6 +875,7 @@ export default function TyreInventoryPage() {
       {fitTyre     && <FitTyreDialog     open onClose={() => setFitTyre(null)}     tyre={fitTyre} />}
       {removeTyre  && <RemoveTyreDialog  open onClose={() => setRemoveTyre(null)}  tyre={removeTyre} />}
       {backToStock && <BackToStockDialog open onClose={() => setBackToStock(null)} tyre={backToStock} />}
+      {scrapTyre   && <ScrapTyreDialog   open onClose={() => setScrapTyre(null)}   tyre={scrapTyre} />}
       {historyTyre && <TyreHistoryDialog open onClose={() => setHistoryTyre(null)} tyre={historyTyre} />}
     </div>
   )
