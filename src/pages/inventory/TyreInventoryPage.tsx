@@ -7,7 +7,7 @@ import { vehiclesApi } from '@/api/vehicles'
 import { meterReadingsApi } from '@/api/meterReadings'
 import type { Tyre, TyreStatus, TyreType, TyreFitting, TyrePosition, TyreRemovalReason, TyrePurchaseCondition, TyreRetreadLog } from '@/types'
 import { toast } from 'sonner'
-import { Plus, Search, RefreshCw, History } from 'lucide-react'
+import { Plus, Search, RefreshCw, History, Layers, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -76,6 +76,8 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
     purchaseCondition:     (tyre?.purchaseCondition ?? 'NEW') as TyrePurchaseCondition,
     kmAtPurchase:          tyre?.kmAtPurchase?.toString() ?? '',
     retreadCountAtPurchase: tyre?.retreadCount?.toString() ?? '',
+    supplierName:          tyre?.supplierName ?? '',
+    invoiceNumber:         tyre?.invoiceNumber ?? '',
   })
 
 
@@ -183,6 +185,21 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
             </div>
           )}
 
+          {/* Supplier / Invoice — always shown */}
+          <div className="border-t pt-3 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Reference</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Supplier Name</Label>
+                <Input value={form.supplierName} onChange={e => setForm(f => ({ ...f, supplierName: e.target.value }))} placeholder="e.g. MRF Tyres Ltd" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Invoice Number</Label>
+                <Input value={form.invoiceNumber} onChange={e => setForm(f => ({ ...f, invoiceNumber: e.target.value }))} placeholder="e.g. INV-2024-001" />
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-2 justify-end pt-1">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
@@ -190,6 +207,205 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
             </Button>
           </div>
         </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Bulk Add Tyres Dialog ───────────────────────────────────────────────────
+function BulkAddTyreDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+
+  const [serials, setSerials] = useState<string[]>([''])
+  const [form, setForm] = useState({
+    brand:                 '',
+    size:                  '',
+    tyreType:              'RADIAL' as TyreType,
+    plyRating:             '',
+    purchaseDate:          '',
+    purchaseCost:          '',
+    tyreLifeYears:         '',
+    maxLifetimeKm:         '',
+    notes:                 '',
+    purchaseCondition:     'NEW' as TyrePurchaseCondition,
+    kmAtPurchase:          '',
+    retreadCountAtPurchase: '',
+    supplierName:          '',
+    invoiceNumber:         '',
+  })
+
+  const mutation = useMutation({
+    mutationFn: () => tyresApi.bulkCreate({
+      serialNumbers:          serials.map(s => s.trim()).filter(Boolean),
+      brand:                  form.brand,
+      size:                   form.size,
+      tyreType:               form.tyreType,
+      plyRating:              form.plyRating || undefined,
+      purchaseDate:           form.purchaseDate || undefined,
+      purchaseCost:           form.purchaseCost  ? Number(form.purchaseCost)  : undefined,
+      tyreLifeYears:          form.tyreLifeYears ? Number(form.tyreLifeYears) : undefined,
+      maxLifetimeKm:          form.maxLifetimeKm ? Number(form.maxLifetimeKm) : undefined,
+      notes:                  form.notes || undefined,
+      purchaseCondition:      form.purchaseCondition,
+      kmAtPurchase:           form.kmAtPurchase  ? Number(form.kmAtPurchase)  : undefined,
+      retreadCountAtPurchase: form.retreadCountAtPurchase ? Number(form.retreadCountAtPurchase) : undefined,
+      supplierName:           form.supplierName  || undefined,
+      invoiceNumber:          form.invoiceNumber || undefined,
+    }),
+    onSuccess: (res) => {
+      toast.success(`${res.data?.length ?? 0} tyres added successfully`)
+      qc.invalidateQueries({ queryKey: ['tyres'] })
+      onClose()
+    },
+    onError: (e: unknown) => { const _m = getApiError(e, 'Failed to add tyres'); if (_m) toast.error(_m) },
+  })
+
+  const validSerials = serials.map(s => s.trim()).filter(Boolean)
+  const canSubmit = validSerials.length > 0 && form.brand && form.size
+
+  function addRow() { setSerials(s => [...s, '']) }
+  function removeRow(i: number) { setSerials(s => s.filter((_, idx) => idx !== i)) }
+  function updateSerial(i: number, val: string) { setSerials(s => s.map((v, idx) => idx === i ? val : v)) }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Bulk Add Tyres</DialogTitle>
+          <p className="text-sm text-gray-500">Add multiple tyres with the same specs but different serial numbers in one go.</p>
+        </DialogHeader>
+
+        <div className="space-y-5 pt-1">
+          {/* Serial Numbers */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Serial Numbers</p>
+              <span className="text-xs text-gray-400">{validSerials.length} tyre{validSerials.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {serials.map((serial, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <span className="text-xs text-gray-400 w-5 text-right shrink-0">{i + 1}.</span>
+                  <Input
+                    value={serial}
+                    onChange={e => updateSerial(i, e.target.value)}
+                    placeholder={`e.g. TYR-${String(i + 1).padStart(3, '0')}`}
+                    className="font-mono"
+                  />
+                  {serials.length > 1 && (
+                    <button type="button" onClick={() => removeRow(i)} className="text-gray-400 hover:text-red-500 shrink-0">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={addRow} className="gap-1.5 text-xs">
+              <Plus size={13} /> Add Serial Number
+            </Button>
+          </div>
+
+          {/* Common Specs */}
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Common Specs (applied to all)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Brand *</Label>
+                <Input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} placeholder="MRF" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Size *</Label>
+                <Input value={form.size} onChange={e => setForm(f => ({ ...f, size: e.target.value }))} placeholder="295/80 R22.5" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Type *</Label>
+                <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.tyreType} onChange={e => setForm(f => ({ ...f, tyreType: e.target.value as TyreType }))}>
+                  {TYRE_TYPES.map(t => <option key={t} value={t}>{TYRE_TYPE_LABELS[t]}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ply Rating</Label>
+                <Input value={form.plyRating} onChange={e => setForm(f => ({ ...f, plyRating: e.target.value }))} placeholder="18PR" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Purchase Date</Label>
+                <Input type="date" value={form.purchaseDate} onChange={e => setForm(f => ({ ...f, purchaseDate: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Purchase Cost (₹)</Label>
+                <Input type="number" value={form.purchaseCost} onChange={e => setForm(f => ({ ...f, purchaseCost: e.target.value }))} placeholder="12000" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tyre Life (Years)</Label>
+                <Input type="number" value={form.tyreLifeYears} onChange={e => setForm(f => ({ ...f, tyreLifeYears: e.target.value }))} placeholder="5" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Max Lifetime KM</Label>
+                <Input type="number" value={form.maxLifetimeKm} onChange={e => setForm(f => ({ ...f, maxLifetimeKm: e.target.value }))} placeholder="100000" />
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label>Notes</Label>
+                <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
+              </div>
+            </div>
+          </div>
+
+          {/* Purchase Condition */}
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Condition</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5 col-span-2">
+                <Label>Condition at Purchase</Label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 text-sm"
+                  value={form.purchaseCondition}
+                  onChange={e => setForm(f => ({ ...f, purchaseCondition: e.target.value as TyrePurchaseCondition, kmAtPurchase: '', retreadCountAtPurchase: '' }))}
+                >
+                  {PURCHASE_CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              {(form.purchaseCondition === 'SECOND_HAND' || form.purchaseCondition === 'RETREADED') && (
+                <div className="space-y-1.5">
+                  <Label>KM Already on Tyre</Label>
+                  <Input type="number" value={form.kmAtPurchase} onChange={e => setForm(f => ({ ...f, kmAtPurchase: e.target.value }))} placeholder="e.g. 30000" />
+                </div>
+              )}
+              {form.purchaseCondition === 'RETREADED' && (
+                <div className="space-y-1.5">
+                  <Label>Retread Count at Purchase</Label>
+                  <Input type="number" value={form.retreadCountAtPurchase} onChange={e => setForm(f => ({ ...f, retreadCountAtPurchase: e.target.value }))} placeholder="e.g. 1" min="1" max="5" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Purchase Reference */}
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Reference</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Supplier Name</Label>
+                <Input value={form.supplierName} onChange={e => setForm(f => ({ ...f, supplierName: e.target.value }))} placeholder="e.g. MRF Tyres Ltd" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Invoice Number</Label>
+                <Input value={form.invoiceNumber} onChange={e => setForm(f => ({ ...f, invoiceNumber: e.target.value }))} placeholder="e.g. INV-2024-001" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 justify-end pt-3 border-t mt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={mutation.isPending || !canSubmit}
+            onClick={() => mutation.mutate()}
+            className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5"
+          >
+            <Layers size={14} />
+            {mutation.isPending ? 'Adding…' : `Add ${validSerials.length > 0 ? validSerials.length : ''} Tyre${validSerials.length !== 1 ? 's' : ''}`}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -674,6 +890,7 @@ export default function TyreInventoryPage() {
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<ActiveFilter>('ALL')
   const [addOpen, setAddOpen]           = useState(false)
+  const [bulkAddOpen, setBulkAddOpen]   = useState(false)
   const [editTyre, setEditTyre]         = useState<Tyre | null>(null)
   const [fitTyre, setFitTyre]           = useState<Tyre | null>(null)
   const [removeTyre, setRemoveTyre]     = useState<Tyre | null>(null)
@@ -724,9 +941,14 @@ export default function TyreInventoryPage() {
             <RefreshCw size={14} className="mr-1.5" /> Refresh
           </Button>
           {!locked && (
-            <Button size="sm" onClick={() => setAddOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
-              <Plus size={14} /> Add Tyre
-            </Button>
+            <>
+              <Button size="sm" variant="outline" onClick={() => setBulkAddOpen(true)} className="gap-1.5">
+                <Layers size={14} /> Bulk Add
+              </Button>
+              <Button size="sm" onClick={() => setAddOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
+                <Plus size={14} /> Add Tyre
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -870,6 +1092,7 @@ export default function TyreInventoryPage() {
       </div>
 
       {/* Dialogs */}
+      {bulkAddOpen && <BulkAddTyreDialog open onClose={() => setBulkAddOpen(false)} />}
       {addOpen     && <AddEditTyreDialog open onClose={() => setAddOpen(false)} />}
       {editTyre    && <AddEditTyreDialog open onClose={() => setEditTyre(null)}    tyre={editTyre} />}
       {fitTyre     && <FitTyreDialog     open onClose={() => setFitTyre(null)}     tyre={fitTyre} />}

@@ -1272,6 +1272,8 @@ export interface Tyre {
   totalRetreadingCost?: number
   scrapReason?: string
   scrapDate?: string
+  supplierName?: string
+  invoiceNumber?: string
   createdAt: string
   updatedAt: string
 }

@@ -19,6 +19,8 @@ export const tyresApi = {
     apiClient.patch<ApiResponse<Tyre>>(`/tyres/${id}/scrap`, data).then(r => r.data),
   getRetreadHistory: (id: number) =>
     apiClient.get<ApiResponse<TyreRetreadLog[]>>(`/tyres/${id}/retread-history`).then(r => r.data),
+  bulkCreate: (data: unknown) =>
+    apiClient.post<ApiResponse<Tyre[]>>('/tyres/bulk', data).then(r => r.data),
 
   // Positions
   getPositions: (vehicleId: number) =>
