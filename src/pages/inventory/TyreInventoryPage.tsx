@@ -7,11 +7,12 @@ import { vehiclesApi } from '@/api/vehicles'
 import { meterReadingsApi } from '@/api/meterReadings'
 import type { Tyre, TyreStatus, TyreType, TyreFitting, TyrePosition, TyreRemovalReason, TyrePurchaseCondition, TyreRetreadLog } from '@/types'
 import { toast } from 'sonner'
-import { Plus, Search, RefreshCw, History, Layers, X } from 'lucide-react'
+import { Plus, Search, RefreshCw, Layers, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { format, parseISO } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -767,8 +768,17 @@ function ScrapTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () =
   )
 }
 
-// ── Tyre History Dialog ─────────────────────────────────────────────────────
-function TyreHistoryDialog({ open, onClose, tyre }: { open: boolean; onClose: () => void; tyre: Tyre }) {
+// ── Tyre Detail Sheet ────────────────────────────────────────────────────────
+function TyreDetailSheet({ tyre, open, onClose, onEdit, onFit, onRemove, onBackToStock, onScrap }: {
+  tyre: Tyre
+  open: boolean
+  onClose: () => void
+  onEdit: () => void
+  onFit: () => void
+  onRemove: () => void
+  onBackToStock: () => void
+  onScrap: () => void
+}) {
   const [tab, setTab] = useState<'fittings' | 'retreads'>('fittings')
 
   const { data: fittingData, isLoading: loadingFittings } = useQuery({
@@ -781,80 +791,173 @@ function TyreHistoryDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
     queryFn:  () => tyresApi.getRetreadHistory(tyre.id),
     enabled:  open,
   })
-  const fittings: TyreFitting[]      = fittingData?.data ?? []
-  const retreads: TyreRetreadLog[]   = retreadData?.data ?? []
+  const fittings: TyreFitting[]    = fittingData?.data ?? []
+  const retreads: TyreRetreadLog[] = retreadData?.data ?? []
+
+  const kmRemaining = tyre.maxLifetimeKm
+    ? Math.max(0, Number(tyre.maxLifetimeKm) - Number(tyre.totalLifetimeKm))
+    : null
+
+  const kmPct = tyre.maxLifetimeKm && Number(tyre.maxLifetimeKm) > 0
+    ? Math.min(100, Math.round((Number(tyre.totalLifetimeKm) / Number(tyre.maxLifetimeKm)) * 100))
+    : null
+
+  const expiryDaysLeft = tyre.expiryDate
+    ? Math.ceil((new Date(tyre.expiryDate).getTime() - Date.now()) / 86400000)
+    : null
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Tyre History — {tyre.serialNumber}</DialogTitle>
-          <p className="text-sm text-gray-500">{tyre.brand} · {tyre.size} · {TYRE_TYPE_LABELS[tyre.tyreType]}</p>
-        </DialogHeader>
-        <div className="pt-2">
-          {/* Summary */}
-          <div className="flex gap-6 text-sm text-gray-600 mb-4 flex-wrap">
-            <span>Retread count: <strong>{tyre.retreadCount}x</strong></span>
-            <span>Total lifetime KM: <strong>{Number(tyre.totalLifetimeKm).toLocaleString('en-IN')} km</strong></span>
-            {(tyre.totalRetreadingCost ?? 0) > 0 && (
-              <span>Total retread cost: <strong>₹{Number(tyre.totalRetreadingCost).toLocaleString('en-IN')}</strong></span>
-            )}
+    <Sheet open={open} onOpenChange={v => !v && onClose()}>
+      <SheetContent className="w-full max-w-xl">
+        {/* Header */}
+        <SheetHeader>
+          <div className="flex items-start justify-between pr-8">
+            <div>
+              <SheetTitle className="font-mono">{tyre.serialNumber}</SheetTitle>
+              <p className="text-sm text-gray-500 mt-0.5">{tyre.brand} · {tyre.size} · {TYRE_TYPE_LABELS[tyre.tyreType]}</p>
+            </div>
+            <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium mt-0.5', STATUS_COLORS[tyre.status])}>
+              {STATUS_LABELS[tyre.status]}
+            </span>
           </div>
+        </SheetHeader>
 
-          {/* Tab switcher */}
-          <div className="flex gap-2 mb-4">
-            {(['fittings', 'retreads'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={cn('px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                  tab === t ? 'bg-feros-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}
-              >
-                {t === 'fittings' ? `Fitting History (${fittings.length})` : `Retread History (${retreads.length})`}
-              </button>
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+          {/* KM progress bar */}
+          {kmPct !== null && (
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Lifetime KM used</span>
+                <span>{Number(tyre.totalLifetimeKm).toLocaleString('en-IN')} / {Number(tyre.maxLifetimeKm).toLocaleString('en-IN')} km</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all', kmPct >= 90 ? 'bg-red-500' : kmPct >= 70 ? 'bg-amber-400' : 'bg-green-500')}
+                  style={{ width: `${kmPct}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400">{kmRemaining !== null ? `${Number(kmRemaining).toLocaleString('en-IN')} km remaining` : ''} ({kmPct}% used)</p>
+            </div>
+          )}
+
+          {/* Alerts */}
+          {expiryDaysLeft !== null && expiryDaysLeft <= 30 && (
+            <div className={cn('rounded-lg px-3 py-2 text-sm border', expiryDaysLeft < 0 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700')}>
+              {expiryDaysLeft < 0 ? `Expired on ${fmtDate(tyre.expiryDate)}` : `Expires in ${expiryDaysLeft} day${expiryDaysLeft !== 1 ? 's' : ''} — ${fmtDate(tyre.expiryDate)}`}
+            </div>
+          )}
+
+          {/* Current location */}
+          {tyre.status === 'FITTED' && tyre.currentVehicleRegistrationNumber && (
+            <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
+              <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-1">Currently Fitted On</p>
+              <p className="text-sm font-semibold text-blue-800">{tyre.currentVehicleRegistrationNumber}</p>
+              <p className="text-xs text-blue-600">{tyre.currentPositionCode}</p>
+            </div>
+          )}
+          {tyre.status === 'RETREADING' && (
+            <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-4 py-3">
+              <p className="text-xs font-semibold text-yellow-600 uppercase tracking-wide mb-1">At Retreader</p>
+              <p className="text-sm font-semibold text-yellow-800">{tyre.retreaderName ?? '—'}</p>
+              {tyre.expectedReturnDate && <p className="text-xs text-yellow-600">Expected back {fmtDate(tyre.expectedReturnDate)}</p>}
+            </div>
+          )}
+          {tyre.status === 'SCRAPPED' && (
+            <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3">
+              <p className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-1">Scrapped</p>
+              {tyre.scrapReason && <p className="text-sm text-red-700">{tyre.scrapReason}</p>}
+              {tyre.scrapDate && <p className="text-xs text-red-500">{fmtDate(tyre.scrapDate)}</p>}
+            </div>
+          )}
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Retreads', value: `${tyre.retreadCount}x` },
+              { label: 'Total KM', value: `${Number(tyre.totalLifetimeKm).toLocaleString('en-IN')}` },
+              { label: 'Retread Cost', value: (tyre.totalRetreadingCost ?? 0) > 0 ? `₹${Number(tyre.totalRetreadingCost).toLocaleString('en-IN')}` : '—' },
+            ].map(s => (
+              <div key={s.label} className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5 text-center">
+                <p className="text-xs text-gray-400">{s.label}</p>
+                <p className="text-sm font-semibold text-gray-800 mt-0.5">{s.value}</p>
+              </div>
             ))}
           </div>
 
-          {/* Fittings tab */}
-          {tab === 'fittings' && (
-            loadingFittings ? (
-              <p className="text-sm text-gray-400 py-4 text-center">Loading…</p>
-            ) : fittings.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">No fitting history yet</p>
-            ) : (
-              <div className="space-y-3">
+          {/* Tyre details */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Details</p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              {[
+                { label: 'Ply Rating', value: tyre.plyRating },
+                { label: 'Purchase Condition', value: PURCHASE_CONDITIONS.find(c => c.value === tyre.purchaseCondition)?.label },
+                { label: 'Purchase Date', value: fmtDate(tyre.purchaseDate) },
+                { label: 'Purchase Cost', value: tyre.purchaseCost ? `₹${Number(tyre.purchaseCost).toLocaleString('en-IN')}` : undefined },
+                { label: 'KM at Purchase', value: tyre.kmAtPurchase && Number(tyre.kmAtPurchase) > 0 ? `${Number(tyre.kmAtPurchase).toLocaleString('en-IN')} km` : undefined },
+                { label: 'Max Lifetime KM', value: tyre.maxLifetimeKm ? `${Number(tyre.maxLifetimeKm).toLocaleString('en-IN')} km` : undefined },
+                { label: 'Tyre Life', value: tyre.tyreLifeYears ? `${tyre.tyreLifeYears} years` : undefined },
+                { label: 'Expiry Date', value: fmtDate(tyre.expiryDate) },
+                { label: 'Supplier', value: tyre.supplierName },
+                { label: 'Invoice No.', value: tyre.invoiceNumber },
+              ].filter(row => row.value && row.value !== '—').map(row => (
+                <div key={row.label}>
+                  <p className="text-xs text-gray-400">{row.label}</p>
+                  <p className="text-gray-800 font-medium">{row.value}</p>
+                </div>
+              ))}
+            </div>
+            {tyre.notes && (
+              <div>
+                <p className="text-xs text-gray-400">Notes</p>
+                <p className="text-sm text-gray-700">{tyre.notes}</p>
+              </div>
+            )}
+          </div>
+
+          {/* History tabs */}
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              {(['fittings', 'retreads'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={cn('px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                    tab === t ? 'bg-feros-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}
+                >
+                  {t === 'fittings' ? `Fittings (${fittings.length})` : `Retreads (${retreads.length})`}
+                </button>
+              ))}
+            </div>
+
+            {tab === 'fittings' && (
+              loadingFittings ? <p className="text-sm text-gray-400 text-center py-4">Loading…</p> :
+              fittings.length === 0 ? <p className="text-sm text-gray-400 text-center py-4">No fitting history</p> :
+              <div className="space-y-2">
                 {fittings.map(f => (
                   <div key={f.id} className="border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium">{f.vehicleRegistrationNumber} — Position {f.positionCode}</span>
+                      <span className="text-sm font-medium">{f.vehicleRegistrationNumber} — {f.positionCode}</span>
                       <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', f.removedDate ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-700')}>
-                        {f.removedDate ? 'Removed' : 'Currently Fitted'}
+                        {f.removedDate ? 'Removed' : 'Active'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 space-y-0.5">
-                      <div>Fitted: {fmtDate(f.fittedDate)} at {Number(f.fittedAtKm).toLocaleString('en-IN')} km</div>
+                      <div>Fitted {fmtDate(f.fittedDate)} at {Number(f.fittedAtKm).toLocaleString('en-IN')} km</div>
                       {f.removedDate && (
-                        <div>
-                          Removed: {fmtDate(f.removedDate)} at {Number(f.removedAtKm).toLocaleString('en-IN')} km
-                          · {f.removalReason?.replace('_', ' ')}
-                          · {Number(f.kmDriven ?? 0).toLocaleString('en-IN')} km driven
-                        </div>
+                        <div>Removed {fmtDate(f.removedDate)} at {Number(f.removedAtKm).toLocaleString('en-IN')} km · {Number(f.kmDriven ?? 0).toLocaleString('en-IN')} km driven · {f.removalReason?.replace('_', ' ')}</div>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
-            )
-          )}
+            )}
 
-          {/* Retreads tab */}
-          {tab === 'retreads' && (
-            loadingRetreads ? (
-              <p className="text-sm text-gray-400 py-4 text-center">Loading…</p>
-            ) : retreads.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">No retread history yet</p>
-            ) : (
-              <div className="space-y-3">
+            {tab === 'retreads' && (
+              loadingRetreads ? <p className="text-sm text-gray-400 text-center py-4">Loading…</p> :
+              retreads.length === 0 ? <p className="text-sm text-gray-400 text-center py-4">No retread history</p> :
+              <div className="space-y-2">
                 {retreads.map(r => (
                   <div key={r.id} className="border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
@@ -867,18 +970,40 @@ function TyreHistoryDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
                     </div>
                     <div className="text-xs text-gray-500 space-y-0.5">
                       {r.retreaderName && <div>Retreader: {r.retreaderName}</div>}
-                      {r.sentDate && <div>Sent: {fmtDate(r.sentDate)}{r.kmAtSend ? ` at ${Number(r.kmAtSend).toLocaleString('en-IN')} km` : ''}</div>}
-                      {r.returnDate && <div>Returned: {fmtDate(r.returnDate)}</div>}
+                      {r.sentDate && <div>Sent {fmtDate(r.sentDate)}{r.kmAtSend ? ` at ${Number(r.kmAtSend).toLocaleString('en-IN')} km` : ''}</div>}
+                      {r.returnDate && <div>Returned {fmtDate(r.returnDate)}</div>}
                       {r.newMaxLifetimeKm && <div>New max life: {Number(r.newMaxLifetimeKm).toLocaleString('en-IN')} km</div>}
                     </div>
                   </div>
                 ))}
               </div>
-            )
-          )}
+            )}
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {/* Footer actions */}
+        {tyre.status !== 'SCRAPPED' && tyre.status !== 'DISPOSED' && (
+          <div className="border-t px-6 py-4 flex flex-wrap gap-2 shrink-0">
+            {tyre.status === 'IN_STOCK' && (
+              <>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { onClose(); onEdit() }}>Edit</Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => { onClose(); onScrap() }}>Scrap</Button>
+                <Button size="sm" className="h-8 text-xs bg-feros-navy hover:bg-feros-navy/90 text-white ml-auto" onClick={() => { onClose(); onFit() }}>Fit to Vehicle</Button>
+              </>
+            )}
+            {tyre.status === 'FITTED' && (
+              <Button size="sm" variant="outline" className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => { onClose(); onRemove() }}>Remove from Vehicle</Button>
+            )}
+            {tyre.status === 'RETREADING' && (
+              <>
+                <Button size="sm" variant="outline" className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => { onClose(); onScrap() }}>Scrap</Button>
+                <Button size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white ml-auto" onClick={() => { onClose(); onBackToStock() }}>Back to Stock</Button>
+              </>
+            )}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -891,12 +1016,12 @@ export default function TyreInventoryPage() {
   const [statusFilter, setStatusFilter] = useState<ActiveFilter>('ALL')
   const [addOpen, setAddOpen]           = useState(false)
   const [bulkAddOpen, setBulkAddOpen]   = useState(false)
+  const [detailTyre, setDetailTyre]     = useState<Tyre | null>(null)
   const [editTyre, setEditTyre]         = useState<Tyre | null>(null)
   const [fitTyre, setFitTyre]           = useState<Tyre | null>(null)
   const [removeTyre, setRemoveTyre]     = useState<Tyre | null>(null)
   const [backToStock, setBackToStock]   = useState<Tyre | null>(null)
   const [scrapTyre, setScrapTyre]       = useState<Tyre | null>(null)
-  const [historyTyre, setHistoryTyre]   = useState<Tyre | null>(null)
 
   const { data, isLoading, refetch } = useQuery({ queryKey: ['tyres'], queryFn: tyresApi.getAll })
   const tyres: Tyre[] = data?.data ?? []
@@ -1000,7 +1125,7 @@ export default function TyreInventoryPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.map(tyre => (
-                  <tr key={tyre.id} className="hover:bg-gray-50">
+                  <tr key={tyre.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setDetailTyre(tyre)}>
                     <td className="px-4 py-3">
                       <p className="font-mono font-medium text-gray-800">{tyre.serialNumber}</p>
                       {tyre.expiryDate && (() => {
@@ -1040,12 +1165,8 @@ export default function TyreInventoryPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{Number(tyre.totalLifetimeKm).toLocaleString('en-IN')} km</td>
                     <td className="px-4 py-3 text-gray-600">{tyre.retreadCount}x</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-1 justify-end flex-wrap">
-                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-gray-500 hover:text-gray-700"
-                          onClick={() => setHistoryTyre(tyre)}>
-                          <History size={12} /> History
-                        </Button>
                         {tyre.status === 'IN_STOCK' && (
                           <>
                             <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTyre(tyre)}>Edit</Button>
@@ -1091,6 +1212,20 @@ export default function TyreInventoryPage() {
         )}
       </div>
 
+      {/* Detail sheet */}
+      {detailTyre && (
+        <TyreDetailSheet
+          tyre={detailTyre}
+          open
+          onClose={() => setDetailTyre(null)}
+          onEdit={() => setEditTyre(detailTyre)}
+          onFit={() => setFitTyre(detailTyre)}
+          onRemove={() => setRemoveTyre(detailTyre)}
+          onBackToStock={() => setBackToStock(detailTyre)}
+          onScrap={() => setScrapTyre(detailTyre)}
+        />
+      )}
+
       {/* Dialogs */}
       {bulkAddOpen && <BulkAddTyreDialog open onClose={() => setBulkAddOpen(false)} />}
       {addOpen     && <AddEditTyreDialog open onClose={() => setAddOpen(false)} />}
@@ -1099,7 +1234,6 @@ export default function TyreInventoryPage() {
       {removeTyre  && <RemoveTyreDialog  open onClose={() => setRemoveTyre(null)}  tyre={removeTyre} />}
       {backToStock && <BackToStockDialog open onClose={() => setBackToStock(null)} tyre={backToStock} />}
       {scrapTyre   && <ScrapTyreDialog   open onClose={() => setScrapTyre(null)}   tyre={scrapTyre} />}
-      {historyTyre && <TyreHistoryDialog open onClose={() => setHistoryTyre(null)} tyre={historyTyre} />}
     </div>
   )
 }

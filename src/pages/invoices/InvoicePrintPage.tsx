@@ -95,8 +95,8 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
     [invoice.clientState, invoice.clientPincode].filter(Boolean).join(' - ')
   ].filter(Boolean).join(', ')
 
-  // Description: tenant master > remarks > fallback
-  const description = invoice.tenantInvoiceDescription || invoice.remarks || 'Goods Transportation Services'
+  // Description: tenant master description or fallback (remarks are shown separately above the table)
+  const description = invoice.tenantInvoiceDescription || 'Goods Transportation Services'
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#000' }}>
@@ -160,11 +160,11 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
             </td>
           </tr>
 
-          {/* ── Dispatch note ── */}
+          {/* ── Remarks ── */}
           {invoice.remarks && (
             <tr>
               <td colSpan={2} style={{ ...cell(), borderBottom: B, fontSize: 11 }}>
-                {invoice.remarks}
+                <strong>REMARKS : </strong>{invoice.remarks}
               </td>
             </tr>
           )}
