@@ -110,7 +110,7 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
               <Label>Serial Number *</Label>
-              <Input value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} placeholder="TYR-001" required disabled={isEdit} />
+              <Input value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} placeholder="TYR-001" required />
             </div>
             <div className="space-y-1.5">
               <Label>Brand *</Label>
