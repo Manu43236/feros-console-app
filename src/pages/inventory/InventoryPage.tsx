@@ -31,7 +31,7 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
 
   const { data: partsData } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
   const parts = partsData?.data ?? []
-  const partOptions = parts.map(p => ({ value: String(p.id), label: p.name + (p.partNumber ? ` (${p.partNumber})` : '') }))
+  const partOptions = parts.map(p => ({ value: String(p.id), label: p.name }))
 
   function addRow() {
     setItems(prev => [...prev, { sparePartId: 0, quantity: 1, unitCost: '', itemNotes: '' }])
@@ -156,6 +156,7 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
                 value={item.sparePartId ? String(item.sparePartId) : ''}
                 onValueChange={v => updateItem(idx, { sparePartId: Number(v) })}
                 options={partOptions}
+                className="min-w-0"
               />
               <Input
                 type="number" min={1} value={item.quantity}
