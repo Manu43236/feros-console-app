@@ -395,18 +395,6 @@ function ConsumptionTab({ rows, loading }: { rows?: ConsumptionByVehicleRow[]; l
 
   const vehicles = new Set(rows.map(r => r.registrationNumber)).size
   const totalCost = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
-
-  // Group rows by vehicle for alternating vehicle sections
-  const grouped = rows.reduce<{ reg: string; type: string; rows: ConsumptionByVehicleRow[] }[]>((acc, r) => {
-    const last = acc[acc.length - 1]
-    if (last && last.reg === r.registrationNumber) {
-      last.rows.push(r)
-    } else {
-      acc.push({ reg: r.registrationNumber, type: r.vehicleType, rows: [r] })
-    }
-    return acc
-  }, [])
-
   return (
     <div>
       <div className="px-4 py-2 border-b text-sm text-gray-500 flex gap-4">
@@ -426,27 +414,20 @@ function ConsumptionTab({ rows, loading }: { rows?: ConsumptionByVehicleRow[]; l
           </tr>
         </thead>
         <tbody>
-          {grouped.map(group =>
-            group.rows.map((r, i) => (
-              <tr key={`${r.vehicleId}-${r.partId}`} className="hover:bg-gray-50">
-                {i === 0 ? (
-                  <>
-                    <Td><span className="font-semibold">{r.registrationNumber}</span></Td>
-                    <Td muted>{r.vehicleType}</Td>
-                  </>
-                ) : (
-                  <>
-                    <td className="px-4 py-2.5 border-b border-gray-100" />
-                    <td className="px-4 py-2.5 border-b border-gray-100" />
-                  </>
-                )}
+          {rows.map((r, i) => {
+            const isNewGroup = i === 0 || rows[i - 1].registrationNumber !== r.registrationNumber
+            return (
+              <tr key={`${r.vehicleId}-${r.partId}`}
+                className={cn('hover:bg-gray-50', isNewGroup && i > 0 && 'border-t-2 border-gray-200')}>
+                <Td><span className="font-semibold">{r.registrationNumber}</span></Td>
+                <Td muted>{r.vehicleType}</Td>
                 <Td>{r.partName}</Td>
                 <Td muted>{r.partCategory || '—'}</Td>
                 <Td right><span className="font-medium">{r.timesConsumed}</span></Td>
                 <Td right>{r.totalCost != null ? `₹${fmt(r.totalCost)}` : '—'}</Td>
               </tr>
-            ))
-          )}
+            )
+          })}
         </tbody>
       </TableWrap>
     </div>

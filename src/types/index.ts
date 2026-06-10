@@ -1098,6 +1098,7 @@ export interface StockItem {
   inventoryId: number; sparePartId: number
   partName: string; partNumber?: string; category?: string; unit: string
   quantity: number; minStockLevel: number; isLowStock: boolean
+  lastUnitCost?: number
 }
 
 export type ServicePartStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED'
