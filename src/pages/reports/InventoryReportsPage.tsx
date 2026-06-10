@@ -68,7 +68,7 @@ function DateBar({
       {(['this-month', 'custom'] as const).map(p => (
         <button key={p} onClick={() => onPreset(p)}
           className={cn('px-3 py-1.5 rounded text-xs font-medium border transition-colors',
-            preset === p ? 'bg-navy-600 text-white border-navy-600' : 'bg-white text-gray-600 border-gray-200 hover:border-navy-400')}>
+            preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400')}>
           {p === 'this-month' ? 'This Month' : 'Custom'}
         </button>
       ))}
@@ -98,10 +98,10 @@ function TableWrap({ children }: { children: React.ReactNode }) {
   return <div className="overflow-x-auto"><table className="min-w-full text-sm">{children}</table></div>
 }
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
-  return <th className={cn('px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b whitespace-nowrap', right && 'text-right')}>{children}</th>
+  return <th className={cn('px-4 py-3 text-xs font-semibold text-white whitespace-nowrap bg-feros-navy', right && 'text-right')}>{children}</th>
 }
 function Td({ children, right, muted }: { children: React.ReactNode; right?: boolean; muted?: boolean }) {
-  return <td className={cn('px-3 py-2 border-b border-gray-100 whitespace-nowrap', right && 'text-right', muted && 'text-gray-400')}>{children}</td>
+  return <td className={cn('px-4 py-2.5 text-gray-700 border-b border-gray-100 whitespace-nowrap', right && 'text-right', muted && 'text-gray-400')}>{children}</td>
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -141,24 +141,24 @@ export default function InventoryReportsPage() {
   const needsDate = tab !== 'stock-summary'
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Inventory Reports</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Inventory Reports</h1>
           <p className="text-sm text-gray-500 mt-0.5">Stock, inward, outward, part requests and consumption analytics</p>
         </div>
         <ExportBtn onExport={doExport} loading={exporting} />
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+      <div className="flex gap-1 bg-white border rounded-xl p-1.5 overflow-x-auto">
         {TABS.map(t => {
           const Icon = t.icon
           return (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
-                tab === t.key ? 'border-navy-600 text-navy-700' : 'border-transparent text-gray-500 hover:text-gray-700')}>
+              className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+                tab === t.key ? 'bg-feros-navy text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100')}>
               <Icon className="w-3.5 h-3.5" />{t.label}
             </button>
           )
@@ -167,14 +167,14 @@ export default function InventoryReportsPage() {
 
       {/* Date bar */}
       {needsDate && (
-        <div className="bg-white rounded-lg border p-3">
+        <div className="bg-white border rounded-xl p-4">
           <DateBar startDate={startDate} endDate={endDate} preset={preset}
             onStartDate={setStartDate} onEndDate={setEndDate} onPreset={handlePreset} />
         </div>
       )}
 
       {/* Tab content */}
-      <div className="bg-white rounded-lg border">
+      <div className="bg-white border rounded-xl">
         {tab === 'stock-summary' && <StockSummaryTab rows={stockQ.data?.data} loading={stockQ.isLoading} />}
         {tab === 'inward'        && <InwardTab        rows={inwardQ.data?.data} loading={inwardQ.isLoading} />}
         {tab === 'outward'       && <OutwardTab       rows={outQ.data?.data}    loading={outQ.isLoading} />}
@@ -199,7 +199,7 @@ function StockSummaryTab({ rows, loading }: { rows?: StockSummaryRow[]; loading:
         {(['ALL', 'OK', 'LOW', 'OUT'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className={cn('px-3 py-1 rounded text-xs font-medium border transition-colors',
-              filter === f ? 'bg-navy-600 text-white border-navy-600' : 'bg-white text-gray-600 border-gray-200 hover:border-navy-400')}>
+              filter === f ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400')}>
             {f} ({counts[f]})
           </button>
         ))}
@@ -360,7 +360,7 @@ function PartRequestsTab({ rows, loading }: { rows?: PartRequestRow[]; loading: 
         {(['ALL', 'REQUESTED', 'APPROVED', 'REJECTED'] as const).map(f => (
           <button key={f} onClick={() => setStatusFilter(f)}
             className={cn('px-3 py-1 rounded text-xs font-medium border transition-colors',
-              statusFilter === f ? 'bg-navy-600 text-white border-navy-600' : 'bg-white text-gray-600 border-gray-200 hover:border-navy-400')}>
+              statusFilter === f ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400')}>
             {f}
           </button>
         ))}

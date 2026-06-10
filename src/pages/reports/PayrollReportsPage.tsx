@@ -51,14 +51,14 @@ const statusBadge = (s: string) => {
 // ── Sub-components ─────────────────────────────────────────────────────────────
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
   return (
-    <th className={cn('px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap', right && 'text-right')}>
+    <th className={cn('px-4 py-3 text-xs font-semibold text-white whitespace-nowrap bg-feros-navy', right && 'text-right')}>
       {children}
     </th>
   )
 }
 function Td({ children, right, muted }: { children: React.ReactNode; right?: boolean; muted?: boolean }) {
   return (
-    <td className={cn('px-3 py-2 text-sm whitespace-nowrap', right && 'text-right', muted && 'text-gray-400')}>
+    <td className={cn('px-4 py-2.5 text-sm text-gray-700 whitespace-nowrap', right && 'text-right', muted && 'text-gray-400')}>
       {children}
     </td>
   )
@@ -112,13 +112,13 @@ function SummaryTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
         <div className="flex gap-2">
           {(['this-month', 'custom'] as DatePreset[]).map(p => (
             <button key={p} onClick={() => {
               setPreset(p)
               if (p === 'this-month') { setStart(thisMonthStart()); setEnd(todayStr()) }
-            }} className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors', preset === p ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400')}>
+            }} className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors', preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
               {p === 'this-month' ? 'This Month' : 'Custom'}
             </button>
           ))}
@@ -132,7 +132,7 @@ function SummaryTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-xl border">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -194,13 +194,13 @@ function SalaryRegisterTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
         <div className="flex gap-2">
           {(['this-month', 'custom'] as DatePreset[]).map(p => (
             <button key={p} onClick={() => {
               setPreset(p)
               if (p === 'this-month') { setStart(thisMonthStart()); setEnd(todayStr()) }
-            }} className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors', preset === p ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400')}>
+            }} className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors', preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
               {p === 'this-month' ? 'This Month' : 'Custom'}
             </button>
           ))}
@@ -214,7 +214,7 @@ function SalaryRegisterTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-xl border">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -282,13 +282,13 @@ function AdvancesTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
         <div className="flex gap-2">
           {(['this-month', 'custom'] as DatePreset[]).map(p => (
             <button key={p} onClick={() => {
               setPreset(p)
               if (p === 'this-month') { setStart(thisMonthStart()); setEnd(todayStr()) }
-            }} className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors', preset === p ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400')}>
+            }} className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors', preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
               {p === 'this-month' ? 'This Month' : 'Custom'}
             </button>
           ))}
@@ -302,7 +302,7 @@ function AdvancesTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-xl border">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -368,13 +368,13 @@ function ByRoleTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
         <div className="flex gap-2">
           {(['this-month', 'custom'] as DatePreset[]).map(p => (
             <button key={p} onClick={() => {
               setPreset(p)
               if (p === 'this-month') { setStart(thisMonthStart()); setEnd(todayStr()) }
-            }} className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors', preset === p ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400')}>
+            }} className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors', preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
               {p === 'this-month' ? 'This Month' : 'Custom'}
             </button>
           ))}
@@ -388,7 +388,7 @@ function ByRoleTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-xl border">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -446,7 +446,7 @@ function YtdTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600 font-medium">Financial Year:</span>
           <select
@@ -462,7 +462,7 @@ function YtdTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-xl border">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -508,7 +508,7 @@ export default function PayrollReportsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+      <div className="flex gap-1 bg-white border rounded-xl p-1.5 overflow-x-auto">
         {TABS.map(t => {
           const Icon = t.icon
           return (
@@ -516,10 +516,10 @@ export default function PayrollReportsPage() {
               key={t.key}
               onClick={() => setActiveTab(t.key)}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
                 activeTab === t.key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'bg-feros-navy text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-100'
               )}
             >
               <Icon className="h-4 w-4" />

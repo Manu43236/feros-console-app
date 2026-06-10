@@ -90,7 +90,7 @@ function DateBar({
       {(['this-month', 'custom'] as const).map(p => (
         <button key={p} onClick={() => onPreset(p)}
           className={cn('px-3 py-1.5 rounded text-xs font-medium border transition-colors',
-            preset === p ? 'bg-navy-600 text-white border-navy-600' : 'bg-white text-gray-600 border-gray-200 hover:border-navy-400')}>
+            preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400')}>
           {p === 'this-month' ? 'This Month' : 'Custom'}
         </button>
       ))}
@@ -120,10 +120,10 @@ function TableWrap({ children }: { children: React.ReactNode }) {
   return <div className="overflow-x-auto"><table className="min-w-full text-sm">{children}</table></div>
 }
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
-  return <th className={cn('px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b whitespace-nowrap', right && 'text-right')}>{children}</th>
+  return <th className={cn('px-4 py-3 text-xs font-semibold text-white whitespace-nowrap bg-feros-navy', right && 'text-right')}>{children}</th>
 }
 function Td({ children, right, muted }: { children: React.ReactNode; right?: boolean; muted?: boolean }) {
-  return <td className={cn('px-3 py-2 border-b border-gray-100 whitespace-nowrap', right && 'text-right', muted && 'text-gray-400')}>{children}</td>
+  return <td className={cn('px-4 py-2.5 text-gray-700 border-b border-gray-100 whitespace-nowrap', right && 'text-right', muted && 'text-gray-400')}>{children}</td>
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -165,24 +165,24 @@ export default function TyreReportsPage() {
   const needsDate = tab !== 'inventory' && tab !== 'life'
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Tyre Reports</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Tyre Reports</h1>
           <p className="text-sm text-gray-500 mt-0.5">Inventory, fittings, removals, life tracking, requests and rotation logs</p>
         </div>
         <ExportBtn onExport={doExport} loading={exporting} />
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+      <div className="flex gap-1 bg-white border rounded-xl p-1.5 overflow-x-auto">
         {TABS.map(t => {
           const Icon = t.icon
           return (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
-                tab === t.key ? 'border-navy-600 text-navy-700' : 'border-transparent text-gray-500 hover:text-gray-700')}>
+              className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+                tab === t.key ? 'bg-feros-navy text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100')}>
               <Icon className="w-3.5 h-3.5" />{t.label}
             </button>
           )
@@ -191,14 +191,14 @@ export default function TyreReportsPage() {
 
       {/* Date bar */}
       {needsDate && (
-        <div className="bg-white rounded-lg border p-3">
+        <div className="bg-white border rounded-xl p-4">
           <DateBar startDate={startDate} endDate={endDate} preset={preset}
             onStartDate={setStartDate} onEndDate={setEndDate} onPreset={handlePreset} />
         </div>
       )}
 
       {/* Tab content */}
-      <div className="bg-white rounded-lg border">
+      <div className="bg-white border rounded-xl">
         {tab === 'inventory' && <TyreInventoryTab rows={invQ.data?.data}  loading={invQ.isLoading} />}
         {tab === 'fittings'  && <FittingsTab      rows={fitQ.data?.data}  loading={fitQ.isLoading} />}
         {tab === 'removals'  && <RemovalsTab      rows={remQ.data?.data}  loading={remQ.isLoading} />}
@@ -227,7 +227,7 @@ function TyreInventoryTab({ rows, loading }: { rows?: TyreInventoryRow[]; loadin
         {statuses.map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={cn('px-3 py-1 rounded text-xs font-medium border transition-colors',
-              statusFilter === s ? 'bg-navy-600 text-white border-navy-600' : 'bg-white text-gray-600 border-gray-200 hover:border-navy-400')}>
+              statusFilter === s ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400')}>
             {s.replace(/_/g, ' ')} ({counts[s] ?? 0})
           </button>
         ))}
