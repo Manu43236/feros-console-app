@@ -10,4 +10,7 @@ export const authApi = {
 
   changePin: (data: { currentPin: string; newPin: string }) =>
     apiClient.patch<ApiResponse<void>>('/auth/change-pin', data).then(r => r.data),
+
+  askPinReset: (phone: string) =>
+    apiClient.post<ApiResponse<void>>(`/auth/ask-pin-reset?phone=${encodeURIComponent(phone)}`).then(r => r.data),
 }

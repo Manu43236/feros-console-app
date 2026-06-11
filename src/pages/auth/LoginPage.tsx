@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ferosLogo from '@/assets/feros_transperant_logo.png'
 import { useForm } from 'react-hook-form'
@@ -18,14 +18,36 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
+function formatCountdown(seconds: number) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0')
+  const s = (seconds % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+}
+
 export function LoginPage() {
-  const [loading, setLoading] = useState(false)
-  const login = useAuthStore(s => s.login)
+  const [loading, setLoading]         = useState(false)
+  const [lockedUntil, setLockedUntil] = useState<Date | null>(null)
+  const [secondsLeft, setSecondsLeft] = useState(0)
+  const [askingAdmin, setAskingAdmin] = useState(false)
+  const login    = useAuthStore(s => s.login)
   const navigate = useNavigate()
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, getValues, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
+
+  // Countdown timer
+  useEffect(() => {
+    if (!lockedUntil) return
+    const update = () => {
+      const diff = Math.max(0, Math.floor((lockedUntil.getTime() - Date.now()) / 1000))
+      setSecondsLeft(diff)
+      if (diff === 0) setLockedUntil(null)
+    }
+    update()
+    const interval = setInterval(update, 1000)
+    return () => clearInterval(interval)
+  }, [lockedUntil])
 
   async function onSubmit(data: FormData) {
     setLoading(true)
@@ -38,12 +60,35 @@ export function LoginPage() {
         toast.error(res.message ?? 'Login failed')
       }
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Something went wrong')
+      const errData = (err as { response?: { data?: { message?: string; data?: { lockedUntil?: string } } } })?.response?.data
+      if (errData?.message === 'ACCOUNT_LOCKED' && errData?.data?.lockedUntil) {
+        setLockedUntil(new Date(errData.data.lockedUntil))
+      } else {
+        toast.error(errData?.message ?? 'Something went wrong')
+      }
     } finally {
       setLoading(false)
     }
   }
+
+  async function handleAskAdmin() {
+    const phone = getValues('phone')
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      toast.error('Please enter your mobile number above first')
+      return
+    }
+    setAskingAdmin(true)
+    try {
+      await authApi.askPinReset(phone)
+      toast.success('Request sent! Your admin has been notified.')
+    } catch {
+      toast.error('Could not send request. Please try again.')
+    } finally {
+      setAskingAdmin(false)
+    }
+  }
+
+  const isLocked = lockedUntil !== null && secondsLeft > 0
 
   return (
     <AuthLayout>
@@ -59,6 +104,27 @@ export function LoginPage() {
           <p className="text-gray-400 text-sm mt-1">Sign in to your FEROS account</p>
         </div>
 
+        {/* Lockout banner */}
+        {isLocked && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3 text-center">
+            <p className="text-red-700 font-semibold text-sm">Account temporarily locked</p>
+            <p className="text-red-500 text-xs">Too many incorrect PIN attempts. Try again in</p>
+            <div className="text-3xl font-bold text-red-600 tracking-widest">
+              {formatCountdown(secondsLeft)}
+            </div>
+            <p className="text-gray-500 text-xs">or ask your admin to reset your PIN</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-red-300 text-red-600 hover:bg-red-50 text-sm"
+              disabled={askingAdmin}
+              onClick={handleAskAdmin}
+            >
+              {askingAdmin ? 'Sending request…' : 'Ask admin to reset PIN'}
+            </Button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" autoComplete="off">
           <div className="space-y-1.5">
             <Label htmlFor="phone" className="text-gray-700 font-medium">Mobile Number</Label>
@@ -69,6 +135,7 @@ export function LoginPage() {
               inputMode="numeric"
               maxLength={10}
               autoComplete="off"
+              disabled={isLocked}
               {...register('phone')}
               className={`h-11 ${errors.phone ? 'border-red-500 focus-visible:ring-red-200' : ''}`}
             />
@@ -84,6 +151,7 @@ export function LoginPage() {
               maxLength={4}
               inputMode="numeric"
               autoComplete="new-password"
+              disabled={isLocked}
               {...register('pin')}
               className={`h-11 tracking-widest ${errors.pin ? 'border-red-500 focus-visible:ring-red-200' : ''}`}
             />
@@ -92,7 +160,7 @@ export function LoginPage() {
 
           <Button
             type="submit"
-            disabled={loading}
+            disabled={loading || isLocked}
             className="w-full h-11 text-sm font-semibold mt-1"
             style={{ backgroundColor: '#1E293B' }}
           >
