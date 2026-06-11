@@ -52,12 +52,13 @@ import TyreReportsPage         from '@/pages/reports/TyreReportsPage'
 import PayrollReportsPage      from '@/pages/reports/PayrollReportsPage'
 
 // Super Admin pages
-import { SADashboardPage }   from '@/pages/superadmin/SADashboardPage'
-import { TenantsPage }       from '@/pages/superadmin/TenantsPage'
-import { SubscriptionsPage } from '@/pages/superadmin/SubscriptionsPage'
-import { SAUsersPage }       from '@/pages/superadmin/SAUsersPage'
-import { GlobalMastersPage } from '@/pages/superadmin/GlobalMastersPage'
-import { SASettingsPage }    from '@/pages/superadmin/SASettingsPage'
+import { SADashboardPage }    from '@/pages/superadmin/SADashboardPage'
+import { TenantsPage }        from '@/pages/superadmin/TenantsPage'
+import { SubscriptionsPage }  from '@/pages/superadmin/SubscriptionsPage'
+import { SAUsersPage }        from '@/pages/superadmin/SAUsersPage'
+import { GlobalMastersPage }  from '@/pages/superadmin/GlobalMastersPage'
+import { SASettingsPage }     from '@/pages/superadmin/SASettingsPage'
+import DemoRequestsPage       from '@/pages/superadmin/DemoRequestsPage'
 
 // Subscription
 import { SubscriptionPage } from '@/pages/subscription/SubscriptionPage'
@@ -162,6 +163,7 @@ export default function App() {
           <Route path="sa/dashboard"      element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SADashboardPage /></ProtectedRoute>} />
           <Route path="sa/tenants"        element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><TenantsPage /></ProtectedRoute>} />
           <Route path="sa/subscriptions"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SubscriptionsPage /></ProtectedRoute>} />
+          <Route path="sa/demo-requests"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><DemoRequestsPage /></ProtectedRoute>} />
           <Route path="sa/users"          element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SAUsersPage /></ProtectedRoute>} />
           <Route path="sa/global-masters" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><GlobalMastersPage /></ProtectedRoute>} />
           <Route path="sa/settings"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SASettingsPage /></ProtectedRoute>} />

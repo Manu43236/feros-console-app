@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem } from '@/types'
+import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem, DemoRequest, DemoRequestStatus, Page } from '@/types'
 import type { Tenant } from '@/types'
 
 // ── Tenants ──────────────────────────────────────────────────────────────────
@@ -166,4 +166,16 @@ export const globalMastersWriteApi = {
   createPaymentStatus:  (data: { name: string }) => apiClient.post<ApiResponse<MasterItem>>('/masters/global/payment-statuses', data).then(r => r.data),
   updatePaymentStatus:  (id: number, data: { name: string }) => apiClient.put<ApiResponse<MasterItem>>(`/masters/global/payment-statuses/${id}`, data).then(r => r.data),
   deletePaymentStatus:  (id: number) => apiClient.delete(`/masters/global/payment-statuses/${id}`),
+}
+
+// ── Demo Requests ─────────────────────────────────────────────────────────────
+export const demoRequestsApi = {
+  getAll: (params: { status?: DemoRequestStatus; page?: number; size?: number }) =>
+    apiClient.get<ApiResponse<Page<DemoRequest>>>('/demo-requests', { params }).then(r => r.data),
+  countNew: () =>
+    apiClient.get<ApiResponse<{ count: number }>>('/demo-requests/count/new').then(r => r.data),
+  updateStatus: (id: number, status: DemoRequestStatus, notes?: string) =>
+    apiClient.patch<ApiResponse<DemoRequest>>(`/demo-requests/${id}/status`, null, {
+      params: { status, ...(notes ? { notes } : {}) },
+    }).then(r => r.data),
 }

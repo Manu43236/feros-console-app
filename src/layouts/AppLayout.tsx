@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-do
 import leftMenuLogo from '@/assets/left_menu_logo.png'
 import { useAuthStore } from '@/store/authStore'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { notificationsApi, subscriptionsApi } from '@/api/superadmin'
+import { notificationsApi, subscriptionsApi, demoRequestsApi } from '@/api/superadmin'
 import { authApi } from '@/api/auth'
 import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
@@ -170,6 +170,7 @@ const SUPER_ADMIN_NAV: FlatNav = [
   { to: '/sa/dashboard',      label: 'Dashboard',      icon: LayoutDashboard },
   { to: '/sa/tenants',        label: 'Tenants',        icon: Building2 },
   { to: '/sa/subscriptions',  label: 'Subscriptions',  icon: BadgeCheck },
+  { to: '/sa/demo-requests',  label: 'Demo Requests',  icon: ClipboardList },
   { to: '/sa/users',          label: 'Users',          icon: UserCog },
   { to: '/sa/global-masters', label: 'Global Masters', icon: Globe },
   { to: '/sa/settings',       label: 'Settings',       icon: Settings },
@@ -272,6 +273,37 @@ function NotifNavLink() {
       <span>Notifications</span>
       {count > 0 && (
         <span className="ml-auto min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+          {count > 9 ? '9+' : count}
+        </span>
+      )}
+    </NavLink>
+  )
+}
+
+// ─── Demo Requests Nav Link ──────────────────────────────────────────────────────
+function DemoRequestsNavLink({ onClick }: { onClick?: () => void }) {
+  const { data: countRes } = useQuery({
+    queryKey: ['demo-requests-count'],
+    queryFn: () => demoRequestsApi.countNew(),
+    refetchInterval: 60_000,
+  })
+  const count = countRes?.data?.count ?? 0
+
+  return (
+    <NavLink
+      to="/sa/demo-requests"
+      onClick={onClick}
+      className={({ isActive }) => cn(
+        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+        isActive
+          ? 'bg-feros-orange text-white'
+          : 'text-gray-300 hover:bg-white/10 hover:text-white'
+      )}
+    >
+      <ClipboardList size={18} className="shrink-0" />
+      <span>Demo Requests</span>
+      {count > 0 && (
+        <span className="ml-auto min-w-[20px] h-5 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
           {count > 9 ? '9+' : count}
         </span>
       )}
@@ -500,9 +532,11 @@ export function AppLayout() {
             </>
           ) : (
             <div className="space-y-0.5">
-              {(nav as FlatNav).filter(i => isRouteAllowed(i)).map(item => (
-                <NavItemLink key={item.to} {...item} onClick={closeMobile} />
-              ))}
+              {(nav as FlatNav).filter(i => isRouteAllowed(i)).map(item =>
+                item.to === '/sa/demo-requests'
+                  ? <DemoRequestsNavLink key={item.to} onClick={closeMobile} />
+                  : <NavItemLink key={item.to} {...item} onClick={closeMobile} />
+              )}
             </div>
           )}
         </nav>

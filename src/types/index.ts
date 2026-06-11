@@ -2165,3 +2165,29 @@ export interface VehicleGpsMappingRequest {
   providerVehicleId: string
   providerRegNumber?: string
 }
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+export interface Page<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
+// ─── Demo Request ──────────────────────────────────────────────────────────────
+export type DemoRequestStatus = 'NEW' | 'CONTACTED' | 'CONVERTED' | 'CLOSED'
+
+export interface DemoRequest {
+  id: number
+  name: string
+  phone: string
+  company: string
+  email?: string
+  fleetSize?: string
+  city?: string
+  status: DemoRequestStatus
+  notes?: string
+  createdAt: string
+  updatedAt?: string
+}
