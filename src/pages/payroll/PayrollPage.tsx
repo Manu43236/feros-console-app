@@ -363,33 +363,33 @@ function PayrollRow({ payroll, onApprove, onEdit, onCancel }: {
           <div className="flex gap-1 justify-end">
             {p.payrollStatus === 'DRAFT' && (
               <>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-gray-600 border-gray-200 hover:bg-gray-50"
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-gray-600 border-gray-200 hover:bg-gray-50"
                   onClick={viewPayslip} disabled={previewing} title="Preview PDF">
-                  <Eye size={11} className="mr-1" />{previewing ? '…' : 'Preview'}
+                  <Eye size={13} />
                 </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600 border-amber-200 hover:bg-amber-50"
-                  onClick={() => onEdit(p)}>
-                  <Pencil size={11} className="mr-1" />Edit
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-amber-600 border-amber-200 hover:bg-amber-50"
+                  onClick={() => onEdit(p)} title="Edit">
+                  <Pencil size={13} />
                 </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
-                  onClick={() => onApprove(p)}>
-                  <CheckCircle size={11} className="mr-1" />Approve
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-blue-600 border-blue-200 hover:bg-blue-50"
+                  onClick={() => onApprove(p)} title="Approve & Pay">
+                  <CheckCircle size={13} />
                 </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => onCancel(p)}>
-                  <XCircle size={11} className="mr-1" />Cancel
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => onCancel(p)} title="Cancel">
+                  <XCircle size={13} />
                 </Button>
               </>
             )}
             {p.payrollStatus === 'PAID' && (
               <>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50"
-                  onClick={viewPayslip} disabled={previewing}>
-                  <Eye size={11} className="mr-1" />{previewing ? '…' : 'View'}
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-green-600 border-green-200 hover:bg-green-50"
+                  onClick={viewPayslip} disabled={previewing} title="View Payslip">
+                  <Eye size={13} />
                 </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-gray-600 border-gray-200 hover:bg-gray-50"
-                  onClick={downloadPayslip} disabled={downloading}>
-                  <Download size={11} className="mr-1" />{downloading ? '…' : 'Download'}
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-gray-600 border-gray-200 hover:bg-gray-50"
+                  onClick={downloadPayslip} disabled={downloading} title="Download Payslip">
+                  <Download size={13} />
                 </Button>
               </>
             )}
