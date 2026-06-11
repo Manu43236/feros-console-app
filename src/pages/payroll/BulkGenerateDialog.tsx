@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { payrollApi } from '@/api/payroll'
 import type { BulkPayrollResult } from '@/types'
 
@@ -164,16 +165,15 @@ export function BulkGenerateDialog({ open, onClose, users }: {
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <Label>Filter by Role</Label>
-                <select
+                <SearchableSelect
+                  className="mt-1"
                   value={roleFilter}
-                  onChange={e => { setRole(e.target.value); setSelected(new Set()) }}
-                  className="mt-1 w-full border border-gray-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="ALL">All Eligible Staff</option>
-                  {availableRoles.map(r => (
-                    <option key={r} value={r}>{r.replace('_', ' ')}</option>
-                  ))}
-                </select>
+                  onValueChange={v => { setRole(v); setSelected(new Set()) }}
+                  options={[
+                    { value: 'ALL', label: 'All Eligible Staff' },
+                    ...availableRoles.map(r => ({ value: r, label: r.replace(/_/g, ' ') })),
+                  ]}
+                />
               </div>
               <div className="flex gap-2 self-end">
                 <Button type="button" size="sm" variant="outline" onClick={selectAll}>
