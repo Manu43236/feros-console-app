@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   ClipboardList, Phone, Mail, Building2, Truck, MapPin,
-  Calendar, ChevronDown, X,
+  Calendar, X,
 } from 'lucide-react'
 import { demoRequestsApi } from '@/api/superadmin'
 import type { DemoRequest, DemoRequestStatus } from '@/types'
