@@ -44,7 +44,6 @@ export const useAuthStore = create<AuthState>()(
       saSession:      null,
 
       login: (data: LoginResponse) => {
-        localStorage.setItem('feros_token', data.token)
         set({
           token:          data.token,
           userId:         data.userId,
@@ -61,7 +60,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        localStorage.removeItem('feros_token')
         set({
           token: null, userId: null, tenantId: null,
           phone: null, name: null, role: null, companyName: null, logoUrl: null,
@@ -80,7 +78,6 @@ export const useAuthStore = create<AuthState>()(
           companyName: state.companyName!,
           logoUrl:     state.logoUrl,
         }
-        localStorage.setItem('feros_token', data.token)
         set({
           token:          data.token,
           userId:         data.userId,
@@ -101,7 +98,6 @@ export const useAuthStore = create<AuthState>()(
       exitImpersonation: () => {
         const { saSession } = get()
         if (!saSession) return
-        localStorage.setItem('feros_token', saSession.token)
         set({
           token:          saSession.token,
           userId:         saSession.userId,

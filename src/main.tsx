@@ -5,6 +5,7 @@ import { Toaster } from 'sonner'
 import './index.css'
 import 'leaflet/dist/leaflet.css'
 import App from './App.tsx'
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,9 +18,11 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-      <Toaster position="top-right" richColors />
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <App />
+        <Toaster position="top-right" richColors />
+      </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

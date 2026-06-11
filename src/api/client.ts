@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/store/authStore'
 
 const apiClient = axios.create({
   baseURL: '/api/v1',
@@ -8,18 +9,18 @@ const apiClient = axios.create({
 
 // Attach JWT token to every request
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('feros_token')
+  const token = useAuthStore.getState().token
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Handle 401 globally — show message and redirect to login
+// Handle error status codes globally
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       // Clear persisted auth state
-      localStorage.removeItem('feros_user')
+      useAuthStore.getState().logout()
       toast.error('Your session has expired. Please sign in again.')
       setTimeout(() => { window.location.href = '/login' }, 1500)
     }
@@ -30,6 +31,12 @@ apiClient.interceptors.response.use(
         action: { label: 'Upgrade Now', onClick: () => { window.location.href = '/subscription' } },
         duration: 8000,
       })
+    }
+    if (error.response?.status === 403) {
+      toast.error('You do not have permission to perform this action.')
+    }
+    if (error.response?.status === 429) {
+      toast.error('Too many requests. Please wait a moment and try again.')
     }
     return Promise.reject(error)
   }
