@@ -452,6 +452,14 @@ export interface PayrollDeduction {
   amount: number; salaryAdvanceId?: number; remarks?: string
 }
 
+export interface BulkPayrollResult {
+  totalRequested: number
+  successCount: number
+  failedCount: number
+  succeeded: Payroll[]
+  failed: { userId: number; userName: string; reason: string }[]
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export interface DashboardResponse {
   orders: {

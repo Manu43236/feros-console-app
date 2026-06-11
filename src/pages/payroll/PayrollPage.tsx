@@ -10,7 +10,7 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   Plus, ChevronDown, ChevronRight, CheckCircle, XCircle,
-  Banknote, TrendingUp, AlertCircle, Receipt, Download, Eye,
+  Banknote, TrendingUp, AlertCircle, Receipt, Download, Eye, Pencil, Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,8 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { payrollApi } from '@/api/payroll'
 import { staffApi } from '@/api/staff'
 import type { Payroll, SalaryAdvance, PayrollStatus, PaymentMode } from '@/types'
+import { EditPayrollDialog } from './EditPayrollDialog'
+import { BulkGenerateDialog } from './BulkGenerateDialog'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 type StaffUser = { id: number; name: string; role: string; isActive: boolean }
@@ -287,9 +289,10 @@ function ApproveDialog({ open, onClose, payroll }: {
 }
 
 // ── Payroll Detail Row ────────────────────────────────────────────────────────
-function PayrollRow({ payroll, onApprove, onCancel }: {
+function PayrollRow({ payroll, onApprove, onEdit, onCancel }: {
   payroll: Payroll
   onApprove: (p: Payroll) => void
+  onEdit: (p: Payroll) => void
   onCancel: (p: Payroll) => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -360,6 +363,14 @@ function PayrollRow({ payroll, onApprove, onCancel }: {
           <div className="flex gap-1 justify-end">
             {p.payrollStatus === 'DRAFT' && (
               <>
+                <Button size="sm" variant="outline" className="h-7 text-xs text-gray-600 border-gray-200 hover:bg-gray-50"
+                  onClick={viewPayslip} disabled={previewing} title="Preview PDF">
+                  <Eye size={11} className="mr-1" />{previewing ? '…' : 'Preview'}
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600 border-amber-200 hover:bg-amber-50"
+                  onClick={() => onEdit(p)}>
+                  <Pencil size={11} className="mr-1" />Edit
+                </Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
                   onClick={() => onApprove(p)}>
                   <CheckCircle size={11} className="mr-1" />Approve
@@ -510,7 +521,9 @@ export function PayrollPage() {
   const qc = useQueryClient()
   const [tab, setTab]               = useState<'payrolls' | 'advances'>('payrolls')
   const [genOpen, setGenOpen]       = useState(false)
+  const [bulkOpen, setBulkOpen]     = useState(false)
   const [approveTarget, setApprove] = useState<Payroll | null>(null)
+  const [editTarget, setEdit]       = useState<Payroll | null>(null)
   const [advOpen, setAdvOpen]       = useState(false)
   const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
   const [search, setSearch]         = useState('')
@@ -558,9 +571,14 @@ export function PayrollPage() {
         {!locked && (
           <div className="flex gap-2">
             {tab === 'payrolls' ? (
-              <Button onClick={() => setGenOpen(true)}>
-                <Plus size={14} className="mr-1.5" />Generate Payroll
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setBulkOpen(true)}>
+                  <Users size={14} className="mr-1.5" />Bulk Generate
+                </Button>
+                <Button onClick={() => setGenOpen(true)}>
+                  <Plus size={14} className="mr-1.5" />Generate Payroll
+                </Button>
+              </>
             ) : (
               <Button onClick={() => setAdvOpen(true)}>
                 <Plus size={14} className="mr-1.5" />New Advance
@@ -653,6 +671,7 @@ export function PayrollPage() {
                     key={p.id}
                     payroll={p}
                     onApprove={setApprove}
+                    onEdit={setEdit}
                     onCancel={pr => setDlg({ title: 'Cancel Payroll', desc: `Cancel payroll for ${pr.userName}? This cannot be undone.`, onOk: () => cancelMutation.mutate(pr.id) })}
                   />
                 ))}
@@ -711,7 +730,9 @@ export function PayrollPage() {
 
       {/* Dialogs */}
       <GenerateDialog open={genOpen} onClose={() => setGenOpen(false)} users={users} />
+      <BulkGenerateDialog open={bulkOpen} onClose={() => setBulkOpen(false)} users={users} />
       <ApproveDialog open={!!approveTarget} onClose={() => setApprove(null)} payroll={approveTarget} />
+      <EditPayrollDialog open={!!editTarget} onClose={() => setEdit(null)} payroll={editTarget} />
       <AdvanceDialog open={advOpen} onClose={() => setAdvOpen(false)} users={users} />
       <ConfirmDialog
         open={!!dlg}
