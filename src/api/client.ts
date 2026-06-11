@@ -19,10 +19,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear persisted auth state
       useAuthStore.getState().logout()
-      toast.error('Your session has expired. Please sign in again.')
-      setTimeout(() => { window.location.href = '/login' }, 1500)
+      const message = error.response?.data?.message
+      if (message === 'SESSION_DISPLACED') {
+        toast.error('Your account has been signed in on another device. You have been signed out.')
+      } else {
+        toast.error('Your session has expired. Please sign in again.')
+      }
+      setTimeout(() => { window.location.href = '/login' }, 2000)
     }
     if (error.response?.status === 402) {
       // Mark so mutations know not to show a duplicate toast
