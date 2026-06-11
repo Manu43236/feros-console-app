@@ -118,6 +118,16 @@ export const useAuthStore = create<AuthState>()(
         })
       },
     }),
-    { name: 'feros_user' }
+    {
+      name: 'feros_user',
+      partialize: (state) => ({
+        token: state.token, userId: state.userId, tenantId: state.tenantId,
+        phone: state.phone, name: state.name, role: state.role,
+        companyName: state.companyName, logoUrl: state.logoUrl,
+        isAuthenticated: state.isAuthenticated, allowedModules: state.allowedModules,
+        saSession: state.saSession,
+        // sessionDisplaced intentionally excluded — must not survive page refresh
+      }),
+    }
   )
 )

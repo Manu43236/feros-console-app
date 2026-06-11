@@ -20,10 +20,12 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const message = error.response?.data?.message
+      const wasAuthenticated = useAuthStore.getState().isAuthenticated
       useAuthStore.getState().logout()
-      if (message === 'SESSION_DISPLACED') {
+      if (message === 'SESSION_DISPLACED' && wasAuthenticated) {
+        // Only show displaced modal if user was actively logged in — not after logout race conditions
         useAuthStore.getState().setSessionDisplaced(true)
-      } else {
+      } else if (wasAuthenticated) {
         toast.error('Your session has expired. Please sign in again.')
         setTimeout(() => { window.location.href = '/login' }, 1500)
       }
