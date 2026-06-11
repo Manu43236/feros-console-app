@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 
+const LOCKOUT_KEY = 'feros_lockout_until'
+
 const schema = z.object({
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number'),
   pin:   z.string().length(4, 'PIN must be 4 digits'),
@@ -37,13 +39,29 @@ export function LoginPage() {
     resolver: zodResolver(schema),
   })
 
+  // Restore lockout from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(LOCKOUT_KEY)
+    if (stored) {
+      const date = new Date(stored)
+      if (date > new Date()) {
+        setLockedUntil(date)
+      } else {
+        localStorage.removeItem(LOCKOUT_KEY)
+      }
+    }
+  }, [])
+
   // Countdown timer
   useEffect(() => {
     if (!lockedUntil) return
     const update = () => {
       const diff = Math.max(0, Math.floor((lockedUntil.getTime() - Date.now()) / 1000))
       setSecondsLeft(diff)
-      if (diff === 0) setLockedUntil(null)
+      if (diff === 0) {
+        setLockedUntil(null)
+        localStorage.removeItem(LOCKOUT_KEY)
+      }
     }
     update()
     const interval = setInterval(update, 1000)
@@ -63,7 +81,9 @@ export function LoginPage() {
     } catch (err: unknown) {
       const errData = (err as { response?: { data?: { message?: string; data?: { lockedUntil?: string; failedAttempts?: number } } } })?.response?.data
       if (errData?.message === 'ACCOUNT_LOCKED' && errData?.data?.lockedUntil) {
-        setLockedUntil(new Date(errData.data.lockedUntil))
+        const until = new Date(errData.data.lockedUntil)
+        setLockedUntil(until)
+        localStorage.setItem(LOCKOUT_KEY, until.toISOString())
         setAttemptsUsed(0)
       } else if (errData?.data?.failedAttempts !== undefined) {
         setAttemptsUsed(errData.data.failedAttempts)
