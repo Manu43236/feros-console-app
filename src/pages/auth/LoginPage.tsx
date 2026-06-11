@@ -29,6 +29,7 @@ export function LoginPage() {
   const [lockedUntil, setLockedUntil] = useState<Date | null>(null)
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [askingAdmin, setAskingAdmin] = useState(false)
+  const [attemptsUsed, setAttemptsUsed] = useState(0)
   const login    = useAuthStore(s => s.login)
   const navigate = useNavigate()
 
@@ -60,9 +61,13 @@ export function LoginPage() {
         toast.error(res.message ?? 'Login failed')
       }
     } catch (err: unknown) {
-      const errData = (err as { response?: { data?: { message?: string; data?: { lockedUntil?: string } } } })?.response?.data
+      const errData = (err as { response?: { data?: { message?: string; data?: { lockedUntil?: string; failedAttempts?: number } } } })?.response?.data
       if (errData?.message === 'ACCOUNT_LOCKED' && errData?.data?.lockedUntil) {
         setLockedUntil(new Date(errData.data.lockedUntil))
+        setAttemptsUsed(0)
+      } else if (errData?.data?.failedAttempts !== undefined) {
+        setAttemptsUsed(errData.data.failedAttempts)
+        toast.error(errData.message ?? 'Invalid mobile number or PIN')
       } else {
         toast.error(errData?.message ?? 'Something went wrong')
       }
@@ -122,6 +127,17 @@ export function LoginPage() {
             >
               {askingAdmin ? 'Sending request…' : 'Ask admin to reset PIN'}
             </Button>
+          </div>
+        )}
+
+        {/* Attempts warning */}
+        {attemptsUsed >= 3 && !isLocked && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
+            <span className="text-2xl font-bold text-amber-600 tabular-nums leading-none">{attemptsUsed}/5</span>
+            <div>
+              <p className="text-amber-700 text-sm font-medium">Incorrect PIN</p>
+              <p className="text-amber-600 text-xs">{5 - attemptsUsed} attempt{5 - attemptsUsed !== 1 ? 's' : ''} left before account is locked</p>
+            </div>
           </div>
         )}
 
