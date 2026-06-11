@@ -21,11 +21,14 @@ interface AuthState {
     name: string; role: string; companyName: string; logoUrl: string | null
   } | null
 
+  sessionDisplaced:   boolean
+
   login:              (data: LoginResponse) => void
   logout:             () => void
   impersonate:        (data: LoginResponse) => void
   exitImpersonation:  () => void
   setLogoUrl:         (url: string) => void
+  setSessionDisplaced: (val: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -42,6 +45,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       allowedModules: null,
       saSession:      null,
+      sessionDisplaced: false,
 
       login: (data: LoginResponse) => {
         set({
@@ -94,6 +98,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setLogoUrl: (url: string) => set({ logoUrl: url }),
+      setSessionDisplaced: (val: boolean) => set({ sessionDisplaced: val }),
 
       exitImpersonation: () => {
         const { saSession } = get()

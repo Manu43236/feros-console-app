@@ -3,6 +3,7 @@ import { AppLayout } from '@/layouts/AppLayout'
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
 import { RoleRedirect } from '@/components/shared/RoleRedirect'
 import { useAuthStore } from '@/store/authStore'
+import { SessionDisplacedModal } from '@/components/shared/SessionDisplacedModal'
 
 // Auth
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -90,6 +91,7 @@ function AttendanceRouter() {
 export default function App() {
   return (
     <BrowserRouter>
+      <SessionDisplacedModal />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/invoices/:invoiceId/print" element={<InvoicePrintPage />} />
