@@ -445,24 +445,26 @@ export function StaffDetailPage() {
             >
               <ArrowLeft size={15} /> Staff
             </button>
-            <button
-              onClick={() => {
-                const desc = active
-                  ? `Deactivate ${name}? They will no longer be able to log in.`
-                  : `Activate ${name}?`
-                setDlg({ title: active ? 'Deactivate Staff' : 'Activate Staff', desc, onOk: () => toggleStatusMutation.mutate(!active) })
-              }}
-              disabled={toggleStatusMutation.isPending}
-              className={cn(
-                'flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50',
-                active
-                  ? 'bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30'
-                  : 'bg-green-500/20 border-green-400/40 text-green-300 hover:bg-green-500/30'
-              )}
-            >
-              {active ? <UserX size={13} /> : <UserCheck size={13} />}
-              {toggleStatusMutation.isPending ? '…' : active ? 'Deactivate' : 'Activate'}
-            </button>
+            {!isSupervisor && (
+              <button
+                onClick={() => {
+                  const desc = active
+                    ? `Deactivate ${name}? They will no longer be able to log in.`
+                    : `Activate ${name}?`
+                  setDlg({ title: active ? 'Deactivate Staff' : 'Activate Staff', desc, onOk: () => toggleStatusMutation.mutate(!active) })
+                }}
+                disabled={toggleStatusMutation.isPending}
+                className={cn(
+                  'flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50',
+                  active
+                    ? 'bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30'
+                    : 'bg-green-500/20 border-green-400/40 text-green-300 hover:bg-green-500/30'
+                )}
+              >
+                {active ? <UserX size={13} /> : <UserCheck size={13} />}
+                {toggleStatusMutation.isPending ? '…' : active ? 'Deactivate' : 'Activate'}
+              </button>
+            )}
           </div>
           <div className="mt-5">
             <div className="flex items-center gap-3 flex-wrap">
@@ -546,7 +548,7 @@ export function StaffDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Designation *</Label>
-                <select {...register('designationId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <select {...register('designationId')} disabled={isSupervisor} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm disabled:opacity-60 disabled:cursor-not-allowed">
                   <option value="">Select designation</option>
                   {designationsRes?.data?.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
@@ -554,28 +556,28 @@ export function StaffDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Employment Type</Label>
-                <select {...register('employmentTypeId')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <select {...register('employmentTypeId')} disabled={isSupervisor} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm disabled:opacity-60 disabled:cursor-not-allowed">
                   <option value="">Select type</option>
                   {employmentTypesRes?.data?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
                 <Label>Date of Birth</Label>
-                <Input type="date" max={new Date().toISOString().split('T')[0]} {...register('dateOfBirth')} />
+                <Input type="date" max={new Date().toISOString().split('T')[0]} {...register('dateOfBirth')} disabled={isSupervisor} />
               </div>
               <div className="space-y-1.5">
                 <Label>Joining Date</Label>
-                <Input type="date" {...register('joiningDate')} />
+                <Input type="date" {...register('joiningDate')} disabled={isSupervisor} />
               </div>
               {role === 'DRIVER' && (
                 <>
                   <div className="space-y-1.5">
                     <Label>License Number</Label>
-                    <Input placeholder="MH1234567890" {...register('licenseNumber')} />
+                    <Input placeholder="MH1234567890" {...register('licenseNumber')} disabled={isSupervisor} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>License Expiry</Label>
-                    <Input type="date" {...register('licenseExpiryDate')} />
+                    <Input type="date" {...register('licenseExpiryDate')} disabled={isSupervisor} />
                   </div>
                 </>
               )}
@@ -588,14 +590,14 @@ export function StaffDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1.5">
                 <Label>Street Address</Label>
-                <Input placeholder="123, Main Street" {...register('address')} />
+                <Input placeholder="123, Main Street" {...register('address')} disabled={isSupervisor} />
               </div>
               <div className="space-y-1.5">
                 <Label>State</Label>
                 <SearchableSelect
                   placeholder="Select state"
                   value={watch('stateId') ? String(watch('stateId')) : ''}
-                  onValueChange={v => setValue('stateId', v ? Number(v) : undefined, { shouldValidate: true })}
+                  onValueChange={isSupervisor ? () => {} : v => setValue('stateId', v ? Number(v) : undefined, { shouldValidate: true })}
                   options={(statesRes?.data ?? []).map(s => ({ value: String(s.id), label: s.name }))}
                 />
               </div>
@@ -604,13 +606,13 @@ export function StaffDetailPage() {
                 <SearchableSelect
                   placeholder="Select city"
                   value={watch('cityId') ? String(watch('cityId')) : ''}
-                  onValueChange={v => setValue('cityId', v ? Number(v) : undefined, { shouldValidate: true })}
+                  onValueChange={isSupervisor ? () => {} : v => setValue('cityId', v ? Number(v) : undefined, { shouldValidate: true })}
                   options={(citiesRes?.data ?? []).map(c => ({ value: String(c.id), label: c.name }))}
                 />
               </div>
               <div className="space-y-1.5">
                 <Label>Pincode</Label>
-                <Input placeholder="400001" {...register('pincode')} />
+                <Input placeholder="400001" {...register('pincode')} disabled={isSupervisor} />
               </div>
             </div>
           </div>
@@ -621,11 +623,11 @@ export function StaffDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Name</Label>
-                <Input placeholder="Ramesh Kumar" {...register('emergencyContactName')} />
+                <Input placeholder="Ramesh Kumar" {...register('emergencyContactName')} disabled={isSupervisor} />
               </div>
               <div className="space-y-1.5">
                 <Label>Phone</Label>
-                <Input placeholder="9876543210" {...register('emergencyContactPhone')} />
+                <Input placeholder="9876543210" {...register('emergencyContactPhone')} disabled={isSupervisor} />
               </div>
             </div>
           </div>
@@ -636,25 +638,25 @@ export function StaffDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Bank Name</Label>
-                <Input placeholder="SBI" {...register('bankName')} />
+                <Input placeholder="SBI" {...register('bankName')} disabled={isSupervisor} />
               </div>
               <div className="space-y-1.5">
                 <Label>Account Holder Name</Label>
-                <Input {...register('accountHolderName')} />
+                <Input {...register('accountHolderName')} disabled={isSupervisor} />
               </div>
               <div className="space-y-1.5">
                 <Label>Account Number</Label>
-                <Input {...register('accountNumber')} />
+                <Input {...register('accountNumber')} disabled={isSupervisor} />
               </div>
               <div className="space-y-1.5">
                 <Label>IFSC Code</Label>
-                <Input placeholder="SBIN0001234" {...register('ifscCode')} />
+                <Input placeholder="SBIN0001234" {...register('ifscCode')} disabled={isSupervisor} />
               </div>
             </div>
           </div>
 
           {/* Payroll */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+          {!isSupervisor && <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
             <p className="text-sm font-semibold text-gray-700">Payroll</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -700,19 +702,21 @@ export function StaffDetailPage() {
             {watch('salaryType') === 'MONTHLY' && (
               <p className="text-xs text-gray-400">LOP deduction = (monthly salary ÷ working days) × absent days. Sundays excluded.</p>
             )}
-          </div>
+          </div>}
 
-          {/* Save button — enabled only when form is dirty */}
-          <div className="flex justify-end pb-6">
-            <Button
-              type="submit"
-              disabled={!isDirty || saveMutation.isPending}
-              className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2 px-6"
-            >
-              <Save size={15} />
-              {saveMutation.isPending ? 'Saving…' : 'Save Changes'}
-            </Button>
-          </div>
+          {/* Save button — hidden for supervisors */}
+          {!isSupervisor && (
+            <div className="flex justify-end pb-6">
+              <Button
+                type="submit"
+                disabled={!isDirty || saveMutation.isPending}
+                className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2 px-6"
+              >
+                <Save size={15} />
+                {saveMutation.isPending ? 'Saving…' : 'Save Changes'}
+              </Button>
+            </div>
+          )}
         </form>
       )}
 
