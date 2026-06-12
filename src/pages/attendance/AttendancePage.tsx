@@ -730,6 +730,7 @@ function PendingApprovalsTab() {
                 </th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Date</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Type</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Marked At</th>
@@ -744,6 +745,7 @@ function PendingApprovalsTab() {
                   <td className="px-5 py-3 whitespace-nowrap"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="rounded" /></td>
                   <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
                   <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedVehicleNumber ?? '—'}</td>
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
                   <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                   <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
@@ -838,6 +840,7 @@ function RejectedTab() {
               <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
                 <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Date</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Type</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Marked At</th>
@@ -851,6 +854,7 @@ function RejectedTab() {
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
                   <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedVehicleNumber ?? '—'}</td>
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
                   <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                   <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
@@ -1265,6 +1269,7 @@ export function AttendancePage() {
                     <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
                       <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Status</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Approval</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Leave Type</th>
@@ -1280,6 +1285,7 @@ export function AttendancePage() {
                           <tr key={r.id} className="hover:bg-gray-50">
                             <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
+                            <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedVehicleNumber ?? '—'}</td>
                             <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                             <td className="px-5 py-3 whitespace-nowrap"><ApprovalBadge status={r.approvalStatus} /></td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.leaveTypeName ?? '—'}</td>
@@ -1306,6 +1312,7 @@ export function AttendancePage() {
                           <tr key={`u-${u.id}`} className="hover:bg-gray-50">
                             <td className="px-5 py-3 font-medium text-gray-700 whitespace-nowrap">{u.name}</td>
                             <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{u.role}</td>
+                            <td className="px-5 py-3 text-gray-400 whitespace-nowrap">—</td>
                             <td className="px-5 py-3 whitespace-nowrap"><span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Not marked</span></td>
                             <td className="px-5 py-3 text-gray-400 whitespace-nowrap">—</td>
                             <td className="px-5 py-3 text-gray-400 whitespace-nowrap">—</td>
