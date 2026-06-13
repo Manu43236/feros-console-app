@@ -38,9 +38,9 @@ const STATUS_LABELS: Record<TyreStatus, string> = {
   DISPOSED:   'Disposed',
 }
 
-const TYRE_TYPES: TyreType[] = ['RADIAL', 'BIAS', 'TUBELESS', 'TUBE_TYPE']
+const TYRE_TYPES: TyreType[] = ['RADIAL', 'BIAS', 'TUBELESS', 'TUBE_TYPE', 'NYLON']
 const TYRE_TYPE_LABELS: Record<TyreType, string> = {
-  RADIAL: 'Radial', BIAS: 'Bias', TUBELESS: 'Tubeless', TUBE_TYPE: 'Tube Type',
+  RADIAL: 'Radial', BIAS: 'Bias', TUBELESS: 'Tubeless', TUBE_TYPE: 'Tube Type', NYLON: 'Nylon',
 }
 
 const PURCHASE_CONDITIONS: { value: TyrePurchaseCondition; label: string }[] = [

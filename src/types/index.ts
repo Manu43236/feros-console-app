@@ -1249,7 +1249,7 @@ export interface MeterReading {
 
 // ─── Tyres ────────────────────────────────────────────────────────────────────
 export type TyreStatus = 'IN_STOCK' | 'FITTED' | 'RETREADING' | 'SCRAPPED' | 'DISPOSED'
-export type TyreType = 'RADIAL' | 'BIAS' | 'TUBELESS' | 'TUBE_TYPE'
+export type TyreType = 'RADIAL' | 'BIAS' | 'TUBELESS' | 'TUBE_TYPE' | 'NYLON'
 export type TyrePositionType = 'STEER' | 'DRIVE' | 'TRAILER' | 'SPARE'
 export type TyreRemovalReason = 'ROTATION' | 'WORN' | 'PUNCTURE' | 'DAMAGE' | 'RETREAD' | 'SCRAP' | 'OTHER'
 export type TyrePurchaseCondition = 'NEW' | 'SECOND_HAND' | 'RETREADED'
