@@ -116,7 +116,7 @@ export default function App() {
           <Route path="service-invoices"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ServiceInvoicesPage /></ProtectedRoute>} />
 
           {/* GPS Tracker */}
-          <Route path="gps" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><GpsTrackerPage /></ProtectedRoute>} />
+          <Route path="gps" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','SUPERVISOR']}><GpsTrackerPage /></ProtectedRoute>} />
 
           {/* Vehicles — admin + office + supervisor + driver (read) */}
           <Route path="vehicles"            element={<VehiclesPage />} />
