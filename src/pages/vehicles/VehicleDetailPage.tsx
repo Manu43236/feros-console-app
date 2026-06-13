@@ -1572,6 +1572,7 @@ function FitTyreDialog({ open, onClose, vehicleId, positionId, availableTyres, c
 }) {
   const qc = useQueryClient()
   const [selectedGroup, setSelectedGroup] = useState('')
+  const [selectedTyreId, setSelectedTyreId] = useState<number | undefined>(undefined)
   const [km, setKm] = useState(currentKm?.toString() ?? '')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
 
@@ -1588,8 +1589,17 @@ function FitTyreDialog({ open, onClose, vehicleId, positionId, availableTyres, c
     label: `${key} (${tyres.length} available)`,
   }))
 
-  // Auto-pick first tyre from selected group
-  const selectedTyreId = selectedGroup ? groupedTyres[selectedGroup]?.[0]?.id : undefined
+  const serialOptions = selectedGroup
+    ? (groupedTyres[selectedGroup] ?? []).map(t => ({
+        value: String(t.id),
+        label: t.serialNumber,
+      }))
+    : []
+
+  const handleGroupChange = (val: string) => {
+    setSelectedGroup(val)
+    setSelectedTyreId(undefined)
+  }
 
   const mutation = useMutation({
     mutationFn: () => tyresApi.fitTyre({ vehicleId, tyreId: selectedTyreId!, positionId, fittedAtKm: Number(km), fittedDate: date }),
@@ -1608,18 +1618,22 @@ function FitTyreDialog({ open, onClose, vehicleId, positionId, availableTyres, c
         <DialogHeader><DialogTitle>Fit Tyre</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label>Select Tyre *</Label>
+            <Label>Brand & Size *</Label>
             <SearchableSelect
               value={selectedGroup}
-              onValueChange={setSelectedGroup}
+              onValueChange={handleGroupChange}
               options={groupOptions}
-              placeholder="Choose tyre size…"
+              placeholder="Choose brand & size…"
             />
-            {selectedGroup && groupedTyres[selectedGroup] && (
-              <p className="text-xs text-muted-foreground">
-                Will assign: <span className="font-medium">{groupedTyres[selectedGroup][0].serialNumber}</span>
-              </p>
-            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Serial Number *</Label>
+            <SearchableSelect
+              value={selectedTyreId ? String(selectedTyreId) : ''}
+              onValueChange={val => setSelectedTyreId(Number(val))}
+              options={serialOptions}
+              placeholder={selectedGroup ? 'Select serial number…' : 'Select brand & size first'}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Odometer at Fitting (km) *</Label>
