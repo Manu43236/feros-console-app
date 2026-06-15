@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText } from 'lucide-react'
+import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import type {
-  FleetStatusRow, FuelMileageRow,
+  VehicleMasterRow, FleetStatusRow, FuelMileageRow,
   BreakdownReportRow, DocumentExpiryRow, MaintenanceServiceRow,
 } from '@/types'
 
@@ -27,6 +27,7 @@ const thisMonthStart = () => {
 
 // ── Tab config ─────────────────────────────────────────────────────────────────
 const TABS = [
+  { key: 'vehicle-master',  label: 'Vehicle Master',    icon: ClipboardList },
   { key: 'fleet-status',    label: 'Fleet Status',      icon: Truck         },
   { key: 'fuel-mileage',    label: 'Fuel & Mileage',    icon: Fuel          },
   { key: 'breakdowns',      label: 'Breakdowns',        icon: AlertTriangle },
@@ -104,6 +105,40 @@ const fmtRupee = (v: number | null) => v != null ? `₹${v.toLocaleString('en-IN
 const fmtNum = (v: number | null, dec = 2) => v != null ? v.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : '—'
 
 // ── Table renderers ────────────────────────────────────────────────────────────
+function VehicleMasterTable({ rows, loading }: { rows: VehicleMasterRow[]; loading: boolean }) {
+  return <ReportTable
+    loading={loading}
+    headers={[
+      'Vehicle No.', 'Brand', 'Model', 'Type', 'Fuel Type', 'Ownership', 'Status',
+      'Capacity (T)', 'GVW', 'Mfg Year', 'Tank Cap.',
+      'Chassis No.', 'Engine No.',
+      'RC No.', 'Insurance No.', 'Permit No.', 'Fitness No.', 'PUC No.', 'Road Tax Expiry',
+      'Financed', 'Financer', 'Finance From', 'Finance To', 'IoT',
+    ]}
+    rows={rows.map(r => [
+      <span className="font-medium">{r.registrationNumber}</span>,
+      dash(r.brand), dash(r.model), dash(r.vehicleType), dash(r.fuelType), dash(r.ownershipType),
+      r.currentStatus ? <Badge label={r.currentStatus} /> : <span>—</span>,
+      r.capacityInTons != null ? `${r.capacityInTons} T` : '—',
+      r.grossVehicleWeight != null ? `${r.grossVehicleWeight} T` : '—',
+      dash(r.manufactureYear),
+      r.fuelTankCapacity != null ? `${r.fuelTankCapacity} L` : '—',
+      dash(r.chassisNumber), dash(r.engineNumber),
+      dash(r.rcNumber), dash(r.insuranceNumber), dash(r.permitNumber),
+      dash(r.fitnessNumber), dash(r.pucNumber),
+      dash(r.roadTaxExpiry),
+      r.isFinanced
+        ? <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Yes</span>
+        : <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">No</span>,
+      dash(r.financerName),
+      dash(r.financeFrom), dash(r.financeTo),
+      r.isIot
+        ? <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Yes</span>
+        : <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">No</span>,
+    ])}
+  />
+}
+
 function FleetTable({ rows, loading }: { rows: FleetStatusRow[]; loading: boolean }) {
   return <ReportTable
     loading={loading}
@@ -184,7 +219,7 @@ const STATUS_ORDER = ['AVAILABLE', 'ASSIGNED', 'ON_TRIP', 'IN_REPAIR', 'BREAKDOW
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function VehicleReportsPage() {
-  const [tab, setTab] = useState<TabKey>('fleet-status')
+  const [tab, setTab] = useState<TabKey>('vehicle-master')
   const [preset, setPreset] = useState<DatePreset>('this-month')
   const [startDate, setStartDate] = useState(thisMonthStart())
   const [endDate, setEndDate] = useState(todayStr())
@@ -192,11 +227,21 @@ export default function VehicleReportsPage() {
   const [downloading, setDownloading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
+  const [brandFilter, setBrandFilter] = useState('ALL')
+  const [fuelTypeFilter, setFuelTypeFilter] = useState('ALL')
+  const [ownershipFilter, setOwnershipFilter] = useState('ALL')
+  const [iotFilter, setIotFilter] = useState('ALL')
+  const [financeFilter, setFinanceFilter] = useState('ALL')
 
   function handleTabChange(key: TabKey) {
     setTab(key)
     setStatusFilter('ALL')
     setVehicleFilter('ALL')
+    setBrandFilter('ALL')
+    setFuelTypeFilter('ALL')
+    setOwnershipFilter('ALL')
+    setIotFilter('ALL')
+    setFinanceFilter('ALL')
   }
 
   function applyPreset(p: DatePreset) {
@@ -207,6 +252,12 @@ export default function VehicleReportsPage() {
   }
 
   // ── Queries (only active tab fetches) ──
+  const vehicleMasterQuery = useQuery({
+    queryKey: ['report-vehicle-master'],
+    queryFn: () => reportsApi.getVehicleMaster(),
+    enabled: tab === 'vehicle-master',
+  })
+
   const fleetQuery = useQuery({
     queryKey: ['report-fleet-status'],
     queryFn: () => reportsApi.getFleetStatus(todayStr()),
@@ -236,7 +287,8 @@ const fuelQuery = useQuery({
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
-      if (tab === 'fleet-status') await reportsApi.exportFleetStatus(todayStr(), format)
+      if (tab === 'vehicle-master') await reportsApi.exportVehicleMaster(format)
+      else if (tab === 'fleet-status') await reportsApi.exportFleetStatus(todayStr(), format)
 else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, endDate, format)
       else if (tab === 'breakdowns') await reportsApi.exportBreakdowns(startDate, endDate, format)
       else if (tab === 'doc-expiry') await reportsApi.exportDocumentExpiry(days, format)
@@ -248,7 +300,7 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
     }
   }
 
-  const usesDateRange = tab !== 'fleet-status' && tab !== 'doc-expiry'
+  const usesDateRange = tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'doc-expiry'
 
   return (
     <div className="space-y-6">
@@ -279,6 +331,64 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
+        {/* Vehicle Master — multi-filter */}
+        {tab === 'vehicle-master' && (() => {
+          const allRows = vehicleMasterQuery.data?.data ?? []
+
+          const uniqueOptions = (getter: (r: VehicleMasterRow) => string | null) => {
+            const vals = Array.from(new Set(allRows.map(getter).filter(Boolean) as string[])).sort()
+            return [{ value: 'ALL', label: `All (${allRows.length})` }, ...vals.map(v => ({ value: v, label: v }))]
+          }
+
+          const statusCounts = allRows.reduce<Record<string, number>>((acc, r) => {
+            if (r.currentStatus) acc[r.currentStatus] = (acc[r.currentStatus] ?? 0) + 1
+            return acc
+          }, {})
+          const statusOptions = [
+            { value: 'ALL', label: `All (${allRows.length})` },
+            ...[...STATUS_ORDER, ...Object.keys(statusCounts).filter(s => !STATUS_ORDER.includes(s))]
+              .filter(s => statusCounts[s] != null)
+              .map(s => ({ value: s, label: `${s.replace(/_/g, ' ')} (${statusCounts[s]})` })),
+          ]
+
+          return (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <SearchableSelect value={statusFilter} onValueChange={setStatusFilter}
+                  options={statusOptions} showSearch={false} className="w-44" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
+                <SearchableSelect value={brandFilter} onValueChange={setBrandFilter}
+                  options={uniqueOptions(r => r.brand)} className="w-40" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Fuel Type</label>
+                <SearchableSelect value={fuelTypeFilter} onValueChange={setFuelTypeFilter}
+                  options={uniqueOptions(r => r.fuelType)} showSearch={false} className="w-36" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Ownership</label>
+                <SearchableSelect value={ownershipFilter} onValueChange={setOwnershipFilter}
+                  options={uniqueOptions(r => r.ownershipType)} showSearch={false} className="w-36" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">IoT</label>
+                <SearchableSelect value={iotFilter} onValueChange={setIotFilter}
+                  options={[{ value: 'ALL', label: 'All' }, { value: 'YES', label: 'Yes' }, { value: 'NO', label: 'No' }]}
+                  showSearch={false} className="w-28" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Finance</label>
+                <SearchableSelect value={financeFilter} onValueChange={setFinanceFilter}
+                  options={[{ value: 'ALL', label: 'All' }, { value: 'YES', label: 'Financed' }, { value: 'NO', label: 'Owned' }]}
+                  showSearch={false} className="w-32" />
+              </div>
+            </>
+          )
+        })()}
+
         {/* Fleet Status — status filter only (always today) */}
         {tab === 'fleet-status' && (() => {
           const allRows = fleetQuery.data?.data ?? []
@@ -306,8 +416,8 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
           )
         })()}
 
-        {/* Vehicle filter — all tabs except fleet-status */}
-        {tab !== 'fleet-status' && (() => {
+        {/* Vehicle filter — tabs with date range */}
+        {tab !== 'vehicle-master' && tab !== 'fleet-status' && (() => {
           const allRows: { registrationNumber: string }[] =
             tab === 'fuel-mileage' ? (fuelQuery.data?.data ?? []) :
             tab === 'breakdowns'   ? (breakdownQuery.data?.data ?? []) :
@@ -398,6 +508,17 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
       </div>
 
       {/* Table */}
+      {tab === 'vehicle-master' && <VehicleMasterTable
+        rows={(vehicleMasterQuery.data?.data ?? []).filter(r =>
+          (statusFilter === 'ALL' || r.currentStatus === statusFilter) &&
+          (brandFilter === 'ALL' || r.brand === brandFilter) &&
+          (fuelTypeFilter === 'ALL' || r.fuelType === fuelTypeFilter) &&
+          (ownershipFilter === 'ALL' || r.ownershipType === ownershipFilter) &&
+          (iotFilter === 'ALL' || (iotFilter === 'YES' ? r.isIot : !r.isIot)) &&
+          (financeFilter === 'ALL' || (financeFilter === 'YES' ? r.isFinanced : !r.isFinanced))
+        )}
+        loading={vehicleMasterQuery.isLoading}
+      />}
       {tab === 'fleet-status'  && <FleetTable
         rows={(fleetQuery.data?.data ?? []).filter(r => statusFilter === 'ALL' || r.currentStatus === statusFilter)}
         loading={fleetQuery.isLoading}

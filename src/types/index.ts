@@ -1373,6 +1373,34 @@ export interface TyreRotationLog {
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
+export interface VehicleMasterRow {
+  vehicleId: number
+  registrationNumber: string
+  brand: string | null
+  model: string | null
+  vehicleType: string | null
+  fuelType: string | null
+  ownershipType: string | null
+  currentStatus: string | null
+  capacityInTons: number | null
+  grossVehicleWeight: number | null
+  manufactureYear: number | null
+  fuelTankCapacity: number | null
+  chassisNumber: string | null
+  engineNumber: string | null
+  rcNumber: string | null
+  insuranceNumber: string | null
+  permitNumber: string | null
+  fitnessNumber: string | null
+  pucNumber: string | null
+  roadTaxExpiry: string | null
+  isFinanced: boolean
+  financerName: string | null
+  financeFrom: string | null
+  financeTo: string | null
+  isIot: boolean
+}
+
 export interface FleetStatusRow {
   vehicleId: number
   registrationNumber: string

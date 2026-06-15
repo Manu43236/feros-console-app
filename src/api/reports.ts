@@ -1,6 +1,7 @@
 import apiClient from './client'
 import type { ApiResponse } from '@/types'
 import type {
+  VehicleMasterRow,
   FleetStatusRow,
   FuelMileageRow,
   BreakdownReportRow,
@@ -68,6 +69,17 @@ function triggerDownload(blob: Blob, filename: string) {
 }
 
 export const reportsApi = {
+  // ── Vehicle Master ────────────────────────────────────────────────────────
+  getVehicleMaster: () =>
+    apiClient.get<ApiResponse<VehicleMasterRow[]>>('/reports/vehicles/master').then(r => r.data),
+
+  exportVehicleMaster: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/vehicles/master/export', {
+      params: { format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `vehicle-master.${format}`)
+  },
+
   // ── Fleet Status ──────────────────────────────────────────────────────────
   getFleetStatus: (date: string) =>
     apiClient.get<ApiResponse<FleetStatusRow[]>>('/reports/vehicles/fleet-status', { params: { date } }).then(r => r.data),
