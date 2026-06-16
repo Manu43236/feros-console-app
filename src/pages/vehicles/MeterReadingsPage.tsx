@@ -108,14 +108,8 @@ function AddReadingDialog({
   editing: MeterReading | null
 }) {
   const qc = useQueryClient()
-  const [form, setForm] = useState<ReadingForm>(BLANK)
-  const [uploading, setUploading] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  const [prevOpen, setPrevOpen] = useState(open)
-  if (open !== prevOpen) {
-    setPrevOpen(open)
-    if (open) setForm(editing ? {
+  const [form, setForm] = useState<ReadingForm>(() =>
+    editing ? {
       vehicleId:   String(editing.vehicleId),
       readingKm:   String(editing.readingKm),
       readingType: editing.readingType,
@@ -123,8 +117,10 @@ function AddReadingDialog({
       photoUrl:    editing.photoUrl ?? '',
       recordedAt:  editing.recordedAt ? editing.recordedAt.slice(0, 16) : '',
       notes:       editing.notes ?? '',
-    } : BLANK)
-  }
+    } : BLANK
+  )
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const set = (field: keyof ReadingForm, value: string) =>
     setForm(f => ({ ...f, [field]: value }))
@@ -406,8 +402,9 @@ type FilterMode = 'ALL' | MeterReadingType
 
 export default function MeterReadingsPage() {
   const { locked } = useSubscription()
-  const role    = useAuthStore(s => s.role)
-  const isAdmin = role === 'ADMIN'
+  const role     = useAuthStore(s => s.role)
+  const isAdmin  = role === 'ADMIN'
+  const canEdit  = role === 'ADMIN' || role === 'OFFICE_STAFF' || role === 'SUPER_ADMIN'
 
   const [search, setSearch]     = useState('')
   const [filter, setFilter]     = useState<FilterMode>('ALL')
@@ -545,7 +542,7 @@ export default function MeterReadingsPage() {
             <ReadingCard
               key={r.id}
               reading={r}
-              isAdmin={isAdmin}
+              isAdmin={canEdit}
               onEdit={() => setEditing(r)}
               onDelete={() => setToDelete(r)}
             />
