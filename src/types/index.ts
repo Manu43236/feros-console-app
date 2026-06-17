@@ -339,7 +339,7 @@ export interface LrCheckpost {
 
 // ─── Invoice ──────────────────────────────────────────────────────────────────
 export type InvoiceStatus = 'DRAFT'|'SENT'|'PARTIALLY_PAID'|'PAID'|'OVERDUE'|'CANCELLED'
-export type PaymentMode = 'CASH'|'CHEQUE'|'NEFT'|'UPI'|'RTGS'
+export type PaymentMode = 'CASH'|'CHEQUE'|'NEFT'|'UPI'|'RTGS'|'OTHER'
 
 export interface InvoiceLrItem {
   id: number
@@ -380,6 +380,7 @@ export interface Invoice {
 export interface InvoicePayment {
   id: number; invoiceId?: number
   paymentDate: string; amount: number; paymentMode: PaymentMode
+  paymentModeLabel?: string
   referenceNumber?: string; remarks?: string
   createdById: number; createdByName: string
   isActive?: boolean; createdAt: string

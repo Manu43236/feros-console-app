@@ -83,35 +83,41 @@ function EditInvoiceDialog({ invoiceId, currentDueDate, currentRemarks, open, on
 
 // ── Record Payment Dialog ─────────────────────────────────────────────────
 const paymentSchema = z.object({
-  amount:          z.coerce.number().positive('Enter a valid amount'),
-  paymentMode:     z.enum(['CASH','CHEQUE','NEFT','UPI','RTGS']),
-  paymentDate:     z.string().optional(),
-  referenceNumber: z.string().optional(),
-  remarks:         z.string().optional(),
+  amount:           z.coerce.number().positive('Enter a valid amount'),
+  paymentMode:      z.enum(['CASH','CHEQUE','NEFT','UPI','RTGS','OTHER']),
+  paymentModeLabel: z.string().optional(),
+  paymentDate:      z.string().optional(),
+  referenceNumber:  z.string().optional(),
+  remarks:          z.string().optional(),
+}).refine(d => d.paymentMode !== 'OTHER' || (d.paymentModeLabel && d.paymentModeLabel.trim().length > 0), {
+  message: 'Please describe the payment mode',
+  path: ['paymentModeLabel'],
 })
 type PaymentForm = z.infer<typeof paymentSchema>
 
-const PAYMENT_MODES: PaymentMode[] = ['CASH','CHEQUE','NEFT','UPI','RTGS']
+const PAYMENT_MODES: PaymentMode[] = ['CASH','CHEQUE','NEFT','UPI','RTGS','OTHER']
 
 function RecordPaymentDialog({ invoiceId, balanceDue, open, onClose }: {
   invoiceId: number; balanceDue: number; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<PaymentForm>({
+  const { register, handleSubmit, watch, formState: { errors }, reset } = useForm<PaymentForm>({
     resolver: zodResolver(paymentSchema) as Resolver<PaymentForm>,
     defaultValues: {
       paymentMode: 'NEFT',
       paymentDate: new Date().toISOString().split('T')[0],
     },
   })
+  const selectedMode = watch('paymentMode')
 
   const mutation = useMutation({
     mutationFn: (data: PaymentForm) => invoicesApi.addPayment(invoiceId, {
-      amount:          data.amount,
-      paymentMode:     data.paymentMode,
-      paymentDate:     data.paymentDate || undefined,
-      referenceNumber: data.referenceNumber || undefined,
-      remarks:         data.remarks || undefined,
+      amount:           data.amount,
+      paymentMode:      data.paymentMode,
+      paymentModeLabel: data.paymentMode === 'OTHER' ? data.paymentModeLabel : undefined,
+      paymentDate:      data.paymentDate || undefined,
+      referenceNumber:  data.referenceNumber || undefined,
+      remarks:          data.remarks || undefined,
     }),
     onSuccess: () => {
       toast.success('Payment recorded successfully')
@@ -149,9 +155,18 @@ function RecordPaymentDialog({ invoiceId, balanceDue, open, onClose }: {
           <div className="space-y-1.5">
             <Label>Payment Mode *</Label>
             <select {...register('paymentMode')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-              {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+              {PAYMENT_MODES.map(m => <option key={m} value={m}>{m === 'OTHER' ? 'Other' : m}</option>)}
             </select>
           </div>
+          {selectedMode === 'OTHER' && (
+            <div className="space-y-1.5">
+              <Label>Specify Payment Mode *</Label>
+              <Input {...register('paymentModeLabel')} placeholder="e.g. Fuel, Kind, Advance Adjustment…" autoFocus />
+              {errors.paymentModeLabel && (
+                <p className="text-red-500 text-xs">{errors.paymentModeLabel.message}</p>
+              )}
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Reference / UTR Number</Label>
             <Input {...register('referenceNumber')} placeholder="Cheque number, UTR, UPI ref…" />
@@ -547,7 +562,7 @@ export function InvoiceDetailPage() {
                         </td>
                         <td className="py-3 px-3">
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
-                            {p.paymentMode}
+                            {p.paymentMode === 'OTHER' && p.paymentModeLabel ? p.paymentModeLabel : p.paymentMode}
                           </span>
                         </td>
                         <td className="py-3 px-3 text-gray-500">{p.referenceNumber ?? '—'}</td>
