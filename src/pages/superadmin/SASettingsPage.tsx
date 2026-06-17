@@ -70,7 +70,7 @@ const D = {
   doc:    { fontFamily: 'Georgia, serif', fontSize: 12.5, color: '#1a1a1a', lineHeight: 1.7, padding: '18mm 20mm', background: '#fff', maxWidth: 760, margin: '0 auto' } as React.CSSProperties,
   hdr:    { textAlign: 'center' as const, borderBottom: '3px solid #1a3a5c', paddingBottom: 14, marginBottom: 20 },
   brand:  { fontSize: 26, fontWeight: 'bold', color: '#1a3a5c', letterSpacing: 4 },
-  tag:    { fontSize: 10, color: '#777', letterSpacing: 2, textTransform: 'uppercase' as const, marginTop: 3 },
+  tag:    { fontSize: 10, color: '#1a3a5c', letterSpacing: 2, textTransform: 'uppercase' as const, marginTop: 3 },
   title:  { textAlign: 'center' as const, margin: '18px 0 8px' },
   h1:     { fontSize: 16, fontWeight: 'bold', color: '#1a3a5c', textTransform: 'uppercase' as const, letterSpacing: 2 },
   sub:    { fontSize: 11.5, color: '#555', marginTop: 6 },
@@ -336,8 +336,16 @@ export function SASettingsPage() {
 
       {/* ── Preview Panel ── */}
       <div style={{ background: '#e8ecf0', padding: '32px 24px', overflowY: 'auto' }}>
-        <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 2, textAlign: 'center', marginBottom: 16 }}>
-          Live Preview — fill form on left to update
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 2 }}>
+            Live Preview — fill form on left to update
+          </div>
+          <button
+            onClick={handlePrint}
+            style={{ background: '#1a3a5c', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 11, fontWeight: 'bold', cursor: 'pointer', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase' }}
+          >
+            <Printer size={13} /> Download PDF
+          </button>
         </div>
 
         {/* MOU Document */}
@@ -346,7 +354,7 @@ export function SASettingsPage() {
           {/* Header */}
           <div style={D.hdr}>
             <div style={D.brand}>FER<span style={{ color: '#e67e22' }}>O</span>S</div>
-            <div style={D.tag}>Transport &amp; Fleet Management Platform by MandM Technologies</div>
+            <div style={D.tag}>Fleet Equipment Rental Operating System</div>
           </div>
 
           {/* Title */}
