@@ -402,9 +402,8 @@ type FilterMode = 'ALL' | MeterReadingType
 
 export default function MeterReadingsPage() {
   const { locked } = useSubscription()
-  const role     = useAuthStore(s => s.role)
-  const isAdmin  = role === 'ADMIN'
-  const canEdit  = role === 'ADMIN' || role === 'OFFICE_STAFF' || role === 'SUPER_ADMIN'
+  const role    = useAuthStore(s => s.role)
+  const canEdit = role === 'ADMIN' || role === 'OFFICE_STAFF' || role === 'SUPER_ADMIN'
 
   const [search, setSearch]     = useState('')
   const [filter, setFilter]     = useState<FilterMode>('ALL')
