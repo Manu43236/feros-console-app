@@ -675,6 +675,16 @@ export function LrDetailPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl font-bold text-white tracking-wide">{lr.lrNumber}</h1>
                 <StatusBadge status={lr.lrStatus} />
+                {lr.invoiceId ? (
+                  <span className="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-200 px-2.5 py-1 rounded-full text-xs font-medium">
+                    <FileText className="h-3.5 w-3.5" />
+                    {lr.invoiceNumber ?? 'Invoiced'}
+                  </span>
+                ) : lr.lrStatus === 'DELIVERED' ? (
+                  <span className="inline-flex items-center gap-1 bg-amber-500/20 text-amber-200 px-2.5 py-1 rounded-full text-xs font-medium">
+                    Not Invoiced
+                  </span>
+                ) : null}
                 {lr.isOverloaded && (
                   <span className="flex items-center gap-1 bg-red-500/20 text-red-200 px-2.5 py-1 rounded-full text-xs font-medium">
                     <AlertTriangle className="h-3.5 w-3.5" />

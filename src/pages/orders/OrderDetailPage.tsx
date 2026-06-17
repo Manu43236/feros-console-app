@@ -669,9 +669,10 @@ function BreakdownBanner({ orderId, breakdown, onReplace, onResolve, onCancel }:
 
 // ── vehicle allocation card ───────────────────────────────────────────────────
 function VehicleAllocationCard({
-  allocation, orderId, canAssign, existingLrId,
+  allocation, orderId, canAssign, existingLrId, existingLrInvoiced, existingLrInvoiceNumber,
 }: {
   allocation: VehicleAllocation; orderId: number; canAssign: boolean; existingLrId?: number
+  existingLrInvoiced?: boolean; existingLrInvoiceNumber?: string
 }) {
   const navigate  = useNavigate()
   const qc        = useQueryClient()
@@ -764,14 +765,25 @@ function VehicleAllocationCard({
           </div>
         </div>
 
-        {/* LR button */}
+        {/* LR button + invoice badge */}
         {existingLrId ? (
-          <button
-            onClick={() => navigate(`/lrs/${existingLrId}`)}
-            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-green-700 border-green-200 hover:bg-green-50 transition-colors shrink-0"
-          >
-            <ExternalLink size={11} /> View LR
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => navigate(`/lrs/${existingLrId}`)}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-green-700 border-green-200 hover:bg-green-50 transition-colors"
+            >
+              <ExternalLink size={11} /> View LR
+            </button>
+            {existingLrInvoiced ? (
+              <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                <FileText size={10} /> {existingLrInvoiceNumber ?? 'Invoiced'}
+              </span>
+            ) : allocation.allocationStatus === 'DELIVERED' ? (
+              <span className="text-xs font-medium px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                Not Invoiced
+              </span>
+            ) : null}
+          </div>
         ) : canAssign ? (
           <button
             onClick={() => setLrDialog(true)}
@@ -1185,6 +1197,8 @@ export function OrderDetailPage() {
                 orderId={order.id}
                 canAssign={canAssign}
                 existingLrId={orderLrs.find(lr => lr.vehicleAllocationId === a.id && lr.lrStatus !== 'CANCELLED')?.id}
+                existingLrInvoiced={orderLrs.find(lr => lr.vehicleAllocationId === a.id && lr.lrStatus !== 'CANCELLED')?.invoiceId != null}
+                existingLrInvoiceNumber={orderLrs.find(lr => lr.vehicleAllocationId === a.id && lr.lrStatus !== 'CANCELLED')?.invoiceNumber}
               />
             ))
           )}

@@ -318,6 +318,7 @@ export interface Lr {
   loadedAt?: string; deliveredAt?: string
   ewayBillNumber?: string; ewayBillDate?: string; ewayBillValidUpto?: string
   lrStatus: LrStatus; remarks?: string
+  invoiceId?: number; invoiceNumber?: string
   checkposts?: LrCheckpost[]; charges?: LrCharge[]
   createdById: number; createdByName: string
   driverId?: number; driverName?: string; driverPhone?: string

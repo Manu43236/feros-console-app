@@ -41,6 +41,22 @@ function LrStatusBadge({ status }: { status: LrStatus }) {
   )
 }
 
+function InvoicedBadge({ invoiceId, invoiceNumber }: { invoiceId?: number; invoiceNumber?: string }) {
+  if (invoiceId) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap bg-emerald-100 text-emerald-800">
+        <FileText className="h-3 w-3" />
+        {invoiceNumber ?? 'Invoiced'}
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap bg-amber-100 text-amber-800">
+      Not Invoiced
+    </span>
+  )
+}
+
 // ─── Create LR Dialog ────────────────────────────────────────────────────────
 const createSchema = z.object({
   vehicleAllocationId: z.string().min(1, 'Select a vehicle allocation'),
@@ -295,7 +311,7 @@ export function LrsPage() {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  {['LR #', 'Order #', 'Client', 'Vehicle', 'Allocated', 'Loaded', 'Delivered', 'Status', 'LR Date'].map(h => (
+                  {['LR #', 'Order #', 'Client', 'Vehicle', 'Allocated', 'Loaded', 'Delivered', 'Status', 'Invoice', 'LR Date'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -320,6 +336,7 @@ export function LrsPage() {
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.loadedWeight != null ? `${lr.loadedWeight}T` : '—'}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.deliveredWeight != null ? `${lr.deliveredWeight}T` : '—'}</td>
                     <td className="px-4 py-3 whitespace-nowrap"><LrStatusBadge status={lr.lrStatus} /></td>
+                    <td className="px-4 py-3 whitespace-nowrap"><InvoicedBadge invoiceId={lr.invoiceId} invoiceNumber={lr.invoiceNumber} /></td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{lr.lrDate}</td>
                   </tr>
                 ))}
