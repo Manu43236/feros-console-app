@@ -11,7 +11,7 @@ import {
   LogOut, Menu, X, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
-  Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin,
+  Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin, ScrollText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
@@ -173,6 +173,7 @@ const SUPER_ADMIN_NAV: FlatNav = [
   { to: '/sa/demo-requests',  label: 'Demo Requests',  icon: ClipboardList },
   { to: '/sa/users',          label: 'Users',          icon: UserCog },
   { to: '/sa/global-masters', label: 'Global Masters', icon: Globe },
+  { to: '/sa/mou',            label: 'MOU Generator',  icon: ScrollText },
   { to: '/sa/settings',       label: 'Settings',       icon: Settings },
 ]
 

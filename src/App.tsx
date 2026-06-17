@@ -59,6 +59,7 @@ import { SubscriptionsPage }  from '@/pages/superadmin/SubscriptionsPage'
 import { SAUsersPage }        from '@/pages/superadmin/SAUsersPage'
 import { GlobalMastersPage }  from '@/pages/superadmin/GlobalMastersPage'
 import { SASettingsPage }     from '@/pages/superadmin/SASettingsPage'
+import { SAMouPage }          from '@/pages/superadmin/SAMouPage'
 import DemoRequestsPage       from '@/pages/superadmin/DemoRequestsPage'
 
 // Subscription
@@ -169,6 +170,7 @@ export default function App() {
           <Route path="sa/users"          element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SAUsersPage /></ProtectedRoute>} />
           <Route path="sa/global-masters" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><GlobalMastersPage /></ProtectedRoute>} />
           <Route path="sa/settings"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SASettingsPage /></ProtectedRoute>} />
+          <Route path="sa/mou"            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SAMouPage /></ProtectedRoute>} />
 
           {/* Subscription */}
           <Route path="subscription" element={<SubscriptionPage />} />
