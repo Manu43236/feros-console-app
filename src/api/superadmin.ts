@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem, DemoRequest, DemoRequestStatus, Page } from '@/types'
+import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem, DemoRequest, DemoRequestStatus, Page, AttendanceLocation, AttendanceLocationRequest } from '@/types'
 import type { Tenant } from '@/types'
 
 // ── Tenants ──────────────────────────────────────────────────────────────────
@@ -166,6 +166,14 @@ export const globalMastersWriteApi = {
   createPaymentStatus:  (data: { name: string }) => apiClient.post<ApiResponse<MasterItem>>('/masters/global/payment-statuses', data).then(r => r.data),
   updatePaymentStatus:  (id: number, data: { name: string }) => apiClient.put<ApiResponse<MasterItem>>(`/masters/global/payment-statuses/${id}`, data).then(r => r.data),
   deletePaymentStatus:  (id: number) => apiClient.delete(`/masters/global/payment-statuses/${id}`),
+}
+
+// ── Attendance Locations ──────────────────────────────────────────────────────
+export const attendanceLocationsApi = {
+  getAll:  () => apiClient.get<ApiResponse<AttendanceLocation[]>>('/attendance-locations').then(r => r.data),
+  create:  (data: AttendanceLocationRequest) => apiClient.post<ApiResponse<AttendanceLocation>>('/attendance-locations', data).then(r => r.data),
+  update:  (id: number, data: AttendanceLocationRequest) => apiClient.put<ApiResponse<AttendanceLocation>>(`/attendance-locations/${id}`, data).then(r => r.data),
+  delete:  (id: number) => apiClient.delete<ApiResponse<void>>(`/attendance-locations/${id}`).then(r => r.data),
 }
 
 // ── Demo Requests ─────────────────────────────────────────────────────────────

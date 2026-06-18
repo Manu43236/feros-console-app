@@ -734,6 +734,7 @@ function PendingApprovalsTab() {
                 <th className="text-left px-5 py-3 whitespace-nowrap">Date</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Type</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Marked At</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Location</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Selfie</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Remarks</th>
                 <th className="px-5 py-3"></th>
@@ -749,6 +750,7 @@ function PendingApprovalsTab() {
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
                   <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                   <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap max-w-[180px] truncate" title={r.locationName ?? undefined}>{r.locationName ?? '—'}</td>
                   <td className="px-5 py-3 whitespace-nowrap">
                     {r.selfieUrl ? (
                       <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
@@ -844,6 +846,7 @@ function RejectedTab() {
                 <th className="text-left px-5 py-3 whitespace-nowrap">Date</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Type</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Marked At</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Location</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Selfie</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Rejected By</th>
                 <th className="px-5 py-3"></th>
@@ -858,6 +861,7 @@ function RejectedTab() {
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
                   <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                   <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap max-w-[180px] truncate" title={r.locationName ?? undefined}>{r.locationName ?? '—'}</td>
                   <td className="px-5 py-3 whitespace-nowrap">
                     {r.selfieUrl ? (
                       <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
@@ -1272,6 +1276,7 @@ export function AttendancePage() {
                       <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Status</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Approval</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Location</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Leave Type</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Marked By</th>
                       <th className="px-5 py-3"></th>
@@ -1288,6 +1293,7 @@ export function AttendancePage() {
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedVehicleNumber ?? '—'}</td>
                             <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                             <td className="px-5 py-3 whitespace-nowrap"><ApprovalBadge status={r.approvalStatus} /></td>
+                            <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap max-w-[180px] truncate" title={r.locationName ?? undefined}>{r.locationName ?? '—'}</td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.leaveTypeName ?? '—'}</td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.markedByName}</td>
                             <td className="px-5 py-3 whitespace-nowrap">

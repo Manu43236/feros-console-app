@@ -419,6 +419,7 @@ export interface Attendance {
   markedById: number; markedByName: string; markedAt: string
   markedOutAt?: string; dutyLabel?: string; dutyHours?: number
   remarks?: string; selfieUrl?: string
+  locationName?: string
   assignedVehicleNumber?: string
   approvalStatus: AttendanceApprovalStatus
   approvedById?: number; approvedByName?: string; approvedAt?: string
@@ -1481,6 +1482,7 @@ export interface AttendanceDailyRow {
   approvalStatus: string
   leaveType: string | null
   remarks: string | null
+  locationName: string | null
 }
 
 export interface AttendanceSummaryRow {
@@ -2221,4 +2223,23 @@ export interface DemoRequest {
   notes?: string
   createdAt: string
   updatedAt?: string
+}
+
+// ─── Attendance Locations ──────────────────────────────────────────────────────
+export interface AttendanceLocation {
+  id: number
+  name: string
+  latitude: number
+  longitude: number
+  radiusMeters: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AttendanceLocationRequest {
+  name: string
+  latitude: number
+  longitude: number
+  radiusMeters: number
 }

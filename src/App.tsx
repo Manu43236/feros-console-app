@@ -57,8 +57,9 @@ import { SADashboardPage }    from '@/pages/superadmin/SADashboardPage'
 import { TenantsPage }        from '@/pages/superadmin/TenantsPage'
 import { SubscriptionsPage }  from '@/pages/superadmin/SubscriptionsPage'
 import { SAUsersPage }        from '@/pages/superadmin/SAUsersPage'
-import { GlobalMastersPage }  from '@/pages/superadmin/GlobalMastersPage'
-import { SASettingsPage }     from '@/pages/superadmin/SASettingsPage'
+import { GlobalMastersPage }         from '@/pages/superadmin/GlobalMastersPage'
+import { AttendanceLocationsPage }   from '@/pages/superadmin/AttendanceLocationsPage'
+import { SASettingsPage }            from '@/pages/superadmin/SASettingsPage'
 import { SAMouPage }          from '@/pages/superadmin/SAMouPage'
 import DemoRequestsPage       from '@/pages/superadmin/DemoRequestsPage'
 
@@ -168,8 +169,9 @@ export default function App() {
           <Route path="sa/subscriptions"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SubscriptionsPage /></ProtectedRoute>} />
           <Route path="sa/demo-requests"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><DemoRequestsPage /></ProtectedRoute>} />
           <Route path="sa/users"          element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SAUsersPage /></ProtectedRoute>} />
-          <Route path="sa/global-masters" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><GlobalMastersPage /></ProtectedRoute>} />
-          <Route path="sa/settings"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SASettingsPage /></ProtectedRoute>} />
+          <Route path="sa/global-masters"        element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><GlobalMastersPage /></ProtectedRoute>} />
+          <Route path="sa/attendance-locations" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AttendanceLocationsPage /></ProtectedRoute>} />
+          <Route path="sa/settings"              element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SASettingsPage /></ProtectedRoute>} />
           <Route path="sa/mou"            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SAMouPage /></ProtectedRoute>} />
 
           {/* Subscription */}

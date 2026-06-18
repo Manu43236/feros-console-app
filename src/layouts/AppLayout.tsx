@@ -172,8 +172,9 @@ const SUPER_ADMIN_NAV: FlatNav = [
   { to: '/sa/subscriptions',  label: 'Subscriptions',  icon: BadgeCheck },
   { to: '/sa/demo-requests',  label: 'Demo Requests',  icon: ClipboardList },
   { to: '/sa/users',          label: 'Users',          icon: UserCog },
-  { to: '/sa/global-masters', label: 'Global Masters', icon: Globe },
-  { to: '/sa/mou',            label: 'MOU Generator',  icon: ScrollText },
+  { to: '/sa/global-masters',        label: 'Global Masters',      icon: Globe },
+  { to: '/sa/attendance-locations', label: 'Attendance Locations', icon: MapPin },
+  { to: '/sa/mou',                   label: 'MOU Generator',        icon: ScrollText },
   { to: '/sa/settings',       label: 'Settings',       icon: Settings },
 ]
 

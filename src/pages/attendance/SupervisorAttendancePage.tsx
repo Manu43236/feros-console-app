@@ -566,6 +566,7 @@ export function SupervisorAttendancePage() {
                     <th className="text-left px-5 py-3">Role</th>
                     <th className="text-left px-5 py-3">Status</th>
                     <th className="text-left px-5 py-3">Approval</th>
+                    <th className="text-left px-5 py-3">Location</th>
                     <th className="text-left px-5 py-3">Marked By</th>
                   </tr>
                 </thead>
@@ -576,6 +577,7 @@ export function SupervisorAttendancePage() {
                       <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
                       <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
                       <td className="px-5 py-3"><ApprovalBadge status={r.approvalStatus} /></td>
+                      <td className="px-5 py-3 text-gray-500 text-xs max-w-[160px] truncate" title={r.locationName ?? undefined}>{r.locationName ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500 text-xs">{r.markedByName ?? '—'}</td>
                     </tr>
                   ))}
@@ -641,6 +643,7 @@ export function SupervisorAttendancePage() {
                       <th className="text-left px-5 py-3">Role</th>
                       <th className="text-left px-5 py-3">Status</th>
                       <th className="text-left px-5 py-3">Approval</th>
+                      <th className="text-left px-5 py-3">Location</th>
                       <th className="text-left px-5 py-3">Marked By</th>
                       <th className="px-5 py-3"></th>
                     </tr>
@@ -653,6 +656,7 @@ export function SupervisorAttendancePage() {
                         <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
                         <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
                         <td className="px-5 py-3"><ApprovalBadge status={r.approvalStatus} /></td>
+                        <td className="px-5 py-3 text-gray-500 text-xs max-w-[160px] truncate" title={r.locationName ?? undefined}>{r.locationName ?? '—'}</td>
                         <td className="px-5 py-3 text-gray-500 text-xs">{r.markedByName ?? '—'}</td>
                         <td className="px-5 py-3">
                           <Button variant="ghost" size="icon" className="h-7 w-7"
@@ -673,6 +677,7 @@ export function SupervisorAttendancePage() {
                         <td className="px-5 py-3"><span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Not marked</span></td>
                         <td className="px-5 py-3 text-gray-400">—</td>
                         <td className="px-5 py-3 text-gray-400">—</td>
+                        <td className="px-5 py-3 text-gray-400">—</td>
                         <td className="px-5 py-3">
                           <Button variant="ghost" size="icon" className="h-7 w-7"
                             onClick={() => { setEditRecord(undefined); setMarkUser(u) }}>
@@ -683,7 +688,7 @@ export function SupervisorAttendancePage() {
                     ))}
                     {crew.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-sm text-gray-400">
+                        <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
                           No drivers or cleaners found.
                         </td>
                       </tr>
