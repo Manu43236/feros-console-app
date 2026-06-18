@@ -577,7 +577,7 @@ export function SupervisorAttendancePage() {
                       <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
                       <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
                       <td className="px-5 py-3"><ApprovalBadge status={r.approvalStatus} /></td>
-                      <td className="px-5 py-3 text-gray-500 text-xs max-w-[160px] truncate" title={r.locationName ?? undefined}>{r.locationName ?? '—'}</td>
+                      <td className="px-5 py-3 w-[140px]"><span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName ?? undefined}>{r.locationName ?? '—'}</span></td>
                       <td className="px-5 py-3 text-gray-500 text-xs">{r.markedByName ?? '—'}</td>
                     </tr>
                   ))}
@@ -656,7 +656,7 @@ export function SupervisorAttendancePage() {
                         <td className="px-5 py-3 text-gray-500 text-xs">{r.roleName}</td>
                         <td className="px-5 py-3"><AttendanceBadge type={r.attendanceTypeName} /></td>
                         <td className="px-5 py-3"><ApprovalBadge status={r.approvalStatus} /></td>
-                        <td className="px-5 py-3 text-gray-500 text-xs max-w-[160px] truncate" title={r.locationName ?? undefined}>{r.locationName ?? '—'}</td>
+                        <td className="px-5 py-3 w-[140px]"><span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName ?? undefined}>{r.locationName ?? '—'}</span></td>
                         <td className="px-5 py-3 text-gray-500 text-xs">{r.markedByName ?? '—'}</td>
                         <td className="px-5 py-3">
                           <Button variant="ghost" size="icon" className="h-7 w-7"
