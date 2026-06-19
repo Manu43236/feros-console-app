@@ -424,11 +424,11 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
           {/* ── Current Subscription Card ── */}
           <section>
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Current Subscription</h3>
-            {tenant.currentPlanName ? (
+            {(tenant.currentPlanName || st === 'ACTIVE') ? (
               <div className="bg-gray-50 border rounded-xl p-4 space-y-2">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-semibold text-gray-900">{tenant.currentPlanName}</p>
+                    <p className="font-semibold text-gray-900">{tenant.currentPlanName ?? '—'}</p>
                     <p className="text-sm text-feros-navy font-medium">{fmt(tenant.currentPricePerVehicle)}/vehicle · {cycleLabel(tenant.currentBillingCycle)}</p>
                   </div>
                   {st === 'ACTIVE' && (
@@ -444,13 +444,22 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                     <span className="text-gray-400 block">Expiry</span>
                     <ExpiryCell date={tenant.subscriptionEndDate} />
                   </div>
-                  <div><span className="text-gray-400 block">Billing</span>{cycleLabel(tenant.currentBillingCycle)}</div>
+                  <div>
+                    <span className="text-gray-400 block">Billing</span>
+                    {st === 'ACTIVE' && tenant.subscriptionEndDate && new Date(tenant.subscriptionEndDate) >= new Date()
+                      ? <span className="text-green-600 font-medium">Paid</span>
+                      : '—'}
+                  </div>
                 </div>
               </div>
             ) : st === 'TRIAL' ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm font-medium text-blue-700">On 30-day Trial</p>
-                <p className="text-xs text-blue-500 mt-0.5">Trial ends: {tenant.trialEndDate ?? '—'}</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-medium text-blue-700">Trial · Free</p>
+                <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                  <div><span className="text-gray-400 block">Vehicles</span>{tenant.currentVehicleCount ?? '—'}</div>
+                  <div><span className="text-gray-400 block">Expiry</span><ExpiryCell date={tenant.trialEndDate} /></div>
+                  <div><span className="text-gray-400 block">Billing</span>—</div>
+                </div>
               </div>
             ) : (
               <div className="bg-gray-50 border rounded-xl p-4">
