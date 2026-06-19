@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
 import { dashboardApi } from '@/api/dashboard'
+import { targetsApi } from '@/api/targets'
 import { useAuthStore } from '@/store/authStore'
 import { format } from 'date-fns'
 import {
   ClipboardList, Truck, Receipt, UserCheck,
   AlertTriangle, CheckCircle, ArrowRight, FileWarning,
 } from 'lucide-react'
-import type { VehicleAlert, StaffDocumentAlert } from '@/types'
+import type { TenantTarget, VehicleAlert, StaffDocumentAlert } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
@@ -77,6 +79,199 @@ function SegmentedBar({ segments }: {
           style={{ width: `${(s.value / total) * 100}%` }}
         />
       ))}
+    </div>
+  )
+}
+
+// ─── Monthly Target Flip Card ─────────────────────────────────────────────────
+
+function TargetRing({ value, total, color, label, size = 64 }: {
+  value: number; total: number; color: string; label: string; size?: number
+}) {
+  const r = size * 0.34
+  const circ = 2 * Math.PI * r
+  const pct = total > 0 ? Math.min((value / total) * 100, 100) : 0
+  const offset = circ - (pct / 100) * circ
+  const cx = size / 2
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          <circle cx={cx} cy={cx} r={r} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" />
+          <circle
+            cx={cx} cy={cx} r={r} fill="none"
+            stroke={color} strokeWidth="5"
+            strokeDasharray={circ} strokeDashoffset={offset}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
+          {total > 0 ? `${Math.round(pct)}%` : '—'}
+        </span>
+      </div>
+      <span className="text-[10px] text-blue-200 text-center leading-tight">{label}</span>
+    </div>
+  )
+}
+
+function MonthlyTargetCard({ data, type, isFlipped }: {
+  data: TenantTarget | undefined
+  type: 'trips' | 'tons'
+  isFlipped: boolean
+}) {
+  const isTrips   = type === 'trips'
+  const target    = isTrips ? data?.targetTrips     : data?.targetTons
+  const completed = isTrips ? data?.completedTrips  : data?.completedTons
+  const pending   = isTrips ? data?.pendingTrips    : data?.pendingTons
+  const local     = isTrips ? data?.localTrips      : data?.localTons
+  const nonLocal  = isTrips ? data?.nonLocalTrips   : data?.nonLocalTons
+  const progPct   = isTrips ? data?.tripsProgressPct : data?.tonsProgressPct
+
+  function fmtVal(v: number | undefined) {
+    if (v === undefined || v === null) return '—'
+    if (!isTrips) return Number(v).toLocaleString('en-IN', { maximumFractionDigits: 1 }) + ' T'
+    return Number(v).toLocaleString('en-IN')
+  }
+
+  const accentColor = isTrips ? '#60a5fa' : '#fb923c'
+  const monthName   = format(new Date(), 'MMMM yyyy')
+
+  const completedNum  = Number(completed  ?? 0)
+  const localNum      = Number(local      ?? 0)
+  const nonLocalNum   = Number(nonLocal   ?? 0)
+  const targetNum     = isTrips ? Number(target ?? 0) : Number(target ?? 0)
+
+  return (
+    <div style={{ perspective: '1000px' }} className="w-full">
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '200px',
+          transformStyle: 'preserve-3d',
+          transition: 'transform 0.7s cubic-bezier(0.4,0.2,0.2,1)',
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+        }}
+      >
+        {/* ── Front face: stats ── */}
+        <div
+          className="absolute inset-0 rounded-2xl overflow-hidden"
+          style={{
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden' as any,
+            background: 'linear-gradient(135deg, #0F2137 0%, #1E3A5F 100%)',
+          } as React.CSSProperties}
+        >
+          <div className="p-5 h-full flex flex-col justify-between">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-blue-300">
+                  {monthName}
+                </p>
+                <p className="text-white font-bold text-sm mt-0.5">
+                  {isTrips ? 'Trips Target' : 'Tonnage Target'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-blue-300">Target</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: accentColor }}>
+                  {target != null ? fmtVal(targetNum) : '—'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 mt-3">
+              {[
+                { label: 'Completed', value: completedNum,  color: 'text-green-400' },
+                { label: 'Pending',   value: pending,       color: 'text-yellow-400' },
+                { label: 'Local',     value: localNum,      color: 'text-blue-300' },
+                { label: 'Non-Local', value: nonLocalNum,   color: 'text-orange-300' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="text-center">
+                  <p className={cn('text-base font-bold tabular-nums leading-none', color)}>
+                    {fmtVal(Number(value ?? 0))}
+                  </p>
+                  <p className="text-[9px] text-blue-300 mt-1 leading-tight">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {target != null && target > 0 && (
+              <div className="mt-3">
+                <div className="flex justify-between text-[9px] text-blue-300 mb-1">
+                  <span>Progress</span>
+                  <span className="font-semibold text-white">{progPct ?? 0}%</span>
+                </div>
+                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${Math.min(progPct ?? 0, 100)}%`, backgroundColor: accentColor }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Back face: circular charts ── */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden' as any,
+            transform: 'rotateY(180deg)',
+            background: 'linear-gradient(135deg, #0F2137 0%, #1E3A5F 100%)',
+            borderRadius: '1rem',
+            overflow: 'hidden',
+          } as React.CSSProperties}
+        >
+          <div className="p-5 h-full flex flex-col justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-blue-300">
+                {isTrips ? 'Trips' : 'Tonnage'} — Progress Breakdown
+              </p>
+              <p className="text-[9px] text-blue-400 mt-0.5">{monthName}</p>
+            </div>
+            <div className="flex items-center justify-around">
+              <TargetRing
+                value={completedNum}
+                total={targetNum}
+                color={accentColor}
+                label="Overall"
+                size={70}
+              />
+              <TargetRing
+                value={localNum}
+                total={completedNum}
+                color="#22c55e"
+                label="Local (Intra)"
+                size={60}
+              />
+              <TargetRing
+                value={nonLocalNum}
+                total={completedNum}
+                color="#f97316"
+                label="Non-Local (Inter)"
+                size={60}
+              />
+            </div>
+            <div className="flex items-center justify-around mt-1">
+              {[
+                { dot: accentColor, label: 'vs Target' },
+                { dot: '#22c55e',   label: 'Local share' },
+                { dot: '#f97316',   label: 'Non-local share' },
+              ].map(({ dot, label }) => (
+                <div key={label} className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dot }} />
+                  <span className="text-[9px] text-blue-300">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -202,6 +397,19 @@ export function DashboardPage() {
     queryKey: ['dashboard-alerts'],
     queryFn: () => dashboardApi.getExpiryAlerts(30),
   })
+  const { data: targetRes } = useQuery({
+    queryKey: ['monthly-targets'],
+    queryFn: targetsApi.getCurrent,
+  })
+
+  const [cardsFlipped, setCardsFlipped] = useState(false)
+  const flipTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => {
+    flipTimer.current = setInterval(() => setCardsFlipped(f => !f), 5000)
+    return () => { if (flipTimer.current) clearInterval(flipTimer.current) }
+  }, [])
+
+  const targetData = targetRes?.data
 
   const s      = summaryRes?.data
   const alerts = alertsRes?.data
@@ -254,6 +462,12 @@ export function DashboardPage() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* ── Monthly Target Cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <MonthlyTargetCard data={targetData} type="trips" isFlipped={cardsFlipped} />
+        <MonthlyTargetCard data={targetData} type="tons"  isFlipped={cardsFlipped} />
       </div>
 
       {/* ── KPI Cards ── */}

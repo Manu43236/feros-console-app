@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { moduleAccessApi } from '@/api/moduleAccess'
+import { targetsApi } from '@/api/targets'
 import type { ModuleKey, ModuleAccessEntry } from '@/types'
-import { Shield, Check, Loader2 } from 'lucide-react'
+import { Shield, Check, Loader2, Target } from 'lucide-react'
 
 // ─── Config: roles + their configurable modules ───────────────────────────────
 const ROLE_CONFIG: {
@@ -76,6 +77,40 @@ export function SettingsPage() {
   const [activeRole, setActiveRole] = useState(ROLE_CONFIG[0].role)
   const [enabledMap, setEnabledMap] = useState<EnabledMap>({})
 
+  // ── Monthly Targets state ──────────────────────────────────────────────────
+  const now = new Date()
+  const [tripTarget, setTripTarget] = useState<string>('')
+  const [tonTarget, setTonTarget]   = useState<string>('')
+
+  const { data: targetData } = useQuery({
+    queryKey: ['monthly-targets'],
+    queryFn: () => targetsApi.getCurrent(),
+  })
+
+  useEffect(() => {
+    if (targetData?.data) {
+      setTripTarget(targetData.data.targetTrips?.toString() ?? '')
+      setTonTarget(targetData.data.targetTons?.toString() ?? '')
+    }
+  }, [targetData])
+
+  const targetMutation = useMutation({
+    mutationFn: () => targetsApi.set({
+      year:         now.getFullYear(),
+      month:        now.getMonth() + 1,
+      targetTrips:  tripTarget  ? Number(tripTarget)  : undefined,
+      targetTons:   tonTarget   ? Number(tonTarget)   : undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monthly-targets'] })
+      toast.success('Monthly targets saved')
+    },
+    onError: (err: any) => {
+      if (!err?.isSubscriptionBlock)
+        toast.error(err?.response?.data?.message ?? 'Failed to save targets')
+    },
+  })
+
   const { data, isLoading } = useQuery({
     queryKey: ['module-access'],
     queryFn: () => moduleAccessApi.getAll(),
@@ -134,6 +169,62 @@ export function SettingsPage() {
         <p className="text-sm text-gray-500 mt-1">Configure which modules each role can access</p>
       </div>
 
+      {/* Monthly Targets card */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+          <div className="w-8 h-8 rounded-lg bg-feros-navy/10 flex items-center justify-center">
+            <Target size={16} className="text-feros-navy" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">Monthly Targets</h2>
+            <p className="text-xs text-gray-500">
+              Set targets for {now.toLocaleString('default', { month: 'long' })} {now.getFullYear()} — carries forward automatically each month
+            </p>
+          </div>
+        </div>
+
+        <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Number of Trips Target
+            </label>
+            <input
+              type="number"
+              min={0}
+              placeholder="e.g. 1000"
+              value={tripTarget}
+              onChange={e => setTripTarget(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-feros-navy/30 focus:border-feros-navy transition-colors"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Number of Tons Target
+            </label>
+            <input
+              type="number"
+              min={0}
+              placeholder="e.g. 50000"
+              value={tonTarget}
+              onChange={e => setTonTarget(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-feros-navy/30 focus:border-feros-navy transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+          <button
+            onClick={() => targetMutation.mutate()}
+            disabled={targetMutation.isPending}
+            className="flex items-center gap-2 px-5 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium hover:bg-feros-navy/90 disabled:opacity-50 transition-colors"
+          >
+            {targetMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+            Save Targets
+          </button>
+        </div>
+      </div>
+
+      {/* Module Access card */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {/* Section header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">

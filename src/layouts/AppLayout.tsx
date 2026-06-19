@@ -96,6 +96,7 @@ const ADMIN_NAV: SectionedNav = {
       section: '',
       items: [
         { to: '/masters',       label: 'Masters',      icon: Settings },
+        { to: '/settings',      label: 'Settings',     icon: UserCog },
         { to: '/subscription',  label: 'Subscription', icon: BadgeCheck },
       ],
     },

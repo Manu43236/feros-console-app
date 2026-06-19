@@ -107,6 +107,25 @@ export interface TenantSettings {
   isActive: boolean
 }
 
+// ─── Tenant Target ────────────────────────────────────────────────────────────
+export interface TenantTarget {
+  id?: number
+  year: number
+  month: number
+  targetTrips?: number
+  targetTons?: number
+  completedTrips: number
+  pendingTrips: number
+  localTrips: number
+  nonLocalTrips: number
+  completedTons: number
+  pendingTons: number
+  localTons: number
+  nonLocalTons: number
+  tripsProgressPct?: number
+  tonsProgressPct?: number
+}
+
 // ─── Trip Expenses ────────────────────────────────────────────────────────────
 export type TripExpenseStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'SETTLED' | 'REJECTED'
 
