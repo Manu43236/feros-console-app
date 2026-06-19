@@ -3,22 +3,30 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
   BadgeCheck, ToggleLeft, ToggleRight, History, FileText,
-  Megaphone, CheckCircle, Lock, Calculator, Truck, ArrowUpCircle, X,
+  Megaphone, CheckCircle, Lock, Calculator, Truck, ArrowUpCircle,
+  X, ChevronDown, ChevronUp, Users, AlertTriangle, Pencil,
 } from 'lucide-react'
-import type { UpgradeRequest } from '@/types'
+import type { UpgradeRequest, Tenant } from '@/types'
 import { tenantsApi, subscriptionPlansApi, subscriptionsApi, notificationsApi } from '@/api/superadmin'
 import type { SubscriptionPlan, SubscriptionHistory, SubscriptionInvoice } from '@/types'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 
-type Tab = 'plans' | 'requests' | 'history' | 'invoices' | 'broadcast'
+type Tab = 'plans' | 'tenants' | 'requests' | 'invoices' | 'broadcast'
+type FilterKey = 'all' | 'active' | 'trial' | 'expiring' | 'suspended' | 'expired'
 
 const GST_RATE    = 0.18
-const ANNUAL_MTHS = 10  // pay 10 months, get 12
+const ANNUAL_MTHS = 10
+const USERS_PER_VEHICLE = 5
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n?: number | null) {
   if (n == null) return '—'
   return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+}
+
+function cycleLabel(cycle?: string | null) {
+  const map: Record<string, string> = { MONTHLY: 'Monthly', THREE_MONTHS: '3-Month', SIX_MONTHS: '6-Month', YEARLY: 'Annual' }
+  return cycle ? (map[cycle] ?? cycle) : '—'
 }
 
 function cycleMonths(cycle: string, twoMonthsFree: boolean) {
@@ -35,6 +43,18 @@ function calcAmounts(pricePerVehicle: number, vehicleCount: number, cycle: strin
   return { base, gst, total: base + gst, months }
 }
 
+function isExpiringSoon(dateStr?: string | null) {
+  if (!dateStr) return false
+  const diff = new Date(dateStr).getTime() - Date.now()
+  return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000
+}
+
+function isExpired(dateStr?: string | null) {
+  if (!dateStr) return false
+  return new Date(dateStr).getTime() < Date.now()
+}
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     TRIAL:     'bg-blue-100 text-blue-700',
@@ -77,11 +97,22 @@ function AmountPreview({ pricePerVehicle, vehicleCount, cycle, twoMonthsFree }: 
         {cycle === 'YEARLY' && twoMonthsFree && (
           <p className="text-green-600 text-xs mt-1">Annual — pay 10 months, get 12 (2 months free for 250+ vehicles)</p>
         )}
-        {cycle === 'YEARLY' && !twoMonthsFree && (
-          <p className="text-gray-500 text-xs mt-1">Annual — 12 months</p>
-        )}
       </div>
     </div>
+  )
+}
+
+// ─── Expiry Cell ──────────────────────────────────────────────────────────────
+function ExpiryCell({ date, status }: { date?: string | null; status: string }) {
+  if (!date) return <span className="text-gray-400">—</span>
+  const expired  = isExpired(date)
+  const expiring = isExpiringSoon(date)
+  const color = expired ? 'text-red-600 font-medium' : expiring ? 'text-amber-600 font-medium' : 'text-gray-600'
+  return (
+    <span className={`flex items-center gap-1 ${color}`}>
+      {(expired || expiring) && <AlertTriangle size={11} />}
+      {date}
+    </span>
   )
 }
 
@@ -99,10 +130,13 @@ const FEATURE_LABELS: { key: keyof SubscriptionPlan; label: string }[] = [
 function PlansTab() {
   const qc = useQueryClient()
   const [editPlan, setEditPlan] = useState<SubscriptionPlan | null>(null)
-  const emptyForm = { pricePerVehicle: '', minVehicles: '', maxVehicles: '', maxUsers: '',
+  const emptyForm = {
+    pricePerVehicle: '', minVehicles: '', maxVehicles: '', maxUsers: '',
     hasFuelLogs: true, hasMeterReadings: true, hasVehicleServices: true,
-    hasAttendance: true, hasPayroll: true, hasInventory: true, hasCreditNotes: true }
+    hasAttendance: true, hasPayroll: true, hasInventory: true, hasCreditNotes: true,
+  }
   const [editForm, setEditForm] = useState(emptyForm)
+  const [showInactive, setShowInactive] = useState(false)
 
   const { data: plansRes, isLoading } = useQuery({
     queryKey: ['sa-plans-all'],
@@ -110,19 +144,15 @@ function PlansTab() {
   })
   const allPlans: SubscriptionPlan[] = (plansRes?.data ?? []).slice().sort((a, b) => {
     const order = (p: SubscriptionPlan) =>
-      p.name.toLowerCase() === 'trial' ? 0
-      : p.name.toLowerCase() === 'free'  ? 1
-      : (p.pricePerVehicle ?? 0)
+      p.name.toLowerCase() === 'trial' ? 0 : p.name.toLowerCase() === 'free' ? 1 : (p.pricePerVehicle ?? 0)
     return order(a) - order(b)
   })
-  const [showInactive, setShowInactive] = useState(false)
   const plans = showInactive ? allPlans : allPlans.filter(p => p.isActive)
 
   const toggleMutation = useMutation({
     mutationFn: (id: number) => subscriptionPlansApi.toggle(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-plans-all'] }),
   })
-
   const updateMutation = useMutation({
     mutationFn: (data: typeof editForm) => subscriptionPlansApi.update(editPlan!.id, {
       name: editPlan!.name,
@@ -162,36 +192,19 @@ function PlansTab() {
         </label>
       </div>
 
-      {/* Edit dialog */}
       {editPlan && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
             <h3 className="font-semibold text-lg">Edit — {editPlan.name}</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">₹/vehicle/month</label>
-                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
-                  value={editForm.pricePerVehicle}
-                  onChange={e => setEditForm(f => ({ ...f, pricePerVehicle: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">Max Users (-1 = unlimited)</label>
-                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
-                  value={editForm.maxUsers}
-                  onChange={e => setEditForm(f => ({ ...f, maxUsers: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">Min Vehicles</label>
-                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
-                  value={editForm.minVehicles}
-                  onChange={e => setEditForm(f => ({ ...f, minVehicles: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">Max Vehicles (-1 = unlimited)</label>
-                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
-                  value={editForm.maxVehicles}
-                  onChange={e => setEditForm(f => ({ ...f, maxVehicles: e.target.value }))} />
-              </div>
+              {([['pricePerVehicle','₹/vehicle/month'],['maxUsers','Max Users (-1 = unlimited)'],['minVehicles','Min Vehicles'],['maxVehicles','Max Vehicles (-1 = unlimited)']] as [keyof typeof editForm, string][]).map(([key, lbl]) => (
+                <div key={key}>
+                  <label className="text-xs text-gray-600 mb-1 block">{lbl}</label>
+                  <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={editForm[key] as string}
+                    onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))} />
+                </div>
+              ))}
             </div>
             <div>
               <label className="text-xs text-gray-600 mb-2 block">Features</label>
@@ -242,38 +255,16 @@ function PlansTab() {
                     {plan.isActive ? <ToggleRight size={22} className="text-green-500" /> : <ToggleLeft size={22} />}
                   </button>
                 </div>
-
-                {/* Vehicle & user limits */}
                 <div className="text-xs text-gray-500 space-y-0.5">
-                  <p>
-                    <Truck size={11} className="inline mr-1" />
-                    {plan.minVehicles ?? 1}–{plan.maxVehicles === -1 ? '∞' : plan.maxVehicles} vehicles
-                  </p>
-                  <p>Users: {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers}</p>
-                  {isPaid && (() => {
-                    const qualifies = (plan.minVehicles ?? 0) >= 250
-                    const annualRate = qualifies ? ANNUAL_MTHS : 12
-                    return (
-                      <p className="text-blue-600">
-                        Annual: {fmt((plan.pricePerVehicle ?? 0) * annualRate)}/vehicle
-                        {qualifies ? ' (2 months free)' : ''}
-                      </p>
-                    )
-                  })()}
+                  <p><Truck size={11} className="inline mr-1" />{plan.minVehicles ?? 1}–{plan.maxVehicles === -1 ? '∞' : plan.maxVehicles} vehicles</p>
                 </div>
-
-                {/* Feature flags */}
                 <div className="flex flex-wrap gap-1">
                   {FEATURE_LABELS.map(({ key, label }) => (
-                    <span key={key} className={`text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${
-                      plan[key] ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      {plan[key] ? <CheckCircle size={9} /> : <Lock size={9} />}
-                      {label}
+                    <span key={key} className={`text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${plan[key] ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                      {plan[key] ? <CheckCircle size={9} /> : <Lock size={9} />}{label}
                     </span>
                   ))}
                 </div>
-
                 <button onClick={() => openEdit(plan)} className="text-xs text-feros-navy hover:underline">Edit</button>
               </div>
             )
@@ -284,24 +275,16 @@ function PlansTab() {
   )
 }
 
-// ─── History Tab ──────────────────────────────────────────────────────────────
-function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | null }) {
+// ─── Subscription Drawer ──────────────────────────────────────────────────────
+function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () => void }) {
   const qc = useQueryClient()
-  const [searchParams] = useSearchParams()
-  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(() => {
-    if (preselectedTenantId) return preselectedTenantId
-    const p = searchParams.get('tenantId')
-    return p ? Number(p) : null
-  })
-  useEffect(() => {
-    if (preselectedTenantId) { setSelectedTenantId(preselectedTenantId); return }
-    const p = searchParams.get('tenantId')
-    if (p) setSelectedTenantId(Number(p))
-  }, [searchParams, preselectedTenantId])
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [showCorrectForm, setShowCorrectForm] = useState(false)
+  const [showUserLimitForm, setShowUserLimitForm] = useState(false)
 
+  // Action dialog state
   const [actionDialog, setActionDialog] = useState<{
     type: 'activate' | 'extend-trial' | 'extend' | 'suspend' | 'reactivate'
-    tenantId: number
   } | null>(null)
 
   const emptyForm = { planId: '', billingCycle: 'MONTHLY', startDate: '', vehicleCount: '', newEndDate: '', amount: '', paymentRef: '', notes: '' }
@@ -309,148 +292,362 @@ function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | nu
   const [actionForm, setActionForm] = useState(emptyForm)
   const [actionErrs, setActionErrs] = useState(emptyErrs)
 
-  const { data: tenantsRes } = useQuery({ queryKey: ['sa-tenants'], queryFn: () => tenantsApi.getAll() })
-  const { data: plansRes }   = useQuery({ queryKey: ['sa-plans-active'], queryFn: () => subscriptionPlansApi.getActive() })
-  const tenants  = tenantsRes?.data ?? []
-  // Exclude Trial from activate dropdown — Trial is auto-managed on signup
+  // Correction form
+  const [correctForm, setCorrectForm] = useState({ vehicleCount: '', paymentRef: '', amount: '', notes: '' })
+  const [correctErrs, setCorrectErrs] = useState({ vehicleCount: '', notes: '' })
+
+  // User limit form
+  const [newLimit, setNewLimit] = useState('')
+
+  const { data: plansRes } = useQuery({ queryKey: ['sa-plans-active'], queryFn: () => subscriptionPlansApi.getActive() })
   const plans: SubscriptionPlan[] = (plansRes?.data ?? []).filter(p => p.name.toLowerCase() !== 'trial')
 
-  const { data: historyRes, isLoading } = useQuery({
-    queryKey: ['sa-sub-history', selectedTenantId],
-    queryFn: () => subscriptionsApi.getHistory(selectedTenantId!),
-    enabled: selectedTenantId != null,
+  const { data: historyRes, isLoading: historyLoading } = useQuery({
+    queryKey: ['sa-sub-history', tenant.id],
+    queryFn: () => subscriptionsApi.getHistory(tenant.id),
   })
   const history: SubscriptionHistory[] = historyRes?.data ?? []
+  const latestActive = history.find(h => h.status === 'ACTIVE')
 
   const selectedPlan = plans.find(p => String(p.id) === actionForm.planId)
   const vehicleCount = Number(actionForm.vehicleCount) || 0
-
-  // For extend: get current vehicleCount + pricePerVehicle from latest ACTIVE history
-  const latestActive   = history.find(h => h.status === 'ACTIVE')
   const extendVehicles = Number(actionForm.vehicleCount) || latestActive?.vehicleCount || 0
   const extendRate     = latestActive?.pricePerVehicle ?? 0
 
+  // Default user limit display
+  const defaultLimit = tenant.currentVehicleCount ? tenant.currentVehicleCount * USERS_PER_VEHICLE : null
+  const effectiveLimit = tenant.effectiveUserLimit
+  const activeUsers   = tenant.activeUserCount ?? 0
+  const userPct = effectiveLimit ? Math.round((activeUsers / effectiveLimit) * 100) : 0
+  const userWarning = effectiveLimit ? activeUsers >= effectiveLimit : false
+  const userAmber   = effectiveLimit ? userPct >= 80 && userPct < 100 : false
+
+  function invalidate() {
+    qc.invalidateQueries({ queryKey: ['sa-tenants'] })
+    qc.invalidateQueries({ queryKey: ['sa-sub-history', tenant.id] })
+  }
+
+  // ── Action mutation ──
   const actionMutation = useMutation({
     mutationFn: () => {
       if (!actionDialog) throw new Error()
-      const type     = actionDialog.type
-      const tenantId = actionDialog.tenantId
-      if (type === 'activate') {
-        return subscriptionsApi.activate(tenantId, {
-          planId: Number(actionForm.planId),
-          vehicleCount: Number(actionForm.vehicleCount),
-          billingCycle: actionForm.billingCycle,
-          startDate: actionForm.startDate,
-          amount: actionForm.amount ? Number(actionForm.amount) : undefined,
-          paymentRef: actionForm.paymentRef || undefined,
-          notes: actionForm.notes || undefined,
-        })
-      }
-      if (type === 'extend-trial') {
-        return subscriptionsApi.extendTrial(tenantId, {
-          newEndDate: actionForm.newEndDate,
-          notes: actionForm.notes || undefined,
-        })
-      }
-      if (type === 'extend') {
-        return subscriptionsApi.extend(tenantId, {
-          vehicleCount: actionForm.vehicleCount ? Number(actionForm.vehicleCount) : undefined,
-          newEndDate: actionForm.newEndDate || undefined,
-          amount: actionForm.amount ? Number(actionForm.amount) : undefined,
-          paymentRef: actionForm.paymentRef || undefined,
-          notes: actionForm.notes || undefined,
-        })
-      }
-      if (type === 'suspend') return subscriptionsApi.suspend(tenantId, { notes: actionForm.notes })
-      return subscriptionsApi.reactivate(tenantId)
+      const { type } = actionDialog
+      if (type === 'activate') return subscriptionsApi.activate(tenant.id, {
+        planId: Number(actionForm.planId), vehicleCount: Number(actionForm.vehicleCount),
+        billingCycle: actionForm.billingCycle, startDate: actionForm.startDate,
+        amount: actionForm.amount ? Number(actionForm.amount) : undefined,
+        paymentRef: actionForm.paymentRef || undefined, notes: actionForm.notes || undefined,
+      })
+      if (type === 'extend-trial') return subscriptionsApi.extendTrial(tenant.id, {
+        newEndDate: actionForm.newEndDate, notes: actionForm.notes || undefined,
+      })
+      if (type === 'extend') return subscriptionsApi.extend(tenant.id, {
+        vehicleCount: actionForm.vehicleCount ? Number(actionForm.vehicleCount) : undefined,
+        newEndDate: actionForm.newEndDate || undefined,
+        amount: actionForm.amount ? Number(actionForm.amount) : undefined,
+        paymentRef: actionForm.paymentRef || undefined, notes: actionForm.notes || undefined,
+      })
+      if (type === 'suspend') return subscriptionsApi.suspend(tenant.id, { notes: actionForm.notes })
+      return subscriptionsApi.reactivate(tenant.id)
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sa-sub-history', selectedTenantId] })
-      qc.invalidateQueries({ queryKey: ['sa-tenants'] })
-      setActionDialog(null)
-    },
+    onSuccess: () => { invalidate(); setActionDialog(null) },
   })
 
-  const selectedTenant = tenants.find(t => t.id === selectedTenantId)
+  // ── Correction mutation ──
+  const correctMutation = useMutation({
+    mutationFn: () => subscriptionsApi.correct(tenant.id, {
+      vehicleCount: correctForm.vehicleCount ? Number(correctForm.vehicleCount) : undefined,
+      paymentRef: correctForm.paymentRef || undefined,
+      amount: correctForm.amount ? Number(correctForm.amount) : undefined,
+      notes: correctForm.notes,
+    }),
+    onSuccess: () => { invalidate(); setShowCorrectForm(false); setCorrectForm({ vehicleCount: '', paymentRef: '', amount: '', notes: '' }) },
+  })
 
-  function openDialog(type: 'activate' | 'extend-trial' | 'extend' | 'suspend' | 'reactivate') {
+  // ── User limit mutation ──
+  const userLimitMutation = useMutation({
+    mutationFn: () => tenantsApi.updateUserLimit(tenant.id, Number(newLimit)),
+    onSuccess: () => { invalidate(); setShowUserLimitForm(false); setNewLimit('') },
+  })
+
+  function openAction(type: 'activate' | 'extend-trial' | 'extend' | 'suspend' | 'reactivate') {
     setActionForm(emptyForm)
     setActionErrs(emptyErrs)
-    setActionDialog({ type, tenantId: selectedTenantId! })
+    setActionDialog({ type })
   }
 
-  function validate() {
+  function validateAction() {
     const e = { ...emptyErrs }
-    const t = actionDialog ? actionDialog.type : null
+    const t = actionDialog?.type
     if (t === 'activate') {
       if (!actionForm.planId) e.planId = 'Select a plan'
       if (!actionForm.vehicleCount) e.vehicleCount = 'Vehicle count is required'
       if (!actionForm.startDate) e.startDate = 'Start date is required'
     }
-    if (t === 'extend-trial') {
-      if (!actionForm.newEndDate) e.newEndDate = 'New end date is required'
-    }
-    if (t === 'suspend' && !actionForm.notes.trim()) {
-      e.notes = 'Reason is required for suspension'
-    }
+    if (t === 'extend-trial' && !actionForm.newEndDate) e.newEndDate = 'New end date is required'
+    if (t === 'suspend' && !actionForm.notes.trim()) e.notes = 'Reason is required for suspension'
     setActionErrs(e)
     return !Object.values(e).some(Boolean)
   }
 
+  function validateCorrect() {
+    const e = { vehicleCount: '', notes: '' }
+    if (!correctForm.notes.trim()) e.notes = 'Reason is required'
+    setCorrectErrs(e)
+    return !Object.values(e).some(Boolean)
+  }
+
+  const st = tenant.subscriptionStatus
+
   return (
-    <div className="space-y-4">
-      {/* Tenant selector + action buttons */}
-      <div className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="text-xs text-gray-600 mb-1 block">Select Tenant</label>
-          <SearchableSelect
-            className="w-64"
-            placeholder="— choose tenant —"
-            value={selectedTenantId != null ? String(selectedTenantId) : ''}
-            onValueChange={v => setSelectedTenantId(v ? Number(v) : null)}
-            options={[
-              ...tenants.map(t => ({
-                value: String(t.id),
-                label: `${t.companyName} (${t.subscriptionStatus})`,
-              }))
-            ]}
-          />
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+
+      {/* Drawer */}
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-[500px] bg-white shadow-2xl flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div>
+            <h2 className="font-bold text-lg text-gray-900">{tenant.companyName}</h2>
+            <div className="flex items-center gap-2 mt-0.5">
+              <StatusBadge status={tenant.subscriptionStatus} />
+              <span className="text-xs text-gray-400">{tenant.email}</span>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={20} /></button>
         </div>
 
-        {selectedTenant && (
-          <div className="flex gap-2 flex-wrap">
-            {(selectedTenant.subscriptionStatus === 'TRIAL' || selectedTenant.subscriptionStatus === 'EXPIRED') && (
-              <button onClick={() => openDialog('activate')} className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium">
-                Activate
-              </button>
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+
+          {/* ── Current Subscription Card ── */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Current Subscription</h3>
+            {tenant.currentPlanName ? (
+              <div className="bg-gray-50 border rounded-xl p-4 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-900">{tenant.currentPlanName}</p>
+                    <p className="text-sm text-feros-navy font-medium">{fmt(tenant.currentPricePerVehicle)}/vehicle · {cycleLabel(tenant.currentBillingCycle)}</p>
+                  </div>
+                  {st === 'ACTIVE' && (
+                    <button onClick={() => { setShowCorrectForm(v => !v); setShowUserLimitForm(false) }}
+                      className="flex items-center gap-1 text-xs text-feros-navy border border-feros-navy rounded-lg px-2.5 py-1.5 hover:bg-blue-50">
+                      <Pencil size={11} /> Correct
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                  <div><span className="text-gray-400 block">Vehicles</span>{tenant.currentVehicleCount ?? '—'}</div>
+                  <div>
+                    <span className="text-gray-400 block">Expiry</span>
+                    <ExpiryCell date={tenant.subscriptionEndDate} status={st} />
+                  </div>
+                  <div><span className="text-gray-400 block">Billing</span>{cycleLabel(tenant.currentBillingCycle)}</div>
+                </div>
+              </div>
+            ) : st === 'TRIAL' ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-sm font-medium text-blue-700">On 30-day Trial</p>
+                <p className="text-xs text-blue-500 mt-0.5">Trial ends: {tenant.trialEndDate ?? '—'}</p>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border rounded-xl p-4">
+                <p className="text-sm text-gray-500">No active subscription</p>
+              </div>
             )}
-            {selectedTenant.subscriptionStatus === 'TRIAL' && (
-              <button onClick={() => openDialog('extend-trial')} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
-                Extend Trial
-              </button>
+          </section>
+
+          {/* ── Correction Form ── */}
+          {showCorrectForm && (
+            <section className="border border-amber-200 bg-amber-50 rounded-xl p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Correct Subscription</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">
+                    Vehicle Count <span className="text-gray-400">(keep {latestActive?.vehicleCount ?? '—'} if blank)</span>
+                  </label>
+                  <input type="number" min={1}
+                    className={`w-full border rounded-lg px-3 py-2 text-sm bg-white ${correctErrs.vehicleCount ? 'border-red-400' : ''}`}
+                    value={correctForm.vehicleCount}
+                    onChange={e => setCorrectForm(f => ({ ...f, vehicleCount: e.target.value }))}
+                    placeholder={String(latestActive?.vehicleCount ?? '')} />
+                  {correctErrs.vehicleCount && <p className="text-red-500 text-xs mt-1">{correctErrs.vehicleCount}</p>}
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">Payment Reference</label>
+                  <input className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    value={correctForm.paymentRef}
+                    onChange={e => setCorrectForm(f => ({ ...f, paymentRef: e.target.value }))}
+                    placeholder={latestActive?.paymentRef ?? 'UPI / bank ref'} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Amount Override (₹, optional)</label>
+                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                  value={correctForm.amount}
+                  onChange={e => setCorrectForm(f => ({ ...f, amount: e.target.value }))}
+                  placeholder="Leave blank to auto-recalculate" />
+              </div>
+              {/* Live preview if vehicle count changed */}
+              {correctForm.vehicleCount && latestActive?.pricePerVehicle && latestActive?.billingCycle && (
+                <AmountPreview
+                  pricePerVehicle={latestActive.pricePerVehicle}
+                  vehicleCount={Number(correctForm.vehicleCount)}
+                  cycle={latestActive.billingCycle}
+                  twoMonthsFree={(latestActive?.vehicleCount ?? 0) >= 250}
+                />
+              )}
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Reason <span className="text-red-500">*</span></label>
+                <textarea rows={2}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm bg-white ${correctErrs.notes ? 'border-red-400' : ''}`}
+                  value={correctForm.notes}
+                  onChange={e => setCorrectForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Explain the correction…" />
+                {correctErrs.notes && <p className="text-red-500 text-xs mt-1">{correctErrs.notes}</p>}
+              </div>
+              {correctMutation.isError && <p className="text-red-500 text-xs">Something went wrong. Please try again.</p>}
+              <div className="flex gap-2">
+                <button onClick={() => { if (validateCorrect()) correctMutation.mutate() }}
+                  disabled={correctMutation.isPending}
+                  className="flex-1 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                  {correctMutation.isPending ? 'Saving…' : 'Save Correction'}
+                </button>
+                <button onClick={() => setShowCorrectForm(false)} className="flex-1 py-2 border rounded-lg text-sm">Cancel</button>
+              </div>
+            </section>
+          )}
+
+          {/* ── Users Section ── */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Users</h3>
+            <div className="bg-gray-50 border rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users size={15} className="text-gray-500" />
+                  <span className={`text-sm font-medium ${userWarning ? 'text-red-600' : userAmber ? 'text-amber-600' : 'text-gray-900'}`}>
+                    {activeUsers} / {effectiveLimit ?? '—'}
+                    {userWarning && <span className="ml-1 text-xs">(limit reached)</span>}
+                  </span>
+                </div>
+                <button onClick={() => { setShowUserLimitForm(v => !v); setShowCorrectForm(false) }}
+                  className="text-xs text-feros-navy border border-feros-navy rounded-lg px-2.5 py-1.5 hover:bg-blue-50">
+                  Increase Limit
+                </button>
+              </div>
+              {effectiveLimit && (
+                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div className={`h-1.5 rounded-full transition-all ${userWarning ? 'bg-red-500' : userAmber ? 'bg-amber-500' : 'bg-green-500'}`}
+                    style={{ width: `${Math.min(userPct, 100)}%` }} />
+                </div>
+              )}
+              <p className="text-xs text-gray-400">
+                {tenant.customUserLimit
+                  ? `Custom limit: ${tenant.customUserLimit} (default would be ${defaultLimit ?? '—'})`
+                  : `Default: ${tenant.currentVehicleCount ?? '—'} vehicles × ${USERS_PER_VEHICLE} = ${defaultLimit ?? '—'} users`}
+              </p>
+            </div>
+
+            {showUserLimitForm && (
+              <div className="mt-3 border border-blue-200 bg-blue-50 rounded-xl p-4 space-y-3">
+                <p className="text-xs text-gray-600">Current limit: <strong>{effectiveLimit ?? '—'}</strong> users. Enter new limit (must be higher).</p>
+                <div className="flex gap-2">
+                  <input type="number" min={(effectiveLimit ?? 0) + 1}
+                    className="flex-1 border rounded-lg px-3 py-2 text-sm bg-white"
+                    value={newLimit}
+                    onChange={e => setNewLimit(e.target.value)}
+                    placeholder={`Min ${(effectiveLimit ?? 0) + 1}`} />
+                  <button onClick={() => userLimitMutation.mutate()}
+                    disabled={!newLimit || Number(newLimit) <= (effectiveLimit ?? 0) || userLimitMutation.isPending}
+                    className="px-4 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                    {userLimitMutation.isPending ? 'Saving…' : 'Save'}
+                  </button>
+                  <button onClick={() => setShowUserLimitForm(false)} className="px-3 py-2 border rounded-lg text-sm">✕</button>
+                </div>
+                {userLimitMutation.isError && <p className="text-red-500 text-xs">Something went wrong.</p>}
+              </div>
             )}
-            {selectedTenant.subscriptionStatus === 'ACTIVE' && (
-              <button onClick={() => openDialog('extend')} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">
-                Renew
-              </button>
+          </section>
+
+          {/* ── Actions ── */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Actions</h3>
+            <div className="flex flex-wrap gap-2">
+              {(st === 'TRIAL' || st === 'EXPIRED') && (
+                <button onClick={() => openAction('activate')} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium">Activate</button>
+              )}
+              {st === 'TRIAL' && (
+                <button onClick={() => openAction('extend-trial')} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">Extend Trial</button>
+              )}
+              {st === 'ACTIVE' && (
+                <button onClick={() => openAction('extend')} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">Renew</button>
+              )}
+              {(st === 'ACTIVE' || st === 'TRIAL') && (
+                <button onClick={() => openAction('suspend')} className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium">Suspend</button>
+              )}
+              {st === 'SUSPENDED' && (
+                <button onClick={() => openAction('reactivate')} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium">Reactivate</button>
+              )}
+            </div>
+          </section>
+
+          {/* ── History ── */}
+          <section>
+            <button onClick={() => setHistoryOpen(v => !v)}
+              className="flex items-center gap-2 text-xs font-semibold text-gray-400 uppercase tracking-wide w-full">
+              <History size={13} />
+              Subscription History
+              {historyOpen ? <ChevronUp size={13} className="ml-auto" /> : <ChevronDown size={13} className="ml-auto" />}
+            </button>
+            {historyOpen && (
+              <div className="mt-3">
+                {historyLoading ? (
+                  <p className="text-xs text-gray-400 py-4 text-center">Loading…</p>
+                ) : history.length === 0 ? (
+                  <p className="text-xs text-gray-400 py-4 text-center">No history</p>
+                ) : (
+                  <div className="border rounded-xl overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 text-gray-500">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Status</th>
+                          <th className="px-3 py-2 text-left">Plan</th>
+                          <th className="px-3 py-2 text-left">Vehicles</th>
+                          <th className="px-3 py-2 text-left">Period</th>
+                          <th className="px-3 py-2 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {history.map(h => (
+                          <tr key={h.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2"><StatusBadge status={h.status} /></td>
+                            <td className="px-3 py-2 font-medium">
+                              {h.notes?.startsWith('[CORRECTION]')
+                                ? <span className="text-amber-600">✎ {h.planName}</span>
+                                : (h.planName && h.planName !== '-' ? h.planName : '—')}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600">
+                              {h.vehicleCount ? `${h.vehicleCount}` : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-gray-500">{h.startDate} → {h.endDate ?? '∞'}</td>
+                            <td className="px-3 py-2 text-right">{fmt(h.totalAmount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             )}
-            {(selectedTenant.subscriptionStatus === 'ACTIVE' || selectedTenant.subscriptionStatus === 'TRIAL') && (
-              <button onClick={() => openDialog('suspend')} className="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium">
-                Suspend
-              </button>
-            )}
-            {selectedTenant.subscriptionStatus === 'SUSPENDED' && (
-              <button onClick={() => { setActionDialog({ type: 'reactivate', tenantId: selectedTenant.id }) }} className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium">
-                Reactivate
-              </button>
-            )}
-          </div>
-        )}
+          </section>
+        </div>
       </div>
 
-      {/* ── Action Dialog ── */}
+      {/* ── Action Dialog (full-screen overlay) ── */}
       {actionDialog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="font-semibold text-lg capitalize">{actionDialog.type.replace('-', ' ')}</h3>
 
@@ -459,46 +656,31 @@ function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | nu
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Plan <span className="text-red-500">*</span></label>
-                  <select
-                    className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.planId ? 'border-red-400' : ''}`}
+                  <select className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.planId ? 'border-red-400' : ''}`}
                     value={actionForm.planId}
-                    onChange={e => setActionForm(f => ({ ...f, planId: e.target.value, vehicleCount: '' }))}
-                  >
+                    onChange={e => setActionForm(f => ({ ...f, planId: e.target.value, vehicleCount: '' }))}>
                     <option value="">— select plan —</option>
                     {plans.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} {p.pricePerVehicle ? `(₹${p.pricePerVehicle}/vehicle)` : '(Free)'}
-                      </option>
+                      <option key={p.id} value={p.id}>{p.name} {p.pricePerVehicle ? `(₹${p.pricePerVehicle}/vehicle)` : '(Free)'}</option>
                     ))}
                   </select>
                   {actionErrs.planId && <p className="text-red-500 text-xs mt-1">{actionErrs.planId}</p>}
                 </div>
-
                 {selectedPlan && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-gray-600 mb-1 block">
-                          Vehicle Count <span className="text-red-500">*</span>
-                          <span className="text-gray-400 ml-1">(min {selectedPlan.minVehicles ?? 1})</span>
-                        </label>
-                        <input
-                          type="number"
-                          min={selectedPlan.minVehicles ?? 1}
+                        <label className="text-xs text-gray-600 mb-1 block">Vehicle Count <span className="text-red-500">*</span> <span className="text-gray-400">(min {selectedPlan.minVehicles ?? 1})</span></label>
+                        <input type="number" min={selectedPlan.minVehicles ?? 1}
                           className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.vehicleCount ? 'border-red-400' : ''}`}
                           value={actionForm.vehicleCount}
-                          onChange={e => { setActionForm(f => ({ ...f, vehicleCount: e.target.value })); setActionErrs(v => ({ ...v, vehicleCount: '' })) }}
-                          placeholder={`Min ${selectedPlan.minVehicles ?? 1}`}
-                        />
+                          onChange={e => { setActionForm(f => ({ ...f, vehicleCount: e.target.value })); setActionErrs(v => ({ ...v, vehicleCount: '' })) }} />
                         {actionErrs.vehicleCount && <p className="text-red-500 text-xs mt-1">{actionErrs.vehicleCount}</p>}
                       </div>
                       <div>
                         <label className="text-xs text-gray-600 mb-1 block">Billing Cycle</label>
-                        <select
-                          className="w-full border rounded-lg px-3 py-2 text-sm"
-                          value={actionForm.billingCycle}
-                          onChange={e => setActionForm(f => ({ ...f, billingCycle: e.target.value }))}
-                        >
+                        <select className="w-full border rounded-lg px-3 py-2 text-sm" value={actionForm.billingCycle}
+                          onChange={e => setActionForm(f => ({ ...f, billingCycle: e.target.value }))}>
                           <option value="MONTHLY">Monthly</option>
                           <option value="THREE_MONTHS">3 Months</option>
                           <option value="SIX_MONTHS">6 Months</option>
@@ -506,59 +688,32 @@ function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | nu
                         </select>
                       </div>
                     </div>
-
-                    {/* Live preview */}
                     {vehicleCount > 0 && selectedPlan.pricePerVehicle && (
-                      <AmountPreview
-                        pricePerVehicle={selectedPlan.pricePerVehicle}
-                        vehicleCount={vehicleCount}
-                        cycle={actionForm.billingCycle}
-                        twoMonthsFree={(selectedPlan.minVehicles ?? 0) >= 250}
-                      />
+                      <AmountPreview pricePerVehicle={selectedPlan.pricePerVehicle} vehicleCount={vehicleCount}
+                        cycle={actionForm.billingCycle} twoMonthsFree={(selectedPlan.minVehicles ?? 0) >= 250} />
                     )}
                   </>
                 )}
-
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Start Date <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.startDate ? 'border-red-400' : ''}`}
+                  <input type="date" className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.startDate ? 'border-red-400' : ''}`}
                     value={actionForm.startDate}
-                    onChange={e => { setActionForm(f => ({ ...f, startDate: e.target.value })); setActionErrs(v => ({ ...v, startDate: '' })) }}
-                  />
+                    onChange={e => { setActionForm(f => ({ ...f, startDate: e.target.value })); setActionErrs(v => ({ ...v, startDate: '' })) }} />
                   {actionErrs.startDate && <p className="text-red-500 text-xs mt-1">{actionErrs.startDate}</p>}
-                  {actionForm.startDate && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      End date auto-calculated: {
-                        actionForm.billingCycle === 'YEARLY' ? '12 months' :
-                        actionForm.billingCycle === 'SIX_MONTHS' ? '6 months' :
-                        actionForm.billingCycle === 'THREE_MONTHS' ? '3 months' : '1 month'
-                      } from start
-                    </p>
-                  )}
                 </div>
-
                 {selectedPlan && (
                   <>
                     <div>
-                      <label className="text-xs text-gray-600 mb-1 block">Amount override (₹, optional)</label>
-                      <input
-                        type="number"
-                        className="w-full border rounded-lg px-3 py-2 text-sm"
-                        value={actionForm.amount}
-                        onChange={e => setActionForm(f => ({ ...f, amount: e.target.value }))}
-                        placeholder="Leave blank to auto-calculate"
-                      />
+                      <label className="text-xs text-gray-600 mb-1 block">Amount Override (₹, optional)</label>
+                      <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                        value={actionForm.amount} onChange={e => setActionForm(f => ({ ...f, amount: e.target.value }))}
+                        placeholder="Leave blank to auto-calculate" />
                     </div>
                     <div>
                       <label className="text-xs text-gray-600 mb-1 block">Payment Reference</label>
-                      <input
-                        className="w-full border rounded-lg px-3 py-2 text-sm"
-                        value={actionForm.paymentRef}
-                        onChange={e => setActionForm(f => ({ ...f, paymentRef: e.target.value }))}
-                        placeholder="UPI / bank transfer ref"
-                      />
+                      <input className="w-full border rounded-lg px-3 py-2 text-sm"
+                        value={actionForm.paymentRef} onChange={e => setActionForm(f => ({ ...f, paymentRef: e.target.value }))}
+                        placeholder="UPI / bank transfer ref" />
                     </div>
                   </>
                 )}
@@ -570,104 +725,70 @@ function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | nu
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">New End Date <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.newEndDate ? 'border-red-400' : ''}`}
+                  <input type="date" className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.newEndDate ? 'border-red-400' : ''}`}
                     value={actionForm.newEndDate}
-                    onChange={e => { setActionForm(f => ({ ...f, newEndDate: e.target.value })); setActionErrs(v => ({ ...v, newEndDate: '' })) }}
-                  />
+                    onChange={e => { setActionForm(f => ({ ...f, newEndDate: e.target.value })); setActionErrs(v => ({ ...v, newEndDate: '' })) }} />
                   {actionErrs.newEndDate && <p className="text-red-500 text-xs mt-1">{actionErrs.newEndDate}</p>}
                 </div>
               </div>
             )}
 
-            {/* EXTEND / RENEW */}
+            {/* RENEW */}
             {actionDialog.type === 'extend' && (
               <div className="space-y-3">
                 {latestActive && (
                   <div className="bg-gray-50 border rounded-lg px-3 py-2 text-xs text-gray-600 space-y-0.5">
                     <p>Current: <strong>{latestActive.planName}</strong> · {latestActive.vehicleCount} vehicles · {fmt(latestActive.pricePerVehicle)}/vehicle</p>
-                    <p>Billing: {latestActive.billingCycle} · Ends: {latestActive.endDate ?? 'N/A'}</p>
+                    <p>Billing: {cycleLabel(latestActive.billingCycle)} · Ends: {latestActive.endDate ?? 'N/A'}</p>
                   </div>
                 )}
                 <div>
-                  <label className="text-xs text-gray-600 mb-1 block">
-                    Vehicle Count <span className="text-gray-400">(optional — keep {latestActive?.vehicleCount ?? '—'} if blank)</span>
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                    value={actionForm.vehicleCount}
-                    onChange={e => setActionForm(f => ({ ...f, vehicleCount: e.target.value }))}
-                    placeholder={String(latestActive?.vehicleCount ?? '')}
-                  />
+                  <label className="text-xs text-gray-600 mb-1 block">Vehicle Count <span className="text-gray-400">(keep {latestActive?.vehicleCount ?? '—'} if blank)</span></label>
+                  <input type="number" min={1} className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={actionForm.vehicleCount} onChange={e => setActionForm(f => ({ ...f, vehicleCount: e.target.value }))}
+                    placeholder={String(latestActive?.vehicleCount ?? '')} />
                 </div>
-
-                {/* Live preview for extend */}
                 {extendRate > 0 && extendVehicles > 0 && latestActive?.billingCycle && (
-                  <AmountPreview
-                    pricePerVehicle={extendRate}
-                    vehicleCount={extendVehicles}
-                    cycle={latestActive.billingCycle}
-                    twoMonthsFree={extendVehicles >= 250}
-                  />
+                  <AmountPreview pricePerVehicle={extendRate} vehicleCount={extendVehicles}
+                    cycle={latestActive.billingCycle} twoMonthsFree={extendVehicles >= 250} />
                 )}
-
                 <div>
-                  <label className="text-xs text-gray-600 mb-1 block">
-                    New End Date <span className="text-gray-400">(optional — auto-calculated if blank)</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                    value={actionForm.newEndDate}
-                    onChange={e => setActionForm(f => ({ ...f, newEndDate: e.target.value }))}
-                  />
+                  <label className="text-xs text-gray-600 mb-1 block">New End Date <span className="text-gray-400">(auto-calculated if blank)</span></label>
+                  <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={actionForm.newEndDate} onChange={e => setActionForm(f => ({ ...f, newEndDate: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-600 mb-1 block">Amount override (₹, optional)</label>
-                  <input
-                    type="number"
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                    value={actionForm.amount}
-                    onChange={e => setActionForm(f => ({ ...f, amount: e.target.value }))}
-                    placeholder="Leave blank to auto-calculate"
-                  />
+                  <label className="text-xs text-gray-600 mb-1 block">Amount Override (₹, optional)</label>
+                  <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={actionForm.amount} onChange={e => setActionForm(f => ({ ...f, amount: e.target.value }))}
+                    placeholder="Leave blank to auto-calculate" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Payment Reference</label>
-                  <input
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                    value={actionForm.paymentRef}
-                    onChange={e => setActionForm(f => ({ ...f, paymentRef: e.target.value }))}
-                    placeholder="UPI / bank transfer ref"
-                  />
+                  <input className="w-full border rounded-lg px-3 py-2 text-sm"
+                    value={actionForm.paymentRef} onChange={e => setActionForm(f => ({ ...f, paymentRef: e.target.value }))}
+                    placeholder="UPI / bank transfer ref" />
                 </div>
               </div>
             )}
 
             {/* SUSPEND */}
             {actionDialog.type === 'suspend' && (
-              <div className="space-y-3">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-700">
-                  This will immediately block the tenant from using FEROS.
-                </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-700">
+                This will immediately block the tenant from using FEROS.
               </div>
             )}
 
-            {/* Notes (all except reactivate) */}
+            {/* Notes */}
             {actionDialog.type !== 'reactivate' && (
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">
                   Notes {actionDialog.type === 'suspend' ? <span className="text-red-500">* (reason required)</span> : '(optional)'}
                 </label>
-                <textarea
+                <textarea rows={2}
                   className={`w-full border rounded-lg px-3 py-2 text-sm ${actionErrs.notes ? 'border-red-400' : ''}`}
-                  rows={2}
                   value={actionForm.notes}
-                  onChange={e => { setActionForm(f => ({ ...f, notes: e.target.value })); setActionErrs(v => ({ ...v, notes: '' })) }}
-                />
+                  onChange={e => { setActionForm(f => ({ ...f, notes: e.target.value })); setActionErrs(v => ({ ...v, notes: '' })) }} />
                 {actionErrs.notes && <p className="text-red-500 text-xs mt-1">{actionErrs.notes}</p>}
               </div>
             )}
@@ -677,64 +798,153 @@ function HistoryTab({ preselectedTenantId }: { preselectedTenantId?: number | nu
             )}
 
             <div className="flex gap-2">
-              <button
-                onClick={() => { if (validate()) actionMutation.mutate() }}
-                disabled={actionMutation.isPending}
-                className="flex-1 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50"
-              >
+              <button onClick={() => { if (validateAction()) actionMutation.mutate() }} disabled={actionMutation.isPending}
+                className="flex-1 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {actionMutation.isPending ? 'Processing…' : 'Confirm'}
               </button>
-              <button
-                onClick={() => setActionDialog(null)}
-                className="flex-1 py-2 border rounded-lg text-sm"
-              >
-                Cancel
-              </button>
+              <button onClick={() => setActionDialog(null)} className="flex-1 py-2 border rounded-lg text-sm">Cancel</button>
             </div>
           </div>
         </div>
       )}
+    </>
+  )
+}
 
-      {/* ── History Table ── */}
-      {selectedTenantId == null ? (
-        <div className="py-12 text-center text-gray-400 text-sm">Select a tenant to view subscription history</div>
-      ) : isLoading ? (
-        <div className="py-12 text-center text-gray-400 text-sm">Loading…</div>
-      ) : history.length === 0 ? (
-        <div className="py-12 text-center text-gray-400 text-sm">No subscription history</div>
+// ─── Tenants Tab ──────────────────────────────────────────────────────────────
+function TenantsTab() {
+  const [filter, setFilter] = useState<FilterKey>('all')
+  const [search, setSearch] = useState('')
+  const [drawerTenant, setDrawerTenant] = useState<Tenant | null>(null)
+
+  const { data: tenantsRes, isLoading } = useQuery({
+    queryKey: ['sa-tenants'],
+    queryFn: () => tenantsApi.getAll(),
+    refetchInterval: 30_000,
+  })
+  const allTenants: Tenant[] = tenantsRes?.data ?? []
+
+  const filtered = allTenants.filter(t => {
+    const matchSearch = !search || t.companyName.toLowerCase().includes(search.toLowerCase())
+    if (!matchSearch) return false
+    if (filter === 'all')      return true
+    if (filter === 'active')   return t.subscriptionStatus === 'ACTIVE'
+    if (filter === 'trial')    return t.subscriptionStatus === 'TRIAL'
+    if (filter === 'suspended') return t.subscriptionStatus === 'SUSPENDED'
+    if (filter === 'expired')  return t.subscriptionStatus === 'EXPIRED'
+    if (filter === 'expiring') return t.subscriptionStatus === 'ACTIVE' && isExpiringSoon(t.subscriptionEndDate)
+    return true
+  })
+
+  const counts: Record<FilterKey, number> = {
+    all:       allTenants.length,
+    active:    allTenants.filter(t => t.subscriptionStatus === 'ACTIVE').length,
+    trial:     allTenants.filter(t => t.subscriptionStatus === 'TRIAL').length,
+    expiring:  allTenants.filter(t => t.subscriptionStatus === 'ACTIVE' && isExpiringSoon(t.subscriptionEndDate)).length,
+    suspended: allTenants.filter(t => t.subscriptionStatus === 'SUSPENDED').length,
+    expired:   allTenants.filter(t => t.subscriptionStatus === 'EXPIRED').length,
+  }
+
+  const FILTERS: { key: FilterKey; label: string }[] = [
+    { key: 'all',       label: 'All' },
+    { key: 'active',    label: 'Active' },
+    { key: 'trial',     label: 'Trial' },
+    { key: 'expiring',  label: 'Expiring' },
+    { key: 'suspended', label: 'Suspended' },
+    { key: 'expired',   label: 'Expired' },
+  ]
+
+  return (
+    <div className="space-y-4">
+      {/* Filter pills + search */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1 flex-wrap">
+          {FILTERS.map(({ key, label }) => (
+            <button key={key} onClick={() => setFilter(key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                filter === key ? 'bg-feros-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}>
+              {label}
+              {counts[key] > 0 && <span className={`ml-1.5 ${filter === key ? 'text-blue-200' : 'text-gray-400'}`}>{counts[key]}</span>}
+            </button>
+          ))}
+        </div>
+        <input
+          className="border rounded-lg px-3 py-1.5 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-feros-navy"
+          placeholder="Search company…"
+          value={search}
+          onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="py-12 text-center text-gray-400 text-sm">Loading tenants…</div>
+      ) : filtered.length === 0 ? (
+        <div className="py-12 text-center text-gray-400 text-sm">No tenants match this filter</div>
       ) : (
         <div className="bg-white rounded-xl border overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
               <tr>
+                <th className="px-4 py-3 text-left">Company</th>
                 <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3 text-left">Plan</th>
                 <th className="px-4 py-3 text-left">Vehicles</th>
-                <th className="px-4 py-3 text-left">Cycle</th>
-                <th className="px-4 py-3 text-left">Start</th>
-                <th className="px-4 py-3 text-left">End</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-left">Ref</th>
+                <th className="px-4 py-3 text-left">Users</th>
+                <th className="px-4 py-3 text-left">Expiry</th>
+                <th className="px-4 py-3 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {history.map(h => (
-                <tr key={h.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3"><StatusBadge status={h.status} /></td>
-                  <td className="px-4 py-3 font-medium">{h.planName && h.planName !== '-' ? h.planName : (h.status === 'TRIAL' ? 'Trial' : '—')}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">
-                    {h.vehicleCount ? `${h.vehicleCount} × ${fmt(h.pricePerVehicle)}` : h.status === 'TRIAL' ? <span className="text-blue-600">Unlimited</span> : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">{{MONTHLY:'Monthly',THREE_MONTHS:'3-Month',SIX_MONTHS:'6-Month',YEARLY:'Annual'}[h.billingCycle ?? ''] ?? h.billingCycle ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-500">{h.startDate}</td>
-                  <td className="px-4 py-3 text-gray-500">{h.endDate ?? '∞'}</td>
-                  <td className="px-4 py-3 text-right">{fmt(h.totalAmount)}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{h.paymentRef ?? '—'}</td>
-                </tr>
-              ))}
+              {filtered.map(t => {
+                const uLimit = t.effectiveUserLimit
+                const uCount = t.activeUserCount ?? 0
+                const uWarn  = uLimit ? uCount >= uLimit : false
+                const uAmber = uLimit ? uCount / uLimit >= 0.8 && !uWarn : false
+                return (
+                  <tr key={t.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{t.companyName}</p>
+                      <p className="text-xs text-gray-400">{t.ownerName}</p>
+                    </td>
+                    <td className="px-4 py-3"><StatusBadge status={t.subscriptionStatus} /></td>
+                    <td className="px-4 py-3 text-gray-600">{t.currentPlanName ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {t.currentVehicleCount != null ? (
+                        <span className="flex items-center gap-1"><Truck size={11} className="text-gray-400" />{t.currentVehicleCount}</span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`flex items-center gap-1 text-xs font-medium ${uWarn ? 'text-red-600' : uAmber ? 'text-amber-600' : 'text-gray-600'}`}>
+                        {uWarn && <AlertTriangle size={10} />}
+                        {uCount} / {uLimit ?? '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {t.subscriptionStatus === 'TRIAL'
+                        ? <span className="text-blue-600">Trial: {t.trialEndDate ?? '—'}</span>
+                        : <ExpiryCell date={t.subscriptionEndDate} status={t.subscriptionStatus} />}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => setDrawerTenant(t)}
+                        className="px-3 py-1.5 border border-feros-navy text-feros-navy rounded-lg text-xs font-medium hover:bg-blue-50">
+                        Manage
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Drawer */}
+      {drawerTenant && (
+        <SubscriptionDrawer
+          tenant={drawerTenant}
+          onClose={() => setDrawerTenant(null)}
+        />
       )}
     </div>
   )
@@ -757,15 +967,11 @@ function InvoicesTab() {
     <div className="space-y-4">
       <div>
         <label className="text-xs text-gray-600 mb-1 block">Select Tenant</label>
-        <SearchableSelect
-          className="w-64"
-          placeholder="— choose tenant —"
+        <SearchableSelect className="w-64" placeholder="— choose tenant —"
           value={selectedTenantId != null ? String(selectedTenantId) : ''}
           onValueChange={v => setSelectedTenantId(v ? Number(v) : null)}
-          options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))}
-        />
+          options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))} />
       </div>
-
       {selectedTenantId == null ? (
         <div className="py-12 text-center text-gray-400 text-sm">Select a tenant to view invoices</div>
       ) : isLoading ? (
@@ -785,7 +991,6 @@ function InvoicesTab() {
                 <th className="px-4 py-3 text-right">GST</th>
                 <th className="px-4 py-3 text-right">Total</th>
                 <th className="px-4 py-3 text-left">Ref</th>
-                <th className="px-4 py-3 text-left">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -801,7 +1006,6 @@ function InvoicesTab() {
                   <td className="px-4 py-3 text-right">{fmt(inv.gstAmount)}</td>
                   <td className="px-4 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
                   <td className="px-4 py-3 text-gray-400 text-xs">{inv.paymentRef ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{inv.createdAt?.slice(0, 10)}</td>
                 </tr>
               ))}
             </tbody>
@@ -830,26 +1034,23 @@ function BroadcastTab() {
       {sent && <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 text-sm">Notification sent successfully!</div>}
       <div>
         <label className="text-xs text-gray-600 mb-1 block">Tenant (optional — leave blank for all)</label>
-        <SearchableSelect
-          placeholder="All Tenants"
-          value={form.tenantId}
+        <SearchableSelect placeholder="All Tenants" value={form.tenantId}
           onValueChange={v => setForm(f => ({ ...f, tenantId: v }))}
-          options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))}
-        />
+          options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))} />
       </div>
       <div>
         <label className="text-xs text-gray-600 mb-1 block">Title</label>
-        <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Notification title" />
+        <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.title}
+          onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Notification title" />
       </div>
       <div>
         <label className="text-xs text-gray-600 mb-1 block">Message</label>
-        <textarea className="w-full border rounded-lg px-3 py-2 text-sm" rows={4} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} placeholder="Write your message here…" />
+        <textarea className="w-full border rounded-lg px-3 py-2 text-sm" rows={4} value={form.message}
+          onChange={e => setForm(f => ({ ...f, message: e.target.value }))} placeholder="Write your message here…" />
       </div>
-      <button
-        onClick={() => mutation.mutate()}
+      <button onClick={() => mutation.mutate()}
         disabled={!form.title || !form.message || mutation.isPending}
-        className="flex items-center gap-2 px-4 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50"
-      >
+        className="flex items-center gap-2 px-4 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
         <Megaphone size={15} />
         {mutation.isPending ? 'Sending…' : 'Send Notification'}
       </button>
@@ -858,7 +1059,7 @@ function BroadcastTab() {
 }
 
 // ─── Requests Tab ─────────────────────────────────────────────────────────────
-function RequestsTab({ onActivate: _onActivate }: { onActivate: (tenantId: number) => void }) {
+function RequestsTab() {
   const qc = useQueryClient()
   const { data: reqRes, isLoading } = useQuery({
     queryKey: ['sa-upgrade-requests'],
@@ -868,28 +1069,19 @@ function RequestsTab({ onActivate: _onActivate }: { onActivate: (tenantId: numbe
   const pending = requests.filter(r => r.status === 'PENDING')
   const others  = requests.filter(r => r.status !== 'PENDING')
 
-  // Inline activate dialog state
   const [activating, setActivating] = useState<UpgradeRequest | null>(null)
-  const [startDate,  setStartDate]  = useState('')
+  const [startDate, setStartDate]   = useState('')
   const [paymentRef, setPaymentRef] = useState('')
-
-  function openActivate(r: UpgradeRequest) {
-    setActivating(r)
-    setStartDate(new Date().toISOString().slice(0, 10))
-    setPaymentRef('')
-  }
 
   const activateMutation = useMutation({
     mutationFn: () => subscriptionsApi.activate(activating!.tenantId, {
-      planId:       activating!.planId!,
-      vehicleCount: activating!.vehicleCount!,
-      billingCycle: activating!.billingCycle ?? 'MONTHLY',
-      startDate,
-      paymentRef:   paymentRef || undefined,
+      planId: activating!.planId!, vehicleCount: activating!.vehicleCount!,
+      billingCycle: activating!.billingCycle ?? 'MONTHLY', startDate,
+      paymentRef: paymentRef || undefined,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sa-upgrade-requests'] })
-      qc.invalidateQueries({ queryKey: ['sa-sub-history'] })
+      qc.invalidateQueries({ queryKey: ['sa-tenants'] })
       setActivating(null)
       import('sonner').then(({ toast }) => toast.success('Subscription activated'))
     },
@@ -901,6 +1093,8 @@ function RequestsTab({ onActivate: _onActivate }: { onActivate: (tenantId: numbe
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-upgrade-requests'] }),
   })
 
+  if (isLoading) return <div className="py-12 text-center text-gray-400 text-sm">Loading…</div>
+
   function RequestCard({ r }: { r: UpgradeRequest }) {
     return (
       <div className={`bg-white border rounded-xl p-4 space-y-2 ${r.status !== 'PENDING' ? 'opacity-50' : ''}`}>
@@ -908,52 +1102,36 @@ function RequestsTab({ onActivate: _onActivate }: { onActivate: (tenantId: numbe
           <div>
             <p className="font-semibold text-gray-900">{r.companyName}</p>
             <p className="text-sm text-feros-navy font-medium mt-0.5">
-              {r.planName} · {r.vehicleCount} vehicles · {{MONTHLY:'Monthly',THREE_MONTHS:'3-Month',SIX_MONTHS:'6-Month',YEARLY:'Annual'}[r.billingCycle ?? ''] ?? r.billingCycle}
+              {r.planName} · {r.vehicleCount} vehicles · {cycleLabel(r.billingCycle)}
             </p>
           </div>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
-            r.status === 'PENDING'   ? 'bg-blue-100 text-blue-700' :
-            r.status === 'FULFILLED' ? 'bg-green-100 text-green-700' :
-                                       'bg-gray-100 text-gray-500'
+            r.status === 'PENDING' ? 'bg-blue-100 text-blue-700' :
+            r.status === 'FULFILLED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
           }`}>{r.status}</span>
         </div>
         <div className="text-xs text-gray-500 space-y-0.5">
           <div className="flex justify-between">
             <span>Rate: {fmt(r.pricePerVehicle)}/vehicle</span>
-            <span>Estimated: <strong className="text-gray-800">{fmt(r.estimatedTotal)}</strong> (incl. GST)</span>
+            <span>Est: <strong className="text-gray-800">{fmt(r.estimatedTotal)}</strong> (incl. GST)</span>
           </div>
           {r.notes && <p className="text-gray-400 italic">"{r.notes}"</p>}
           <p className="text-gray-400">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
         </div>
         {r.status === 'PENDING' && (
           <div className="flex gap-2 pt-1">
-            <button
-              onClick={() => openActivate(r)}
-              className="flex-1 py-1.5 bg-feros-navy text-white rounded-lg text-xs font-medium"
-            >
-              Activate
-            </button>
-            <button
-              onClick={() => dismissMutation.mutate(r.id)}
-              disabled={dismissMutation.isPending}
-              className="px-3 py-1.5 border rounded-lg text-xs text-gray-500 hover:text-red-500"
-            >
-              <X size={13} />
-            </button>
+            <button onClick={() => { setActivating(r); setStartDate(new Date().toISOString().slice(0,10)); setPaymentRef('') }}
+              className="flex-1 py-1.5 bg-feros-navy text-white rounded-lg text-xs font-medium">Activate</button>
+            <button onClick={() => dismissMutation.mutate(r.id)} disabled={dismissMutation.isPending}
+              className="px-3 py-1.5 border rounded-lg text-xs text-gray-500 hover:text-red-500"><X size={13} /></button>
           </div>
         )}
       </div>
     )
   }
 
-  // ── Inline Activate Modal ──────────────────────────────────────────────
-  const cycleLabel: Record<string, string> = { MONTHLY: 'Monthly', THREE_MONTHS: '3 Months', SIX_MONTHS: '6 Months', YEARLY: 'Annual' }
-
-  if (isLoading) return <div className="py-12 text-center text-gray-400 text-sm">Loading…</div>
-
   return (
     <div className="space-y-6">
-      {/* ── Activate Modal ── */}
       {activating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4 mx-4">
@@ -961,46 +1139,25 @@ function RequestsTab({ onActivate: _onActivate }: { onActivate: (tenantId: numbe
               <h3 className="font-semibold text-gray-900">Activate Subscription</h3>
               <button onClick={() => setActivating(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
             </div>
-
-            {/* Summary */}
             <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
               <div className="font-semibold text-gray-800">{activating.companyName}</div>
-              <div className="text-gray-600">{activating.planName} · {activating.vehicleCount} vehicles · {cycleLabel[activating.billingCycle ?? ''] ?? activating.billingCycle}</div>
+              <div className="text-gray-600">{activating.planName} · {activating.vehicleCount} vehicles · {cycleLabel(activating.billingCycle)}</div>
               <div className="text-gray-500 text-xs">Rate: {fmt(activating.pricePerVehicle)}/vehicle · Total: {fmt(activating.estimatedTotal)} (incl. GST)</div>
             </div>
-
-            {/* Start Date */}
             <div>
               <label className="block text-xs text-gray-500 mb-1">Start Date <span className="text-red-500">*</span></label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-feros-navy"
-              />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
-
-            {/* Payment Ref */}
             <div>
               <label className="block text-xs text-gray-500 mb-1">Payment Reference (optional)</label>
-              <input
-                type="text"
-                value={paymentRef}
-                onChange={e => setPaymentRef(e.target.value)}
-                placeholder="UTR / transaction ID"
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-feros-navy"
-              />
+              <input type="text" value={paymentRef} onChange={e => setPaymentRef(e.target.value)}
+                placeholder="UTR / transaction ID" className="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
-
             <div className="flex gap-2 pt-1">
-              <button onClick={() => setActivating(null)} className="flex-1 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button
-                onClick={() => activateMutation.mutate()}
-                disabled={!startDate || activateMutation.isPending}
-                className="flex-1 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50"
-              >
+              <button onClick={() => setActivating(null)} className="flex-1 py-2 border rounded-lg text-sm text-gray-600">Cancel</button>
+              <button onClick={() => activateMutation.mutate()} disabled={!startDate || activateMutation.isPending}
+                className="flex-1 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {activateMutation.isPending ? 'Activating…' : 'Confirm Activation'}
               </button>
             </div>
@@ -1012,9 +1169,7 @@ function RequestsTab({ onActivate: _onActivate }: { onActivate: (tenantId: numbe
         <div className="flex items-center gap-2 mb-4">
           <ArrowUpCircle size={16} className="text-feros-navy" />
           <h3 className="font-semibold text-gray-800">Pending Requests</h3>
-          {pending.length > 0 && (
-            <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-0.5">{pending.length}</span>
-          )}
+          {pending.length > 0 && <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-0.5">{pending.length}</span>}
         </div>
         {pending.length === 0 ? (
           <div className="py-8 text-center text-gray-400 text-sm">No pending upgrade requests</div>
@@ -1024,7 +1179,6 @@ function RequestsTab({ onActivate: _onActivate }: { onActivate: (tenantId: numbe
           </div>
         )}
       </div>
-
       {others.length > 0 && (
         <div>
           <h3 className="font-semibold text-gray-500 text-sm mb-3">Fulfilled / Dismissed</h3>
@@ -1038,23 +1192,21 @@ function RequestsTab({ onActivate: _onActivate }: { onActivate: (tenantId: numbe
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-const TABS: { id: Tab; label: string; icon: typeof BadgeCheck }[] = [
+const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'plans',     label: 'Plans',     icon: BadgeCheck },
+  { id: 'tenants',   label: 'Tenants',   icon: Users },
   { id: 'requests',  label: 'Requests',  icon: ArrowUpCircle },
-  { id: 'history',   label: 'History',   icon: History },
   { id: 'invoices',  label: 'Invoices',  icon: FileText },
   { id: 'broadcast', label: 'Broadcast', icon: Megaphone },
 ]
 
 export function SubscriptionsPage() {
   const [searchParams] = useSearchParams()
-  const [tab, setTab] = useState<Tab>(() => searchParams.get('tenantId') ? 'history' : 'plans')
-  const [historyTenantId, setHistoryTenantId] = useState<number | null>(null)
+  const [tab, setTab] = useState<Tab>(() => searchParams.get('tenantId') ? 'tenants' : 'plans')
 
-  function goToActivate(tenantId: number) {
-    setHistoryTenantId(tenantId)
-    setTab('history')
-  }
+  useEffect(() => {
+    if (searchParams.get('tenantId')) setTab('tenants')
+  }, [searchParams])
 
   return (
     <div className="space-y-6">
@@ -1065,13 +1217,10 @@ export function SubscriptionsPage() {
 
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
         {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
+          <button key={id} onClick={() => setTab(id)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               tab === id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
+            }`}>
             <Icon size={15} />
             {label}
           </button>
@@ -1080,8 +1229,8 @@ export function SubscriptionsPage() {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         {tab === 'plans'     && <PlansTab />}
-        {tab === 'requests'  && <RequestsTab onActivate={goToActivate} />}
-        {tab === 'history'   && <HistoryTab preselectedTenantId={historyTenantId} />}
+        {tab === 'tenants'   && <TenantsTab />}
+        {tab === 'requests'  && <RequestsTab />}
         {tab === 'invoices'  && <InvoicesTab />}
         {tab === 'broadcast' && <BroadcastTab />}
       </div>

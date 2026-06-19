@@ -827,7 +827,7 @@ export interface TyreCostPerKmResponse {
 }
 
 // ─── Tenant ───────────────────────────────────────────────────────────────────
-export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED'
+export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED' | 'RENEWED'
 
 export interface TenantDocument {
   id: number
@@ -850,6 +850,14 @@ export interface Tenant {
   trialStartDate?: string; trialEndDate?: string
   subscriptionStartDate?: string; subscriptionEndDate?: string
   isActive: boolean; createdAt: string; updatedAt: string
+  // Subscription overview (SA views)
+  currentPlanName?: string
+  currentVehicleCount?: number
+  currentPricePerVehicle?: number
+  currentBillingCycle?: string
+  customUserLimit?: number
+  effectiveUserLimit?: number
+  activeUserCount?: number
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────

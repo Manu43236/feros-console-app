@@ -58,6 +58,8 @@ export const tenantsApi = {
     apiClient.get<ApiResponse<import('@/types').TenantDocument[]>>('/tenants/my/documents').then(r => r.data),
   deleteMyDocument: (docId: number) =>
     apiClient.delete<ApiResponse<void>>(`/tenants/my/documents/${docId}`).then(r => r.data),
+  updateUserLimit: (tenantId: number, customUserLimit: number) =>
+    apiClient.patch<ApiResponse<Tenant>>(`/tenants/${tenantId}/user-limit`, null, { params: { customUserLimit } }).then(r => r.data),
 }
 
 // ── Subscription Plans ────────────────────────────────────────────────────────
@@ -85,6 +87,7 @@ export const subscriptionsApi = {
   submitUpgradeRequest: (data: unknown) => apiClient.post<ApiResponse<import('@/types').UpgradeRequest>>('/subscriptions/upgrade-request', data).then(r => r.data),
   getUpgradeRequests:   () => apiClient.get<ApiResponse<import('@/types').UpgradeRequest[]>>('/subscriptions/upgrade-requests').then(r => r.data),
   dismissUpgradeRequest:(id: number) => apiClient.patch<ApiResponse<void>>(`/subscriptions/upgrade-requests/${id}/dismiss`).then(r => r.data),
+  correct: (tenantId: number, data: unknown) => apiClient.patch<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/correct`, data).then(r => r.data),
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────
