@@ -187,6 +187,7 @@ const SUB_COLORS: Record<SubscriptionStatus, string> = {
   ACTIVE:    'bg-green-50 text-green-700 border-green-200',
   EXPIRED:   'bg-red-50 text-red-700 border-red-200',
   SUSPENDED: 'bg-gray-100 text-gray-600 border-gray-300',
+  RENEWED:   'bg-blue-50 text-blue-700 border-blue-200',
 }
 
 function SubBadge({ status }: { status: SubscriptionStatus }) {

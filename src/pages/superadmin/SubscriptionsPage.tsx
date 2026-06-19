@@ -103,7 +103,7 @@ function AmountPreview({ pricePerVehicle, vehicleCount, cycle, twoMonthsFree }: 
 }
 
 // ─── Expiry Cell ──────────────────────────────────────────────────────────────
-function ExpiryCell({ date, status }: { date?: string | null; status: string }) {
+function ExpiryCell({ date }: { date?: string | null }) {
   if (!date) return <span className="text-gray-400">—</span>
   const expired  = isExpired(date)
   const expiring = isExpiringSoon(date)
@@ -442,7 +442,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                   <div><span className="text-gray-400 block">Vehicles</span>{tenant.currentVehicleCount ?? '—'}</div>
                   <div>
                     <span className="text-gray-400 block">Expiry</span>
-                    <ExpiryCell date={tenant.subscriptionEndDate} status={st} />
+                    <ExpiryCell date={tenant.subscriptionEndDate} />
                   </div>
                   <div><span className="text-gray-400 block">Billing</span>{cycleLabel(tenant.currentBillingCycle)}</div>
                 </div>
@@ -923,7 +923,7 @@ function TenantsTab() {
                     <td className="px-4 py-3 text-xs">
                       {t.subscriptionStatus === 'TRIAL'
                         ? <span className="text-blue-600">Trial: {t.trialEndDate ?? '—'}</span>
-                        : <ExpiryCell date={t.subscriptionEndDate} status={t.subscriptionStatus} />}
+                        : <ExpiryCell date={t.subscriptionEndDate} />}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => setDrawerTenant(t)}
