@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { dashboardApi } from '@/api/dashboard'
 import { targetsApi } from '@/api/targets'
 import { useAuthStore } from '@/store/authStore'
+import { SubscriptionExpiryBanner } from '@/components/shared/SubscriptionExpiryBanner'
 import { format } from 'date-fns'
 import {
   ClipboardList, Truck, Receipt, UserCheck,
@@ -439,6 +440,9 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-5">
+
+      {/* ── Subscription expiry warning (mobile, ADMIN only, ≤7 days) ── */}
+      <SubscriptionExpiryBanner />
 
       {/* ── Welcome banner ── */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #0F2137 0%, #1E3A5F 100%)' }}>
