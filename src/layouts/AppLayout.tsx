@@ -377,6 +377,93 @@ function NavSectionGroup({
 }
 
 
+// ─── Sidebar panel (defined outside AppLayout to keep stable identity) ───────────
+type SidebarPanelProps = {
+  mobile?: boolean
+  logoUrl: string | null
+  companyName: string | null
+  nav: SectionedNav | FlatNav
+  openSections: Set<string>
+  onToggleSection: (section: string) => void
+  isRouteAllowed: (item: NavItem) => boolean
+  onCloseMobile?: () => void
+  onOpenLogout: () => void
+}
+
+function SidebarPanel({
+  mobile = false,
+  logoUrl,
+  companyName,
+  nav,
+  openSections,
+  onToggleSection,
+  isRouteAllowed,
+  onCloseMobile,
+  onOpenLogout,
+}: SidebarPanelProps) {
+  return (
+    <aside className={cn('flex flex-col h-full bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
+      {/* Logo */}
+      <div className="flex items-center justify-center h-16 px-5 border-b border-white/10 shrink-0 relative">
+        {logoUrl ? (
+          <img src={logoUrl} alt={companyName ?? 'Logo'} className="h-9 w-auto object-contain max-w-[160px]" />
+        ) : (
+          <img src={leftMenuLogo} alt="FEROS" className="h-9 w-auto object-contain" />
+        )}
+        {mobile && (
+          <button onClick={onCloseMobile} className="absolute right-4 text-gray-400 hover:text-white">
+            <X size={20} />
+          </button>
+        )}
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
+        {isSectionedNav(nav) ? (
+          <>
+            <NavItemLink {...nav.dashboard} onClick={onCloseMobile} />
+            {nav.sections.map(({ section, icon, items }) => {
+              const allowed = items.filter(i => isRouteAllowed(i))
+              if (allowed.length === 0) return null
+              return (
+                <NavSectionGroup
+                  key={section}
+                  section={section}
+                  icon={icon}
+                  items={allowed}
+                  open={openSections.has(section)}
+                  onToggle={() => onToggleSection(section)}
+                  onNavClick={onCloseMobile}
+                />
+              )
+            })}
+          </>
+        ) : (
+          <div className="space-y-0.5">
+            {(nav as FlatNav).filter(i => isRouteAllowed(i)).map(item =>
+              item.to === '/sa/demo-requests'
+                ? <DemoRequestsNavLink key={item.to} onClick={onCloseMobile} />
+                : <NavItemLink key={item.to} {...item} onClick={onCloseMobile} />
+            )}
+          </div>
+        )}
+      </nav>
+
+      {/* Footer */}
+      <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
+        <NotifNavLink />
+        <button
+          onClick={onOpenLogout}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+        >
+          <LogOut size={18} />
+          Sign Out
+        </button>
+      </div>
+    </aside>
+  )
+}
+
 function getRoleLabel(role: string | null) {
   if (!role) return ''
   if (role === 'SUPER_ADMIN')  return 'Super Admin'
@@ -493,77 +580,21 @@ export function AppLayout() {
     return isModuleAllowed(item, allowedModules)
   }
 
-  const Sidebar = ({ mobile = false }: { mobile?: boolean }) => {
-    const closeMobile = mobile ? () => setSidebarOpen(false) : undefined
-
-    return (
-      <aside className={cn('flex flex-col h-full bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
-        {/* Logo */}
-        <div className="flex items-center justify-center h-16 px-5 border-b border-white/10 shrink-0 relative">
-          {logoUrl ? (
-            <img src={logoUrl} alt={companyName ?? 'Logo'} className="h-9 w-auto object-contain max-w-[160px]" />
-          ) : (
-            <img src={leftMenuLogo} alt="FEROS" className="h-9 w-auto object-contain" />
-          )}
-          {mobile && (
-            <button onClick={closeMobile} className="absolute right-4 text-gray-400 hover:text-white">
-              <X size={20} />
-            </button>
-          )}
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
-          {isSectionedNav(nav) ? (
-            <>
-              <NavItemLink {...nav.dashboard} onClick={closeMobile} />
-              {nav.sections.map(({ section, icon, items }) => {
-                const allowed = items.filter(i => isRouteAllowed(i))
-                if (allowed.length === 0) return null
-                return (
-                  <NavSectionGroup
-                    key={section}
-                    section={section}
-                    icon={icon}
-                    items={allowed}
-                    open={openSections.has(section)}
-                    onToggle={() => toggleSection(section)}
-                    onNavClick={closeMobile}
-                  />
-                )
-              })}
-            </>
-          ) : (
-            <div className="space-y-0.5">
-              {(nav as FlatNav).filter(i => isRouteAllowed(i)).map(item =>
-                item.to === '/sa/demo-requests'
-                  ? <DemoRequestsNavLink key={item.to} onClick={closeMobile} />
-                  : <NavItemLink key={item.to} {...item} onClick={closeMobile} />
-              )}
-            </div>
-          )}
-        </nav>
-
-        {/* Footer */}
-        <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
-          <NotifNavLink />
-          <button
-            onClick={() => setLogoutOpen(true)}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
-          >
-            <LogOut size={18} />
-            Sign Out
-          </button>
-        </div>
-      </aside>
-    )
+  const sidebarProps: Omit<SidebarPanelProps, 'mobile' | 'onCloseMobile'> = {
+    logoUrl,
+    companyName,
+    nav,
+    openSections,
+    onToggleSection: toggleSection,
+    isRouteAllowed,
+    onOpenLogout: () => setLogoutOpen(true),
   }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
       {/* Desktop sidebar */}
       <div className="hidden md:flex shrink-0">
-        <Sidebar />
+        <SidebarPanel {...sidebarProps} />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -571,7 +602,7 @@ export function AppLayout() {
         <div className="fixed inset-0 z-40 flex md:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <div className="relative z-50">
-            <Sidebar mobile />
+            <SidebarPanel {...sidebarProps} mobile onCloseMobile={() => setSidebarOpen(false)} />
           </div>
         </div>
       )}
