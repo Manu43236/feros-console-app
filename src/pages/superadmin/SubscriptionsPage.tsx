@@ -296,13 +296,13 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
   const emptyCorrect = { planId: '', vehicleCount: '', pricePerVehicle: '', billingCycle: '', endDate: '', paymentRef: '', amount: '', notes: '' }
   const [correctForm, setCorrectForm] = useState(emptyCorrect)
   const [correctErrs, setCorrectErrs] = useState({ vehicleCount: '', notes: '' })
-  const selectedCorrectPlan = plans.find(p => String(p.id) === correctForm.planId)
 
   // User limit form
   const [newLimit, setNewLimit] = useState('')
 
   const { data: plansRes } = useQuery({ queryKey: ['sa-plans-active'], queryFn: () => subscriptionPlansApi.getActive() })
   const plans: SubscriptionPlan[] = (plansRes?.data ?? []).filter(p => p.name.toLowerCase() !== 'trial')
+  const selectedCorrectPlan = plans.find(p => String(p.id) === correctForm.planId)
 
   const { data: historyRes, isLoading: historyLoading } = useQuery({
     queryKey: ['sa-sub-history', tenant.id],
