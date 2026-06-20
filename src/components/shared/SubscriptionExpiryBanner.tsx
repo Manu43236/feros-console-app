@@ -25,6 +25,9 @@ export function SubscriptionExpiryBanner() {
 
   const requestMutation = useMutation({
     mutationFn: () => subscriptionsApi.submitUpgradeRequest({
+      planId: subRes?.data?.planId,
+      vehicleCount: subRes?.data?.vehicleCount,
+      billingCycle: subRes?.data?.billingCycle,
       notes: `Subscription renewal request from ${companyName}`,
     }),
     onSuccess: () => {

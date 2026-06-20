@@ -887,6 +887,7 @@ export interface SubscriptionHistory {
   id: number
   tenantId: number
   companyName: string
+  planId?: number
   planName: string
   vehicleCount?: number
   pricePerVehicle?: number
