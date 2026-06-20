@@ -52,42 +52,40 @@ export function SubscriptionExpiryBanner() {
   const daysLabel  = daysLeft === 0 ? 'today' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`
 
   return (
-    <div className="rounded-2xl bg-red-600 text-white px-4 py-3.5 flex gap-3 items-start">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium leading-snug">
-          Dear <span className="font-bold">{companyName}</span>, your{' '}
-          <span className="font-semibold">{typeLabel}</span>{' '}
-          {expired
-            ? <>has <span className="font-bold">expired</span>.</>
-            : <>is expiring in <span className="font-bold">{daysLabel}</span>.</>
-          }{' '}
-          Contact <span className="font-semibold">FEROS Support</span> team to renew.
-        </p>
+    <div className="rounded-2xl bg-red-600 text-white px-4 py-3.5 flex items-center gap-4">
+      <p className="flex-1 text-sm font-medium leading-snug">
+        Dear <span className="font-bold">{companyName}</span>, your{' '}
+        <span className="font-semibold">{typeLabel}</span>{' '}
+        {expired
+          ? <>has <span className="font-bold">expired</span>.</>
+          : <>is expiring in <span className="font-bold">{daysLabel}</span>.</>
+        }{' '}
+        Contact <span className="font-semibold">FEROS Support</span> team to renew.
+      </p>
 
-        <div className="flex items-center gap-2 mt-2.5">
-          {requested ? (
-            <div className="flex items-center gap-1.5 bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
-              <CheckCircle2 size={12} />
-              <span>Requested</span>
-            </div>
-          ) : (
-            <button
-              onClick={() => requestMutation.mutate()}
-              disabled={requestMutation.isPending}
-              className="bg-white text-red-600 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-70"
-            >
-              {requestMutation.isPending ? 'Sending…' : 'Request Renewal'}
-            </button>
-          )}
-
+      <div className="flex items-center gap-2 shrink-0">
+        {requested ? (
+          <div className="flex items-center gap-1.5 bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
+            <CheckCircle2 size={12} />
+            <span>Requested</span>
+          </div>
+        ) : (
           <button
-            onClick={() => { localStorage.setItem(dismissedKey, '1'); setDismissed(true) }}
-            className="text-white/80 hover:text-white p-1 rounded transition-colors"
-            aria-label="Dismiss"
+            onClick={() => requestMutation.mutate()}
+            disabled={requestMutation.isPending}
+            className="bg-white text-red-600 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-70"
           >
-            <X size={15} />
+            {requestMutation.isPending ? 'Sending…' : 'Request Renewal'}
           </button>
-        </div>
+        )}
+
+        <button
+          onClick={() => { localStorage.setItem(dismissedKey, '1'); setDismissed(true) }}
+          className="text-white/80 hover:text-white p-1 rounded transition-colors"
+          aria-label="Dismiss"
+        >
+          <X size={15} />
+        </button>
       </div>
     </div>
   )
