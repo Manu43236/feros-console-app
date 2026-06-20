@@ -293,8 +293,10 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
   const [actionErrs, setActionErrs] = useState(emptyErrs)
 
   // Correction form
-  const [correctForm, setCorrectForm] = useState({ vehicleCount: '', paymentRef: '', amount: '', notes: '' })
+  const emptyCorrect = { planId: '', vehicleCount: '', pricePerVehicle: '', billingCycle: '', endDate: '', paymentRef: '', amount: '', notes: '' }
+  const [correctForm, setCorrectForm] = useState(emptyCorrect)
   const [correctErrs, setCorrectErrs] = useState({ vehicleCount: '', notes: '' })
+  const selectedCorrectPlan = plans.find(p => String(p.id) === correctForm.planId)
 
   // User limit form
   const [newLimit, setNewLimit] = useState('')
@@ -356,12 +358,16 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
   // ── Correction mutation ──
   const correctMutation = useMutation({
     mutationFn: () => subscriptionsApi.correct(tenant.id, {
+      planId: correctForm.planId ? Number(correctForm.planId) : undefined,
       vehicleCount: correctForm.vehicleCount ? Number(correctForm.vehicleCount) : undefined,
+      pricePerVehicle: correctForm.pricePerVehicle ? Number(correctForm.pricePerVehicle) : undefined,
+      billingCycle: correctForm.billingCycle || undefined,
+      endDate: correctForm.endDate || undefined,
       paymentRef: correctForm.paymentRef || undefined,
       amount: correctForm.amount ? Number(correctForm.amount) : undefined,
       notes: correctForm.notes,
     }),
-    onSuccess: () => { invalidate(); setShowCorrectForm(false); setCorrectForm({ vehicleCount: '', paymentRef: '', amount: '', notes: '' }) },
+    onSuccess: () => { invalidate(); setShowCorrectForm(false); setCorrectForm(emptyCorrect) },
   })
 
   // ── User limit mutation ──
@@ -472,10 +478,31 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
           {showCorrectForm && (
             <section className="border border-amber-200 bg-amber-50 rounded-xl p-4 space-y-3">
               <h3 className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Correct Subscription</h3>
+
+              {/* Plan selector */}
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Plan</label>
+                <select className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                  value={correctForm.planId}
+                  onChange={e => {
+                    const pid = e.target.value
+                    const p = plans.find(pl => String(pl.id) === pid)
+                    setCorrectForm(f => ({
+                      ...f,
+                      planId: pid,
+                      pricePerVehicle: p?.pricePerVehicle != null ? String(p.pricePerVehicle) : f.pricePerVehicle,
+                    }))
+                  }}>
+                  <option value="">Custom (no plan)</option>
+                  {plans.map(p => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
+                {/* Vehicle count */}
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">
-                    Vehicle Count <span className="text-gray-400">(keep {latestActive?.vehicleCount ?? '—'} if blank)</span>
+                    Vehicles <span className="text-gray-400">(keep {latestActive?.vehicleCount ?? '—'} if blank)</span>
                   </label>
                   <input type="number" min={1}
                     className={`w-full border rounded-lg px-3 py-2 text-sm bg-white ${correctErrs.vehicleCount ? 'border-red-400' : ''}`}
@@ -484,6 +511,44 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                     placeholder={String(latestActive?.vehicleCount ?? '')} />
                   {correctErrs.vehicleCount && <p className="text-red-500 text-xs mt-1">{correctErrs.vehicleCount}</p>}
                 </div>
+
+                {/* Price per vehicle */}
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">
+                    Price / Vehicle (₹)
+                    {selectedCorrectPlan && <span className="text-amber-600 ml-1">from plan</span>}
+                  </label>
+                  <input type="number" min={0}
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    value={correctForm.pricePerVehicle}
+                    onChange={e => setCorrectForm(f => ({ ...f, pricePerVehicle: e.target.value }))}
+                    placeholder={String(latestActive?.pricePerVehicle ?? '0')} />
+                </div>
+
+                {/* Billing cycle */}
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">Billing Cycle</label>
+                  <select className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    value={correctForm.billingCycle}
+                    onChange={e => setCorrectForm(f => ({ ...f, billingCycle: e.target.value }))}>
+                    <option value="">Keep current</option>
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="THREE_MONTHS">3 Months</option>
+                    <option value="SIX_MONTHS">6 Months</option>
+                    <option value="YEARLY">Yearly</option>
+                  </select>
+                </div>
+
+                {/* Expiry date */}
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">Expiry Date</label>
+                  <input type="date"
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    value={correctForm.endDate}
+                    onChange={e => setCorrectForm(f => ({ ...f, endDate: e.target.value }))} />
+                </div>
+
+                {/* Payment ref */}
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Payment Reference</label>
                   <input className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
@@ -491,23 +556,27 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                     onChange={e => setCorrectForm(f => ({ ...f, paymentRef: e.target.value }))}
                     placeholder={latestActive?.paymentRef ?? 'UPI / bank ref'} />
                 </div>
+
+                {/* Amount override */}
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">Amount Override (₹)</label>
+                  <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    value={correctForm.amount}
+                    onChange={e => setCorrectForm(f => ({ ...f, amount: e.target.value }))}
+                    placeholder="Auto-calculated if blank" />
+                </div>
               </div>
-              <div>
-                <label className="text-xs text-gray-600 mb-1 block">Amount Override (₹, optional)</label>
-                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
-                  value={correctForm.amount}
-                  onChange={e => setCorrectForm(f => ({ ...f, amount: e.target.value }))}
-                  placeholder="Leave blank to auto-recalculate" />
-              </div>
-              {/* Live preview if vehicle count changed */}
-              {correctForm.vehicleCount && latestActive?.pricePerVehicle && latestActive?.billingCycle && (
+
+              {/* Live preview */}
+              {correctForm.vehicleCount && (correctForm.pricePerVehicle || latestActive?.pricePerVehicle) && (correctForm.billingCycle || latestActive?.billingCycle) && (
                 <AmountPreview
-                  pricePerVehicle={latestActive.pricePerVehicle}
+                  pricePerVehicle={Number(correctForm.pricePerVehicle) || latestActive?.pricePerVehicle || 0}
                   vehicleCount={Number(correctForm.vehicleCount)}
-                  cycle={latestActive.billingCycle}
-                  twoMonthsFree={(latestActive?.vehicleCount ?? 0) >= 250}
+                  cycle={(correctForm.billingCycle || latestActive?.billingCycle) as string}
+                  twoMonthsFree={(Number(correctForm.vehicleCount) || latestActive?.vehicleCount || 0) >= 250}
                 />
               )}
+
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">Reason <span className="text-red-500">*</span></label>
                 <textarea rows={2}
@@ -561,15 +630,15 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
 
             {showUserLimitForm && (
               <div className="mt-3 border border-blue-200 bg-blue-50 rounded-xl p-4 space-y-3">
-                <p className="text-xs text-gray-600">Current limit: <strong>{effectiveLimit ?? '—'}</strong> users. Enter new limit (must be higher).</p>
+                <p className="text-xs text-gray-600">Current limit: <strong>{effectiveLimit ?? '—'}</strong> users. Enter new limit.</p>
                 <div className="flex gap-2">
-                  <input type="number" min={(effectiveLimit ?? 0) + 1}
+                  <input type="number" min={1}
                     className="flex-1 border rounded-lg px-3 py-2 text-sm bg-white"
                     value={newLimit}
                     onChange={e => setNewLimit(e.target.value)}
-                    placeholder={`Min ${(effectiveLimit ?? 0) + 1}`} />
+                    placeholder="Enter user limit" />
                   <button onClick={() => userLimitMutation.mutate()}
-                    disabled={!newLimit || Number(newLimit) <= (effectiveLimit ?? 0) || userLimitMutation.isPending}
+                    disabled={!newLimit || Number(newLimit) < 1 || userLimitMutation.isPending}
                     className="px-4 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium disabled:opacity-50">
                     {userLimitMutation.isPending ? 'Saving…' : 'Save'}
                   </button>
