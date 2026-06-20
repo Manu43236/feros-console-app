@@ -48,7 +48,7 @@ export function SubscriptionExpiryBanner() {
   const daysLabel = daysLeft === 0 ? 'today' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`
 
   return (
-    <div className="md:hidden rounded-2xl bg-red-600 text-white px-4 py-3.5 flex gap-3 items-start">
+    <div className="rounded-2xl bg-red-600 text-white px-4 py-3.5 flex gap-3 items-start">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium leading-snug">
           Dear <span className="font-bold">{companyName}</span>, your{' '}
