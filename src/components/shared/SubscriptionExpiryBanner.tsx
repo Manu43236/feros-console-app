@@ -41,20 +41,24 @@ export function SubscriptionExpiryBanner() {
   if (!sub?.endDate) return null
 
   const daysLeft = differenceInDays(parseISO(sub.endDate), new Date())
-  if (daysLeft > 7 || daysLeft < 0) return null
+  if (daysLeft > 7) return null
 
-  const isTrial   = sub.status === 'TRIAL'
-  const typeLabel = isTrial ? 'trial version' : 'subscription'
-  const daysLabel = daysLeft === 0 ? 'today' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`
+  const isTrial    = sub.status === 'TRIAL'
+  const typeLabel  = isTrial ? 'trial version' : 'subscription'
+  const expired    = daysLeft < 0
+  const daysLabel  = daysLeft === 0 ? 'today' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`
 
   return (
     <div className="rounded-2xl bg-red-600 text-white px-4 py-3.5 flex gap-3 items-start">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium leading-snug">
           Dear <span className="font-bold">{companyName}</span>, your{' '}
-          <span className="font-semibold">{typeLabel}</span> is expiring in{' '}
-          <span className="font-bold">{daysLabel}</span>. Contact{' '}
-          <span className="font-semibold">FEROS Support</span> team to renew.
+          <span className="font-semibold">{typeLabel}</span>{' '}
+          {expired
+            ? <>has <span className="font-bold">expired</span>.</>
+            : <>is expiring in <span className="font-bold">{daysLabel}</span>.</>
+          }{' '}
+          Contact <span className="font-semibold">FEROS Support</span> team to renew.
         </p>
 
         <div className="flex items-center gap-2 mt-2.5">
