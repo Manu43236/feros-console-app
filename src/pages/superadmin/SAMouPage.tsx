@@ -78,7 +78,7 @@ const D = {
   parties:{ background: '#f7f9fc', border: '1px solid #d0dbe8', borderRadius: 6, padding: '14px 18px', marginBottom: 18 },
   ptag:   { display: 'inline-block', marginTop: 5, fontSize: 10, background: '#1a3a5c', color: '#fff', padding: '2px 8px', borderRadius: 3, letterSpacing: 1 },
   andLine:{ textAlign: 'center' as const, fontSize: 10, color: '#bbb', letterSpacing: 2, margin: '8px 0', textTransform: 'uppercase' as const },
-  clause: { marginBottom: 18, pageBreakInside: 'avoid' as const },
+  clause: { marginBottom: 18 },
   cTitle: { fontSize: 12, fontWeight: 'bold', color: '#1a3a5c', textTransform: 'uppercase' as const, letterSpacing: 1, borderLeft: '4px solid #e67e22', paddingLeft: 10, marginBottom: 8 },
   cNum:   { color: '#e67e22', marginRight: 4 },
   p:      { fontSize: 12, color: '#333', marginBottom: 6, lineHeight: 1.75 },
