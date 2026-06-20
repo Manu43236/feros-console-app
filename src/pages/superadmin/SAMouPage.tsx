@@ -40,7 +40,7 @@ function formatDate(d: string): string {
 interface MouState {
   clientName: string; clientAddress: string; clientPerson: string; clientDesig: string
   mouDate: string; govState: string
-  vehicles: string; rate: string; onboardingFee: string
+  vehicles: string; rate: string; onboardingFee: string; gstRate: string
   modOps: boolean; modLr: boolean; modFin: boolean; modClient: boolean
   modFleet: boolean; modBreakdown: boolean; modService: boolean; modFuel: boolean
   modInventory: boolean; modHr: boolean; modAttendance: boolean; modPayroll: boolean
@@ -54,7 +54,7 @@ interface MouState {
 const INIT: MouState = {
   clientName: '', clientAddress: '', clientPerson: '', clientDesig: '',
   mouDate: '', govState: 'Andhra Pradesh',
-  vehicles: '', rate: '', onboardingFee: '29999',
+  vehicles: '', rate: '', onboardingFee: '29999', gstRate: '18',
   modOps: true, modLr: true, modFin: true, modClient: true,
   modFleet: true, modBreakdown: true, modService: true, modFuel: true,
   modInventory: true, modHr: true, modAttendance: true, modPayroll: true,
@@ -109,9 +109,12 @@ export function SAMouPage() {
   const vehicles     = parseInt(f.vehicles)     || 0
   const rate         = parseInt(f.rate)         || 0
   const onboardingFee= parseInt(f.onboardingFee)|| 0
+  const gstRate      = parseFloat(f.gstRate)    || 0
   const monthly      = vehicles * rate
   const annual       = monthly * 12
-  const year1Total   = annual + onboardingFee
+  const subtotal     = annual + onboardingFee
+  const gstAmount    = Math.round(subtotal * gstRate / 100)
+  const year1Total   = subtotal + gstAmount
 
   const modules = [
     { key: 'modOps',           label: 'Operations, Orders & Trip Management' },
@@ -250,19 +253,23 @@ export function SAMouPage() {
           <div style={{ marginBottom: 8 }}><FLabel>Onboarding Fee (₹)</FLabel>
             <input type="number" className={inputCls} value={f.onboardingFee} onChange={e => set('onboardingFee', e.target.value)} />
           </div>
+          <div style={{ marginBottom: 8 }}><FLabel>GST Rate (%)</FLabel>
+            <input type="number" className={inputCls} value={f.gstRate} onChange={e => set('gstRate', e.target.value)} placeholder="e.g. 18" min={0} max={100} />
+          </div>
           {(monthly > 0 || onboardingFee > 0) && (
             <div style={{ background: '#0f2840', border: '1px solid #2d5a8a', borderRadius: 5, padding: '10px 12px' }}>
               {[
                 { l: 'Monthly Value', v: monthly > 0 ? inr(monthly) : '—' },
                 { l: 'Annual Subscription', v: annual > 0 ? inr(annual) : '—' },
                 { l: 'Onboarding Fee', v: onboardingFee > 0 ? inr(onboardingFee) : '—' },
+                { l: `GST (${gstRate}%)`, v: gstAmount > 0 ? inr(gstAmount) : '—' },
               ].map(r => (
                 <div key={r.l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#8fb3d4', marginBottom: 4 }}>
                   <span>{r.l}</span><span>{r.v}</span>
                 </div>
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#e67e22', fontWeight: 'bold', borderTop: '1px solid #2d5a8a', paddingTop: 6, marginTop: 4 }}>
-                <span>Year 1 Total</span><span>{year1Total > 0 ? inr(year1Total) : '—'}</span>
+                <span>Year 1 Total (incl. GST)</span><span>{year1Total > 0 ? inr(year1Total) : '—'}</span>
               </div>
             </div>
           )}
@@ -417,8 +424,10 @@ export function SAMouPage() {
                 <tr style={{ background: '#f4f7fb' }}><td style={TD}>Rate per Vehicle per Month</td><td style={TD}>{rate > 0 ? `${inr(rate)} per vehicle per month` : '—'}</td></tr>
                 <tr><td style={TD}>Annual Subscription</td><td style={TD}>{annual > 0 ? `${inr(annual)} (${amountInWords(annual)})` : '—'}</td></tr>
                 <tr style={{ background: '#f4f7fb' }}><td style={TD}>Onboarding Fee (One-time, Non-refundable)</td><td style={TD}>{onboardingFee > 0 ? `${inr(onboardingFee)} (${amountInWords(onboardingFee)})` : '—'}</td></tr>
-                <tr className="total-row"><td style={TDtotal}>Year 1 Total Payable</td><td style={TDtotal}>{year1Total > 0 ? `${inr(year1Total)} (${amountInWords(year1Total)})` : '—'}</td></tr>
-                <tr><td style={TD}>Year 2 Onwards</td><td style={TD}>{annual > 0 ? `${inr(annual)} per year (subject to revision with 60 days notice)` : '—'}</td></tr>
+                <tr><td style={TD}>Sub-Total</td><td style={TD}>{subtotal > 0 ? `${inr(subtotal)} (${amountInWords(subtotal)})` : '—'}</td></tr>
+                <tr style={{ background: '#f4f7fb' }}><td style={TD}>GST @ {gstRate}%</td><td style={TD}>{gstAmount > 0 ? `${inr(gstAmount)} (${amountInWords(gstAmount)})` : '—'}</td></tr>
+                <tr className="total-row"><td style={TDtotal}>Year 1 Total Payable (incl. GST)</td><td style={TDtotal}>{year1Total > 0 ? `${inr(year1Total)} (${amountInWords(year1Total)})` : '—'}</td></tr>
+                <tr><td style={TD}>Year 2 Onwards (excl. GST)</td><td style={TD}>{annual > 0 ? `${inr(annual)} per year + GST as applicable (subject to revision with 60 days notice)` : '—'}</td></tr>
               </tbody>
             </table>
 
