@@ -31,6 +31,7 @@ import type {
   MaintenanceCostRow,
   DocumentCostRow,
   TyreCostRow,
+  VehicleSalaryDayRow,
   DriverPerformanceRow,
   CleanerPerformanceRow,
   TechnicianPerformanceRow,
@@ -448,6 +449,19 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `tyre-cost-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Vehicle Salary Expense ────────────────────────────────────────────────────
+  getVehicleSalaryExpense: (vehicleId: number, year: number, month: number) =>
+    apiClient.get<ApiResponse<VehicleSalaryDayRow[]>>('/reports/expenses/vehicle-salary', {
+      params: { vehicleId, year, month },
+    }).then(r => r.data),
+
+  exportVehicleSalaryExpense: async (vehicleId: number, year: number, month: number, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/expenses/vehicle-salary/export', {
+      params: { vehicleId, year, month, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `vehicle-salary-${year}-${String(month).padStart(2, '0')}.${format}`)
   },
 
   // ── Staff Performance ─────────────────────────────────────────────────────────

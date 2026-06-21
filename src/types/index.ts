@@ -1802,6 +1802,22 @@ export interface TyreCostRow {
   totalCost?: number
 }
 
+export interface VehicleSalaryDayRow {
+  day: number
+  date: string
+  driverName?: string
+  driverRole?: string
+  driverDailyRate?: number
+  driverExtraPay?: number
+  driverTotal?: number
+  cleanerName?: string
+  cleanerRole?: string
+  cleanerDailyRate?: number
+  cleanerExtraPay?: number
+  cleanerTotal?: number
+  dayTotal?: number
+}
+
 export interface DriverPerformanceRow {
   driverId: number
   driverName: string

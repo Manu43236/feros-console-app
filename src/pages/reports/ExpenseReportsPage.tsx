@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Receipt, Fuel, Wrench, FileText, CircleDot } from 'lucide-react'
+import { Download, Receipt, Fuel, Wrench, FileText, CircleDot, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { TripExpenseReportRow, FuelCostRow, MaintenanceCostRow, DocumentCostRow, TyreCostRow } from '@/types'
+import type { TripExpenseReportRow, FuelCostRow, MaintenanceCostRow, DocumentCostRow, TyreCostRow, VehicleSalaryDayRow } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -26,6 +26,7 @@ const TABS = [
   { key: 'maintenance', label: 'Maintenance Cost', icon: Wrench },
   { key: 'documents',   label: 'Document Costs',   icon: FileText },
   { key: 'tyres',       label: 'Tyre Expenses',    icon: CircleDot },
+  { key: 'salary',      label: 'Salary Expenses',  icon: Users },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -207,6 +208,62 @@ function TyreCostTable({ rows, loading }: { rows: TyreCostRow[]; loading: boolea
   )
 }
 
+function SalaryExpenseTable({ rows, loading, vehicleLabel }: {
+  rows: VehicleSalaryDayRow[]; loading: boolean; vehicleLabel: string
+}) {
+  if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+  if (!vehicleLabel || vehicleLabel === 'ALL') return (
+    <div className="text-center py-16 text-gray-400 text-sm">Select a vehicle and month to view salary breakdown</div>
+  )
+  const fmt = (n?: number) => n != null ? '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '—'
+  const monthTotal = rows.reduce((s, r) => s + (r.dayTotal ?? 0), 0)
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm">
+        <thead>
+          <tr>
+            {['Day', 'Date', 'Driver', 'Role', 'Daily Rate', 'Extra Pay', 'Driver Total',
+              'Cleaner', 'Role', 'Daily Rate', 'Extra Pay', 'Cleaner Total', 'Day Total'].map(h => (
+              <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const noData = !r.driverName && !r.cleanerName
+            return (
+              <tr key={r.day} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                <td className="px-3 py-2 font-medium text-gray-700">{r.day}</td>
+                <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{r.date}</td>
+                {noData ? (
+                  <td colSpan={11} className="px-3 py-2 text-gray-300 text-center">—</td>
+                ) : (
+                  <>
+                    <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.driverName ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{r.driverRole ?? '—'}</td>
+                    <td className="px-3 py-2 tabular-nums text-gray-700">{fmt(r.driverDailyRate)}</td>
+                    <td className="px-3 py-2 tabular-nums text-gray-700">{fmt(r.driverExtraPay)}</td>
+                    <td className="px-3 py-2 tabular-nums font-medium text-gray-800">{fmt(r.driverTotal)}</td>
+                    <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.cleanerName ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{r.cleanerRole ?? '—'}</td>
+                    <td className="px-3 py-2 tabular-nums text-gray-700">{fmt(r.cleanerDailyRate)}</td>
+                    <td className="px-3 py-2 tabular-nums text-gray-700">{fmt(r.cleanerExtraPay)}</td>
+                    <td className="px-3 py-2 tabular-nums font-medium text-gray-800">{fmt(r.cleanerTotal)}</td>
+                    <td className="px-3 py-2 tabular-nums font-bold text-feros-navy">{fmt(r.dayTotal)}</td>
+                  </>
+                )}
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <div className="px-4 py-3 border-t bg-red-50 flex gap-6 text-sm font-medium text-red-800">
+        <span>Monthly Total Salary Expense: {fmt(monthTotal)}</span>
+      </div>
+    </div>
+  )
+}
+
 export default function ExpenseReportsPage() {
   const [tab, setTab] = useState<TabKey>('trips')
   const [preset, setPreset] = useState<DatePreset>('this-month')
@@ -215,6 +272,11 @@ export default function ExpenseReportsPage() {
   const [downloading, setDownloading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
+
+  // Salary tab specific state
+  const now = new Date()
+  const [salaryVehicleId, setSalaryVehicleId] = useState<number | null>(null)
+  const [salaryMonth, setSalaryMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
 
   function handleTabChange(key: TabKey) {
     setTab(key); setStatusFilter('ALL'); setVehicleFilter('ALL')
@@ -255,6 +317,20 @@ export default function ExpenseReportsPage() {
     enabled: tab === 'tyres',
   })
 
+  const salaryYear  = salaryMonth ? parseInt(salaryMonth.split('-')[0]) : now.getFullYear()
+  const salaryMon   = salaryMonth ? parseInt(salaryMonth.split('-')[1]) : now.getMonth() + 1
+  const salaryQuery = useQuery({
+    queryKey: ['report-vehicle-salary', salaryVehicleId, salaryYear, salaryMon],
+    queryFn: () => reportsApi.getVehicleSalaryExpense(salaryVehicleId!, salaryYear, salaryMon),
+    enabled: tab === 'salary' && salaryVehicleId != null,
+  })
+
+  const vehicleListQuery = useQuery({
+    queryKey: ['vehicles-list'],
+    queryFn: () => reportsApi.getVehicleMaster(),
+    enabled: tab === 'salary',
+  })
+
   const allTripRows        = tripQuery.data?.data ?? []
   const allFuelRows        = fuelQuery.data?.data ?? []
   const allMaintenanceRows = maintenanceQuery.data?.data ?? []
@@ -288,6 +364,7 @@ export default function ExpenseReportsPage() {
       else if (tab === 'fuel')        await reportsApi.exportFuelCostSummary(startDate, endDate, format)
       else if (tab === 'documents')   await reportsApi.exportDocumentCostSummary(startDate, endDate, format)
       else if (tab === 'tyres')       await reportsApi.exportTyreCostSummary(startDate, endDate, format)
+      else if (tab === 'salary' && salaryVehicleId) await reportsApi.exportVehicleSalaryExpense(salaryVehicleId, salaryYear, salaryMon, format)
       else                            await reportsApi.exportMaintenanceCostSummary(startDate, endDate, format)
     } catch { toast.error('Export failed') }
     finally  { setDownloading(false) }
@@ -314,59 +391,85 @@ export default function ExpenseReportsPage() {
 
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
 
-        {/* Vehicle filter */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
-          <SearchableSelect value={vehicleFilter} onValueChange={setVehicleFilter}
-            options={vehicleOptions} className="w-44" />
-        </div>
-
-        {/* Status filter — trips only */}
-        {tab === 'trips' && (
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-            <SearchableSelect value={statusFilter} onValueChange={setStatusFilter}
-              showSearch={false} className="w-40"
-              options={[
-                { value: 'ALL', label: 'All Statuses' },
-                ...EXPENSE_STATUSES.map(s => ({ value: s, label: s })),
-              ]}
-            />
-          </div>
-        )}
-
-        {/* Date range */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Period</label>
-          <div className="flex gap-1">
-            {(['today', 'this-week', 'this-month', 'custom'] as DatePreset[]).map(p => (
-              <button key={p} onClick={() => applyPreset(p)}
-                className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
-                  preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 hover:border-gray-400'
-                )}
-              >
-                {p === 'today' ? 'Today' : p === 'this-week' ? 'This Week' : p === 'this-month' ? 'This Month' : 'Custom'}
-              </button>
-            ))}
-          </div>
-        </div>
-        {preset === 'custom' && (
-          <div className="flex items-end gap-2">
+        {tab === 'salary' ? (
+          // ── Salary tab: vehicle + month selectors ──────────────────────────
+          <>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                className="w-36 h-9 border rounded-md px-2 text-sm" />
+              <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
+              <SearchableSelect
+                value={salaryVehicleId != null ? String(salaryVehicleId) : 'ALL'}
+                onValueChange={v => setSalaryVehicleId(v === 'ALL' ? null : Number(v))}
+                className="w-52"
+                options={[
+                  { value: 'ALL', label: 'Select a vehicle…' },
+                  ...(vehicleListQuery.data?.data ?? []).map((v: any) => ({
+                    value: String(v.vehicleId),
+                    label: v.registrationNumber,
+                  })),
+                ]}
+              />
             </div>
-            <span className="pb-2 text-gray-400 text-sm">→</span>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                className="w-36 h-9 border rounded-md px-2 text-sm" />
+              <label className="block text-xs font-medium text-gray-600 mb-1">Month</label>
+              <input type="month" value={salaryMonth}
+                onChange={e => setSalaryMonth(e.target.value)}
+                className="h-9 border rounded-md px-2 text-sm" />
             </div>
-          </div>
-        )}
-        {preset !== 'custom' && (
-          <div className="pb-1 text-xs text-gray-400">{startDate} → {endDate}</div>
+          </>
+        ) : (
+          // ── Other tabs: vehicle filter + date range ─────────────────────────
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
+              <SearchableSelect value={vehicleFilter} onValueChange={setVehicleFilter}
+                options={vehicleOptions} className="w-44" />
+            </div>
+
+            {tab === 'trips' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <SearchableSelect value={statusFilter} onValueChange={setStatusFilter}
+                  showSearch={false} className="w-40"
+                  options={[
+                    { value: 'ALL', label: 'All Statuses' },
+                    ...EXPENSE_STATUSES.map(s => ({ value: s, label: s })),
+                  ]}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Period</label>
+              <div className="flex gap-1">
+                {(['today', 'this-week', 'this-month', 'custom'] as DatePreset[]).map(p => (
+                  <button key={p} onClick={() => applyPreset(p)}
+                    className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
+                      preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 hover:border-gray-400'
+                    )}>
+                    {p === 'today' ? 'Today' : p === 'this-week' ? 'This Week' : p === 'this-month' ? 'This Month' : 'Custom'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {preset === 'custom' && (
+              <div className="flex items-end gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                    className="w-36 h-9 border rounded-md px-2 text-sm" />
+                </div>
+                <span className="pb-2 text-gray-400 text-sm">→</span>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                    className="w-36 h-9 border rounded-md px-2 text-sm" />
+                </div>
+              </div>
+            )}
+            {preset !== 'custom' && (
+              <div className="pb-1 text-xs text-gray-400">{startDate} → {endDate}</div>
+            )}
+          </>
         )}
 
         <div className="ml-auto flex items-end gap-2">
@@ -384,6 +487,13 @@ export default function ExpenseReportsPage() {
       {tab === 'maintenance' && <MaintenanceCostTable rows={maintenanceRows} loading={maintenanceQuery.isLoading} />}
       {tab === 'documents'   && <DocumentCostTable    rows={documentRows}    loading={documentQuery.isLoading} />}
       {tab === 'tyres'       && <TyreCostTable        rows={tyreRows}        loading={tyreQuery.isLoading} />}
+      {tab === 'salary'      && (
+        <SalaryExpenseTable
+          rows={salaryQuery.data?.data ?? []}
+          loading={salaryQuery.isLoading}
+          vehicleLabel={salaryVehicleId != null ? String(salaryVehicleId) : 'ALL'}
+        />
+      )}
     </div>
   )
 }
