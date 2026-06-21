@@ -1844,6 +1844,7 @@ export interface PnlSummaryRow {
   tripExpenses: number
   fuelExpenses: number
   maintenanceExpenses: number
+  tyreExpenses: number
   documentExpenses: number
   totalExpenses: number
   grossPnl: number
@@ -1868,6 +1869,7 @@ export interface VehiclePnlRow {
   tripExpenses: number
   fuelCost: number
   maintenanceCost: number
+  tyreCost: number
   documentCost: number
   totalExpenses: number
   netPnl: number

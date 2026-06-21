@@ -219,6 +219,7 @@ export default function PnlReportsPage() {
     <span className="tabular-nums">{fmt(r.tripExpenses)}</span>,
     <span className="tabular-nums">{fmt(r.fuelCost)}</span>,
     <span className="tabular-nums">{fmt(r.maintenanceCost)}</span>,
+    <span className="tabular-nums">{fmt(r.tyreCost)}</span>,
     <span className="tabular-nums">{fmt(r.documentCost)}</span>,
     <span className="tabular-nums">{fmt(r.totalExpenses)}</span>,
     <PnlBadge value={r.netPnl} />,
@@ -312,10 +313,11 @@ export default function PnlReportsPage() {
               sub="Invoiced − All Expenses"
               color={summary.netPnl >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'} />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <SummaryCard label="Trip Expenses"        value={fmt(summary.tripExpenses)}        color="bg-slate-50 border-slate-100" />
             <SummaryCard label="Fuel Expenses"        value={fmt(summary.fuelExpenses)}        color="bg-slate-50 border-slate-100" />
             <SummaryCard label="Maintenance Expenses" value={fmt(summary.maintenanceExpenses)} color="bg-slate-50 border-slate-100" />
+            <SummaryCard label="Tyre Expenses"        value={fmt(summary.tyreExpenses)}        color="bg-slate-50 border-slate-100" />
             <SummaryCard label="Document Expenses"    value={fmt(summary.documentExpenses)}    color="bg-slate-50 border-slate-100" />
           </div>
         </div>
@@ -355,7 +357,7 @@ export default function PnlReportsPage() {
           {tab === 'vehicles' && (
             <ReportTable
               loading={vehicleQuery.isLoading}
-              headers={['Vehicle', 'Type', 'Revenue', 'Trip Exp', 'Fuel', 'Maintenance', 'Documents', 'Total Exp', 'Net P&L']}
+              headers={['Vehicle', 'Type', 'Revenue', 'Trip Exp', 'Fuel', 'Maintenance', 'Tyres', 'Documents', 'Total Exp', 'Net P&L']}
               rows={vehicleRows}
             />
           )}
