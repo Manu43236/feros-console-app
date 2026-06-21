@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Receipt, Fuel, Wrench, FileText } from 'lucide-react'
+import { Download, Receipt, Fuel, Wrench, FileText, CircleDot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { TripExpenseReportRow, FuelCostRow, MaintenanceCostRow, DocumentCostRow } from '@/types'
+import type { TripExpenseReportRow, FuelCostRow, MaintenanceCostRow, DocumentCostRow, TyreCostRow } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -25,6 +25,7 @@ const TABS = [
   { key: 'fuel',        label: 'Fuel Cost',        icon: Fuel },
   { key: 'maintenance', label: 'Maintenance Cost', icon: Wrench },
   { key: 'documents',   label: 'Document Costs',   icon: FileText },
+  { key: 'tyres',       label: 'Tyre Expenses',    icon: CircleDot },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -175,6 +176,37 @@ function DocumentCostTable({ rows, loading }: { rows: DocumentCostRow[]; loading
   )
 }
 
+function TyreCostTable({ rows, loading }: { rows: TyreCostRow[]; loading: boolean }) {
+  const totalPurchase = rows.reduce((s, r) => s + (r.purchaseCost ?? 0), 0)
+  const totalRetreat  = rows.reduce((s, r) => s + (r.retreadingCost ?? 0), 0)
+  const totalCost     = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
+  return (
+    <>
+      <p className="text-xs text-amber-600 px-4 pt-3 pb-1">
+        * Retreading cost is the lifetime total for each tyre, not filtered by the selected period.
+      </p>
+      <ReportTable loading={loading}
+        headers={['Vehicle', 'Type', 'Tyres Purchased', 'Purchase Cost (₹)', 'Retreading Cost (₹) *', 'Total Cost (₹)']}
+        rows={rows.map(r => [
+          <span className="font-medium text-feros-navy">{r.registrationNumber}</span>,
+          r.vehicleType,
+          <span className="font-medium">{r.tyreCount}</span>,
+          <span className="text-orange-700">{dash(r.purchaseCost)}</span>,
+          <span className="text-blue-700">{dash(r.retreadingCost)}</span>,
+          <span className="font-medium text-red-700">{dash(r.totalCost)}</span>,
+        ])}
+      />
+      {!loading && rows.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm font-medium text-red-800 flex gap-6">
+          <span>Purchase Cost: ₹{totalPurchase.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          <span>Retreading Cost: ₹{totalRetreat.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          <span>Total: ₹{totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function ExpenseReportsPage() {
   const [tab, setTab] = useState<TabKey>('trips')
   const [preset, setPreset] = useState<DatePreset>('this-month')
@@ -217,10 +249,17 @@ export default function ExpenseReportsPage() {
     enabled: tab === 'documents',
   })
 
+  const tyreQuery = useQuery({
+    queryKey: ['report-tyre-cost', startDate, endDate],
+    queryFn: () => reportsApi.getTyreCostSummary(startDate, endDate),
+    enabled: tab === 'tyres',
+  })
+
   const allTripRows        = tripQuery.data?.data ?? []
   const allFuelRows        = fuelQuery.data?.data ?? []
   const allMaintenanceRows = maintenanceQuery.data?.data ?? []
   const allDocumentRows    = documentQuery.data?.data ?? []
+  const allTyreRows        = tyreQuery.data?.data ?? []
 
   const tripRows = allTripRows.filter(r =>
     (statusFilter === 'ALL' || r.status === statusFilter) &&
@@ -229,11 +268,13 @@ export default function ExpenseReportsPage() {
   const fuelRows        = allFuelRows.filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)
   const maintenanceRows = allMaintenanceRows.filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)
   const documentRows    = allDocumentRows.filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)
+  const tyreRows        = allTyreRows.filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)
 
   const vehicleSource =
     tab === 'trips'     ? allTripRows.map(r => r.vehicleNumber) :
     tab === 'fuel'      ? allFuelRows.map(r => r.registrationNumber) :
     tab === 'documents' ? allDocumentRows.map(r => r.registrationNumber) :
+    tab === 'tyres'     ? allTyreRows.map(r => r.registrationNumber) :
                           allMaintenanceRows.map(r => r.registrationNumber)
   const vehicleOptions = [
     { value: 'ALL', label: 'All Vehicles' },
@@ -246,6 +287,7 @@ export default function ExpenseReportsPage() {
       if      (tab === 'trips')       await reportsApi.exportTripExpenses(startDate, endDate, format)
       else if (tab === 'fuel')        await reportsApi.exportFuelCostSummary(startDate, endDate, format)
       else if (tab === 'documents')   await reportsApi.exportDocumentCostSummary(startDate, endDate, format)
+      else if (tab === 'tyres')       await reportsApi.exportTyreCostSummary(startDate, endDate, format)
       else                            await reportsApi.exportMaintenanceCostSummary(startDate, endDate, format)
     } catch { toast.error('Export failed') }
     finally  { setDownloading(false) }
@@ -341,6 +383,7 @@ export default function ExpenseReportsPage() {
       {tab === 'fuel'        && <FuelCostTable        rows={fuelRows}        loading={fuelQuery.isLoading} />}
       {tab === 'maintenance' && <MaintenanceCostTable rows={maintenanceRows} loading={maintenanceQuery.isLoading} />}
       {tab === 'documents'   && <DocumentCostTable    rows={documentRows}    loading={documentQuery.isLoading} />}
+      {tab === 'tyres'       && <TyreCostTable        rows={tyreRows}        loading={tyreQuery.isLoading} />}
     </div>
   )
 }

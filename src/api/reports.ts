@@ -30,6 +30,7 @@ import type {
   FuelCostRow,
   MaintenanceCostRow,
   DocumentCostRow,
+  TyreCostRow,
   DriverPerformanceRow,
   CleanerPerformanceRow,
   TechnicianPerformanceRow,
@@ -434,6 +435,19 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `document-cost-${startDate}-${endDate}.${format}`)
+  },
+
+  // ── Tyre Cost Summary ─────────────────────────────────────────────────────────
+  getTyreCostSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<TyreCostRow[]>>('/reports/expenses/tyres', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportTyreCostSummary: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/expenses/tyres/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `tyre-cost-${startDate}-${endDate}.${format}`)
   },
 
   // ── Staff Performance ─────────────────────────────────────────────────────────

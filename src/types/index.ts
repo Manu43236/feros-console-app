@@ -1792,6 +1792,16 @@ export interface DocumentCostRow {
   cost?: number
 }
 
+export interface TyreCostRow {
+  vehicleId?: number
+  registrationNumber: string
+  vehicleType: string
+  tyreCount: number
+  purchaseCost?: number
+  retreadingCost?: number
+  totalCost?: number
+}
+
 export interface DriverPerformanceRow {
   driverId: number
   driverName: string
