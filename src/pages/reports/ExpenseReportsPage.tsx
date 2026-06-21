@@ -123,21 +123,27 @@ function FuelCostTable({ rows, loading }: { rows: FuelCostRow[]; loading: boolea
 }
 
 function MaintenanceCostTable({ rows, loading }: { rows: MaintenanceCostRow[]; loading: boolean }) {
+  const totalServiceCost = rows.reduce((s, r) => s + (r.serviceCost ?? 0), 0)
+  const totalPartsCost = rows.reduce((s, r) => s + (r.sparePartsCost ?? 0), 0)
   const totalCost = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
   return (
     <>
       <ReportTable loading={loading}
-        headers={['Vehicle', 'Type', 'Total Services', 'Total Cost']}
+        headers={['Vehicle', 'Type', 'Total Services', 'Service Cost (₹)', 'Parts Cost (₹)', 'Total Cost (₹)']}
         rows={rows.map(r => [
           <span className="font-medium text-feros-navy">{r.registrationNumber}</span>,
           r.vehicleType,
           <span className="font-medium">{r.totalServices}</span>,
+          <span className="text-orange-700">{dash(r.serviceCost)}</span>,
+          <span className="text-blue-700">{dash(r.sparePartsCost)}</span>,
           <span className="font-medium text-red-700">{dash(r.totalCost)}</span>,
         ])}
       />
       {!loading && rows.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm font-medium text-red-800">
-          Total Maintenance Cost: ₹{totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm font-medium text-red-800 flex gap-6">
+          <span>Service Cost: ₹{totalServiceCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          <span>Parts Cost: ₹{totalPartsCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          <span>Total: ₹{totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
         </div>
       )}
     </>

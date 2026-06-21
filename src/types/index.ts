@@ -1776,6 +1776,8 @@ export interface MaintenanceCostRow {
   registrationNumber: string
   vehicleType: string
   totalServices: number
+  serviceCost?: number
+  sparePartsCost?: number
   totalCost?: number
 }
 
