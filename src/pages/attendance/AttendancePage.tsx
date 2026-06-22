@@ -62,6 +62,30 @@ function SelfieDialog({ url, onClose }: { url: string; onClose: () => void }) {
   )
 }
 
+// ── Map Modal ─────────────────────────────────────────────────────────────────
+function MapModal({ coords, onClose }: { coords: { lat: number; lng: number } | null; onClose: () => void }) {
+  if (!coords) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-xl overflow-hidden shadow-xl w-[90vw] max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <span className="font-medium text-sm text-gray-700">Check-in Location</span>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+        </div>
+        <iframe
+          src={`https://maps.google.com/maps?q=${coords.lat},${coords.lng}&z=15&output=embed`}
+          width="100%"
+          height="350"
+          style={{ border: 0 }}
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+    </div>
+  )
+}
+
 // ── My Attendance Tab (self-service) ──────────────────────────────────────────
 function MyAttendanceTab({
   attendanceTypes, leaveTypes,
@@ -637,6 +661,7 @@ function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: (
 function PendingApprovalsTab() {
   const qc = useQueryClient()
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
+  const [mapCoords, setMapCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [page, setPage] = useState(0)
 
@@ -750,7 +775,7 @@ function PendingApprovalsTab() {
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
                   <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                   <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
-                  <td className="px-5 py-3 w-[140px]">{r.locationName && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(r.locationName.trim()) ? <span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName}>{r.locationName}</span> : r.latitude != null && r.longitude != null ? <a href={`https://www.google.com/maps/search/?api=1&query=${r.latitude},${r.longitude}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><MapPin size={11} />Other</a> : <span className="text-gray-400 text-xs">—</span>}</td>
+                  <td className="px-5 py-3 w-[140px]">{r.locationName && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(r.locationName.trim()) ? <span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName}>{r.locationName}</span> : r.latitude != null && r.longitude != null ? <button onClick={() => setMapCoords({ lat: r.latitude!, lng: r.longitude! })} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><MapPin size={11} />Other</button> : <span className="text-gray-400 text-xs">—</span>}</td>
                   <td className="px-5 py-3 whitespace-nowrap">
                     {r.selfieUrl ? (
                       <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
@@ -781,6 +806,7 @@ function PendingApprovalsTab() {
         </div>
       </div>
       {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
+      <MapModal coords={mapCoords} onClose={() => setMapCoords(null)} />
     </>
   )
 }
@@ -789,6 +815,7 @@ function PendingApprovalsTab() {
 function RejectedTab() {
   const qc = useQueryClient()
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
+  const [mapCoords, setMapCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [page, setPage] = useState(0)
 
   const { data, isLoading } = useQuery({
@@ -861,7 +888,7 @@ function RejectedTab() {
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
                   <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                   <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
-                  <td className="px-5 py-3 w-[140px]">{r.locationName && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(r.locationName.trim()) ? <span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName}>{r.locationName}</span> : r.latitude != null && r.longitude != null ? <a href={`https://www.google.com/maps/search/?api=1&query=${r.latitude},${r.longitude}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><MapPin size={11} />Other</a> : <span className="text-gray-400 text-xs">—</span>}</td>
+                  <td className="px-5 py-3 w-[140px]">{r.locationName && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(r.locationName.trim()) ? <span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName}>{r.locationName}</span> : r.latitude != null && r.longitude != null ? <button onClick={() => setMapCoords({ lat: r.latitude!, lng: r.longitude! })} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><MapPin size={11} />Other</button> : <span className="text-gray-400 text-xs">—</span>}</td>
                   <td className="px-5 py-3 whitespace-nowrap">
                     {r.selfieUrl ? (
                       <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
@@ -886,6 +913,7 @@ function RejectedTab() {
         </div>
       </div>
       {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
+      <MapModal coords={mapCoords} onClose={() => setMapCoords(null)} />
     </>
   )
 }
@@ -1081,6 +1109,7 @@ export function AttendancePage() {
   const [bulkOpen, setBulkOpen]         = useState(false)
   const [editRecord, setEditRecord]     = useState<Attendance | undefined>()
   const [historyUser, setHistoryUser]   = useState<StaffUser | null>(null)
+  const [mapCoords, setMapCoords]       = useState<{ lat: number; lng: number } | null>(null)
 
   const { data: attendanceData, isLoading } = useQuery({
     queryKey: ['attendance', selectedDate],
@@ -1293,7 +1322,7 @@ export function AttendancePage() {
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedVehicleNumber ?? '—'}</td>
                             <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                             <td className="px-5 py-3 whitespace-nowrap"><ApprovalBadge status={r.approvalStatus} /></td>
-                            <td className="px-5 py-3 w-[140px]">{r.locationName && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(r.locationName.trim()) ? <span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName}>{r.locationName}</span> : r.latitude != null && r.longitude != null ? <a href={`https://www.google.com/maps/search/?api=1&query=${r.latitude},${r.longitude}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><MapPin size={11} />Other</a> : <span className="text-gray-400 text-xs">—</span>}</td>
+                            <td className="px-5 py-3 w-[140px]">{r.locationName && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(r.locationName.trim()) ? <span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName}>{r.locationName}</span> : r.latitude != null && r.longitude != null ? <button onClick={() => setMapCoords({ lat: r.latitude!, lng: r.longitude! })} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><MapPin size={11} />Other</button> : <span className="text-gray-400 text-xs">—</span>}</td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.leaveTypeName ?? '—'}</td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.markedByName}</td>
                             <td className="px-5 py-3 whitespace-nowrap">
@@ -1377,6 +1406,7 @@ export function AttendancePage() {
         </>
       )}
       <StaffHistoryDialog open={!!historyUser} onClose={() => setHistoryUser(null)} user={historyUser} />
+      <MapModal coords={mapCoords} onClose={() => setMapCoords(null)} />
     </div>
   )
 }
