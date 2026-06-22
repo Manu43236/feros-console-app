@@ -231,7 +231,7 @@ function MonthlyTargetCard({ data, type, isFlipped }: {
           <div className="p-5 h-full flex flex-col justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-blue-300">
-                {isTrips ? 'Trips' : 'Tonnage'} — Progress Breakdown
+                {isTrips ? 'Trip' : 'Tonnage'} Progress Summary
               </p>
               <p className="text-[9px] text-blue-400 mt-0.5">{monthName}</p>
             </div>
@@ -530,7 +530,7 @@ export function DashboardPage() {
           {/* Orders */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <div className="flex items-center justify-between mb-1">
-              <h2 className="font-semibold text-gray-800 text-sm">Order Breakdown</h2>
+              <h2 className="font-semibold text-gray-800 text-sm">Order Summary</h2>
               <button
                 onClick={() => navigate('/orders')}
                 className="text-xs text-feros-navy hover:underline flex items-center gap-1"
