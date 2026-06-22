@@ -1423,10 +1423,15 @@ export interface VehicleMasterRow {
   chassisNumber: string | null
   engineNumber: string | null
   rcNumber: string | null
+  rcExpiry: string | null
   insuranceNumber: string | null
+  insuranceExpiry: string | null
   permitNumber: string | null
+  permitExpiry: string | null
   fitnessNumber: string | null
+  fitnessExpiry: string | null
   pucNumber: string | null
+  pucExpiry: string | null
   roadTaxExpiry: string | null
   isFinanced: boolean
   financerName: string | null
