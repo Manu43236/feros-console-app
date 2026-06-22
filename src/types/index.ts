@@ -489,10 +489,13 @@ export interface DashboardResponse {
     total: number; pending: number; partiallyAssigned: number; fullyAssigned: number
     inTransit: number; partiallyDelivered: number; delivered: number; cancelled: number
   }
-  vehicles: { total: number; onTrip: number; available: number }
+  vehicles: {
+    total: number; available: number; assigned: number; onTrip: number
+    underMaintenance: number; breakdown: number; inactive: number
+  }
   invoices: {
     draft: number; sent: number; partiallyPaid: number; overdue: number; paid: number
-    totalOutstanding: number
+    totalOutstanding: number; totalRevenue: number
   }
   todayAttendance: {
     date: string; present: number; absent: number; halfDay: number; onLeave: number; total: number

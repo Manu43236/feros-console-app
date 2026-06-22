@@ -8,7 +8,7 @@ import { SubscriptionExpiryBanner } from '@/components/shared/SubscriptionExpiry
 import { format } from 'date-fns'
 import {
   ClipboardList, Truck, Receipt, UserCheck,
-  AlertTriangle, CheckCircle, ArrowRight, FileWarning,
+  AlertTriangle, CheckCircle, ArrowRight, FileWarning, IndianRupee,
 } from 'lucide-react'
 import type { TenantTarget, VehicleAlert, StaffDocumentAlert } from '@/types'
 import { cn } from '@/lib/utils'
@@ -60,26 +60,6 @@ function AttendanceRing({ value, total, color, label }: {
         </span>
       </div>
       <span className="text-xs text-blue-300">{label}</span>
-    </div>
-  )
-}
-
-// ─── Segmented Bar ────────────────────────────────────────────────────────────
-
-function SegmentedBar({ segments }: {
-  segments: { value: number; tw: string }[]
-}) {
-  const total = segments.reduce((s, x) => s + (x.value || 0), 0)
-  if (total === 0) return <div className="h-2 bg-gray-100 rounded-full" />
-  return (
-    <div className="flex h-2.5 rounded-full overflow-hidden gap-px">
-      {segments.filter(s => s.value > 0).map((s, i) => (
-        <div
-          key={i}
-          className={cn('transition-all duration-500', s.tw)}
-          style={{ width: `${(s.value / total) * 100}%` }}
-        />
-      ))}
     </div>
   )
 }
@@ -277,13 +257,66 @@ function MonthlyTargetCard({ data, type, isFlipped }: {
   )
 }
 
-// ─── KPI Card ─────────────────────────────────────────────────────────────────
+// ─── Breakdown Card ───────────────────────────────────────────────────────────
 
-function KpiCard({ label, value, sub, icon: Icon, accentTw, iconBg, href, bar }: {
-  label: string; value: string; sub?: string
+function BreakdownCard({ title, total, totalLabel, href, icon: Icon, accentTw, iconBg, items, footer }: {
+  title: string; total: string; totalLabel?: string
   icon: React.ElementType; accentTw: string; iconBg: string
-  href?: string; bar?: { used: number; total: number; color: string }
+  href?: string
+  items: { label: string; value: number | string; dot: string; status?: string; href?: string }[]
+  footer?: React.ReactNode
 }) {
+  const navigate = useNavigate()
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex">
+      <div className={cn('w-1 shrink-0', accentTw)} />
+      <div className="flex-1 p-5">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{title}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1 tabular-nums leading-none">{total}</p>
+            {totalLabel && <p className="text-xs text-gray-400 mt-0.5">{totalLabel}</p>}
+          </div>
+          <div className={cn('p-2.5 rounded-xl shrink-0', iconBg)}>
+            <Icon size={18} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          {items.map(({ label, value, dot, href: itemHref }) => (
+            <div
+              key={label}
+              onClick={() => itemHref && navigate(itemHref)}
+              className={cn(
+                'flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg',
+                itemHref && 'cursor-pointer hover:bg-gray-50 transition-colors'
+              )}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className={cn('w-2 h-2 rounded-full shrink-0', dot)} />
+                <span className="text-[11px] text-gray-500 truncate">{label}</span>
+              </div>
+              <span className="text-sm font-bold text-gray-800 tabular-nums shrink-0">{value}</span>
+            </div>
+          ))}
+        </div>
+        {footer}
+        {href && (
+          <div
+            onClick={() => navigate(href)}
+            className="mt-3 flex items-center gap-1 text-[11px] text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+          >
+            <span>View all</span>
+            <ArrowRight size={10} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Attendance KPI Card ───────────────────────────────────────────────────────
+
+function AttendanceKpiCard({ value, sub, href }: { value: string; sub?: string; href?: string }) {
   const navigate = useNavigate()
   return (
     <div
@@ -293,32 +326,18 @@ function KpiCard({ label, value, sub, icon: Icon, accentTw, iconBg, href, bar }:
         href && 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'
       )}
     >
-      <div className={cn('w-1 shrink-0', accentTw)} />
+      <div className="w-1 shrink-0 bg-green-500" />
       <div className="flex-1 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{label}</p>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Today's Attendance</p>
             <p className="text-3xl font-bold text-gray-900 mt-1 tabular-nums leading-none">{value}</p>
             {sub && <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">{sub}</p>}
           </div>
-          <div className={cn('p-2.5 rounded-xl shrink-0', iconBg)}>
-            <Icon size={18} />
+          <div className="p-2.5 rounded-xl shrink-0 bg-green-50 text-green-600">
+            <UserCheck size={18} />
           </div>
         </div>
-        {bar && (
-          <div className="mt-3.5">
-            <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-              <span>Fleet utilization</span>
-              <span className="font-medium">{bar.total > 0 ? Math.round((bar.used / bar.total) * 100) : 0}%</span>
-            </div>
-            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${bar.total > 0 ? (bar.used / bar.total) * 100 : 0}%`, backgroundColor: bar.color }}
-              />
-            </div>
-          </div>
-        )}
         {href && (
           <div className="mt-3 flex items-center gap-1 text-[11px] text-gray-400">
             <span>View all</span>
@@ -415,27 +434,6 @@ export function DashboardPage() {
   const s      = summaryRes?.data
   const alerts = alertsRes?.data
 
-  const fleetUtil = s && s.vehicles.total > 0
-    ? { used: s.vehicles.onTrip, total: s.vehicles.total, color: '#F97316' }
-    : undefined
-
-  const orderSegments = s ? [
-    { value: s.orders.pending,            tw: 'bg-gray-300' },
-    { value: s.orders.fullyAssigned,      tw: 'bg-blue-400' },
-    { value: s.orders.inTransit,          tw: 'bg-orange-400' },
-    { value: s.orders.partiallyDelivered, tw: 'bg-yellow-400' },
-    { value: s.orders.delivered,          tw: 'bg-green-400' },
-    { value: s.orders.cancelled,          tw: 'bg-red-300' },
-  ] : []
-
-  const invoiceSegments = s ? [
-    { value: s.invoices.draft,         tw: 'bg-gray-300' },
-    { value: s.invoices.sent,          tw: 'bg-blue-400' },
-    { value: s.invoices.partiallyPaid, tw: 'bg-yellow-400' },
-    { value: s.invoices.overdue,       tw: 'bg-red-400' },
-    { value: s.invoices.paid,          tw: 'bg-green-400' },
-  ] : []
-
   const totalAlerts = alerts?.totalAlerts ?? 0
 
   return (
@@ -474,133 +472,87 @@ export function DashboardPage() {
         <MonthlyTargetCard data={targetData} type="tons"  isFlipped={cardsFlipped} />
       </div>
 
-      {/* ── KPI Cards ── */}
+      {/* ── Breakdown Cards ── */}
       {loadingSummary ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl h-32 animate-pulse border border-gray-100" />
+            <div key={i} className="bg-white rounded-2xl h-52 animate-pulse border border-gray-100" />
           ))}
         </div>
-      ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            label="Active Orders"
-            value={fmt(s?.orders.total)}
-            sub={`${fmt(s?.orders.inTransit)} in transit · ${fmt(s?.orders.pending)} pending`}
-            icon={ClipboardList}
-            accentTw="bg-feros-navy"
-            iconBg="bg-blue-50 text-feros-navy"
-            href="/orders"
-          />
-          <KpiCard
-            label="Fleet Size"
-            value={fmt(s?.vehicles.total)}
-            sub={`${fmt(s?.vehicles.onTrip)} on trip · ${fmt(s?.vehicles.available)} available`}
+      ) : s && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          {/* Fleet Size */}
+          <BreakdownCard
+            title="Fleet Size"
+            total={fmt(s.vehicles.total)}
+            totalLabel="Total fleet count"
             icon={Truck}
             accentTw="bg-feros-orange"
             iconBg="bg-orange-50 text-feros-orange"
             href="/vehicles"
-            bar={fleetUtil}
+            items={[
+              { label: 'Available',      value: fmt(s.vehicles.available),      dot: 'bg-green-400',  href: '/vehicles?status=Available' },
+              { label: 'Assigned',       value: fmt(s.vehicles.assigned),       dot: 'bg-blue-400',   href: '/vehicles?status=Assigned' },
+              { label: 'On Trip',        value: fmt(s.vehicles.onTrip),         dot: 'bg-orange-400', href: '/vehicles?status=On+Trip' },
+              { label: 'Maintenance',    value: fmt(s.vehicles.underMaintenance), dot: 'bg-yellow-400', href: '/vehicles?status=Under+Maintenance' },
+              { label: 'Breakdown',      value: fmt(s.vehicles.breakdown),      dot: 'bg-red-400',    href: '/vehicles?status=Breakdown' },
+              { label: 'Inactive',       value: fmt(s.vehicles.inactive),       dot: 'bg-gray-300' },
+            ]}
           />
-          <KpiCard
-            label="Outstanding"
-            value={fmtRupee(s?.invoices.totalOutstanding)}
-            sub={`${fmt(s?.invoices.overdue)} overdue invoice${s?.invoices.overdue !== 1 ? 's' : ''}`}
-            icon={Receipt}
-            accentTw="bg-red-500"
-            iconBg="bg-red-50 text-red-600"
-            href="/invoices"
-          />
-          <KpiCard
-            label="Today's Attendance"
-            value={fmt(s?.todayAttendance.present)}
-            sub={`of ${fmt(s?.todayAttendance.total)} staff · ${fmt(s?.todayAttendance.absent)} absent`}
-            icon={UserCheck}
-            accentTw="bg-green-500"
-            iconBg="bg-green-50 text-green-600"
-            href="/attendance"
-          />
-        </div>
-      )}
-
-      {/* ── Order & Invoice breakdown ── */}
-      {s && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           {/* Orders */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="font-semibold text-gray-800 text-sm">Order Summary</h2>
-              <button
-                onClick={() => navigate('/orders')}
-                className="text-xs text-feros-navy hover:underline flex items-center gap-1"
-              >
-                View all <ArrowRight size={10} />
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 mb-3">{fmt(s.orders.total)} orders total</p>
-            <SegmentedBar segments={orderSegments} />
-            <div className="grid grid-cols-3 gap-2 mt-4">
-              {[
-                { label: 'Pending',    value: s.orders.pending,            dot: 'bg-gray-300',   status: 'PENDING' },
-                { label: 'Assigned',   value: s.orders.fullyAssigned,      dot: 'bg-blue-400',   status: 'FULLY_ASSIGNED' },
-                { label: 'In Transit', value: s.orders.inTransit,          dot: 'bg-orange-400', status: 'IN_TRANSIT' },
-                { label: 'Part. Del.', value: s.orders.partiallyDelivered, dot: 'bg-yellow-400', status: 'PARTIALLY_DELIVERED' },
-                { label: 'Delivered',  value: s.orders.delivered,          dot: 'bg-green-400',  status: 'DELIVERED' },
-                { label: 'Cancelled',  value: s.orders.cancelled,          dot: 'bg-red-300',    status: 'CANCELLED' },
-              ].map(({ label, value, dot, status }) => (
-                <div
-                  key={label}
-                  onClick={() => navigate(`/orders?status=${status}`)}
-                  className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors group"
-                >
-                  <div className={cn('w-2 h-2 rounded-full shrink-0', dot)} />
-                  <div className="min-w-0">
-                    <p className="text-base font-bold text-gray-800 tabular-nums leading-none">{fmt(value)}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">{label}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <BreakdownCard
+            title="Orders"
+            total={fmt(s.orders.total)}
+            totalLabel="Total orders count"
+            icon={ClipboardList}
+            accentTw="bg-feros-navy"
+            iconBg="bg-blue-50 text-feros-navy"
+            href="/orders"
+            items={[
+              { label: 'Pending',        value: fmt(s.orders.pending),            dot: 'bg-gray-300',   href: '/orders?status=PENDING' },
+              { label: 'Fully Assigned', value: fmt(s.orders.fullyAssigned),      dot: 'bg-blue-400',   href: '/orders?status=FULLY_ASSIGNED' },
+              { label: 'In Transit',     value: fmt(s.orders.inTransit),          dot: 'bg-orange-400', href: '/orders?status=IN_TRANSIT' },
+              { label: 'Part. Delivered',value: fmt(s.orders.partiallyDelivered), dot: 'bg-yellow-400', href: '/orders?status=PARTIALLY_DELIVERED' },
+              { label: 'Delivered',      value: fmt(s.orders.delivered),          dot: 'bg-green-400',  href: '/orders?status=DELIVERED' },
+              { label: 'Cancelled',      value: fmt(s.orders.cancelled),          dot: 'bg-red-300',    href: '/orders?status=CANCELLED' },
+            ]}
+          />
 
-          {/* Invoices */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="font-semibold text-gray-800 text-sm">Invoice Summary</h2>
-              <button
-                onClick={() => navigate('/invoices')}
-                className="text-xs text-feros-navy hover:underline flex items-center gap-1"
-              >
-                View all <ArrowRight size={10} />
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 mb-3">
-              Outstanding: <span className="font-semibold text-gray-700">{fmtRupee(s.invoices.totalOutstanding)}</span>
-            </p>
-            <SegmentedBar segments={invoiceSegments} />
-            <div className="grid grid-cols-3 gap-2 mt-4">
-              {[
-                { label: 'Draft',      value: s.invoices.draft,         dot: 'bg-gray-300',   status: 'DRAFT' },
-                { label: 'Sent',       value: s.invoices.sent,          dot: 'bg-blue-400',   status: 'SENT' },
-                { label: 'Part. Paid', value: s.invoices.partiallyPaid, dot: 'bg-yellow-400', status: 'PARTIALLY_PAID' },
-                { label: 'Overdue',    value: s.invoices.overdue,       dot: 'bg-red-400',    status: 'OVERDUE' },
-                { label: 'Paid',       value: s.invoices.paid,          dot: 'bg-green-400',  status: 'PAID' },
-              ].map(({ label, value, dot, status }) => (
-                <div
-                  key={label}
-                  onClick={() => navigate(`/invoices?status=${status}`)}
-                  className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <div className={cn('w-2 h-2 rounded-full shrink-0', dot)} />
-                  <div className="min-w-0">
-                    <p className="text-base font-bold text-gray-800 tabular-nums leading-none">{fmt(value)}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">{label}</p>
-                  </div>
+          {/* Finance & Invoices */}
+          <BreakdownCard
+            title="Finance & Invoices"
+            total={fmt(s.invoices.draft + s.invoices.sent + s.invoices.partiallyPaid + s.invoices.overdue + s.invoices.paid)}
+            totalLabel="Total invoices"
+            icon={Receipt}
+            accentTw="bg-purple-500"
+            iconBg="bg-purple-50 text-purple-600"
+            href="/invoices"
+            items={[
+              { label: 'Draft',      value: fmt(s.invoices.draft),         dot: 'bg-gray-300',   href: '/invoices?status=DRAFT' },
+              { label: 'Sent',       value: fmt(s.invoices.sent),          dot: 'bg-blue-400',   href: '/invoices?status=SENT' },
+              { label: 'Part. Paid', value: fmt(s.invoices.partiallyPaid), dot: 'bg-yellow-400', href: '/invoices?status=PARTIALLY_PAID' },
+              { label: 'Overdue',    value: fmt(s.invoices.overdue),       dot: 'bg-red-400',    href: '/invoices?status=OVERDUE' },
+              { label: 'Paid',       value: fmt(s.invoices.paid),          dot: 'bg-green-400',  href: '/invoices?status=PAID' },
+            ]}
+            footer={
+              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <IndianRupee size={13} className="text-purple-500" />
+                  <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total Revenue</span>
                 </div>
-              ))}
-            </div>
-          </div>
+                <span className="text-base font-bold text-gray-900 tabular-nums">{fmtRupee(s.invoices.totalRevenue)}</span>
+              </div>
+            }
+          />
+
+          {/* Today's Attendance */}
+          <AttendanceKpiCard
+            value={fmt(s.todayAttendance.present)}
+            sub={`of ${fmt(s.todayAttendance.total)} staff · ${fmt(s.todayAttendance.absent)} absent`}
+            href="/attendance"
+          />
 
         </div>
       )}
