@@ -438,7 +438,7 @@ export interface Attendance {
   markedById: number; markedByName: string; markedAt: string
   markedOutAt?: string; dutyLabel?: string; dutyHours?: number
   remarks?: string; selfieUrl?: string
-  locationName?: string
+  locationName?: string; latitude?: number | null; longitude?: number | null
   assignedVehicleNumber?: string
   approvalStatus: AttendanceApprovalStatus
   approvedById?: number; approvedByName?: string; approvedAt?: string
