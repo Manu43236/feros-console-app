@@ -1426,9 +1426,7 @@ export interface VehicleMasterRow {
   rcExpiry: string | null
   insuranceNumber: string | null
   insuranceExpiry: string | null
-  permitNumber: string | null
   permitExpiry: string | null
-  fitnessNumber: string | null
   fitnessExpiry: string | null
   pucNumber: string | null
   pucExpiry: string | null

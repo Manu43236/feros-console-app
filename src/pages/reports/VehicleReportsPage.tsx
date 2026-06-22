@@ -112,7 +112,7 @@ function VehicleMasterTable({ rows, loading }: { rows: VehicleMasterRow[]; loadi
       'Vehicle No.', 'Brand', 'Model', 'Type', 'Fuel Type', 'Ownership', 'Status',
       'Capacity (T)', 'GVW', 'Mfg Year', 'Tank Cap.',
       'Chassis No.', 'Engine No.',
-      'RC No.', 'RC Expiry', 'Insurance No.', 'Insurance Expiry', 'Permit No.', 'Permit Expiry', 'Fitness No.', 'Fitness Expiry', 'PUC No.', 'PUC Expiry', 'Road Tax Expiry',
+      'RC No.', 'RC Expiry', 'Insurance No.', 'Insurance Expiry', 'Permit Expiry', 'Fitness Expiry', 'PUC No.', 'PUC Expiry', 'Road Tax Expiry',
       'Financed', 'Financer', 'Finance From', 'Finance To', 'IoT',
     ]}
     rows={rows.map(r => [
@@ -126,8 +126,7 @@ function VehicleMasterTable({ rows, loading }: { rows: VehicleMasterRow[]; loadi
       dash(r.chassisNumber), dash(r.engineNumber),
       dash(r.rcNumber), dash(r.rcExpiry),
       dash(r.insuranceNumber), dash(r.insuranceExpiry),
-      dash(r.permitNumber), dash(r.permitExpiry),
-      dash(r.fitnessNumber), dash(r.fitnessExpiry),
+      dash(r.permitExpiry), dash(r.fitnessExpiry),
       dash(r.pucNumber), dash(r.pucExpiry),
       dash(r.roadTaxExpiry),
       r.isFinanced
