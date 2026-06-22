@@ -314,32 +314,49 @@ function BreakdownCard({ title, total, totalLabel, href, icon: Icon, accentTw, i
   )
 }
 
-// ─── Attendance KPI Card ───────────────────────────────────────────────────────
+// ─── Attendance Card ──────────────────────────────────────────────────────────
 
-function AttendanceKpiCard({ value, sub, href }: { value: string; sub?: string; href?: string }) {
+function AttendanceCard({ att, href }: {
+  att: { present: number; absent: number; halfDay: number; onLeave: number; total: number }
+  href?: string
+}) {
   const navigate = useNavigate()
+  const rows = [
+    { label: 'Present',  value: att.present,  dot: 'bg-green-400' },
+    { label: 'Absent',   value: att.absent,   dot: 'bg-red-400' },
+    { label: 'Half Day', value: att.halfDay,  dot: 'bg-yellow-400' },
+    { label: 'On Leave', value: att.onLeave,  dot: 'bg-blue-400' },
+  ]
   return (
-    <div
-      onClick={() => href && navigate(href)}
-      className={cn(
-        'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 transition-all duration-200 flex',
-        href && 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'
-      )}
-    >
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex">
       <div className="w-1 shrink-0 bg-green-500" />
       <div className="flex-1 p-5">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex-1 min-w-0">
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Today's Attendance</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1 tabular-nums leading-none">{value}</p>
-            {sub && <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">{sub}</p>}
+            <p className="text-3xl font-bold text-gray-900 mt-1 tabular-nums leading-none">{fmt(att.total)}</p>
+            <p className="text-xs text-gray-400 mt-0.5">Total staff</p>
           </div>
           <div className="p-2.5 rounded-xl shrink-0 bg-green-50 text-green-600">
             <UserCheck size={18} />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          {rows.map(({ label, value, dot }) => (
+            <div key={label} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className={cn('w-2 h-2 rounded-full shrink-0', dot)} />
+                <span className="text-[11px] text-gray-500 truncate">{label}</span>
+              </div>
+              <span className="text-sm font-bold text-gray-800 tabular-nums shrink-0">{fmt(value)}</span>
+            </div>
+          ))}
+        </div>
         {href && (
-          <div className="mt-3 flex items-center gap-1 text-[11px] text-gray-400">
+          <div
+            onClick={() => navigate(href)}
+            className="mt-3 flex items-center gap-1 text-[11px] text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+          >
             <span>View all</span>
             <ArrowRight size={10} />
           </div>
@@ -548,11 +565,7 @@ export function DashboardPage() {
           />
 
           {/* Today's Attendance */}
-          <AttendanceKpiCard
-            value={fmt(s.todayAttendance.present)}
-            sub={`of ${fmt(s.todayAttendance.total)} staff · ${fmt(s.todayAttendance.absent)} absent`}
-            href="/attendance"
-          />
+          <AttendanceCard att={s.todayAttendance} href="/attendance" />
 
         </div>
       )}
