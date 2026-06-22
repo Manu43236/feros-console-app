@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockApi, sparePartsApi } from '@/api/inventory'
+import type { SparePart } from '@/types'
 import { toast } from 'sonner'
 import { Plus, Minus, Search, AlertTriangle, Boxes } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,10 +10,103 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useAuthStore } from '@/store/authStore'
+
+// ── Quick Create Part Dialog ────────────────────────────────────────────────────
+const UNITS = ['Pieces', 'Litres', 'Kg', 'Metres', 'Sets', 'Pairs']
+
+function QuickCreatePartDialog({
+  defaultName,
+  onClose,
+  onCreated,
+}: {
+  defaultName: string
+  onClose: () => void
+  onCreated: (part: SparePart) => void
+}) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({
+    name: defaultName,
+    unit: 'Pieces',
+    category: '',
+    minStockLevel: 0,
+  })
+
+  const mutation = useMutation({
+    mutationFn: () => sparePartsApi.create(form),
+    onSuccess: (res) => {
+      toast.success('Part created')
+      qc.invalidateQueries({ queryKey: ['spare-parts'] })
+      onCreated(res.data)
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to create part')
+    },
+  })
+
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Create New Part</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>Part Name *</Label>
+            <Input
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Hydraulic Oil 68"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Unit *</Label>
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={form.unit}
+                onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
+              >
+                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Category</Label>
+              <Input
+                value={form.category}
+                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                placeholder="e.g. Lubricants"
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Minimum Stock Level</Label>
+            <Input
+              type="number" min={0}
+              value={form.minStockLevel}
+              onChange={e => setForm(f => ({ ...f, minStockLevel: Number(e.target.value) }))}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={mutation.isPending || !form.name.trim()}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? 'Creating…' : 'Add Part'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // ── Stock In Dialog ────────────────────────────────────────────────────────────
 function StockInDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
+  const role = useAuthStore(s => s.role)
+  const canCreatePart = role === 'ADMIN' || role === 'STORE_KEEPER'
+  const [quickCreateName, setQuickCreateName] = useState<string | null>(null)
   const [form, setForm] = useState({
     sparePartId: 0,
     quantity: 1,
@@ -45,6 +139,7 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
   })
 
   return (
+    <>
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Add Stock (Stock In)</DialogTitle></DialogHeader>
@@ -52,10 +147,11 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
           <div>
             <Label>Spare Part *</Label>
             <SearchableSelect
-              placeholder="Select part…"
+              placeholder="Search or create part…"
               value={form.sparePartId ? String(form.sparePartId) : ''}
               onValueChange={v => setForm(f => ({ ...f, sparePartId: Number(v) }))}
               options={parts.map(p => ({ value: String(p.id), label: p.name + (p.partNumber ? ` (${p.partNumber})` : '') }))}
+              onCreateNew={canCreatePart ? (name) => setQuickCreateName(name) : undefined}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -96,6 +192,17 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
         </div>
       </DialogContent>
     </Dialog>
+    {quickCreateName !== null && (
+      <QuickCreatePartDialog
+        defaultName={quickCreateName}
+        onClose={() => setQuickCreateName(null)}
+        onCreated={(part) => {
+          setForm(f => ({ ...f, sparePartId: part.id }))
+          setQuickCreateName(null)
+        }}
+      />
+    )}
+    </>
   )
 }
 

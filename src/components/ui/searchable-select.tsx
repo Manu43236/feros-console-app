@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Search, Check } from 'lucide-react'
+import { ChevronDown, Search, Check, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface SelectOption {
@@ -21,6 +21,8 @@ interface SearchableSelectProps {
   className?: string
   /** Applied to the trigger button — controls height, text size, error borders */
   triggerClassName?: string
+  /** If provided, shows a "+ Create" button when no results match. Called with the current search text. */
+  onCreateNew?: (searchText: string) => void
 }
 
 export function SearchableSelect({
@@ -32,6 +34,7 @@ export function SearchableSelect({
   showSearch = true,
   className,
   triggerClassName,
+  onCreateNew,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -99,7 +102,18 @@ export function SearchableSelect({
           )}
           <div className="max-h-48 overflow-y-auto p-1">
             {filtered.length === 0 ? (
-              <p className="py-2 text-center text-sm text-muted-foreground">No results</p>
+              onCreateNew && search.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => { onCreateNew(search.trim()); setOpen(false); setSearch('') }}
+                  className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  Create &quot;{search.trim()}&quot;
+                </button>
+              ) : (
+                <p className="py-2 text-center text-sm text-muted-foreground">No results</p>
+              )
             ) : (
               filtered.map(o => (
                 <button
