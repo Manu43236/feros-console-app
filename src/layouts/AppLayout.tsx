@@ -12,6 +12,7 @@ import {
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
   Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin, ScrollText,
+  Construction, BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
@@ -240,6 +241,33 @@ const SERVICE_MANAGER_NAV: FlatNav = [
   { to: '/my/attendance',    label: 'My Attendance',    icon: Calendar },
   { to: '/my/payslip',       label: 'My Payslip',       icon: Wallet },
 ]
+
+// ─── Equipment nav (placeholder — screens built in subsequent phases) ────────────
+const EQUIPMENT_ADMIN_NAV: SectionedNav = {
+  dashboard: { to: '/equipment/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  sections: [
+    {
+      section: 'Equipment',
+      items: [
+        { to: '/equipment/list',        label: 'Equipment List', icon: Construction },
+        { to: '/equipment/work-orders', label: 'Work Orders',    icon: ClipboardList },
+        { to: '/equipment/daily-logs',  label: 'Daily Logs',     icon: BookOpen },
+      ],
+    },
+    {
+      section: 'Finance',
+      items: [
+        { to: '/equipment/invoices', label: 'Invoices', icon: FileText },
+      ],
+    },
+    {
+      section: 'Settings',
+      items: [
+        { to: '/equipment/masters', label: 'Masters', icon: Settings },
+      ],
+    },
+  ],
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 function isSectionedNav(nav: SectionedNav | FlatNav): nav is SectionedNav {
@@ -489,6 +517,9 @@ export function AppLayout() {
   const logout             = useAuthStore(s => s.logout)
   const exitImpersonation  = useAuthStore(s => s.exitImpersonation)
   const allowedModules     = useAuthStore(s => s.allowedModules)
+  const moduleType         = useAuthStore(s => s.moduleType)
+  const currentMode        = useAuthStore(s => s.currentMode)
+  const setCurrentMode     = useAuthStore(s => s.setCurrentMode)
   const navigate = useNavigate()
   const qc = useQueryClient()
 
@@ -504,15 +535,19 @@ export function AppLayout() {
   const subStatus = mySubRes?.data?.status
   const subFeatures = mySubRes?.data
 
+  const isEquipmentMode =
+    moduleType === 'EQUIPMENT_ONLY' ||
+    (moduleType === 'BOTH' && currentMode === 'EQUIPMENT')
+
   const nav: SectionedNav | FlatNav =
     role === 'SUPER_ADMIN'  ? SUPER_ADMIN_NAV :
-    role === 'OFFICE_STAFF' ? OFFICE_STAFF_NAV :
+    role === 'OFFICE_STAFF' ? (isEquipmentMode ? EQUIPMENT_ADMIN_NAV : OFFICE_STAFF_NAV) :
     role === 'SUPERVISOR'   ? SUPERVISOR_NAV :
     role === 'DRIVER'       ? DRIVER_CLEANER_NAV :
     role === 'CLEANER'      ? DRIVER_CLEANER_NAV :
     role === 'STORE_KEEPER'    ? STORE_KEEPER_NAV :
     role === 'SERVICE_MANAGER' ? SERVICE_MANAGER_NAV :
-    ADMIN_NAV
+    isEquipmentMode ? EQUIPMENT_ADMIN_NAV : ADMIN_NAV
 
   const location = useLocation()
 
@@ -626,7 +661,36 @@ export function AppLayout() {
           >
             <Menu size={20} />
           </button>
-          <div className="flex-1" />
+
+          {/* Module toggle — only for BOTH tenants */}
+          <div className="flex-1 flex items-center justify-center">
+            {moduleType === 'BOTH' && (
+              <div className="flex items-center bg-gray-100 rounded-full p-1 gap-1">
+                <button
+                  onClick={() => setCurrentMode('VEHICLES')}
+                  className={cn(
+                    'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
+                    currentMode === 'VEHICLES'
+                      ? 'bg-feros-navy text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  )}
+                >
+                  Vehicles
+                </button>
+                <button
+                  onClick={() => setCurrentMode('EQUIPMENT')}
+                  className={cn(
+                    'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
+                    currentMode === 'EQUIPMENT'
+                      ? 'bg-feros-navy text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  )}
+                >
+                  Equipment
+                </button>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={() => navigate('/profile')}
