@@ -73,6 +73,9 @@ import { ProfilePage } from '@/pages/profile/ProfilePage'
 // Notifications
 import { NotificationsPage } from '@/pages/notifications/NotificationsPage'
 
+// Equipment
+import { EquipmentDashboardPage } from '@/pages/equipment/EquipmentDashboardPage'
+
 // GPS
 import GpsTrackerPage from '@/pages/gps/GpsTrackerPage'
 
@@ -183,6 +186,9 @@ export default function App() {
 
           {/* Profile */}
           <Route path="profile" element={<ProfilePage />} />
+
+          {/* Equipment */}
+          <Route path="equipment/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentDashboardPage /></ProtectedRoute>} />
 
           {/* Notifications */}
           <Route path="notifications" element={<NotificationsPage />} />

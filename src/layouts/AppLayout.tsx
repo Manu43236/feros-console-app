@@ -654,7 +654,7 @@ export function AppLayout() {
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 shrink-0 gap-2">
           <button
             onClick={() => setSidebarOpen(true)}
             className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100"
@@ -662,35 +662,36 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
 
-          {/* Module toggle — only for BOTH tenants */}
-          <div className="flex-1 flex items-center justify-center">
-            {moduleType === 'BOTH' && (
-              <div className="flex items-center bg-gray-100 rounded-full p-1 gap-1">
-                <button
-                  onClick={() => setCurrentMode('VEHICLES')}
-                  className={cn(
-                    'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
-                    currentMode === 'VEHICLES'
-                      ? 'bg-feros-navy text-white shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  )}
-                >
-                  Vehicles
-                </button>
-                <button
-                  onClick={() => setCurrentMode('EQUIPMENT')}
-                  className={cn(
-                    'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
-                    currentMode === 'EQUIPMENT'
-                      ? 'bg-feros-navy text-white shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  )}
-                >
-                  Equipment
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Module toggle — only for BOTH tenants, left-aligned */}
+          {moduleType === 'BOTH' && (
+            <div className="flex items-center bg-gray-100 rounded-full p-1 gap-1">
+              <button
+                onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }}
+                className={cn(
+                  'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
+                  currentMode === 'VEHICLES'
+                    ? 'bg-feros-navy text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                Vehicles
+              </button>
+              <button
+                onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }}
+                className={cn(
+                  'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
+                  currentMode === 'EQUIPMENT'
+                    ? 'bg-feros-navy text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                Equipment
+              </button>
+            </div>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
 
           <button
             onClick={() => navigate('/profile')}
