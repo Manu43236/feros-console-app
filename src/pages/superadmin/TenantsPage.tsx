@@ -19,7 +19,7 @@ import apiClient from '@/api/client'
 import type { ApiResponse } from '@/types'
 import { tenantsApi } from '@/api/superadmin'
 import { useAuthStore } from '@/store/authStore'
-import type { Tenant, SubscriptionStatus } from '@/types'
+import type { Tenant, SubscriptionStatus, ModuleType } from '@/types'
 
 // ── Bulk Upload Result type ───────────────────────────────────────────────────
 interface BulkUploadResult {
@@ -204,6 +204,7 @@ type TenantFormData = {
   prefix: string; address: string; city: string; state: string; pincode: string
   gstin: string; panNumber: string; tanNumber: string; cinNumber: string; transportLicenseNumber: string
   bankName: string; accountNumber: string; ifscCode: string; branchName: string; accountHolderName: string
+  moduleType: ModuleType
 }
 
 const tenantSchema = z.object({
@@ -219,6 +220,7 @@ const tenantSchema = z.object({
   cinNumber: z.string().optional(), transportLicenseNumber: z.string().optional(),
   bankName: z.string().optional(), accountNumber: z.string().optional(),
   ifscCode: z.string().optional(), branchName: z.string().optional(), accountHolderName: z.string().optional(),
+  moduleType: z.enum(['VEHICLES_ONLY', 'EQUIPMENT_ONLY', 'BOTH']),
 })
 
 const EMPTY_FORM: TenantFormData = {
@@ -226,6 +228,7 @@ const EMPTY_FORM: TenantFormData = {
   prefix: '', address: '', city: '', state: '', pincode: '',
   gstin: '', panNumber: '', tanNumber: '', cinNumber: '', transportLicenseNumber: '',
   bankName: '', accountNumber: '', ifscCode: '', branchName: '', accountHolderName: '',
+  moduleType: 'VEHICLES_ONLY',
 }
 
 function toForm(t: Tenant): TenantFormData {
@@ -238,6 +241,7 @@ function toForm(t: Tenant): TenantFormData {
     cinNumber: t.cinNumber ?? '', transportLicenseNumber: t.transportLicenseNumber ?? '',
     bankName: t.bankName ?? '', accountNumber: t.accountNumber ?? '',
     ifscCode: t.ifscCode ?? '', branchName: t.branchName ?? '', accountHolderName: t.accountHolderName ?? '',
+    moduleType: (t.moduleType as ModuleType) ?? 'VEHICLES_ONLY',
   }
 }
 
@@ -304,6 +308,20 @@ function TenantDialog({ open, onClose, tenant }: {
               <Field label="City" fk="city" />
               <Field label="State" fk="state" />
               <Field label="Pincode" fk="pincode" />
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Module Access</p>
+            <div className="flex gap-4">
+              {(['VEHICLES_ONLY', 'EQUIPMENT_ONLY', 'BOTH'] as const).map(v => (
+                <label key={v} className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" value={v} {...register('moduleType')} className="accent-feros-navy" />
+                  <span className="text-sm">
+                    {v === 'VEHICLES_ONLY' ? 'Vehicles Only' : v === 'EQUIPMENT_ONLY' ? 'Equipment Only' : 'Both'}
+                  </span>
+                </label>
+              ))}
             </div>
           </div>
 

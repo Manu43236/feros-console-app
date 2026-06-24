@@ -25,6 +25,8 @@ export interface LoginRequest {
   appVersion?: string
   fcmToken?: string
 }
+export type ModuleType = 'VEHICLES_ONLY' | 'EQUIPMENT_ONLY' | 'BOTH'
+
 export interface LoginResponse {
   token: string
   userId: number
@@ -36,6 +38,7 @@ export interface LoginResponse {
   logoUrl?: string
   isPinResetRequired?: boolean
   allowedModules?: string[] | null
+  moduleType?: ModuleType | null
 }
 
 // ─── Module Access ─────────────────────────────────────────────────────────────
@@ -849,6 +852,7 @@ export interface Tenant {
   bankName?: string; accountNumber?: string; ifscCode?: string; branchName?: string; accountHolderName?: string
   ownerName: string; ownerPhone: string; ownerEmail?: string
   prefix?: string; logoUrl?: string; lorryCount?: number
+  moduleType?: ModuleType
   subscriptionStatus: SubscriptionStatus
   trialStartDate?: string; trialEndDate?: string
   subscriptionStartDate?: string; subscriptionEndDate?: string
