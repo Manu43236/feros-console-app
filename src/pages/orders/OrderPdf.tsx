@@ -22,7 +22,7 @@ const S = StyleSheet.create({
   infoRow:      { flexDirection: 'row', gap: 8, marginTop: 8 },
   infoBox:      { flex: 1, border: `1pt solid ${BORDER}`, padding: 6 },
   infoLabel:    { fontSize: 7, color: '#777', marginBottom: 2 },
-  infoValue:    { fontSize: 8.5, fontWeight: 'bold', color: NAVY },
+  infoValue:    { fontSize: 7.5, fontWeight: 'bold', color: NAVY },
   infoValueSm:  { fontSize: 8, fontWeight: 'bold', color: '#000' },
 
   // Route
