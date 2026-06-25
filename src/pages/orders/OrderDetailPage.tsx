@@ -29,6 +29,7 @@ import { StatusBadge, PaymentStatusBadge, OrderForm } from './OrdersPage'
 import { cn } from '@/lib/utils'
 import type { OrderPaymentStatus, VehicleAllocation } from '@/types'
 import { useAuthStore } from '@/store/authStore'
+import { openOrderPdf } from './OrderPdf'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function fmt(date?: string) {
@@ -1003,7 +1004,17 @@ export function OrderDetailPage() {
   const order = res?.data
 
   const role         = useAuthStore(s => s.role)
+  const companyName  = useAuthStore(s => s.companyName) ?? ''
   const isSupervisor = role === 'SUPERVISOR'
+  const [pdfLoading, setPdfLoading] = useState(false)
+
+  async function handlePdf() {
+    if (!order) return
+    setPdfLoading(true)
+    try { await openOrderPdf(order, companyName) }
+    catch { toast.error('Failed to generate PDF') }
+    finally { setPdfLoading(false) }
+  }
 
   const forceDeliverMutation = useMutation({
     mutationFn: () => apiClient.patch(`/orders/${order?.id}/force-deliver`, null),
@@ -1042,6 +1053,14 @@ export function OrderDetailPage() {
               <ArrowLeft size={15} /> Orders
             </button>
             <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handlePdf}
+                disabled={pdfLoading}
+                className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-lg transition-colors disabled:opacity-50"
+                title={pdfLoading ? 'Generating…' : 'Download Order Copy'}
+              >
+                <FileText className="h-4 w-4" />
+              </button>
               {canForceDeliver && (
                 <Button
                   variant="outline"
