@@ -10,11 +10,13 @@ export default {
       colors: {
         // FEROS Brand
         feros: {
-          navy:    '#1E3A5F',
-          orange:  '#F97316',
-          sidebar: '#0F2137',
-          light:   '#F8FAFC',
-          dark:    '#0F172A',
+          navy:          '#1E3A5F',
+          orange:        '#F97316',
+          sidebar:       '#0F2137',
+          light:         '#F8FAFC',
+          dark:          '#0F172A',
+          amber:         '#D97706',
+          'equip-sidebar': '#1C1400',
         },
         border:     'hsl(var(--border))',
         input:      'hsl(var(--input))',

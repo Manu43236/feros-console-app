@@ -282,7 +282,7 @@ function isModuleAllowed(item: NavItem, allowedModules: string[] | null): boolea
 }
 
 // ─── Notification Nav Link ───────────────────────────────────────────────────────
-function NotifNavLink() {
+function NotifNavLink({ isEquipmentMode }: { isEquipmentMode?: boolean }) {
   const { data: countRes } = useQuery({
     queryKey: ['notif-count'],
     queryFn: () => notificationsApi.getUnreadCount(),
@@ -296,7 +296,7 @@ function NotifNavLink() {
       className={({ isActive }) => cn(
         'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? 'bg-feros-orange text-white'
+          ? isEquipmentMode ? 'bg-feros-amber text-white' : 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
@@ -312,7 +312,7 @@ function NotifNavLink() {
 }
 
 // ─── Demo Requests Nav Link ──────────────────────────────────────────────────────
-function DemoRequestsNavLink({ onClick }: { onClick?: () => void }) {
+function DemoRequestsNavLink({ onClick, isEquipmentMode }: { onClick?: () => void; isEquipmentMode?: boolean }) {
   const { data: countRes } = useQuery({
     queryKey: ['demo-requests-count'],
     queryFn: () => demoRequestsApi.countNew(),
@@ -327,7 +327,7 @@ function DemoRequestsNavLink({ onClick }: { onClick?: () => void }) {
       className={({ isActive }) => cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? 'bg-feros-orange text-white'
+          ? isEquipmentMode ? 'bg-feros-amber text-white' : 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
@@ -343,7 +343,7 @@ function DemoRequestsNavLink({ onClick }: { onClick?: () => void }) {
 }
 
 // ─── Nav item ────────────────────────────────────────────────────────────────────
-function NavItemLink({ to, label, icon: Icon, onClick }: NavItem & { onClick?: () => void }) {
+function NavItemLink({ to, label, icon: Icon, onClick, isEquipmentMode }: NavItem & { onClick?: () => void; isEquipmentMode?: boolean }) {
   return (
     <NavLink
       to={to}
@@ -352,7 +352,7 @@ function NavItemLink({ to, label, icon: Icon, onClick }: NavItem & { onClick?: (
       className={({ isActive }) => cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? 'bg-feros-orange text-white'
+          ? isEquipmentMode ? 'bg-feros-amber text-white' : 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
@@ -364,15 +364,15 @@ function NavItemLink({ to, label, icon: Icon, onClick }: NavItem & { onClick?: (
 
 // ─── Collapsible section ─────────────────────────────────────────────────────────
 function NavSectionGroup({
-  section, icon: SectionIcon, items, open, onToggle, onNavClick,
-}: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void }) {
+  section, icon: SectionIcon, items, open, onToggle, onNavClick, isEquipmentMode,
+}: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void; isEquipmentMode?: boolean }) {
   const { pathname } = useLocation()
   const isSectionActive = items.some(item => pathname === item.to || pathname.startsWith(item.to + '/'))
 
   if (section === '') {
     return (
       <div className="space-y-0.5 mt-1">
-        {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} />)}
+        {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} isEquipmentMode={isEquipmentMode} />)}
       </div>
     )
   }
@@ -397,7 +397,7 @@ function NavSectionGroup({
       </button>
       {open && (
         <div className="ml-7 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
-          {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} />)}
+          {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} isEquipmentMode={isEquipmentMode} />)}
         </div>
       )}
     </div>
@@ -416,6 +416,7 @@ type SidebarPanelProps = {
   isRouteAllowed: (item: NavItem) => boolean
   onCloseMobile?: () => void
   onOpenLogout: () => void
+  isEquipmentMode: boolean
 }
 
 function SidebarPanel({
@@ -428,9 +429,10 @@ function SidebarPanel({
   isRouteAllowed,
   onCloseMobile,
   onOpenLogout,
+  isEquipmentMode,
 }: SidebarPanelProps) {
   return (
-    <aside className={cn('flex flex-col h-full bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
+    <aside className={cn('flex flex-col h-full', isEquipmentMode ? 'bg-feros-equip-sidebar' : 'bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
       {/* Logo */}
       <div className="flex items-center justify-center h-16 px-5 border-b border-white/10 shrink-0 relative">
         {logoUrl ? (
@@ -449,7 +451,7 @@ function SidebarPanel({
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         {isSectionedNav(nav) ? (
           <>
-            <NavItemLink {...nav.dashboard} onClick={onCloseMobile} />
+            <NavItemLink {...nav.dashboard} onClick={onCloseMobile} isEquipmentMode={isEquipmentMode} />
             {nav.sections.map(({ section, icon, items }) => {
               const allowed = items.filter(i => isRouteAllowed(i))
               if (allowed.length === 0) return null
@@ -462,6 +464,7 @@ function SidebarPanel({
                   open={openSections.has(section)}
                   onToggle={() => onToggleSection(section)}
                   onNavClick={onCloseMobile}
+                  isEquipmentMode={isEquipmentMode}
                 />
               )
             })}
@@ -470,8 +473,8 @@ function SidebarPanel({
           <div className="space-y-0.5">
             {(nav as FlatNav).filter(i => isRouteAllowed(i)).map(item =>
               item.to === '/sa/demo-requests'
-                ? <DemoRequestsNavLink key={item.to} onClick={onCloseMobile} />
-                : <NavItemLink key={item.to} {...item} onClick={onCloseMobile} />
+                ? <DemoRequestsNavLink key={item.to} onClick={onCloseMobile} isEquipmentMode={isEquipmentMode} />
+                : <NavItemLink key={item.to} {...item} onClick={onCloseMobile} isEquipmentMode={isEquipmentMode} />
             )}
           </div>
         )}
@@ -479,7 +482,7 @@ function SidebarPanel({
 
       {/* Footer */}
       <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
-        <NotifNavLink />
+        <NotifNavLink isEquipmentMode={isEquipmentMode} />
         <button
           onClick={onOpenLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
@@ -623,6 +626,7 @@ export function AppLayout() {
     onToggleSection: toggleSection,
     isRouteAllowed,
     onOpenLogout: () => setLogoutOpen(true),
+    isEquipmentMode,
   }
 
   return (
@@ -681,7 +685,7 @@ export function AppLayout() {
                 className={cn(
                   'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
                   currentMode === 'EQUIPMENT'
-                    ? 'bg-feros-navy text-white shadow-sm'
+                    ? 'bg-feros-amber text-white shadow-sm'
                     : 'text-gray-500 hover:text-gray-700'
                 )}
               >
@@ -697,13 +701,13 @@ export function AppLayout() {
             onClick={() => navigate('/profile')}
             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-feros-navy flex items-center justify-center text-white text-sm font-semibold">
+            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold', isEquipmentMode ? 'bg-feros-amber' : 'bg-feros-navy')}>
               {name?.[0] ?? phone?.[0] ?? 'U'}
             </div>
             <div className="hidden sm:block text-left">
               <p className="text-sm font-medium text-gray-800">{name ?? phone}</p>
               <p className="text-xs text-gray-500">{companyName}</p>
-              {role && <p className="text-xs text-feros-navy font-medium">{getRoleLabel(role)}</p>}
+              {role && <p className={cn('text-xs font-medium', isEquipmentMode ? 'text-feros-amber' : 'text-feros-navy')}>{getRoleLabel(role)}</p>}
             </div>
           </button>
         </header>
