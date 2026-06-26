@@ -262,7 +262,7 @@ function EquipmentFormDialog({
             </div>
             <div>
               <Label>Fuel Tank Capacity (L)</Label>
-              <Input className="mt-1" type="number" min={0} value={form.fuelTankCapacity ?? ''} onChange={e => set('fuelTankCapacity', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 200" />
+              <Input className="mt-1" type="number" min={0} step="any" value={form.fuelTankCapacity ?? ''} onChange={e => set('fuelTankCapacity', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 200" />
             </div>
           </div>
 
@@ -270,7 +270,7 @@ function EquipmentFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Current Meter Reading</Label>
-              <Input className="mt-1" type="number" min={0} value={form.currentMeterReading ?? ''} onChange={e => set('currentMeterReading', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 1500" />
+              <Input className="mt-1" type="number" min={0} step="any" value={form.currentMeterReading ?? ''} onChange={e => set('currentMeterReading', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 1500" />
             </div>
           </div>
 
