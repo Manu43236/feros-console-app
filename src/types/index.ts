@@ -851,7 +851,7 @@ export interface Tenant {
   gstin?: string; panNumber?: string; tanNumber?: string; cinNumber?: string; transportLicenseNumber?: string
   bankName?: string; accountNumber?: string; ifscCode?: string; branchName?: string; accountHolderName?: string
   ownerName: string; ownerPhone: string; ownerEmail?: string
-  prefix?: string; logoUrl?: string; lorryCount?: number
+  prefix?: string; logoUrl?: string; totalSlotsCount?: number
   moduleType?: ModuleType
   subscriptionStatus: SubscriptionStatus
   trialStartDate?: string; trialEndDate?: string

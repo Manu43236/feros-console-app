@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Pencil, Search } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -436,7 +436,6 @@ export function EquipmentListPage() {
   })
 
   function openAdd() { setEditing(null); setDlgOpen(true) }
-  function openEdit(m: Equipment) { setEditing(m); setDlgOpen(true) }
 
   return (
     <div className="space-y-5">
@@ -495,11 +494,7 @@ export function EquipmentListPage() {
                   </span>
                 </td>
                 <td className="px-3 py-2"><WorkStatusBadge status={m.workStatus} /></td>
-                <td className="px-3 py-2">
-                  <button onClick={() => openEdit(m)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
-                    <Pencil size={13} />
-                  </button>
-                </td>
+                <td className="px-3 py-2"></td>
               </tr>
             ))}
           </tbody>
