@@ -309,7 +309,7 @@ function NotifNavLink({ isEquipmentMode }: { isEquipmentMode?: boolean }) {
       className={({ isActive }) => cn(
         'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? isEquipmentMode ? 'bg-feros-amber text-white' : 'bg-feros-orange text-white'
+          ? isEquipmentMode ? 'bg-feros-equip-sidebar text-white' : 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
@@ -340,7 +340,7 @@ function DemoRequestsNavLink({ onClick, isEquipmentMode }: { onClick?: () => voi
       className={({ isActive }) => cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? isEquipmentMode ? 'bg-feros-amber text-white' : 'bg-feros-orange text-white'
+          ? isEquipmentMode ? 'bg-feros-equip-sidebar text-white' : 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
@@ -365,7 +365,7 @@ function NavItemLink({ to, label, icon: Icon, onClick, isEquipmentMode }: NavIte
       className={({ isActive }) => cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? isEquipmentMode ? 'bg-feros-amber text-white' : 'bg-feros-orange text-white'
+          ? isEquipmentMode ? 'bg-feros-equip-sidebar text-white' : 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
@@ -698,7 +698,7 @@ export function AppLayout() {
                 className={cn(
                   'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
                   currentMode === 'EQUIPMENT'
-                    ? 'bg-feros-amber text-white shadow-sm'
+                    ? 'bg-feros-equip-sidebar text-white shadow-sm'
                     : 'text-gray-500 hover:text-gray-700'
                 )}
               >
@@ -714,13 +714,13 @@ export function AppLayout() {
             onClick={() => navigate('/profile')}
             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold', isEquipmentMode ? 'bg-feros-amber' : 'bg-feros-navy')}>
+            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold', isEquipmentMode ? 'bg-feros-equip-sidebar' : 'bg-feros-navy')}>
               {name?.[0] ?? phone?.[0] ?? 'U'}
             </div>
             <div className="hidden sm:block text-left">
               <p className="text-sm font-medium text-gray-800">{name ?? phone}</p>
               <p className="text-xs text-gray-500">{companyName}</p>
-              {role && <p className={cn('text-xs font-medium', isEquipmentMode ? 'text-feros-amber' : 'text-feros-navy')}>{getRoleLabel(role)}</p>}
+              {role && <p className={cn('text-xs font-medium', isEquipmentMode ? 'text-feros-equip-sidebar' : 'text-feros-navy')}>{getRoleLabel(role)}</p>}
             </div>
           </button>
         </header>

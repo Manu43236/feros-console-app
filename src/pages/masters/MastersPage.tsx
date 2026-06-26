@@ -829,7 +829,7 @@ function RbacTab() {
             onClick={() => setSubTab(t)}
             className={cn(
               'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-              subTab === t ? `bg-white ${isEquipmentMode ? 'text-feros-amber' : 'text-feros-navy'} shadow-sm` : 'text-gray-500 hover:text-gray-700'
+              subTab === t ? `bg-white ${isEquipmentMode ? 'text-feros-equip-sidebar' : 'text-feros-navy'} shadow-sm` : 'text-gray-500 hover:text-gray-700'
             )}
           >
             {t === 'login' ? 'Login Access' : 'Module Access'}
@@ -1044,7 +1044,7 @@ function SettingsSection() {
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
               tab === t
-                ? (isEquipmentMode ? 'border-feros-amber text-feros-amber' : 'border-feros-navy text-feros-navy')
+                ? (isEquipmentMode ? 'border-feros-equip-sidebar text-feros-equip-sidebar' : 'border-feros-navy text-feros-navy')
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             )}
           >
@@ -1250,7 +1250,7 @@ function GpsConfigDialog({ open, onClose, editing }: { open: boolean; onClose: (
             <select
               {...register('providerType', { required: true })}
               defaultValue={editing?.providerType ?? ''}
-              className={`mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isEquipmentMode ? 'focus:ring-feros-amber' : 'focus:ring-feros-navy'}`}
+              className={`mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isEquipmentMode ? 'focus:ring-feros-equip-sidebar' : 'focus:ring-feros-navy'}`}
             >
               <option value="" disabled>Select provider</option>
               {GPS_PROVIDER_OPTIONS.map(o => (
@@ -1606,7 +1606,7 @@ export function MastersPage() {
                   className={cn(
                     'w-full flex items-center justify-between px-4 py-3 text-sm transition-colors border-b last:border-b-0',
                     activeSection === s.key
-                      ? (isEquipmentMode ? 'bg-feros-amber text-white font-medium' : 'bg-feros-navy text-white font-medium')
+                      ? (isEquipmentMode ? 'bg-feros-equip-sidebar text-white font-medium' : 'bg-feros-navy text-white font-medium')
                       : 'text-gray-700 hover:bg-gray-50'
                   )}
                 >

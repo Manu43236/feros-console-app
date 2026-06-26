@@ -46,7 +46,7 @@ const CSV_TEMPLATE = [
 
 function ClientBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { isEquipmentMode } = useSubscription()
-  const btnPrimary = isEquipmentMode ? 'bg-feros-amber hover:bg-feros-amber/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+  const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -177,7 +177,7 @@ function ClientForm({
   open: boolean; onClose: () => void; client?: Client
 }) {
   const { isEquipmentMode } = useSubscription()
-  const btnPrimary = isEquipmentMode ? 'bg-feros-amber hover:bg-feros-amber/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+  const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
   const qc = useQueryClient()
   const isEdit = !!client
 
@@ -398,7 +398,7 @@ function ClientForm({
 export function ClientsPage() {
   const { locked, isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode
-    ? 'bg-feros-amber hover:bg-feros-amber/90 text-white'
+    ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white'
     : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
   const qc = useQueryClient()
   const [search, setSearch]     = useState('')

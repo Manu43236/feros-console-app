@@ -76,13 +76,13 @@ function buildInitialMap(entries: ModuleAccessEntry[]): EnabledMap {
 export function SettingsPage() {
   const { isEquipmentMode } = useSubscription()
   const th = isEquipmentMode ? {
-    btn:        'flex items-center gap-2 px-5 py-2 bg-feros-amber text-white rounded-lg text-sm font-medium hover:bg-feros-amber/90 disabled:opacity-50 transition-colors',
-    iconBg:     'w-8 h-8 rounded-lg bg-feros-amber/10 flex items-center justify-center',
-    iconText:   'text-feros-amber',
-    inputFocus: 'w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-feros-amber/30 focus:border-feros-amber transition-colors',
-    activeTab:  'bg-feros-amber/5 text-feros-amber border-r-2 border-feros-amber',
-    toggleOn:   'bg-feros-amber border-feros-amber',
-    toggleOnBg: 'bg-feros-amber/5 border-feros-amber/20 hover:bg-feros-amber/10',
+    btn:        'flex items-center gap-2 px-5 py-2 bg-feros-equip-sidebar text-white rounded-lg text-sm font-medium hover:bg-feros-equip-sidebar/90 disabled:opacity-50 transition-colors',
+    iconBg:     'w-8 h-8 rounded-lg bg-feros-equip-sidebar/10 flex items-center justify-center',
+    iconText:   'text-feros-equip-sidebar',
+    inputFocus: 'w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-feros-equip-sidebar/30 focus:border-feros-equip-sidebar transition-colors',
+    activeTab:  'bg-feros-equip-sidebar/5 text-feros-equip-sidebar border-r-2 border-feros-equip-sidebar',
+    toggleOn:   'bg-feros-equip-sidebar border-feros-equip-sidebar',
+    toggleOnBg: 'bg-feros-equip-sidebar/5 border-feros-equip-sidebar/20 hover:bg-feros-equip-sidebar/10',
   } : {
     btn:        'flex items-center gap-2 px-5 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium hover:bg-feros-navy/90 disabled:opacity-50 transition-colors',
     iconBg:     'w-8 h-8 rounded-lg bg-feros-navy/10 flex items-center justify-center',
