@@ -12,7 +12,7 @@ import {
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
   Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin, ScrollText,
-  Construction, BookOpen,
+  Construction,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
