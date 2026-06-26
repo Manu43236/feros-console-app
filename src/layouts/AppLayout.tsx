@@ -242,28 +242,41 @@ const SERVICE_MANAGER_NAV: FlatNav = [
   { to: '/my/payslip',       label: 'My Payslip',       icon: Wallet },
 ]
 
-// ─── Equipment nav (placeholder — screens built in subsequent phases) ────────────
+// ─── Equipment nav ───────────────────────────────────────────────────────────────
 const EQUIPMENT_ADMIN_NAV: SectionedNav = {
   dashboard: { to: '/equipment/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   sections: [
     {
+      section: 'Operations',
+      icon: Activity,
+      items: [
+        { to: '/clients',               label: 'Clients',     icon: Users },
+        { to: '/equipment/work-orders', label: 'Work Orders', icon: ClipboardList },
+      ],
+    },
+    {
       section: 'Equipment',
+      icon: Construction,
       items: [
-        { to: '/equipment/list',        label: 'Equipment List', icon: Construction },
-        { to: '/equipment/work-orders', label: 'Work Orders',    icon: ClipboardList },
-        { to: '/equipment/daily-logs',  label: 'Daily Logs',     icon: BookOpen },
+        { to: '/equipment/machines',       label: 'Machines',       icon: Construction },
+        { to: '/equipment/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
+        { to: '/equipment/meter-readings', label: 'Meter Readings', icon: Gauge },
       ],
     },
     {
-      section: 'Finance',
+      section: 'Inventory',
+      icon: Package,
       items: [
-        { to: '/equipment/invoices', label: 'Invoices', icon: FileText },
+        { to: '/inventory', label: 'Spare Parts', icon: Boxes },
       ],
     },
     {
-      section: 'Settings',
+      section: '',
       items: [
-        { to: '/equipment/masters', label: 'Masters', icon: Settings },
+        { to: '/equipment/invoices', label: 'Invoices', icon: Receipt },
+        { to: '/masters',            label: 'Masters',  icon: Settings },
+        { to: '/settings',           label: 'Settings', icon: UserCog },
+        { to: '/equipment/reports',  label: 'Reports',  icon: BarChart2 },
       ],
     },
   ],
