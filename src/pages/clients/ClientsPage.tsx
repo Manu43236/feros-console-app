@@ -45,6 +45,8 @@ const CSV_TEMPLATE = [
 ].join('\n')
 
 function ClientBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode ? 'bg-feros-amber hover:bg-feros-amber/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -155,7 +157,7 @@ function ClientBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () 
               <Button
                 disabled={!file || mutation.isPending}
                 onClick={() => file && mutation.mutate(file)}
-                className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2"
+                className={`${btnPrimary} gap-2`}
               >
                 <Upload size={14} />
                 {mutation.isPending ? 'Uploading…' : 'Upload'}
@@ -174,6 +176,8 @@ function ClientForm({
 }: {
   open: boolean; onClose: () => void; client?: Client
 }) {
+  const { isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode ? 'bg-feros-amber hover:bg-feros-amber/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
   const qc = useQueryClient()
   const isEdit = !!client
 
@@ -380,7 +384,7 @@ function ClientForm({
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2 border-t">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+            <Button type="submit" disabled={mutation.isPending} className={btnPrimary}>
               {mutation.isPending ? 'Saving…' : isEdit ? 'Update Client' : 'Add Client'}
             </Button>
           </div>
@@ -392,7 +396,10 @@ function ClientForm({
 
 // ── main page ─────────────────────────────────────────────────────────────────
 export function ClientsPage() {
-  const { locked } = useSubscription()
+  const { locked, isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode
+    ? 'bg-feros-amber hover:bg-feros-amber/90 text-white'
+    : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
   const qc = useQueryClient()
   const [search, setSearch]     = useState('')
   const [page, setPage]         = useState(0)
@@ -437,7 +444,7 @@ export function ClientsPage() {
             <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
               <Upload size={16} /> Bulk Upload
             </Button>
-            <Button onClick={openCreate} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+            <Button onClick={openCreate} className={`${btnPrimary} gap-2`}>
               <Plus size={16} /> Add Client
             </Button>
           </div>

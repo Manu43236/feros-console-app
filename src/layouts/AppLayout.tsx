@@ -765,7 +765,7 @@ export function AppLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-6">
-          <SubscriptionContext.Provider value={{ locked }}>
+          <SubscriptionContext.Provider value={{ locked, isEquipmentMode }}>
             <Outlet />
           </SubscriptionContext.Provider>
         </main>

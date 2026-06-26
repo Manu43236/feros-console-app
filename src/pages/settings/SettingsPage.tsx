@@ -5,6 +5,7 @@ import { moduleAccessApi } from '@/api/moduleAccess'
 import { targetsApi } from '@/api/targets'
 import type { ModuleKey, ModuleAccessEntry } from '@/types'
 import { Shield, Check, Loader2, Target } from 'lucide-react'
+import { useSubscription } from '@/context/SubscriptionContext'
 
 // ─── Config: roles + their configurable modules ───────────────────────────────
 const ROLE_CONFIG: {
@@ -73,6 +74,24 @@ function buildInitialMap(entries: ModuleAccessEntry[]): EnabledMap {
 }
 
 export function SettingsPage() {
+  const { isEquipmentMode } = useSubscription()
+  const th = isEquipmentMode ? {
+    btn:        'flex items-center gap-2 px-5 py-2 bg-feros-amber text-white rounded-lg text-sm font-medium hover:bg-feros-amber/90 disabled:opacity-50 transition-colors',
+    iconBg:     'w-8 h-8 rounded-lg bg-feros-amber/10 flex items-center justify-center',
+    iconText:   'text-feros-amber',
+    inputFocus: 'w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-feros-amber/30 focus:border-feros-amber transition-colors',
+    activeTab:  'bg-feros-amber/5 text-feros-amber border-r-2 border-feros-amber',
+    toggleOn:   'bg-feros-amber border-feros-amber',
+    toggleOnBg: 'bg-feros-amber/5 border-feros-amber/20 hover:bg-feros-amber/10',
+  } : {
+    btn:        'flex items-center gap-2 px-5 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium hover:bg-feros-navy/90 disabled:opacity-50 transition-colors',
+    iconBg:     'w-8 h-8 rounded-lg bg-feros-navy/10 flex items-center justify-center',
+    iconText:   'text-feros-navy',
+    inputFocus: 'w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-feros-navy/30 focus:border-feros-navy transition-colors',
+    activeTab:  'bg-feros-navy/5 text-feros-navy border-r-2 border-feros-navy',
+    toggleOn:   'bg-feros-navy border-feros-navy',
+    toggleOnBg: 'bg-feros-navy/5 border-feros-navy/20 hover:bg-feros-navy/10',
+  }
   const queryClient = useQueryClient()
   const [activeRole, setActiveRole] = useState(ROLE_CONFIG[0].role)
   const [enabledMap, setEnabledMap] = useState<EnabledMap>({})
@@ -172,8 +191,8 @@ export function SettingsPage() {
       {/* Monthly Targets card */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-          <div className="w-8 h-8 rounded-lg bg-feros-navy/10 flex items-center justify-center">
-            <Target size={16} className="text-feros-navy" />
+          <div className={th.iconBg}>
+            <Target size={16} className={th.iconText} />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-gray-800">Monthly Targets</h2>
@@ -194,7 +213,7 @@ export function SettingsPage() {
               placeholder="e.g. 1000"
               value={tripTarget}
               onChange={e => setTripTarget(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-feros-navy/30 focus:border-feros-navy transition-colors"
+              className={th.inputFocus}
             />
           </div>
           <div className="space-y-1.5">
@@ -207,7 +226,7 @@ export function SettingsPage() {
               placeholder="e.g. 50000"
               value={tonTarget}
               onChange={e => setTonTarget(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-feros-navy/30 focus:border-feros-navy transition-colors"
+              className={th.inputFocus}
             />
           </div>
         </div>
@@ -216,7 +235,7 @@ export function SettingsPage() {
           <button
             onClick={() => targetMutation.mutate()}
             disabled={targetMutation.isPending}
-            className="flex items-center gap-2 px-5 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium hover:bg-feros-navy/90 disabled:opacity-50 transition-colors"
+            className={th.btn}
           >
             {targetMutation.isPending && <Loader2 size={14} className="animate-spin" />}
             Save Targets
@@ -228,8 +247,8 @@ export function SettingsPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {/* Section header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-          <div className="w-8 h-8 rounded-lg bg-feros-navy/10 flex items-center justify-center">
-            <Shield size={16} className="text-feros-navy" />
+          <div className={th.iconBg}>
+            <Shield size={16} className={th.iconText} />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-gray-800">Module Access</h2>
@@ -246,7 +265,7 @@ export function SettingsPage() {
                 onClick={() => setActiveRole(rc.role)}
                 className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
                   activeRole === rc.role
-                    ? 'bg-feros-navy/5 text-feros-navy border-r-2 border-feros-navy'
+                    ? th.activeTab
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -298,13 +317,13 @@ export function SettingsPage() {
                             onClick={() => toggle(activeRole, m.key)}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
                               enabled
-                                ? 'bg-feros-navy/5 border-feros-navy/20 hover:bg-feros-navy/10'
+                                ? th.toggleOnBg
                                 : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                             }`}
                           >
                             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                               enabled
-                                ? 'bg-feros-navy border-feros-navy'
+                                ? th.toggleOn
                                 : 'border-gray-300 bg-white'
                             }`}>
                               {enabled && <Check size={10} className="text-white" />}
@@ -332,7 +351,7 @@ export function SettingsPage() {
           <button
             onClick={handleSave}
             disabled={mutation.isPending}
-            className="flex items-center gap-2 px-5 py-2 bg-feros-navy text-white rounded-lg text-sm font-medium hover:bg-feros-navy/90 disabled:opacity-50 transition-colors"
+            className={th.btn}
           >
             {mutation.isPending && <Loader2 size={14} className="animate-spin" />}
             Save Changes

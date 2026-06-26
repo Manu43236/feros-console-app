@@ -708,6 +708,7 @@ function RbacRoleHeader({ label, allChecked, onToggleAll }: {
 type RbacSubTab = 'login' | 'modules'
 
 function RbacTab() {
+  const { isEquipmentMode } = useSubscription()
   const qc = useQueryClient()
   const [subTab, setSubTab] = useState<RbacSubTab>('login')
   const [loginAccess, setLoginAccess] = useState<CheckMap>(defaultLoginAccess)
@@ -828,7 +829,7 @@ function RbacTab() {
             onClick={() => setSubTab(t)}
             className={cn(
               'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-              subTab === t ? 'bg-white text-feros-navy shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              subTab === t ? `bg-white ${isEquipmentMode ? 'text-feros-amber' : 'text-feros-navy'} shadow-sm` : 'text-gray-500 hover:text-gray-700'
             )}
           >
             {t === 'login' ? 'Login Access' : 'Module Access'}
@@ -1027,7 +1028,7 @@ function SettingsSection() {
     })
   }
 
-  const { locked } = useSubscription()
+  const { locked, isEquipmentMode } = useSubscription()
 
   if (isLoading) return <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
 
@@ -1043,7 +1044,7 @@ function SettingsSection() {
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
               tab === t
-                ? 'border-feros-navy text-feros-navy'
+                ? (isEquipmentMode ? 'border-feros-amber text-feros-amber' : 'border-feros-navy text-feros-navy')
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             )}
           >
@@ -1221,6 +1222,7 @@ function gpsSyncBadge(status: string) {
 }
 
 function GpsConfigDialog({ open, onClose, editing }: { open: boolean; onClose: () => void; editing: GpsProviderConfig | null }) {
+  const { isEquipmentMode } = useSubscription()
   const qc = useQueryClient()
   const { register, handleSubmit, reset, formState: { errors } } = useForm<GpsProviderConfigRequest>()
 
@@ -1248,7 +1250,7 @@ function GpsConfigDialog({ open, onClose, editing }: { open: boolean; onClose: (
             <select
               {...register('providerType', { required: true })}
               defaultValue={editing?.providerType ?? ''}
-              className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-feros-navy"
+              className={`mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isEquipmentMode ? 'focus:ring-feros-amber' : 'focus:ring-feros-navy'}`}
             >
               <option value="" disabled>Select provider</option>
               {GPS_PROVIDER_OPTIONS.map(o => (
@@ -1488,6 +1490,7 @@ function GpsProvidersSection() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function MastersPage() {
+  const { isEquipmentMode } = useSubscription()
   const [activeSection, setActiveSection] = useState<SectionKey>('vehicleStatuses')
   const qc = useQueryClient()
 
@@ -1603,7 +1606,7 @@ export function MastersPage() {
                   className={cn(
                     'w-full flex items-center justify-between px-4 py-3 text-sm transition-colors border-b last:border-b-0',
                     activeSection === s.key
-                      ? 'bg-feros-navy text-white font-medium'
+                      ? (isEquipmentMode ? 'bg-feros-amber text-white font-medium' : 'bg-feros-navy text-white font-medium')
                       : 'text-gray-700 hover:bg-gray-50'
                   )}
                 >
