@@ -17,6 +17,11 @@ export interface Equipment {
   serialNumber: string | null
   registrationNumber: string | null
   manufactureYear: number | null
+  color: string | null
+  chassisNumber: string | null
+  engineNumber: string | null
+  fuelType: string | null
+  fuelTankCapacity: number | null
   ownershipType: EquipmentOwnershipType
   isFinanced: boolean
   financerName: string | null
@@ -41,6 +46,11 @@ export interface EquipmentRequest {
   serialNumber?: string
   registrationNumber?: string
   manufactureYear?: number
+  color?: string
+  chassisNumber?: string
+  engineNumber?: string
+  fuelType?: string
+  fuelTankCapacity?: number
   ownershipType: EquipmentOwnershipType
   isFinanced?: boolean
   financerName?: string

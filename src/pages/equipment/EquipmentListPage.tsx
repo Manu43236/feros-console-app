@@ -92,6 +92,11 @@ function EquipmentFormDialog({
         serialNumber:        editing.serialNumber ?? undefined,
         registrationNumber:  editing.registrationNumber ?? undefined,
         manufactureYear:     editing.manufactureYear ?? undefined,
+        color:               editing.color ?? undefined,
+        chassisNumber:       editing.chassisNumber ?? undefined,
+        engineNumber:        editing.engineNumber ?? undefined,
+        fuelType:            editing.fuelType ?? undefined,
+        fuelTankCapacity:    editing.fuelTankCapacity ?? undefined,
         isFinanced:          editing.isFinanced,
         financerName:        editing.financerName ?? undefined,
         financeStartDate:    editing.financeStartDate ?? undefined,
@@ -152,23 +157,26 @@ function EquipmentFormDialog({
   const isHiredIn = form.ownershipType === 'HIRED_IN'
   const isPending = mutCreate.isPending || mutUpdate.isPending
 
+  // Selected type for meter type display
+  const selectedType = types.find(t => t.id === form.equipmentTypeId)
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? 'Edit Machine' : 'Add Machine'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4 mt-2">
 
-          {/* Catalog cascade */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Row 1: Make + Model */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Make <span className="text-red-500">*</span></Label>
               <SearchableSelect
                 value={selectedMakeId}
                 onValueChange={v => { setSelectedMakeId(v); setSelectedModelId(''); set('equipmentTypeId', 0); setErrors(e => ({ ...e, makeId: undefined })) }}
                 options={makes.map(m => ({ value: String(m.id), label: m.name }))}
-                placeholder="Make"
+                placeholder="Select make"
                 triggerClassName={errors.makeId ? 'border-red-400' : ''}
               />
               {errors.makeId && <p className="text-red-500 text-xs mt-1">{errors.makeId}</p>}
@@ -179,27 +187,32 @@ function EquipmentFormDialog({
                 value={selectedModelId}
                 onValueChange={v => { setSelectedModelId(v); set('equipmentTypeId', 0); setErrors(e => ({ ...e, modelId: undefined })) }}
                 options={models.map(m => ({ value: String(m.id), label: m.name }))}
-                placeholder="Model"
+                placeholder="Select model"
                 disabled={!selectedMakeId}
                 triggerClassName={errors.modelId ? 'border-red-400' : ''}
               />
               {errors.modelId && <p className="text-red-500 text-xs mt-1">{errors.modelId}</p>}
             </div>
-            <div>
-              <Label>Type <span className="text-red-500">*</span></Label>
-              <SearchableSelect
-                value={form.equipmentTypeId ? String(form.equipmentTypeId) : ''}
-                onValueChange={v => set('equipmentTypeId', Number(v))}
-                options={types.map(t => ({ value: String(t.id), label: t.name }))}
-                placeholder="Type"
-                disabled={!selectedModelId}
-                triggerClassName={errors.equipmentTypeId ? 'border-red-400' : ''}
-              />
-              {errors.equipmentTypeId && <p className="text-red-500 text-xs mt-1">{errors.equipmentTypeId}</p>}
-            </div>
           </div>
 
-          {/* Basic info */}
+          {/* Row 2: Type */}
+          <div>
+            <Label>Equipment Type <span className="text-red-500">*</span></Label>
+            <SearchableSelect
+              value={form.equipmentTypeId ? String(form.equipmentTypeId) : ''}
+              onValueChange={v => set('equipmentTypeId', Number(v))}
+              options={types.map(t => ({ value: String(t.id), label: t.name }))}
+              placeholder="Select equipment type"
+              disabled={!selectedModelId}
+              triggerClassName={errors.equipmentTypeId ? 'border-red-400' : ''}
+            />
+            {errors.equipmentTypeId && <p className="text-red-500 text-xs mt-1">{errors.equipmentTypeId}</p>}
+            {selectedType && (
+              <p className="text-xs text-gray-400 mt-1">Meter type: <span className="font-medium text-gray-600">{selectedType.defaultMeterType}</span></p>
+            )}
+          </div>
+
+          {/* Row 3: Serial + Registration */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Serial Number</Label>
@@ -211,44 +224,87 @@ function EquipmentFormDialog({
             </div>
           </div>
 
+          {/* Row 4: Chassis + Engine */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Chassis Number</Label>
+              <Input className="mt-1" value={form.chassisNumber ?? ''} onChange={e => set('chassisNumber', e.target.value)} placeholder="e.g. CH123456789" />
+            </div>
+            <div>
+              <Label>Engine Number</Label>
+              <Input className="mt-1" value={form.engineNumber ?? ''} onChange={e => set('engineNumber', e.target.value)} placeholder="e.g. ENG987654321" />
+            </div>
+          </div>
+
+          {/* Row 5: Year + Color */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Manufacture Year</Label>
               <Input className="mt-1" type="number" min={1990} max={new Date().getFullYear()} value={form.manufactureYear ?? ''} onChange={e => set('manufactureYear', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 2022" />
             </div>
             <div>
-              <Label>Meter Reading</Label>
-              <Input className="mt-1" type="number" min={0} value={form.currentMeterReading ?? ''} onChange={e => set('currentMeterReading', e.target.value ? Number(e.target.value) : undefined)} placeholder="Current reading" />
+              <Label>Color</Label>
+              <Input className="mt-1" value={form.color ?? ''} onChange={e => set('color', e.target.value)} placeholder="e.g. Yellow" />
             </div>
           </div>
 
-          {/* Ownership */}
+          {/* Row 6: Fuel Type + Tank Capacity */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Fuel Type</Label>
+              <SearchableSelect
+                value={form.fuelType ?? ''}
+                onValueChange={v => set('fuelType', v)}
+                options={['Diesel', 'Petrol', 'Electric', 'CNG', 'Hybrid'].map(f => ({ value: f, label: f }))}
+                placeholder="Select fuel type"
+                showSearch={false}
+              />
+            </div>
+            <div>
+              <Label>Fuel Tank Capacity (L)</Label>
+              <Input className="mt-1" type="number" min={0} value={form.fuelTankCapacity ?? ''} onChange={e => set('fuelTankCapacity', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 200" />
+            </div>
+          </div>
+
+          {/* Row 7: Current Meter Reading */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Current Meter Reading</Label>
+              <Input className="mt-1" type="number" min={0} value={form.currentMeterReading ?? ''} onChange={e => set('currentMeterReading', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 1500" />
+            </div>
+          </div>
+
+          {/* Row 8: Ownership dropdown */}
           <div>
             <Label>Ownership Type <span className="text-red-500">*</span></Label>
-            <div className="flex gap-2 mt-1">
-              {(['OWNED', 'HIRED_IN'] as const).map(ot => (
-                <button
-                  key={ot}
-                  type="button"
-                  onClick={() => set('ownershipType', ot)}
-                  className={`flex-1 py-1.5 rounded-md border text-sm font-medium transition-colors
-                    ${form.ownershipType === ot ? `${btnPrimary} border-transparent` : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
-                >
-                  {ot === 'OWNED' ? 'Owned' : 'Hired In'}
-                </button>
-              ))}
-            </div>
+            <SearchableSelect
+              value={form.ownershipType}
+              onValueChange={v => set('ownershipType', v as 'OWNED' | 'HIRED_IN')}
+              options={[
+                { value: 'OWNED',    label: 'Owned' },
+                { value: 'HIRED_IN', label: 'Hired In' },
+              ]}
+              placeholder="Select ownership"
+              showSearch={false}
+              triggerClassName={errors.ownershipType ? 'border-red-400' : ''}
+            />
           </div>
 
           {/* Finance (OWNED) */}
           {isOwned && (
             <div className="border rounded-lg p-3 space-y-3 bg-gray-50">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="rounded" checked={!!form.isFinanced} onChange={e => set('isFinanced', e.target.checked)} />
-                <span className="text-sm font-medium">Under Finance</span>
+              {/* Toggle switch */}
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-sm font-medium text-gray-700">Under Finance</span>
+                <div
+                  onClick={() => set('isFinanced', !form.isFinanced)}
+                  className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${form.isFinanced ? 'bg-feros-equip-sidebar' : 'bg-gray-300'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isFinanced ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
               </label>
               {form.isFinanced && (
-                <div className="grid grid-cols-1 gap-3">
+                <>
                   <div>
                     <Label>Financer Name</Label>
                     <Input className="mt-1" value={form.financerName ?? ''} onChange={e => set('financerName', e.target.value)} placeholder="e.g. HDFC Bank" />
@@ -263,7 +319,7 @@ function EquipmentFormDialog({
                       <Input className="mt-1" type="date" value={form.financeEndDate ?? ''} onChange={e => set('financeEndDate', e.target.value)} />
                     </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
@@ -271,7 +327,7 @@ function EquipmentFormDialog({
           {/* Hire info (HIRED_IN) */}
           {isHiredIn && (
             <div className="border rounded-lg p-3 space-y-3 bg-gray-50">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Hire Details</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Hire Details</p>
               <div>
                 <Label>Hired From <span className="text-red-500">*</span></Label>
                 <Input className={`mt-1 ${errors.hiredFrom ? 'border-red-400' : ''}`} value={form.hiredFrom ?? ''} onChange={e => { set('hiredFrom', e.target.value); setErrors(er => ({ ...er, hiredFrom: undefined })) }} placeholder="Owner / company name" />
@@ -306,7 +362,7 @@ function EquipmentFormDialog({
             </div>
           )}
 
-          {/* Edit-only fields */}
+          {/* Edit-only: Work Status + Active */}
           {editing && (
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -319,9 +375,14 @@ function EquipmentFormDialog({
                   showSearch={false}
                 />
               </div>
-              <div className="flex items-center gap-2 pt-6">
-                <input type="checkbox" id="isActive" className="rounded" checked={!!form.isActive} onChange={e => set('isActive', e.target.checked)} />
-                <label htmlFor="isActive" className="text-sm font-medium cursor-pointer">Active</label>
+              <div className="flex items-center justify-between border rounded-lg px-3 py-2 bg-gray-50">
+                <span className="text-sm font-medium text-gray-700">Active</span>
+                <div
+                  onClick={() => set('isActive', !form.isActive)}
+                  className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${form.isActive ? 'bg-feros-equip-sidebar' : 'bg-gray-300'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
               </div>
             </div>
           )}
@@ -329,7 +390,7 @@ function EquipmentFormDialog({
           <div>
             <Label>Notes</Label>
             <textarea
-              className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-feros-navy/30"
+              className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-300"
               rows={2}
               value={form.notes ?? ''}
               onChange={e => set('notes', e.target.value)}
@@ -339,7 +400,9 @@ function EquipmentFormDialog({
 
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button type="submit" size="sm" disabled={isPending}>{isPending ? 'Saving…' : editing ? 'Update' : 'Add Machine'}</Button>
+            <Button type="submit" size="sm" className={btnPrimary} disabled={isPending}>
+              {isPending ? 'Saving…' : editing ? 'Update' : 'Add Machine'}
+            </Button>
           </div>
         </form>
       </DialogContent>
