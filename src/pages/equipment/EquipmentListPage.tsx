@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Pencil, HardHat } from 'lucide-react'
+import { Plus, Pencil, HardHat, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { equipmentApi } from '@/api/equipment'
@@ -230,7 +229,7 @@ function EquipmentFormDialog({
                   type="button"
                   onClick={() => set('ownershipType', ot)}
                   className={`flex-1 py-1.5 rounded-md border text-sm font-medium transition-colors
-                    ${form.ownershipType === ot ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
+                    ${form.ownershipType === ot ? 'bg-feros-orange text-white border-feros-orange' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
                 >
                   {ot === 'OWNED' ? 'Owned' : 'Hired In'}
                 </button>
@@ -369,26 +368,26 @@ export function EquipmentListPage() {
   function openEdit(m: Equipment) { setEditing(m); setDlgOpen(true) }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <HardHat size={20} className="text-feros-navy" />
-          <h1 className="text-xl font-bold text-gray-900">Machines</h1>
-          <Badge variant="outline" className="text-xs">{machines.length}</Badge>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Machines</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{machines.length} total</p>
         </div>
-        <Button size="sm" onClick={openAdd}>
-          <Plus size={14} className="mr-1" /> Add Machine
+        <Button onClick={openAdd} className="bg-feros-orange hover:bg-feros-orange/90 text-white gap-2">
+          <Plus size={16} /> Add Machine
         </Button>
       </div>
 
       {/* Search */}
-      <div className="relative max-w-xs">
+      <div className="relative flex-1 min-w-48 max-w-xs">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <Input
           placeholder="Search make, model, serial no…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="pl-3 h-8 text-sm"
+          className="pl-9"
         />
       </div>
 
