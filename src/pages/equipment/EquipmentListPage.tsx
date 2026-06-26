@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useSubscription } from '@/context/SubscriptionContext'
 import { equipmentApi } from '@/api/equipment'
 import { equipmentMastersApi } from '@/api/equipmentMasters'
 import { getApiError } from '@/lib/apiError'
@@ -47,10 +48,12 @@ function EquipmentFormDialog({
   open,
   onClose,
   editing,
+  btnPrimary,
 }: {
   open: boolean
   onClose: () => void
   editing: Equipment | null
+  btnPrimary: string
 }) {
   const qc = useQueryClient()
 
@@ -229,7 +232,7 @@ function EquipmentFormDialog({
                   type="button"
                   onClick={() => set('ownershipType', ot)}
                   className={`flex-1 py-1.5 rounded-md border text-sm font-medium transition-colors
-                    ${form.ownershipType === ot ? 'bg-feros-orange text-white border-feros-orange' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
+                    ${form.ownershipType === ot ? `${btnPrimary} border-transparent` : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
                 >
                   {ot === 'OWNED' ? 'Owned' : 'Hired In'}
                 </button>
@@ -346,6 +349,11 @@ function EquipmentFormDialog({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function EquipmentListPage() {
+  const { isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode
+    ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white'
+    : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+
   const { data, isLoading } = useQuery({ queryKey: ['equipment'], queryFn: equipmentApi.getAll })
   const machines: Equipment[] = (data?.data ?? []) as Equipment[]
 
@@ -375,7 +383,7 @@ export function EquipmentListPage() {
           <h1 className="text-2xl font-bold text-gray-900">Machines</h1>
           <p className="text-gray-500 text-sm mt-0.5">{machines.length} total</p>
         </div>
-        <Button onClick={openAdd} className="bg-feros-orange hover:bg-feros-orange/90 text-white gap-2">
+        <Button onClick={openAdd} className={`${btnPrimary} gap-2`}>
           <Plus size={16} /> Add Machine
         </Button>
       </div>
@@ -435,7 +443,7 @@ export function EquipmentListPage() {
         </table>
       </div>
 
-      <EquipmentFormDialog open={dlgOpen} onClose={() => setDlgOpen(false)} editing={editing} />
+      <EquipmentFormDialog open={dlgOpen} onClose={() => setDlgOpen(false)} editing={editing} btnPrimary={btnPrimary} />
     </div>
   )
 }
