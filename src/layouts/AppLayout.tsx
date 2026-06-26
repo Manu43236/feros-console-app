@@ -295,7 +295,7 @@ function isModuleAllowed(item: NavItem, allowedModules: string[] | null): boolea
 }
 
 // ─── Notification Nav Link ───────────────────────────────────────────────────────
-function NotifNavLink({ isEquipmentMode }: { isEquipmentMode?: boolean }) {
+function NotifNavLink() {
   const { data: countRes } = useQuery({
     queryKey: ['notif-count'],
     queryFn: () => notificationsApi.getUnreadCount(),
@@ -309,7 +309,7 @@ function NotifNavLink({ isEquipmentMode }: { isEquipmentMode?: boolean }) {
       className={({ isActive }) => cn(
         'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? isEquipmentMode ? 'bg-feros-equip-sidebar text-white' : 'bg-feros-orange text-white'
+          ? 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
@@ -325,7 +325,7 @@ function NotifNavLink({ isEquipmentMode }: { isEquipmentMode?: boolean }) {
 }
 
 // ─── Demo Requests Nav Link ──────────────────────────────────────────────────────
-function DemoRequestsNavLink({ onClick, isEquipmentMode }: { onClick?: () => void; isEquipmentMode?: boolean }) {
+function DemoRequestsNavLink({ onClick }: { onClick?: () => void }) {
   const { data: countRes } = useQuery({
     queryKey: ['demo-requests-count'],
     queryFn: () => demoRequestsApi.countNew(),
@@ -340,7 +340,7 @@ function DemoRequestsNavLink({ onClick, isEquipmentMode }: { onClick?: () => voi
       className={({ isActive }) => cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? isEquipmentMode ? 'bg-feros-equip-sidebar text-white' : 'bg-feros-orange text-white'
+          ? 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
@@ -356,7 +356,7 @@ function DemoRequestsNavLink({ onClick, isEquipmentMode }: { onClick?: () => voi
 }
 
 // ─── Nav item ────────────────────────────────────────────────────────────────────
-function NavItemLink({ to, label, icon: Icon, onClick, isEquipmentMode }: NavItem & { onClick?: () => void; isEquipmentMode?: boolean }) {
+function NavItemLink({ to, label, icon: Icon, onClick }: NavItem & { onClick?: () => void }) {
   return (
     <NavLink
       to={to}
@@ -365,7 +365,7 @@ function NavItemLink({ to, label, icon: Icon, onClick, isEquipmentMode }: NavIte
       className={({ isActive }) => cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? isEquipmentMode ? 'bg-feros-equip-sidebar text-white' : 'bg-feros-orange text-white'
+          ? 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
@@ -377,15 +377,15 @@ function NavItemLink({ to, label, icon: Icon, onClick, isEquipmentMode }: NavIte
 
 // ─── Collapsible section ─────────────────────────────────────────────────────────
 function NavSectionGroup({
-  section, icon: SectionIcon, items, open, onToggle, onNavClick, isEquipmentMode,
-}: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void; isEquipmentMode?: boolean }) {
+  section, icon: SectionIcon, items, open, onToggle, onNavClick,
+}: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void }) {
   const { pathname } = useLocation()
   const isSectionActive = items.some(item => pathname === item.to || pathname.startsWith(item.to + '/'))
 
   if (section === '') {
     return (
       <div className="space-y-0.5 mt-1">
-        {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} isEquipmentMode={isEquipmentMode} />)}
+        {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} />)}
       </div>
     )
   }
@@ -410,7 +410,7 @@ function NavSectionGroup({
       </button>
       {open && (
         <div className="ml-7 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
-          {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} isEquipmentMode={isEquipmentMode} />)}
+          {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} />)}
         </div>
       )}
     </div>
@@ -464,7 +464,7 @@ function SidebarPanel({
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         {isSectionedNav(nav) ? (
           <>
-            <NavItemLink {...nav.dashboard} onClick={onCloseMobile} isEquipmentMode={isEquipmentMode} />
+            <NavItemLink {...nav.dashboard} onClick={onCloseMobile} />
             {nav.sections.map(({ section, icon, items }) => {
               const allowed = items.filter(i => isRouteAllowed(i))
               if (allowed.length === 0) return null
@@ -477,7 +477,7 @@ function SidebarPanel({
                   open={openSections.has(section)}
                   onToggle={() => onToggleSection(section)}
                   onNavClick={onCloseMobile}
-                  isEquipmentMode={isEquipmentMode}
+                 
                 />
               )
             })}
@@ -486,8 +486,8 @@ function SidebarPanel({
           <div className="space-y-0.5">
             {(nav as FlatNav).filter(i => isRouteAllowed(i)).map(item =>
               item.to === '/sa/demo-requests'
-                ? <DemoRequestsNavLink key={item.to} onClick={onCloseMobile} isEquipmentMode={isEquipmentMode} />
-                : <NavItemLink key={item.to} {...item} onClick={onCloseMobile} isEquipmentMode={isEquipmentMode} />
+                ? <DemoRequestsNavLink key={item.to} onClick={onCloseMobile} />
+                : <NavItemLink key={item.to} {...item} onClick={onCloseMobile} />
             )}
           </div>
         )}
@@ -495,7 +495,7 @@ function SidebarPanel({
 
       {/* Footer */}
       <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
-        <NotifNavLink isEquipmentMode={isEquipmentMode} />
+        <NotifNavLink />
         <button
           onClick={onOpenLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
