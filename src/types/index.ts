@@ -174,9 +174,16 @@ export interface TripExpense {
 }
 
 // ─── Client ───────────────────────────────────────────────────────────────────
+export type ClientCategory = 'COMPANY' | 'INDIVIDUAL'
+
+export interface ClientDivision {
+  id: number
+  name: string
+}
+
 export interface Client {
   id: number; tenantId: number
-  clientName: string; clientTypeId: number; clientTypeName: string
+  clientName: string; clientCategory: ClientCategory; clientTypeId: number; clientTypeName: string
   phone: string; email?: string; address?: string
   cityId?: number; cityName?: string; stateId?: number; stateName?: string; pincode?: string
   gstin?: string; panNumber?: string
@@ -184,6 +191,7 @@ export interface Client {
   paymentTermsId?: number; paymentTermsName?: string
   creditLimit?: number; openingBalance?: number
   isActive: boolean; createdAt: string; updatedAt: string
+  divisions?: ClientDivision[]
 }
 
 // ─── Vehicle ──────────────────────────────────────────────────────────────────

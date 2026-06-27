@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
@@ -7,13 +7,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
-import { Plus, Search, Pencil, Phone, MapPin, Building2, Upload, Download, CheckCircle, XCircle, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Search, Pencil, Phone, MapPin, Building2, Upload, Download, CheckCircle, XCircle, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import type { Client, BulkUploadResult } from '@/types'
+import type { Client, ClientCategory, BulkUploadResult } from '@/types'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 
@@ -181,6 +181,13 @@ function ClientForm({
   const qc = useQueryClient()
   const isEdit = !!client
 
+  const [clientCategory, setClientCategory] = useState<ClientCategory>(client?.clientCategory ?? 'COMPANY')
+  const [newDivision, setNewDivision] = useState('')
+
+  useEffect(() => {
+    if (open) setClientCategory(client?.clientCategory ?? 'COMPANY')
+  }, [open, client])
+
   const { data: clientTypesRes } = useQuery({ queryKey: ['client-types'], queryFn: tenantMastersApi.getClientTypes })
   const { data: statesRes }      = useQuery({ queryKey: ['states'],        queryFn: globalMastersApi.getStates })
   const { data: payTermsRes }    = useQuery({ queryKey: ['payment-terms'], queryFn: tenantMastersApi.getPaymentTerms })
@@ -205,8 +212,10 @@ function ClientForm({
   })
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      isEdit ? clientsApi.update(client!.id, data) : clientsApi.create(data),
+    mutationFn: (data: FormData) => {
+      const payload = { ...data, clientCategory }
+      return isEdit ? clientsApi.update(client!.id, payload) : clientsApi.create(payload)
+    },
     onSuccess: () => {
       toast.success(`Client ${isEdit ? 'updated' : 'created'} successfully`)
       qc.invalidateQueries({ queryKey: ['clients'] })
@@ -218,6 +227,21 @@ function ClientForm({
     },
   })
 
+  const addDivMutation = useMutation({
+    mutationFn: (name: string) => clientsApi.addDivision(client!.id, name),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clients'] }); setNewDivision('') },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to add division')
+    },
+  })
+
+  const delDivMutation = useMutation({
+    mutationFn: (divId: number) => clientsApi.deleteDivision(client!.id, divId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
+    onError: () => toast.error('Failed to remove division'),
+  })
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -226,11 +250,23 @@ function ClientForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
+          {/* Category toggle */}
+          <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
+            {(['COMPANY', 'INDIVIDUAL'] as ClientCategory[]).map(cat => (
+              <button key={cat} type="button"
+                onClick={() => setClientCategory(cat)}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${clientCategory === cat ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                {cat === 'COMPANY' ? 'Company' : 'Individual'}
+              </button>
+            ))}
+          </div>
+
           {/* Basic info */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1.5">
-              <Label>Client Name *</Label>
-              <Input placeholder="ABC Logistics Pvt Ltd" {...register('clientName')} />
+              <Label>{clientCategory === 'INDIVIDUAL' ? 'Name' : 'Company Name'} *</Label>
+              <Input placeholder={clientCategory === 'INDIVIDUAL' ? 'Raju Kumar' : 'ABC Logistics Pvt Ltd'} {...register('clientName')} />
               {errors.clientName && <p className="text-red-500 text-xs">{errors.clientName.message}</p>}
             </div>
 
@@ -381,6 +417,41 @@ function ClientForm({
             </div>
           </div>
 
+          {/* Divisions — edit only */}
+          {isEdit && (
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium text-gray-700 mb-3">Divisions / Sites <span className="text-xs text-gray-400 font-normal">(optional — for plants, ports, yards)</span></p>
+              <div className="space-y-2 mb-3">
+                {(client?.divisions ?? []).map(d => (
+                  <div key={d.id} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 rounded-lg text-sm">
+                    <span>{d.name}</span>
+                    <button type="button" onClick={() => delDivMutation.mutate(d.id)} className="text-gray-400 hover:text-red-500">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+                {(client?.divisions ?? []).length === 0 && (
+                  <p className="text-xs text-gray-400">No divisions added yet.</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. SMS, Berth 4, Terminal 2"
+                  value={newDivision}
+                  onChange={e => setNewDivision(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (newDivision.trim()) addDivMutation.mutate(newDivision.trim()) }}}
+                  className="flex-1 text-sm"
+                />
+                <Button type="button" variant="outline" size="sm"
+                  disabled={!newDivision.trim() || addDivMutation.isPending}
+                  onClick={() => { if (newDivision.trim()) addDivMutation.mutate(newDivision.trim()) }}
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2 border-t">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -503,7 +574,10 @@ export function ClientsPage() {
                   <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4">
                       <p className="text-sm font-semibold text-gray-800">{c.clientName}</p>
-                      {c.gstin && <p className="text-xs text-gray-400 mt-0.5">GST: {c.gstin}</p>}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {c.clientCategory === 'INDIVIDUAL' && <span className="text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">Individual</span>}
+                        {c.gstin && <p className="text-xs text-gray-400">GST: {c.gstin}</p>}
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">{c.clientTypeName}</span>
