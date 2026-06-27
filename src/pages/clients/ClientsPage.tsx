@@ -183,9 +183,13 @@ function ClientForm({
 
   const [clientCategory, setClientCategory] = useState<ClientCategory>(client?.clientCategory ?? 'COMPANY')
   const [newDivision, setNewDivision] = useState('')
+  const [divisions, setDivisions] = useState(client?.divisions ?? [])
 
   useEffect(() => {
-    if (open) setClientCategory(client?.clientCategory ?? 'COMPANY')
+    if (open) {
+      setClientCategory(client?.clientCategory ?? 'COMPANY')
+      setDivisions(client?.divisions ?? [])
+    }
   }, [open, client])
 
   const { data: clientTypesRes } = useQuery({ queryKey: ['client-types'], queryFn: tenantMastersApi.getClientTypes })
@@ -229,7 +233,11 @@ function ClientForm({
 
   const addDivMutation = useMutation({
     mutationFn: (name: string) => clientsApi.addDivision(client!.id, name),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clients'] }); setNewDivision('') },
+    onSuccess: (res) => {
+      setDivisions(prev => [...prev, res.data])
+      setNewDivision('')
+      qc.invalidateQueries({ queryKey: ['clients'] })
+    },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
       toast.error(msg ?? 'Failed to add division')
@@ -238,7 +246,10 @@ function ClientForm({
 
   const delDivMutation = useMutation({
     mutationFn: (divId: number) => clientsApi.deleteDivision(client!.id, divId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
+    onSuccess: (_, divId) => {
+      setDivisions(prev => prev.filter(d => d.id !== divId))
+      qc.invalidateQueries({ queryKey: ['clients'] })
+    },
     onError: () => toast.error('Failed to remove division'),
   })
 
@@ -422,7 +433,7 @@ function ClientForm({
             <div className="border-t pt-4">
               <p className="text-sm font-medium text-gray-700 mb-3">Divisions / Sites <span className="text-xs text-gray-400 font-normal">(optional — for plants, ports, yards)</span></p>
               <div className="space-y-2 mb-3">
-                {(client?.divisions ?? []).map(d => (
+                {divisions.map(d => (
                   <div key={d.id} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 rounded-lg text-sm">
                     <span>{d.name}</span>
                     <button type="button" onClick={() => delDivMutation.mutate(d.id)} className="text-gray-400 hover:text-red-500">
@@ -430,7 +441,7 @@ function ClientForm({
                     </button>
                   </div>
                 ))}
-                {(client?.divisions ?? []).length === 0 && (
+                {divisions.length === 0 && (
                   <p className="text-xs text-gray-400">No divisions added yet.</p>
                 )}
               </div>
