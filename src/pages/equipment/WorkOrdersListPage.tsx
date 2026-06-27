@@ -255,6 +255,9 @@ export function WorkOrdersListPage() {
   const btnPrimary = isEquipmentMode
     ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white'
     : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+  const pillActive = isEquipmentMode
+    ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar'
+    : 'bg-gray-800 text-white border-gray-800'
 
   const [page, setPage] = useState(0)
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | ''>('')
@@ -298,14 +301,14 @@ export function WorkOrdersListPage() {
           <button
             onClick={() => { setStatusFilter(''); setPage(0) }}
             className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
-              statusFilter === '' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+              statusFilter === '' ? pillActive : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
             )}
           >All</button>
           {STATUSES.map(s => (
             <button key={s}
               onClick={() => { setStatusFilter(s); setPage(0) }}
               className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
-                statusFilter === s ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                statusFilter === s ? pillActive : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
               )}
             >{STATUS_LABELS[s]}</button>
           ))}
@@ -320,6 +323,7 @@ export function WorkOrdersListPage() {
           ]}
           placeholder="All Clients"
           className="w-52"
+          triggerClassName={isEquipmentMode ? 'border-feros-equip-sidebar/40 focus:ring-feros-equip-sidebar/50' : ''}
         />
       </div>
 
