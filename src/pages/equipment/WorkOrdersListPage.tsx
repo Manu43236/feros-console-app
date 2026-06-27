@@ -317,7 +317,7 @@ export function WorkOrdersListPage() {
           className="h-8 rounded-full border border-gray-200 bg-white text-xs text-gray-600 px-3 focus:outline-none focus:ring-2 focus:ring-gray-300"
         >
           <option value="">All Clients</option>
-          {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {clients.map(c => <option key={c.id} value={c.id}>{c.clientName}</option>)}
         </select>
       </div>
 
