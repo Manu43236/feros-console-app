@@ -311,14 +311,16 @@ export function WorkOrdersListPage() {
           ))}
         </div>
         {/* Client filter */}
-        <select
-          value={clientFilter}
-          onChange={e => { setClientFilter(e.target.value ? Number(e.target.value) : ''); setPage(0) }}
-          className="h-8 rounded-full border border-gray-200 bg-white text-xs text-gray-600 px-3 focus:outline-none focus:ring-2 focus:ring-gray-300"
-        >
-          <option value="">All Clients</option>
-          {clients.map(c => <option key={c.id} value={c.id}>{c.clientName}</option>)}
-        </select>
+        <SearchableSelect
+          value={clientFilter === '' ? '' : String(clientFilter)}
+          onValueChange={v => { setClientFilter(v ? Number(v) : ''); setPage(0) }}
+          options={[
+            { value: '', label: 'All Clients' },
+            ...clients.map(c => ({ value: String(c.id), label: c.clientName })),
+          ]}
+          placeholder="All Clients"
+          className="w-52"
+        />
       </div>
 
       {/* Table */}
