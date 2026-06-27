@@ -8,7 +8,8 @@ import type { Equipment } from '@/api/equipment'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Plus, Wrench, Activity, ReceiptText,
-  CheckCircle2, XCircle, AlertTriangle, Clock
+  CheckCircle2, XCircle, AlertTriangle, Clock,
+  Construction, CalendarDays, Gauge, User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -362,72 +363,104 @@ export function WorkOrderDetailPage() {
 
   return (
     <div className="space-y-5">
-      {/* Back */}
-      <button onClick={() => navigate('/equipment/work-orders')}
-        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
-        <ArrowLeft size={15} /> Work Orders
-      </button>
 
-      {/* Header card */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-sm text-gray-400">{wo.woNumber}</span>
+      {/* ── Banner ── */}
+      <div className="relative bg-gradient-to-br from-feros-equip-sidebar via-feros-equip-sidebar to-[#2d2000] rounded-xl overflow-hidden">
+        {/* Ghost icon */}
+        <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
+          <Construction size={180} />
+        </div>
+        <div className="relative px-6 py-6">
+          {/* Top row: back + actions */}
+          <div className="flex items-start justify-between gap-4">
+            <button
+              onClick={() => navigate('/equipment/work-orders')}
+              className="flex items-center gap-1.5 text-[#c8a96e] hover:text-white text-sm transition-colors mt-0.5"
+            >
+              <ArrowLeft size={15} /> Work Orders
+            </button>
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              {(woStatus === 'CONFIRMED' || woStatus === 'IN_PROGRESS') && (
+                <Button size="sm" variant="outline" onClick={() => setExtendOpen(true)}
+                  className="text-[#c8a96e] border-[#c8a96e]/40 hover:bg-white/10 bg-transparent gap-1.5">
+                  <CalendarDays size={14} /> Extend
+                </Button>
+              )}
+              {nextStatuses.map((s: WorkOrderStatus) => (
+                <Button key={s} size="sm" variant="outline"
+                  disabled={statusMutation.isPending}
+                  onClick={() => statusMutation.mutate(s)}
+                  className={s === 'CANCELLED'
+                    ? 'text-red-300 border-red-400/40 hover:bg-red-500/20 bg-transparent gap-1.5'
+                    : 'text-white border-white/30 hover:bg-white/20 bg-white/10 gap-1.5'
+                  }
+                >
+                  {STATUS_LABELS[s]}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* WO identity */}
+          <div className="mt-5">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-bold text-white">{wo.woNumber}</h1>
               <Badge className={cn('text-xs', STATUS_COLORS[woStatus])}>{STATUS_LABELS[woStatus]}</Badge>
             </div>
-            <h1 className="text-xl font-bold text-gray-900">{wo.clientName}</h1>
-            {wo.site && <p className="text-sm text-gray-500 mt-0.5">{wo.site}</p>}
-          </div>
-          {/* Status actions */}
-          <div className="flex gap-2 flex-wrap justify-end">
-            {(woStatus === 'CONFIRMED' || woStatus === 'IN_PROGRESS') && (
-              <Button size="sm" variant="outline" onClick={() => setExtendOpen(true)}>
-                Extend
-              </Button>
-            )}
-            {nextStatuses.map((s: WorkOrderStatus) => (
-              <Button key={s} size="sm" variant={s === 'CANCELLED' ? 'outline' : 'default'}
-                disabled={statusMutation.isPending}
-                onClick={() => statusMutation.mutate(s)}
-                className={s !== 'CANCELLED' ? btnPrimary : 'text-red-600 border-red-200 hover:bg-red-50'}
-              >
-                {STATUS_LABELS[s]}
-              </Button>
-            ))}
+            <p className="text-[#c8a96e] text-sm mt-1.5">
+              {wo.clientName}{wo.site ? ` · ${wo.site}` : ''}
+            </p>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Rate</p>
-            <p className="font-medium text-gray-800">₹{wo.rateAmount.toLocaleString('en-IN')}</p>
-            <p className="text-xs text-gray-400">
-              {wo.rateType === 'HOURLY' ? '/hr' : wo.rateType === 'DAILY_SHIFT' ? '/shift' : '/month'}
-              {wo.rateType === 'DAILY_SHIFT' && wo.shiftHours && ` (${wo.shiftHours}h shift)`}
-            </p>
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-400 mb-2">
+            <Gauge size={13} />
+            <span className="text-xs font-medium uppercase tracking-wide">Rate</span>
           </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Period</p>
-            <p className="font-medium text-gray-800">{wo.startDate}</p>
-            {wo.endDate && <p className="text-xs text-gray-400">→ {wo.endDate}</p>}
+          <p className="text-sm font-semibold text-gray-800">₹{wo.rateAmount.toLocaleString('en-IN')}</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {wo.rateType === 'HOURLY' ? 'per hour' : wo.rateType === 'DAILY_SHIFT' ? `per shift${wo.shiftHours ? ` (${wo.shiftHours}h)` : ''}` : 'per month'}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-400 mb-2">
+            <CalendarDays size={13} />
+            <span className="text-xs font-medium uppercase tracking-wide">Period</span>
           </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Machines</p>
-            <p className="font-medium text-gray-800">{wo.machineCount}</p>
+          <p className="text-sm font-semibold text-gray-800">{wo.startDate}</p>
+          {wo.endDate
+            ? <p className="text-xs text-gray-400 mt-0.5">→ {wo.endDate}</p>
+            : <p className="text-xs text-gray-400 mt-0.5">Open-ended</p>}
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-400 mb-2">
+            <Construction size={13} />
+            <span className="text-xs font-medium uppercase tracking-wide">Machines</span>
           </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Operator</p>
-            <p className="font-medium text-gray-800">
-              {wo.operatorType
-                ? wo.operatorType === 'OWN_STAFF' ? (wo.operatorStaffName ?? 'Own Staff')
-                  : wo.operatorType === 'HIRED' ? (wo.hiredOperatorName ?? 'Hired')
-                  : 'Client Provided'
-                : '—'}
-            </p>
-            {wo.operatorBilling === 'BILLED_SEPARATELY' && wo.operatorRatePerDay &&
-              <p className="text-xs text-gray-400">₹{wo.operatorRatePerDay}/day</p>}
+          <p className="text-sm font-semibold text-gray-800">{wo.machineCount} assigned</p>
+          <p className="text-xs text-gray-400 mt-0.5">{activeAssignments.length} active</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-400 mb-2">
+            <User size={13} />
+            <span className="text-xs font-medium uppercase tracking-wide">Operator</span>
           </div>
+          <p className="text-sm font-semibold text-gray-800">
+            {wo.operatorType
+              ? wo.operatorType === 'OWN_STAFF' ? (wo.operatorStaffName ?? 'Own Staff')
+                : wo.operatorType === 'HIRED' ? (wo.hiredOperatorName ?? 'Hired')
+                : 'Client Provided'
+              : '—'}
+          </p>
+          {wo.operatorBilling === 'BILLED_SEPARATELY' && wo.operatorRatePerDay &&
+            <p className="text-xs text-gray-400 mt-0.5">₹{wo.operatorRatePerDay}/day</p>}
         </div>
       </div>
 
@@ -440,7 +473,7 @@ export function WorkOrderDetailPage() {
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
-              tab === t.key ? 'border-gray-800 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+              tab === t.key ? 'border-feros-equip-sidebar text-feros-equip-sidebar' : 'border-transparent text-gray-500 hover:text-gray-700'
             )}
           >
             {t.icon} {t.label}
