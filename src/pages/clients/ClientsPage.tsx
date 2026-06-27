@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
-import { Plus, Search, Pencil, Phone, MapPin, Building2, Upload, Download, CheckCircle, XCircle, ToggleLeft, ToggleRight, Trash2, Mail, User, CreditCard, Hash } from 'lucide-react'
+import { Plus, Search, Pencil, Phone, MapPin, Building2, Upload, Download, CheckCircle, XCircle, ToggleLeft, ToggleRight, Trash2, Mail, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -203,7 +203,6 @@ function ClientDetailDrawer({ client, open, onClose, onEdit }: {
                 </Badge>
               </div>
               <SheetTitle className="text-xl">{client.clientName}</SheetTitle>
-              {client.clientNumber && <p className="text-xs text-gray-400 mt-0.5">{client.clientNumber}</p>}
             </div>
             <Button size="sm" variant="outline" onClick={onEdit} className="gap-1.5 shrink-0">
               <Pencil size={13} /> Edit
@@ -271,7 +270,7 @@ function ClientDetailDrawer({ client, open, onClose, onEdit }: {
           <div className="space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Credit</p>
             <div className="grid grid-cols-2 gap-3">
-              {client.paymentTermsName && <Row label="Payment Terms" value={`${client.paymentTermsName}${client.creditDays ? ` (${client.creditDays}d)` : ''}`} />}
+              {client.paymentTermsName && <Row label="Payment Terms" value={client.paymentTermsName} />}
               {client.creditLimit ? <Row label="Credit Limit" value={`₹${Number(client.creditLimit).toLocaleString('en-IN')}`} /> : null}
               {client.openingBalance ? <Row label="Opening Balance" value={`₹${Number(client.openingBalance).toLocaleString('en-IN')}`} /> : null}
             </div>
