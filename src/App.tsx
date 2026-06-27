@@ -77,6 +77,8 @@ import { NotificationsPage } from '@/pages/notifications/NotificationsPage'
 // Equipment
 import { EquipmentDashboardPage } from '@/pages/equipment/EquipmentDashboardPage'
 import { EquipmentListPage }      from '@/pages/equipment/EquipmentListPage'
+import { WorkOrdersListPage }     from '@/pages/equipment/WorkOrdersListPage'
+import { WorkOrderDetailPage }    from '@/pages/equipment/WorkOrderDetailPage'
 
 // GPS
 import GpsTrackerPage from '@/pages/gps/GpsTrackerPage'
@@ -191,8 +193,10 @@ export default function App() {
           <Route path="profile" element={<ProfilePage />} />
 
           {/* Equipment */}
-          <Route path="equipment/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentDashboardPage /></ProtectedRoute>} />
-          <Route path="equipment/machines"  element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentListPage /></ProtectedRoute>} />
+          <Route path="equipment/dashboard"          element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentDashboardPage /></ProtectedRoute>} />
+          <Route path="equipment/machines"           element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentListPage /></ProtectedRoute>} />
+          <Route path="equipment/work-orders"        element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><WorkOrdersListPage /></ProtectedRoute>} />
+          <Route path="equipment/work-orders/:id"    element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><WorkOrderDetailPage /></ProtectedRoute>} />
 
           {/* Notifications */}
           <Route path="notifications" element={<NotificationsPage />} />

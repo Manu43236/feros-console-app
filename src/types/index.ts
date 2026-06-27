@@ -194,6 +194,55 @@ export interface Client {
   divisions?: ClientDivision[]
 }
 
+// ─── Work Orders ──────────────────────────────────────────────────────────────
+export type WorkOrderStatus = 'DRAFT' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'INVOICED' | 'CANCELLED'
+export type RateType = 'HOURLY' | 'DAILY_SHIFT' | 'MONTHLY'
+export type OperatorType = 'OWN_STAFF' | 'HIRED' | 'CLIENT_PROVIDED'
+export type OperatorBilling = 'INCLUDED_IN_RATE' | 'BILLED_SEPARATELY' | 'NOT_BILLED'
+export type DailyLogStatus = 'WORKING' | 'BREAKDOWN' | 'NO_MACHINE' | 'IDLE'
+export type AssignmentEndReason = 'COMPLETED' | 'BREAKDOWN_REPLACED' | 'BREAKDOWN_RETURNED'
+
+export interface WorkOrder {
+  id: number; tenantId: number; woNumber: string
+  clientId: number; clientName: string; site?: string
+  rateType: RateType; rateAmount: number
+  shiftHours?: number; overtimeRatePerHour?: number
+  operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string
+  hiredOperatorName?: string; hiredOperatorPhone?: string
+  operatorBilling: OperatorBilling; operatorRatePerDay?: number
+  mobilizationCharge?: number; demobilizationCharge?: number
+  startDate: string; endDate?: string
+  status: WorkOrderStatus; parentWoId?: number; notes?: string
+  machineCount: number; createdAt: string; updatedAt: string
+}
+
+export interface MachineAssignment {
+  id: number; workOrderId: number; equipmentId: number
+  serialNumber?: string; equipmentTypeName: string; makeName?: string; modelName?: string
+  startDate: string; endDate?: string; endReason?: AssignmentEndReason; isActive: boolean
+}
+
+export interface DailyLog {
+  id: number; machineAssignmentId: number; workOrderId: number
+  logDate: string; status: DailyLogStatus
+  startHourMeter?: number; endHourMeter?: number; hoursWorked?: number; fuelConsumed?: number; notes?: string
+  serialNumber?: string; equipmentTypeName?: string
+  createdAt: string; updatedAt: string
+}
+
+export interface BillingSummary {
+  machineRentalAmount: number; operatorAmount: number
+  mobilizationCharge: number; demobilizationCharge: number
+  totalAmount: number; totalHours?: number; totalWorkingDays: number
+}
+
+export interface WorkOrderDetail {
+  workOrder: WorkOrder
+  assignments: MachineAssignment[]
+  logs: DailyLog[]
+  billing: BillingSummary
+}
+
 // ─── Vehicle ──────────────────────────────────────────────────────────────────
 export interface Vehicle {
   id: number; tenantId: number
