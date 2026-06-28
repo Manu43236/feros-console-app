@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -59,8 +60,7 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
   const qc = useQueryClient()
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
-  const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<{ id: number; label: string } | null>(null)
+  const [equipmentId, setEquipmentId] = useState('')
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10))
 
   const { data: equipRes } = useQuery({
@@ -68,21 +68,15 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
     queryFn: () => equipmentApi.getAll(),
     enabled: open,
   })
-  const allEquipment = equipRes?.data ?? []
-  const q = search.toLowerCase()
-  const filtered = allEquipment.filter(e =>
-    (e.registrationNumber ?? '').toLowerCase().includes(q) ||
-    (e.serialNumber ?? '').toLowerCase().includes(q) ||
-    (e.equipmentTypeName ?? '').toLowerCase().includes(q)
-  )
+  const options = (equipRes?.data ?? []).map(e => ({ value: String(e.id), label: eqLabel(e) }))
 
   const mutation = useMutation({
-    mutationFn: () => workOrdersApi.addMachine(woId, { equipmentId: selected!.id, startDate }),
+    mutationFn: () => workOrdersApi.addMachine(woId, { equipmentId: Number(equipmentId), startDate }),
     onSuccess: () => {
       toast.success('Machine assigned')
       qc.invalidateQueries({ queryKey: ['work-order', woId] })
       qc.invalidateQueries({ queryKey: ['equipment'] })
-      setSelected(null); setSearch(''); onClose()
+      setEquipmentId(''); onClose()
     },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -91,34 +85,18 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
   })
 
   return (
-    <Dialog open={open} onOpenChange={v => { if (!v) { setSelected(null); setSearch(''); onClose() } }}>
+    <Dialog open={open} onOpenChange={v => { if (!v) { setEquipmentId(''); onClose() } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Assign Machine</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Machine</Label>
-            {selected ? (
-              <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50 text-sm">
-                <span className="flex-1 text-gray-800">{selected.label}</span>
-                <button onClick={() => { setSelected(null); setSearch('') }} className="text-xs text-gray-400 hover:text-gray-600">Change</button>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <Input placeholder="Search by reg. number, serial…" value={search} onChange={e => setSearch(e.target.value)} />
-                {search && (
-                  <div className="border rounded-md max-h-44 overflow-y-auto bg-white shadow-sm">
-                    {filtered.length === 0 ? (
-                      <p className="text-xs text-gray-400 p-3">No machines found</p>
-                    ) : filtered.map(e => (
-                      <button key={e.id} onClick={() => { setSelected({ id: e.id, label: eqLabel(e) }); setSearch('') }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-0">
-                        {eqLabel(e)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            <SearchableSelect
+              value={equipmentId}
+              onValueChange={setEquipmentId}
+              options={options}
+              placeholder="Search by reg. number, serial…"
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Start Date</Label>
@@ -126,7 +104,7 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button disabled={!selected || mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
+            <Button disabled={!equipmentId || mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
               {mutation.isPending ? 'Assigning…' : 'Assign'}
             </Button>
           </div>
