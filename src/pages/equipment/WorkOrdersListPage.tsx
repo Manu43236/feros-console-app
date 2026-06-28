@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { workOrdersApi } from '@/api/workOrders'
 import { clientsApi } from '@/api/clients'
+import { staffApi } from '@/api/staff'
 import { toast } from 'sonner'
 import { Plus, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -44,6 +45,7 @@ const schema = z.object({
   shiftHours:            z.coerce.number().optional(),
   overtimeRatePerHour:   z.coerce.number().optional(),
   operatorType:          z.enum(['OWN_STAFF', 'HIRED', 'CLIENT_PROVIDED']).optional(),
+  operatorStaffId:       z.coerce.number().optional(),
   hiredOperatorName:     z.string().optional(),
   hiredOperatorPhone:    z.string().optional(),
   operatorBilling:       z.enum(['INCLUDED_IN_RATE', 'BILLED_SEPARATELY', 'NOT_BILLED']).optional(),
@@ -65,6 +67,10 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
   const { data: clientsRes } = useQuery({
     queryKey: ['clients', 0, ''],
     queryFn: () => clientsApi.getAll({ page: 0, size: 100 }),
+  })
+  const { data: equipStaffRes } = useQuery({
+    queryKey: ['staff-equipment'],
+    queryFn: () => staffApi.getAll({ equipmentOnly: true }),
   })
 
   const { register, handleSubmit, control, watch, reset, formState: { errors } } = useForm<FormData>({
@@ -191,6 +197,19 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
                   />
                 )} />
               </div>
+              {operatorType === 'OWN_STAFF' && (
+                <div className="space-y-1.5">
+                  <Label>Select Operator</Label>
+                  <Controller name="operatorStaffId" control={control} render={({ field }) => (
+                    <SearchableSelect
+                      value={field.value ? String(field.value) : ''}
+                      onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                      options={(equipStaffRes?.data ?? []).map(s => ({ value: String(s.userId), label: `${s.userName} (${s.roleName})` }))}
+                      placeholder="Select staff member"
+                    />
+                  )} />
+                </div>
+              )}
               {operatorType === 'HIRED' && <>
                 <div className="space-y-1.5">
                   <Label>Operator Name</Label>

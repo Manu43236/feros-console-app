@@ -265,6 +265,13 @@ const EQUIPMENT_ADMIN_NAV: SectionedNav = {
       ],
     },
     {
+      section: 'HR',
+      icon: UserCheck,
+      items: [
+        { to: '/staff', label: 'Staff', icon: UserCheck },
+      ],
+    },
+    {
       section: 'Inventory',
       icon: Package,
       items: [

@@ -24,12 +24,13 @@ import type { StaffProfile, BulkUploadResult } from '@/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function getRoleColor(role: string) {
-  if (role === 'ADMIN')        return 'bg-purple-50 text-purple-700'
-  if (role === 'DRIVER')       return 'bg-blue-50 text-blue-700'
-  if (role === 'SUPERVISOR')   return 'bg-orange-50 text-orange-700'
-  if (role === 'OFFICE_STAFF') return 'bg-teal-50 text-teal-700'
+  if (role === 'ADMIN')           return 'bg-purple-50 text-purple-700'
+  if (role === 'DRIVER')          return 'bg-blue-50 text-blue-700'
+  if (role === 'SUPERVISOR')      return 'bg-orange-50 text-orange-700'
+  if (role === 'OFFICE_STAFF')    return 'bg-teal-50 text-teal-700'
   if (role === 'SERVICE_MANAGER') return 'bg-red-50 text-red-700'
-  if (role === 'STORE_KEEPER') return 'bg-emerald-50 text-emerald-700'
+  if (role === 'STORE_KEEPER')    return 'bg-emerald-50 text-emerald-700'
+  if (role === 'OPERATOR')        return 'bg-amber-50 text-amber-800'
   return 'bg-gray-50 text-gray-700'
 }
 
@@ -54,23 +55,28 @@ function PinCell({ pin }: { pin: string | null }) {
 
 // ── add staff form ────────────────────────────────────────────────────────────
 const DAILY_ROLES = ['DRIVER', 'CLEANER']
+const STAFF_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OPERATOR']
+const EQUIP_HIDDEN_ROLES = ['DRIVER', 'CLEANER']
+const VEHICLES_HIDDEN_ROLES = ['OPERATOR']
 
 const addStaffSchema = z.object({
-  name:          z.string().min(2, 'Name is required'),
-  phone:         z.string().regex(/^[6-9]\d{9}$/, 'Enter valid 10-digit phone number'),
-  role:          z.string().min(1, 'Select role'),
-  designationId: z.coerce.number().optional(),
-  salaryType:    z.enum(['DAILY', 'MONTHLY']).optional(),
-  monthlySalary: z.preprocess(
+  name:               z.string().min(2, 'Name is required'),
+  phone:              z.string().regex(/^[6-9]\d{9}$/, 'Enter valid 10-digit phone number'),
+  role:               z.string().min(1, 'Select role'),
+  designationId:      z.coerce.number().optional(),
+  salaryType:         z.enum(['DAILY', 'MONTHLY']).optional(),
+  monthlySalary:      z.preprocess(
     v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
     z.number().positive('Must be a positive amount').optional()
   ),
+  canAccessEquipment: z.boolean().optional(),
 })
 type AddStaffForm = z.infer<typeof addStaffSchema>
 
 
 function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
+  const moduleType = useAuthStore(s => s.moduleType)
   const [createdPin, setCreatedPin] = useState<string | null>(null)
   const [createdName, setCreatedName] = useState('')
 
@@ -79,21 +85,28 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AddStaffForm>({
     resolver: zodResolver(addStaffSchema) as Resolver<AddStaffForm>,
-    defaultValues: { salaryType: 'MONTHLY' },
+    defaultValues: { salaryType: 'MONTHLY', canAccessEquipment: false },
   })
 
-  const roleOptions = (rolesData?.data?.filter(r => r.name !== 'SUPER_ADMIN') ?? []).map(r => ({
-    value: r.name,
-    label: r.description || r.name,
-  }))
+  const hiddenRoles = moduleType === 'EQUIPMENT_ONLY' ? EQUIP_HIDDEN_ROLES
+                    : moduleType === 'VEHICLES_ONLY'  ? VEHICLES_HIDDEN_ROLES
+                    : []
 
-  const selectedRole   = watch('role') ?? ''
-  const isDailyRole    = DAILY_ROLES.includes(selectedRole)
-  const isMonthly      = watch('salaryType') === 'MONTHLY'
+  const roleOptions = (rolesData?.data ?? [])
+    .filter(r => r.name !== 'SUPER_ADMIN' && r.name !== 'ADMIN' && !hiddenRoles.includes(r.name))
+    .map(r => ({ value: r.name, label: r.description || r.name }))
+
+  const selectedRole    = watch('role') ?? ''
+  const isDailyRole     = DAILY_ROLES.includes(selectedRole)
+  const isMonthly       = watch('salaryType') === 'MONTHLY'
+  const showEquipToggle = moduleType === 'BOTH' && STAFF_ROLES.includes(selectedRole) && selectedRole !== 'OPERATOR'
 
   const mutation = useMutation({
     mutationFn: async (data: AddStaffForm) => {
-      const res = await staffApi.createUser({ name: data.name, phone: data.phone, role: data.role })
+      const res = await staffApi.createUser({
+        name: data.name, phone: data.phone, role: data.role,
+        canAccessEquipment: data.canAccessEquipment,
+      })
       const userId = res.data?.id
       if (userId) {
         const hasDesignation  = isDailyRole && data.designationId
@@ -180,11 +193,35 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
                   setValue('role', v, { shouldValidate: true })
                   setValue('designationId', undefined)
                   setValue('monthlySalary', undefined)
+                  setValue('canAccessEquipment', false)
                 }}
                 triggerClassName={errors.role ? 'border-red-400' : ''}
               />
               {errors.role && <p className="text-red-500 text-xs">{errors.role.message}</p>}
             </div>
+
+            {/* Equipment access toggle — BOTH tenants only */}
+            {showEquipToggle && (
+              <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-amber-900">Equipment Access</p>
+                  <p className="text-xs text-amber-700">Allow this staff to be assigned to equipment work orders</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setValue('canAccessEquipment', !watch('canAccessEquipment'))}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                    watch('canAccessEquipment') ? 'bg-amber-700' : 'bg-gray-200'
+                  )}
+                >
+                  <span className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+                    watch('canAccessEquipment') ? 'translate-x-5' : 'translate-x-0'
+                  )} />
+                </button>
+              </div>
+            )}
 
             {/* Driver / Cleaner — designation */}
             {isDailyRole && (
@@ -401,7 +438,7 @@ interface MergedStaff {
 
 // ── main page ─────────────────────────────────────────────────────────────────
 export function StaffPage() {
-  const { locked } = useSubscription()
+  const { locked, isEquipmentMode } = useSubscription()
   const navigate = useNavigate()
   const logoUrl = useAuthStore(s => s.logoUrl)
   const role    = useAuthStore(s => s.role)
@@ -456,14 +493,19 @@ export function StaffPage() {
     const matchRole    = !roleFilter || s.roleName === roleFilter
     const matchStatus  = !statusFilter || (statusFilter === 'active' ? s.isActive : !s.isActive)
     const matchCrew    = !isSupervisor || s.roleName === 'DRIVER' || s.roleName === 'CLEANER'
-    return matchSearch && matchRole && matchStatus && matchCrew
+    const matchModule  = isEquipmentMode
+      ? s.roleName !== 'DRIVER' && s.roleName !== 'CLEANER'
+      : s.roleName !== 'OPERATOR'
+    return matchSearch && matchRole && matchStatus && matchCrew && matchModule
   })
   const totalPages = Math.max(1, Math.ceil(staff.length / PAGE_SIZE))
   const pageRows   = staff.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   const roles = isSupervisor
     ? ['DRIVER', 'CLEANER']
-    : [...new Set(allStaff.map(s => s.roleName))]
+    : [...new Set(allStaff.map(s => s.roleName))].filter(r =>
+        isEquipmentMode ? r !== 'DRIVER' && r !== 'CLEANER' : r !== 'OPERATOR'
+      )
 
   return (
     <div className="space-y-5">

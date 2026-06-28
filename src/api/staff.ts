@@ -13,7 +13,7 @@ export const staffApi = {
   },
   resetPin:       (userId: number) => apiClient.put<ApiResponse<{ userId: number; name: string; phone: string; pin: string }>>(`/users/${userId}/reset-pin`).then(r => r.data),
   toggleStatus:   (userId: number, isActive: boolean) => apiClient.put<ApiResponse<unknown>>(`/users/${userId}/status`, { isActive }).then(r => r.data),
-  getAll:         () => apiClient.get<ApiResponse<StaffProfile[]>>('/staff/profiles').then(r => r.data),
+  getAll:         (params?: { equipmentOnly?: boolean }) => apiClient.get<ApiResponse<StaffProfile[]>>('/staff/profiles', { params }).then(r => r.data),
   getByUserId:    (userId: number) => apiClient.get<ApiResponse<StaffProfile>>(`/staff/profiles/${userId}`).then(r => r.data),
   upsert:         (userId: number, data: unknown) => apiClient.put<ApiResponse<StaffProfile>>(`/staff/profiles/${userId}`, data).then(r => r.data),
   getDocuments:   (userId: number) => apiClient.get<ApiResponse<StaffDocument[]>>(`/staff/${userId}/documents`).then(r => r.data),
