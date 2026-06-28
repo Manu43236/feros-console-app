@@ -453,7 +453,7 @@ export function StaffPage() {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  const { data: profilesRes }          = useQuery({ queryKey: ['staff'],  queryFn: staffApi.getAll })
+  const { data: profilesRes }          = useQuery({ queryKey: ['staff'],  queryFn: () => staffApi.getAll() })
   const { data: usersRes, isLoading }  = useQuery({ queryKey: ['users'],  queryFn: () => staffApi.getUsers() })
   const { data: attendanceRes }        = useQuery({ queryKey: ['attendance-today', today], queryFn: () => attendanceApi.getByDate(today) })
 
