@@ -106,6 +106,8 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
       const res = await staffApi.createUser({
         name: data.name, phone: data.phone, role: data.role,
         canAccessEquipment: data.canAccessEquipment,
+        salaryType: !isDailyRole ? (data.salaryType ?? 'MONTHLY') : undefined,
+        monthlySalary: !isDailyRole && data.salaryType === 'MONTHLY' ? data.monthlySalary : undefined,
       })
       const userId = res.data?.id
       if (userId) {
