@@ -530,7 +530,9 @@ export function StaffPage() {
                          s.userPhone.includes(search)
     const matchRole    = !roleFilter || s.roleName === roleFilter
     const matchStatus  = !statusFilter || (statusFilter === 'active' ? s.isActive : !s.isActive)
-    const matchCrew    = !isSupervisor || s.roleName === 'DRIVER' || s.roleName === 'CLEANER'
+    const matchCrew    = !isSupervisor || (
+      isEquipmentMode ? s.roleName === 'OPERATOR' : s.roleName === 'DRIVER' || s.roleName === 'CLEANER'
+    )
     const matchModule  = isEquipmentMode
       ? s.roleName !== 'DRIVER' && s.roleName !== 'CLEANER'
       : s.roleName !== 'OPERATOR'
@@ -540,7 +542,7 @@ export function StaffPage() {
   const pageRows   = staff.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   const roles = isSupervisor
-    ? ['DRIVER', 'CLEANER']
+    ? (isEquipmentMode ? ['OPERATOR'] : ['DRIVER', 'CLEANER'])
     : [...new Set(allStaff.map(s => s.roleName))].filter(r =>
         isEquipmentMode ? r !== 'DRIVER' && r !== 'CLEANER' : r !== 'OPERATOR'
       )
