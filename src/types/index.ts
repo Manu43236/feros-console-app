@@ -39,6 +39,8 @@ export interface LoginResponse {
   isPinResetRequired?: boolean
   allowedModules?: string[] | null
   moduleType?: ModuleType | null
+  canAccessVehicles?: boolean | null
+  canAccessEquipment?: boolean | null
 }
 
 // ─── Module Access ─────────────────────────────────────────────────────────────

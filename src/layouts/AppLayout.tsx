@@ -544,6 +544,8 @@ export function AppLayout() {
   const moduleType         = useAuthStore(s => s.moduleType)
   const currentMode        = useAuthStore(s => s.currentMode)
   const setCurrentMode     = useAuthStore(s => s.setCurrentMode)
+  const canAccessVehicles  = useAuthStore(s => s.canAccessVehicles)
+  const canAccessEquipment = useAuthStore(s => s.canAccessEquipment)
   const navigate = useNavigate()
   const qc = useQueryClient()
 
@@ -687,8 +689,8 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
 
-          {/* Module toggle — only for BOTH tenants, left-aligned */}
-          {moduleType === 'BOTH' && (
+          {/* Module toggle — only for BOTH tenants with access to both modules */}
+          {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (
             <div className="flex items-center bg-gray-100 rounded-full p-1 gap-1">
               <button
                 onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }}
