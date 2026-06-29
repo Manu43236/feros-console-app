@@ -72,7 +72,10 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           allowedModules: data.allowedModules ?? null,
           moduleType:     data.moduleType ?? null,
-          currentMode:    'VEHICLES', // always default to Vehicles on fresh login
+          // Equipment-only supervisor → start in equipment mode
+          currentMode:    (data.canAccessVehicles === false && data.canAccessEquipment === true)
+                            ? 'EQUIPMENT'
+                            : 'VEHICLES',
           canAccessVehicles:  data.canAccessVehicles ?? null,
           canAccessEquipment: data.canAccessEquipment ?? null,
           saSession:      null,
