@@ -290,6 +290,33 @@ const EQUIPMENT_ADMIN_NAV: SectionedNav = {
   ],
 }
 
+const EQUIPMENT_SUPERVISOR_NAV: SectionedNav = {
+  dashboard: { to: '/equipment/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  sections: [
+    {
+      section: 'Operations',
+      icon: Activity,
+      items: [
+        { to: '/equipment/work-orders', label: 'Work Orders', icon: ClipboardList },
+      ],
+    },
+    {
+      section: 'HR',
+      icon: UserCheck,
+      items: [
+        { to: '/staff',      label: 'Staff',      icon: UserCheck },
+        { to: '/attendance', label: 'Attendance', icon: Calendar },
+      ],
+    },
+    {
+      section: '',
+      items: [
+        { to: '/my/payslip', label: 'My Payslip', icon: Wallet },
+      ],
+    },
+  ],
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 function isSectionedNav(nav: SectionedNav | FlatNav): nav is SectionedNav {
   return !Array.isArray(nav)
@@ -568,7 +595,7 @@ export function AppLayout() {
   const nav: SectionedNav | FlatNav =
     role === 'SUPER_ADMIN'  ? SUPER_ADMIN_NAV :
     role === 'OFFICE_STAFF' ? (isEquipmentMode ? EQUIPMENT_ADMIN_NAV : OFFICE_STAFF_NAV) :
-    role === 'SUPERVISOR'   ? SUPERVISOR_NAV :
+    role === 'SUPERVISOR'   ? (isEquipmentMode ? EQUIPMENT_SUPERVISOR_NAV : SUPERVISOR_NAV) :
     role === 'DRIVER'       ? DRIVER_CLEANER_NAV :
     role === 'CLEANER'      ? DRIVER_CLEANER_NAV :
     role === 'STORE_KEEPER'    ? STORE_KEEPER_NAV :
