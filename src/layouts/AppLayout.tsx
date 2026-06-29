@@ -304,8 +304,7 @@ const EQUIPMENT_SUPERVISOR_NAV: SectionedNav = {
       section: 'HR',
       icon: UserCheck,
       items: [
-        { to: '/staff',      label: 'Staff',      icon: UserCheck },
-        { to: '/attendance', label: 'Attendance', icon: Calendar },
+        { to: '/staff', label: 'Staff', icon: UserCheck },
       ],
     },
     {
