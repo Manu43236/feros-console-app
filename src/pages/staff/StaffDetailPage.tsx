@@ -20,7 +20,6 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
-import { useSubscription } from '@/context/SubscriptionContext'
 import type { StaffDocument } from '@/types'
 
 // ── schema ────────────────────────────────────────────────────────────────────
@@ -315,7 +314,6 @@ export function StaffDetailPage() {
   const moduleType   = useAuthStore(s => s.moduleType)
   const authRole     = useAuthStore(s => s.role)
   const isSupervisor = authRole === 'SUPERVISOR'
-  const { isEquipmentMode } = useSubscription()
   const [searchParams] = useSearchParams()
   const [tab, setTab]               = useState<'info' | 'docs'>(searchParams.get('tab') === 'docs' ? 'docs' : 'info')
   const [selectedState, setSelectedState] = useState<number | undefined>()
