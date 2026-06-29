@@ -20,6 +20,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
+import { useSubscription } from '@/context/SubscriptionContext'
 import type { StaffDocument } from '@/types'
 
 // ── schema ────────────────────────────────────────────────────────────────────
@@ -50,6 +51,8 @@ const profileSchema = z.object({
     v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
     z.number().positive('Must be a positive amount').optional()
   ),
+  canAccessVehicles:     z.boolean().optional(),
+  canAccessEquipment:    z.boolean().optional(),
 })
 type ProfileFormData = z.infer<typeof profileSchema>
 
@@ -309,8 +312,10 @@ export function StaffDetailPage() {
   const uid        = Number(userId)
 
   const logoUrl      = useAuthStore(s => s.logoUrl)
+  const moduleType   = useAuthStore(s => s.moduleType)
   const authRole     = useAuthStore(s => s.role)
   const isSupervisor = authRole === 'SUPERVISOR'
+  const { isEquipmentMode } = useSubscription()
   const [searchParams] = useSearchParams()
   const [tab, setTab]               = useState<'info' | 'docs'>(searchParams.get('tab') === 'docs' ? 'docs' : 'info')
   const [selectedState, setSelectedState] = useState<number | undefined>()
@@ -366,6 +371,8 @@ export function StaffDetailPage() {
         licenseExpiryDate:     profile.licenseExpiryDate?.split('T')[0] ?? '',
         salaryType:            profile.salaryType ?? 'DAILY',
         monthlySalary:         profile.monthlySalary,
+        canAccessVehicles:     profile.canAccessVehicles ?? true,
+        canAccessEquipment:    profile.canAccessEquipment ?? false,
       })
     }
   }, [profile, reset])
@@ -703,6 +710,51 @@ export function StaffDetailPage() {
               <p className="text-xs text-gray-400">LOP deduction = (monthly salary ÷ working days) × absent days. Sundays excluded.</p>
             )}
           </div>}
+
+          {/* Module Access — BOTH tenants, SUPERVISOR role only */}
+          {moduleType === 'BOTH' && user?.role === 'SUPERVISOR' && !isSupervisor && (
+            <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
+              <p className="text-sm font-semibold text-gray-700">Module Access</p>
+              <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Vehicle Access</p>
+                  <p className="text-xs text-blue-700">Can manage vehicle operations</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setValue('canAccessVehicles', !watch('canAccessVehicles'), { shouldDirty: true })}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                    watch('canAccessVehicles') ? 'bg-feros-navy' : 'bg-gray-200'
+                  )}
+                >
+                  <span className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+                    watch('canAccessVehicles') ? 'translate-x-5' : 'translate-x-0'
+                  )} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-amber-900">Equipment Access</p>
+                  <p className="text-xs text-amber-700">Can be assigned to equipment work orders</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setValue('canAccessEquipment', !watch('canAccessEquipment'), { shouldDirty: true })}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                    watch('canAccessEquipment') ? 'bg-feros-equip-sidebar' : 'bg-gray-200'
+                  )}
+                >
+                  <span className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+                    watch('canAccessEquipment') ? 'translate-x-5' : 'translate-x-0'
+                  )} />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Save button — hidden for supervisors */}
           {!isSupervisor && (
