@@ -604,6 +604,7 @@ function AssignDivisionDialog({ woId, clientId, assignment, open, onClose }: {
     onSuccess: () => {
       toast.success(divisionId ? 'Division assigned' : 'Division removed')
       qc.invalidateQueries({ queryKey: ['work-order', woId] })
+      qc.invalidateQueries({ queryKey: ['work-entries', woId] })
       setDivisionId(''); onClose()
     },
     onError: () => toast.error('Failed to assign division'),
@@ -812,8 +813,8 @@ export function WorkOrderDetailPage() {
       <div className="flex gap-1 border-b border-gray-200">
         {([
           { key: 'machines',  label: 'Machines', icon: <Wrench size={14} /> },
+          { key: 'sessions',  label: 'Work Hours History', icon: <Timer size={14} /> },
           { key: 'logs',      label: 'Daily Logs', icon: <Activity size={14} /> },
-          { key: 'sessions',  label: 'Sessions', icon: <Timer size={14} /> },
           { key: 'billing',   label: 'Billing', icon: <ReceiptText size={14} /> },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
