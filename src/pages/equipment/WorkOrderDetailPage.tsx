@@ -411,12 +411,28 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
   })
   const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR')
 
+  // Fetch work entries to find last completed session's end meter
+  const { data: entriesRes } = useQuery({
+    queryKey: ['work-entries', woId, assignment?.id],
+    queryFn: () => workOrdersApi.getWorkEntries(woId, assignment!.id),
+    enabled: open && !!assignment?.id,
+  })
+  const lastCompleted = (entriesRes?.data ?? []).find(e => e.status === 'COMPLETED')
+  const lastEndMeter = lastCompleted?.endMeter ?? null
+
+  // Pre-fill start meter from last session when dialog opens
+  const [meterPrefilled, setMeterPrefilled] = useState(false)
+  if (open && lastEndMeter != null && !meterPrefilled && !startMeter) {
+    setStartMeter(String(lastEndMeter))
+    setMeterPrefilled(true)
+  }
+
   // Pre-fill from existing assignment operator
   const prefilled = assignment?.operatorType
   const preStaffId = assignment?.operatorStaffId ? String(assignment.operatorStaffId) : ''
   const preHiredName = assignment?.hiredOperatorName ?? ''
 
-  function reset() { setOperatorType('OWN_STAFF'); setStaffId(''); setHiredName(''); setStartMeter('') }
+  function reset() { setOperatorType('OWN_STAFF'); setStaffId(''); setHiredName(''); setStartMeter(''); setMeterPrefilled(false) }
 
   const mutation = useMutation({
     mutationFn: () => workOrdersApi.startWork(woId, assignment!.id, {
@@ -482,6 +498,11 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
           <div>
             <Label className="text-xs text-gray-500 mb-1.5 block">Start Meter Reading *</Label>
             <Input type="number" step="0.01" placeholder="e.g. 1250.5" value={startMeter} onChange={e => setStartMeter(e.target.value)} />
+            {lastEndMeter != null && (
+              <p className="text-xs text-blue-600 mt-1">
+                Last session ended at <strong>{lastEndMeter} HMR</strong> — start meter must be ≥ {lastEndMeter}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-1">
