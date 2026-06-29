@@ -478,6 +478,7 @@ export interface StaffProfile {
   licenseNumber?: string; licenseExpiryDate?: string
   profilePhotoUrl?: string
   salaryType?: 'DAILY' | 'MONTHLY'; monthlySalary?: number
+  canAccessVehicles?: boolean
   canAccessEquipment?: boolean
   isActive: boolean
   createdAt: string; updatedAt: string

@@ -69,8 +69,15 @@ const addStaffSchema = z.object({
     v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
     z.number().positive('Must be a positive amount').optional()
   ),
+  canAccessVehicles:  z.boolean().optional(),
   canAccessEquipment: z.boolean().optional(),
-})
+}).refine(data => {
+  // For SUPERVISOR in BOTH tenant, at least one access must be ON
+  if (data.role === 'SUPERVISOR') {
+    return data.canAccessVehicles !== false || data.canAccessEquipment === true
+  }
+  return true
+}, { message: 'Supervisor must have access to at least one module', path: ['canAccessVehicles'] })
 type AddStaffForm = z.infer<typeof addStaffSchema>
 
 
@@ -85,7 +92,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AddStaffForm>({
     resolver: zodResolver(addStaffSchema) as Resolver<AddStaffForm>,
-    defaultValues: { salaryType: 'MONTHLY', canAccessEquipment: false },
+    defaultValues: { salaryType: 'MONTHLY', canAccessVehicles: true, canAccessEquipment: false },
   })
 
   const hiddenRoles = moduleType === 'EQUIPMENT_ONLY' ? EQUIP_HIDDEN_ROLES
@@ -99,12 +106,14 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
   const selectedRole    = watch('role') ?? ''
   const isDailyRole     = DAILY_ROLES.includes(selectedRole)
   const isMonthly       = watch('salaryType') === 'MONTHLY'
-  const showEquipToggle = moduleType === 'BOTH' && STAFF_ROLES.includes(selectedRole) && selectedRole !== 'OPERATOR'
+  const showEquipToggle    = moduleType === 'BOTH' && STAFF_ROLES.includes(selectedRole) && selectedRole !== 'OPERATOR'
+  const showVehicleToggle  = moduleType === 'BOTH' && selectedRole === 'SUPERVISOR'
 
   const mutation = useMutation({
     mutationFn: async (data: AddStaffForm) => {
       const res = await staffApi.createUser({
         name: data.name, phone: data.phone, role: data.role,
+        canAccessVehicles: data.canAccessVehicles,
         canAccessEquipment: data.canAccessEquipment,
         salaryType: !isDailyRole ? (data.salaryType ?? 'MONTHLY') : undefined,
         monthlySalary: !isDailyRole && data.salaryType === 'MONTHLY' ? data.monthlySalary : undefined,
@@ -195,12 +204,39 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
                   setValue('role', v, { shouldValidate: true })
                   setValue('designationId', undefined)
                   setValue('monthlySalary', undefined)
+                  setValue('canAccessVehicles', true)
                   setValue('canAccessEquipment', false)
                 }}
                 triggerClassName={errors.role ? 'border-red-400' : ''}
               />
               {errors.role && <p className="text-red-500 text-xs">{errors.role.message}</p>}
             </div>
+
+            {/* Vehicle access toggle — BOTH tenants, SUPERVISOR only */}
+            {showVehicleToggle && (
+              <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Vehicle Access</p>
+                  <p className="text-xs text-blue-700">Allow this supervisor to manage vehicle operations</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setValue('canAccessVehicles', !watch('canAccessVehicles'))}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                    watch('canAccessVehicles') ? 'bg-feros-navy' : 'bg-gray-200'
+                  )}
+                >
+                  <span className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+                    watch('canAccessVehicles') ? 'translate-x-5' : 'translate-x-0'
+                  )} />
+                </button>
+              </div>
+            )}
+            {errors.canAccessVehicles && (
+              <p className="text-red-500 text-xs">{errors.canAccessVehicles.message}</p>
+            )}
 
             {/* Equipment access toggle — BOTH tenants only */}
             {showEquipToggle && (
