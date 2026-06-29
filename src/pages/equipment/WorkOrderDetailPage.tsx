@@ -313,7 +313,7 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
     queryFn: () => staffApi.getAll({ equipmentOnly: true }),
     enabled: open,
   })
-  const staffOptions = (staffRes?.data ?? []).map(s => ({ value: String(s.userId), label: s.userName }))
+  const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR')
 
   const mutation = useMutation({
     mutationFn: () => workOrdersApi.assignOperator(woId, assignment!.id, {
@@ -355,7 +355,11 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
           {operatorType === 'OWN_STAFF' && (
             <div>
               <Label className="text-xs text-gray-500 mb-1.5 block">Select Operator</Label>
-              <SearchableSelect placeholder="Search staff…" options={staffOptions} value={staffId} onValueChange={setStaffId} />
+              <select className="w-full border rounded-md px-3 py-2 text-sm" value={staffId} onChange={e => setStaffId(e.target.value)}>
+                <option value="">— Select operator —</option>
+                {operators.map(s => <option key={s.userId} value={String(s.userId)}>{s.userName}</option>)}
+              </select>
+              {operators.length === 0 && <p className="text-xs text-amber-600 mt-1">No operators found. Add operators in Staff first.</p>}
             </div>
           )}
 
@@ -405,7 +409,7 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
     queryFn: () => staffApi.getAll({ equipmentOnly: true }),
     enabled: open,
   })
-  const staffOptions = (staffRes?.data ?? []).map(s => ({ value: String(s.userId), label: s.userName }))
+  const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR')
 
   // Pre-fill from existing assignment operator
   const prefilled = assignment?.operatorType
@@ -461,7 +465,11 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
           {effectiveOpType === 'OWN_STAFF' && (
             <div>
               <Label className="text-xs text-gray-500 mb-1.5 block">Operator *</Label>
-              <SearchableSelect placeholder="Search staff…" options={staffOptions} value={staffId || preStaffId} onValueChange={setStaffId} />
+              <select className="w-full border rounded-md px-3 py-2 text-sm" value={staffId || preStaffId} onChange={e => setStaffId(e.target.value)}>
+                <option value="">— Select operator —</option>
+                {operators.map(s => <option key={s.userId} value={String(s.userId)}>{s.userName}</option>)}
+              </select>
+              {operators.length === 0 && <p className="text-xs text-amber-600 mt-1">No operators found. Add operators in Staff first.</p>}
             </div>
           )}
           {effectiveOpType === 'HIRED' && (
@@ -593,12 +601,14 @@ function AssignDivisionDialog({ woId, clientId, assignment, open, onClose }: {
           ) : (
             <div>
               <Label className="text-xs text-gray-500 mb-1.5 block">Division</Label>
-              <SearchableSelect
-                placeholder="Select division…"
-                options={options}
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm"
                 value={divisionId || (assignment?.divisionId ? String(assignment.divisionId) : '')}
-                onValueChange={setDivisionId}
-              />
+                onChange={e => setDivisionId(e.target.value)}
+              >
+                <option value="">— Select division —</option>
+                {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
           )}
           <div className="flex gap-2 pt-1">
