@@ -47,6 +47,9 @@ export const workOrdersApi = {
   getWorkEntries: (woId: number, assignmentId: number) =>
     apiClient.get<ApiResponse<WorkEntry[]>>(`/work-orders/${woId}/machines/${assignmentId}/work-entries`).then(r => r.data),
 
+  getAllWorkEntries: (woId: number) =>
+    apiClient.get<ApiResponse<WorkEntry[]>>(`/work-orders/${woId}/work-entries`).then(r => r.data),
+
   assignDivision: (woId: number, assignmentId: number, divisionId: number | null) =>
     apiClient.put<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/division`, { divisionId }).then(r => r.data),
 }

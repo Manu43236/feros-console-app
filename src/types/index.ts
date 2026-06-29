@@ -222,6 +222,7 @@ export type WorkEntryStatus = 'ACTIVE' | 'COMPLETED'
 
 export interface WorkEntry {
   id: number; machineAssignmentId: number; status: WorkEntryStatus
+  serialNumber?: string; equipmentTypeName?: string; divisionName?: string
   operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string; hiredOperatorName?: string
   startTime: string; endTime?: string
   startMeter?: number; endMeter?: number; hoursWorked?: number; notes?: string

@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, Plus, Wrench, Activity, ReceiptText,
   CheckCircle2, XCircle, AlertTriangle, Clock,
-  Construction, CalendarDays, Gauge, User, Play, Square, MapPin,
+  Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -639,7 +639,7 @@ export function WorkOrderDetailPage() {
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
 
-  const [tab, setTab] = useState<'machines' | 'logs' | 'billing'>('machines')
+  const [tab, setTab] = useState<'machines' | 'logs' | 'sessions' | 'billing'>('machines')
   const [addMachineOpen, setAddMachineOpen] = useState(false)
   const [closingAssignment, setClosingAssignment] = useState<MachineAssignment | null>(null)
   const [addLogOpen, setAddLogOpen] = useState(false)
@@ -662,6 +662,12 @@ export function WorkOrderDetailPage() {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
       toast.error(msg ?? 'Failed to update status')
     },
+  })
+
+  const { data: sessionsRes } = useQuery({
+    queryKey: ['work-entries', Number(id)],
+    queryFn: () => workOrdersApi.getAllWorkEntries(Number(id)),
+    enabled: !!id && tab === 'sessions',
   })
 
   const deleteLogMutation = useMutation({
@@ -784,9 +790,10 @@ export function WorkOrderDetailPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
         {([
-          { key: 'machines', label: 'Machines', icon: <Wrench size={14} /> },
-          { key: 'logs',     label: 'Daily Logs', icon: <Activity size={14} /> },
-          { key: 'billing',  label: 'Billing', icon: <ReceiptText size={14} /> },
+          { key: 'machines',  label: 'Machines', icon: <Wrench size={14} /> },
+          { key: 'logs',      label: 'Daily Logs', icon: <Activity size={14} /> },
+          { key: 'sessions',  label: 'Sessions', icon: <Timer size={14} /> },
+          { key: 'billing',   label: 'Billing', icon: <ReceiptText size={14} /> },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
@@ -979,6 +986,72 @@ export function WorkOrderDetailPage() {
           )}
         </div>
       )}
+
+      {/* Tab: Sessions */}
+      {tab === 'sessions' && (() => {
+        const entries = sessionsRes?.data ?? []
+        const totalHours = entries.reduce((sum, e) => sum + (e.hoursWorked ?? 0), 0)
+        return (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-gray-500">
+                {entries.length} session{entries.length !== 1 ? 's' : ''}
+                {totalHours > 0 && <span className="ml-2 font-medium text-gray-700">· {totalHours.toFixed(2)} hrs total</span>}
+              </p>
+            </div>
+            {entries.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
+                No sessions recorded yet
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Machine</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Division</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Operator</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Start</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">End</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Start HMR</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">End HMR</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Hours</th>
+                      <th className="py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entries.map(e => {
+                      const operatorLabel = e.operatorStaffName ?? e.hiredOperatorName ?? '—'
+                      const startStr = new Date(e.startTime).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                      const endStr = e.endTime ? new Date(e.endTime).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+                      return (
+                        <tr key={e.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                          <td className="py-2.5 px-4 text-sm text-gray-700">
+                            {e.serialNumber ?? `#${e.machineAssignmentId}`}
+                            {e.equipmentTypeName && <span className="text-xs text-gray-400 ml-1">· {e.equipmentTypeName}</span>}
+                          </td>
+                          <td className="py-2.5 px-4 text-sm text-gray-600">{e.divisionName ?? <span className="text-gray-300">—</span>}</td>
+                          <td className="py-2.5 px-4 text-sm text-gray-600">{operatorLabel}</td>
+                          <td className="py-2.5 px-4 text-xs text-gray-500">{startStr}</td>
+                          <td className="py-2.5 px-4 text-xs text-gray-500">{endStr}</td>
+                          <td className="py-2.5 px-4 text-right text-sm text-gray-600">{e.startMeter ?? '—'}</td>
+                          <td className="py-2.5 px-4 text-right text-sm text-gray-600">{e.endMeter ?? '—'}</td>
+                          <td className="py-2.5 px-4 text-right text-sm font-semibold text-gray-800">{e.hoursWorked != null ? e.hoursWorked.toFixed(2) : '—'}</td>
+                          <td className="py-2.5 px-4">
+                            <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', e.status === 'ACTIVE' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500')}>
+                              {e.status === 'ACTIVE' ? 'Running' : 'Done'}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Tab: Billing */}
       {tab === 'billing' && (
