@@ -879,17 +879,28 @@ export function WorkOrderDetailPage() {
                     {a.isActive && (
                       <div className="flex items-center justify-between">
                         {a.activeWorkEntry ? (
-                          <div className="flex items-center gap-1.5">
+                          // State 3: Running
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
                               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Running
                             </span>
-                            <span className="text-xs text-gray-400">
-                              since {new Date(a.activeWorkEntry.startTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                              {a.activeWorkEntry.startMeter != null && ` · meter ${a.activeWorkEntry.startMeter}`}
+                            <span className="text-xs text-gray-500">
+                              Machine is busy and running
+                              {a.divisionName ? <> at <strong>{a.divisionName}</strong></> : ''}
+                              {' · since '}
+                              {new Date(a.activeWorkEntry.startTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
+                        ) : a.divisionId ? (
+                          // State 2: Division assigned but not running
+                          <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full font-medium">
+                            Busy · allocated to {a.divisionName}
+                          </span>
                         ) : (
-                          <span className="text-xs text-gray-400">Idle</span>
+                          // State 1: No division assigned
+                          <span className="text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full font-medium">
+                            Available for work
+                          </span>
                         )}
                         {a.activeWorkEntry ? (
                           <Button size="sm" variant="outline" className="text-xs h-6 px-2 text-red-600 border-red-200 hover:bg-red-50 gap-1"
