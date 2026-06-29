@@ -218,10 +218,23 @@ export interface WorkOrder {
   machineCount: number; createdAt: string; updatedAt: string
 }
 
+export type WorkEntryStatus = 'ACTIVE' | 'COMPLETED'
+
+export interface WorkEntry {
+  id: number; machineAssignmentId: number; status: WorkEntryStatus
+  operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string; hiredOperatorName?: string
+  startTime: string; endTime?: string
+  startMeter?: number; endMeter?: number; hoursWorked?: number; notes?: string
+}
+
 export interface MachineAssignment {
   id: number; workOrderId: number; equipmentId: number
   serialNumber?: string; equipmentTypeName: string; makeName?: string; modelName?: string
   startDate: string; endDate?: string; endReason?: AssignmentEndReason; isActive: boolean
+  operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string
+  hiredOperatorName?: string; hiredOperatorPhone?: string
+  activeWorkEntry?: WorkEntry | null
+  divisionId?: number | null; divisionName?: string | null
 }
 
 export interface DailyLog {

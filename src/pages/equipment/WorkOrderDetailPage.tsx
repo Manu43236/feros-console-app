@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, Plus, Wrench, Activity, ReceiptText,
   CheckCircle2, XCircle, AlertTriangle, Clock,
-  Construction, CalendarDays, Gauge, User,
+  Construction, CalendarDays, Gauge, User, Play, Square, MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment } from '@/types'
+import { staffApi } from '@/api/staff'
+import { clientsApi } from '@/api/clients'
+import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -296,6 +298,329 @@ function AddLogDialog({ woId, assignments, open, onClose }: {
   )
 }
 
+// ── Assign Operator Dialog ────────────────────────────────────────────────────
+function AssignOperatorDialog({ woId, assignment, open, onClose }: {
+  woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [operatorType, setOperatorType] = useState<OperatorType | ''>('')
+  const [staffId, setStaffId] = useState('')
+  const [hiredName, setHiredName] = useState('')
+  const [hiredPhone, setHiredPhone] = useState('')
+
+  const { data: staffRes } = useQuery({
+    queryKey: ['staff-equipment'],
+    queryFn: () => staffApi.getAll({ equipmentOnly: true }),
+    enabled: open,
+  })
+  const staffOptions = (staffRes?.data ?? []).map(s => ({ value: String(s.userId), label: s.userName }))
+
+  const mutation = useMutation({
+    mutationFn: () => workOrdersApi.assignOperator(woId, assignment!.id, {
+      operatorType: operatorType || undefined,
+      operatorStaffId: operatorType === 'OWN_STAFF' ? Number(staffId) : undefined,
+      hiredOperatorName: operatorType === 'HIRED' ? hiredName : undefined,
+      hiredOperatorPhone: operatorType === 'HIRED' ? hiredPhone : undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Operator assigned')
+      qc.invalidateQueries({ queryKey: ['work-order', woId] })
+      onClose()
+    },
+    onError: () => toast.error('Failed to assign operator'),
+  })
+
+  const isValid = !operatorType ||
+    (operatorType === 'OWN_STAFF' && !!staffId) ||
+    (operatorType === 'HIRED' && !!hiredName)
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Assign Operator</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5 block">Operator Type</Label>
+            <div className="flex gap-2">
+              {(['OWN_STAFF', 'HIRED'] as OperatorType[]).map(t => (
+                <button key={t} onClick={() => { setOperatorType(t); setStaffId(''); setHiredName(''); setHiredPhone('') }}
+                  className={cn('flex-1 py-2 text-sm rounded-lg border transition-colors',
+                    operatorType === t ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
+                  {t === 'OWN_STAFF' ? 'Own Staff' : 'Hired'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {operatorType === 'OWN_STAFF' && (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1.5 block">Select Operator</Label>
+              <SearchableSelect placeholder="Search staff…" options={staffOptions} value={staffId} onValueChange={setStaffId} />
+            </div>
+          )}
+
+          {operatorType === 'HIRED' && (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs text-gray-500 mb-1.5 block">Operator Name *</Label>
+                <Input value={hiredName} onChange={e => setHiredName(e.target.value)} placeholder="Enter name" />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500 mb-1.5 block">Phone (optional)</Label>
+                <Input value={hiredPhone} onChange={e => setHiredPhone(e.target.value)} placeholder="Enter phone" />
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            {assignment?.operatorType && (
+              <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => { setOperatorType(''); mutation.mutate() }}>
+                Remove
+              </Button>
+            )}
+            <Button className="flex-1 bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white"
+              disabled={!isValid || mutation.isPending} onClick={() => mutation.mutate()}>
+              {mutation.isPending ? 'Saving…' : 'Assign'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Start Work Dialog ─────────────────────────────────────────────────────────
+function StartWorkDialog({ woId, assignment, open, onClose }: {
+  woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [operatorType, setOperatorType] = useState<OperatorType>('OWN_STAFF')
+  const [staffId, setStaffId] = useState('')
+  const [hiredName, setHiredName] = useState('')
+  const [startMeter, setStartMeter] = useState('')
+
+  const { data: staffRes } = useQuery({
+    queryKey: ['staff-equipment'],
+    queryFn: () => staffApi.getAll({ equipmentOnly: true }),
+    enabled: open,
+  })
+  const staffOptions = (staffRes?.data ?? []).map(s => ({ value: String(s.userId), label: s.userName }))
+
+  // Pre-fill from existing assignment operator
+  const prefilled = assignment?.operatorType
+  const preStaffId = assignment?.operatorStaffId ? String(assignment.operatorStaffId) : ''
+  const preHiredName = assignment?.hiredOperatorName ?? ''
+
+  function reset() { setOperatorType('OWN_STAFF'); setStaffId(''); setHiredName(''); setStartMeter('') }
+
+  const mutation = useMutation({
+    mutationFn: () => workOrdersApi.startWork(woId, assignment!.id, {
+      operatorType,
+      operatorStaffId: operatorType === 'OWN_STAFF' ? Number(staffId || preStaffId) : undefined,
+      hiredOperatorName: operatorType === 'HIRED' ? (hiredName || preHiredName) : undefined,
+      startMeter: Number(startMeter),
+    }),
+    onSuccess: () => { toast.success('Work started'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); reset(); onClose() },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to start work')
+    },
+  })
+
+  const effectiveOpType = operatorType ?? prefilled ?? 'OWN_STAFF'
+  const effectiveStaffId = staffId || preStaffId
+  const effectiveHiredName = hiredName || preHiredName
+  const isValid = !!startMeter && (
+    (effectiveOpType === 'OWN_STAFF' && !!effectiveStaffId) ||
+    (effectiveOpType === 'HIRED' && !!effectiveHiredName)
+  )
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) { reset(); onClose() } }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Start Work</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-1">
+          <p className="text-xs text-gray-500">
+            Machine: <strong>{assignment?.serialNumber ?? `#${assignment?.equipmentId}`}</strong>
+          </p>
+
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5 block">Operator Type</Label>
+            <div className="flex gap-2">
+              {(['OWN_STAFF', 'HIRED'] as OperatorType[]).map(t => (
+                <button key={t} onClick={() => setOperatorType(t)}
+                  className={cn('flex-1 py-2 text-sm rounded-lg border transition-colors',
+                    effectiveOpType === t ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
+                  {t === 'OWN_STAFF' ? 'Own Staff' : 'Hired'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {effectiveOpType === 'OWN_STAFF' && (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1.5 block">Operator *</Label>
+              <SearchableSelect placeholder="Search staff…" options={staffOptions} value={staffId || preStaffId} onValueChange={setStaffId} />
+            </div>
+          )}
+          {effectiveOpType === 'HIRED' && (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1.5 block">Operator Name *</Label>
+              <Input value={hiredName || preHiredName} onChange={e => setHiredName(e.target.value)} placeholder="Enter name" />
+            </div>
+          )}
+
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5 block">Start Meter Reading *</Label>
+            <Input type="number" step="0.01" placeholder="e.g. 1250.5" value={startMeter} onChange={e => setStartMeter(e.target.value)} />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-1">
+            <Button variant="outline" onClick={() => { reset(); onClose() }}>Cancel</Button>
+            <Button disabled={!isValid || mutation.isPending} onClick={() => mutation.mutate()}
+              className="bg-green-600 hover:bg-green-700 text-white gap-1.5">
+              <Play size={13} /> {mutation.isPending ? 'Starting…' : 'Start Work'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Stop Work Dialog ──────────────────────────────────────────────────────────
+function StopWorkDialog({ woId, assignment, open, onClose }: {
+  woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [endMeter, setEndMeter] = useState('')
+  const [notes, setNotes] = useState('')
+
+  const activeEntry: WorkEntry | null | undefined = assignment?.activeWorkEntry
+
+  const mutation = useMutation({
+    mutationFn: () => workOrdersApi.stopWork(woId, assignment!.id, {
+      endMeter: Number(endMeter),
+      notes: notes || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Work stopped')
+      qc.invalidateQueries({ queryKey: ['work-order', woId] })
+      setEndMeter(''); setNotes(''); onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to stop work')
+    },
+  })
+
+  const operatorLabel = activeEntry?.operatorStaffName ?? activeEntry?.hiredOperatorName ?? 'Unknown operator'
+  const startedAt = activeEntry?.startTime ? new Date(activeEntry.startTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) { setEndMeter(''); setNotes(''); onClose() } }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Stop Work</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div className="bg-green-50 rounded-lg px-3 py-2.5 text-sm space-y-0.5">
+            <p className="font-medium text-green-800">{operatorLabel} — running since {startedAt}</p>
+            {activeEntry?.startMeter != null && <p className="text-xs text-green-600">Start meter: {activeEntry.startMeter}</p>}
+          </div>
+
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5 block">End Meter Reading *</Label>
+            <Input type="number" step="0.01" placeholder="e.g. 1264.0" value={endMeter} onChange={e => setEndMeter(e.target.value)} />
+            {endMeter && activeEntry?.startMeter != null && (
+              <p className="text-xs text-gray-400 mt-1">
+                Hours worked: <strong>{(Number(endMeter) - activeEntry.startMeter).toFixed(2)}</strong>
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5 block">Notes (optional)</Label>
+            <Input placeholder="Any remarks…" value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-1">
+            <Button variant="outline" onClick={() => { setEndMeter(''); setNotes(''); onClose() }}>Cancel</Button>
+            <Button disabled={!endMeter || mutation.isPending} onClick={() => mutation.mutate()}
+              className="bg-red-600 hover:bg-red-700 text-white gap-1.5">
+              <Square size={13} /> {mutation.isPending ? 'Stopping…' : 'Stop Work'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Assign Division Dialog ────────────────────────────────────────────────────
+function AssignDivisionDialog({ woId, clientId, assignment, open, onClose }: {
+  woId: number; clientId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [divisionId, setDivisionId] = useState('')
+
+  const { data: divRes } = useQuery({
+    queryKey: ['client-divisions', clientId],
+    queryFn: () => clientsApi.getDivisions(clientId),
+    enabled: open && !!clientId,
+  })
+  const options = (divRes?.data ?? []).map(d => ({ value: String(d.id), label: d.name }))
+
+  const mutation = useMutation({
+    mutationFn: () => workOrdersApi.assignDivision(woId, assignment!.id, divisionId ? Number(divisionId) : null),
+    onSuccess: () => {
+      toast.success(divisionId ? 'Division assigned' : 'Division removed')
+      qc.invalidateQueries({ queryKey: ['work-order', woId] })
+      setDivisionId(''); onClose()
+    },
+    onError: () => toast.error('Failed to assign division'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) { setDivisionId(''); onClose() } }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Assign Division</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-1">
+          <p className="text-xs text-gray-500">
+            Machine: <strong>{assignment?.serialNumber ?? `#${assignment?.equipmentId}`}</strong>
+          </p>
+          {options.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">This client has no divisions set up.</p>
+          ) : (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1.5 block">Division</Label>
+              <SearchableSelect
+                placeholder="Select division…"
+                options={options}
+                value={divisionId || (assignment?.divisionId ? String(assignment.divisionId) : '')}
+                onValueChange={setDivisionId}
+              />
+            </div>
+          )}
+          <div className="flex gap-2 pt-1">
+            {assignment?.divisionId && (
+              <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => { setDivisionId(''); mutation.mutate() }}
+                disabled={mutation.isPending}>
+                Remove
+              </Button>
+            )}
+            <Button className="flex-1 bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white"
+              disabled={!divisionId || mutation.isPending || options.length === 0}
+              onClick={() => mutation.mutate()}>
+              {mutation.isPending ? 'Saving…' : 'Assign'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Main Detail Page ──────────────────────────────────────────────────────────
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -309,6 +634,10 @@ export function WorkOrderDetailPage() {
   const [closingAssignment, setClosingAssignment] = useState<MachineAssignment | null>(null)
   const [addLogOpen, setAddLogOpen] = useState(false)
   const [extendOpen, setExtendOpen] = useState(false)
+  const [assigningOperatorFor, setAssigningOperatorFor] = useState<MachineAssignment | null>(null)
+  const [startingWorkFor, setStartingWorkFor] = useState<MachineAssignment | null>(null)
+  const [stoppingWorkFor, setStoppingWorkFor] = useState<MachineAssignment | null>(null)
+  const [assigningDivisionFor, setAssigningDivisionFor] = useState<MachineAssignment | null>(null)
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['work-order', Number(id)],
@@ -475,27 +804,96 @@ export function WorkOrderDetailPage() {
           ) : (
             <div className="space-y-2">
               {assignments.map(a => (
-                <div key={a.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {a.serialNumber ?? `Machine #${a.equipmentId}`}
-                      <span className="text-gray-400 font-normal ml-2">· {a.equipmentTypeName}</span>
-                      {a.makeName && <span className="text-gray-400 font-normal"> · {a.makeName} {a.modelName}</span>}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      From {a.startDate}{a.endDate ? ` → ${a.endDate}` : ''}
-                      {a.endReason && <span className="ml-2">({a.endReason.replace(/_/g, ' ')})</span>}
-                    </p>
+                <div key={a.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {a.serialNumber ?? `Machine #${a.equipmentId}`}
+                        <span className="text-gray-400 font-normal ml-2">· {a.equipmentTypeName}</span>
+                        {a.makeName && <span className="text-gray-400 font-normal"> · {a.makeName} {a.modelName}</span>}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        From {a.startDate}{a.endDate ? ` → ${a.endDate}` : ''}
+                        {a.endReason && <span className="ml-2">({a.endReason.replace(/_/g, ' ')})</span>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={a.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}>
+                        {a.isActive ? 'Active' : 'Closed'}
+                      </Badge>
+                      {a.isActive && (
+                        <Button size="sm" variant="outline" className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => setClosingAssignment(a)}>
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className={a.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}>
-                      {a.isActive ? 'Active' : 'Closed'}
-                    </Badge>
+                  {/* Division row */}
+                  <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <MapPin size={12} />
+                      {a.divisionName
+                        ? <span className="font-medium text-feros-equip-sidebar">{a.divisionName}</span>
+                        : <span className="text-gray-400 italic">No division assigned</span>
+                      }
+                    </div>
                     {a.isActive && (
-                      <Button size="sm" variant="outline" className="text-xs text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => setClosingAssignment(a)}>
-                        Remove
+                      <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
+                        onClick={() => setAssigningDivisionFor(a)}>
+                        {a.divisionName ? 'Change' : 'Assign Division'}
                       </Button>
+                    )}
+                  </div>
+
+                  {/* Operator + work status row */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <User size={12} />
+                        {a.operatorType === 'OWN_STAFF' && a.operatorStaffName
+                          ? <span className="font-medium text-gray-700">{a.operatorStaffName}</span>
+                          : a.operatorType === 'HIRED' && a.hiredOperatorName
+                            ? <span className="font-medium text-gray-700">{a.hiredOperatorName} <span className="text-gray-400">(Hired)</span></span>
+                            : <span className="text-gray-400 italic">No operator assigned</span>
+                        }
+                      </div>
+                      {a.isActive && (
+                        <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
+                          onClick={() => setAssigningOperatorFor(a)}>
+                          {a.operatorType ? 'Change' : 'Assign Operator'}
+                        </Button>
+                      )}
+                    </div>
+                    {/* Work entry status */}
+                    {a.isActive && (
+                      <div className="flex items-center justify-between">
+                        {a.activeWorkEntry ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Running
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              since {new Date(a.activeWorkEntry.startTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                              {a.activeWorkEntry.startMeter != null && ` · meter ${a.activeWorkEntry.startMeter}`}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">Idle</span>
+                        )}
+                        {a.activeWorkEntry ? (
+                          <Button size="sm" variant="outline" className="text-xs h-6 px-2 text-red-600 border-red-200 hover:bg-red-50 gap-1"
+                            onClick={() => setStoppingWorkFor(a)}>
+                            <Square size={10} /> Stop
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" className="text-xs h-6 px-2 text-green-700 border-green-200 hover:bg-green-50 gap-1"
+                            disabled={!a.operatorType}
+                            onClick={() => setStartingWorkFor(a)}>
+                            <Play size={10} /> Start
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -606,6 +1004,10 @@ export function WorkOrderDetailPage() {
       {/* Dialogs */}
       <AddMachineDialog woId={Number(id)} open={addMachineOpen} onClose={() => setAddMachineOpen(false)} />
       <CloseMachineDialog woId={Number(id)} assignment={closingAssignment} open={!!closingAssignment} onClose={() => setClosingAssignment(null)} />
+      <AssignOperatorDialog woId={Number(id)} assignment={assigningOperatorFor} open={!!assigningOperatorFor} onClose={() => setAssigningOperatorFor(null)} />
+      <AssignDivisionDialog woId={Number(id)} clientId={wo.clientId} assignment={assigningDivisionFor} open={!!assigningDivisionFor} onClose={() => setAssigningDivisionFor(null)} />
+      <StartWorkDialog woId={Number(id)} assignment={startingWorkFor} open={!!startingWorkFor} onClose={() => setStartingWorkFor(null)} />
+      <StopWorkDialog woId={Number(id)} assignment={stoppingWorkFor} open={!!stoppingWorkFor} onClose={() => setStoppingWorkFor(null)} />
       <AddLogDialog woId={Number(id)} assignments={activeAssignments} open={addLogOpen} onClose={() => setAddLogOpen(false)} />
       <ExtendDialog woId={Number(id)} currentEndDate={res?.data?.workOrder.endDate} open={extendOpen} onClose={() => setExtendOpen(false)} />
     </div>
