@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSubscription } from '@/context/SubscriptionContext'
@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
-  Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer,
+  Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { staffApi } from '@/api/staff'
 import { clientsApi } from '@/api/clients'
-import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry } from '@/types'
+import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -306,6 +306,117 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button disabled={mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
               {mutation.isPending ? 'Saving…' : 'Add Log'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Edit Log Dialog ───────────────────────────────────────────────────────────
+function EditLogDialog({ woId, clientId, log, open, onClose }: {
+  woId: number; clientId: number; log: DailyLog | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const { isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+  const [form, setForm] = useState({
+    status: 'WORKING' as DailyLogStatus,
+    startHourMeter: '', endHourMeter: '', fuelConsumed: '', notes: '', divisionId: '',
+  })
+
+  useEffect(() => {
+    if (log) setForm({
+      status: log.status,
+      startHourMeter: log.startHourMeter != null ? String(log.startHourMeter) : '',
+      endHourMeter: log.endHourMeter != null ? String(log.endHourMeter) : '',
+      fuelConsumed: log.fuelConsumed != null ? String(log.fuelConsumed) : '',
+      notes: log.notes ?? '',
+      divisionId: '',
+    })
+  }, [log])
+
+  const { data: divisionsRes } = useQuery({
+    queryKey: ['client-divisions', clientId],
+    queryFn: () => clientsApi.getDivisions(clientId),
+    enabled: open && !!clientId,
+  })
+  const divisions = divisionsRes?.data ?? []
+
+  const mutation = useMutation({
+    mutationFn: () => workOrdersApi.updateLog(woId, log!.id, {
+      status: form.status,
+      startHourMeter: form.startHourMeter ? Number(form.startHourMeter) : undefined,
+      endHourMeter: form.endHourMeter ? Number(form.endHourMeter) : undefined,
+      fuelConsumed: form.fuelConsumed ? Number(form.fuelConsumed) : undefined,
+      notes: form.notes || undefined,
+      divisionId: form.divisionId ? Number(form.divisionId) : undefined,
+    }),
+    onSuccess: () => { toast.success('Log updated'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); onClose() },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to update log')
+    },
+  })
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.value }))
+
+  if (!log) return null
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Edit Daily Log — {log.logDate}</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Status</Label>
+            <div className="flex gap-2 flex-wrap">
+              {(['WORKING', 'BREAKDOWN', 'NO_MACHINE', 'IDLE'] as DailyLogStatus[]).map(s => (
+                <button key={s} type="button"
+                  onClick={() => setForm(f => ({ ...f, status: s }))}
+                  className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                    form.status === s ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'
+                  )}
+                >{s.replace('_', ' ')}</button>
+              ))}
+            </div>
+          </div>
+          {form.status === 'WORKING' && (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Start HM</Label>
+                <Input type="number" step="0.01" value={form.startHourMeter} onChange={set('startHourMeter')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>End HM</Label>
+                <Input type="number" step="0.01" value={form.endHourMeter} onChange={set('endHourMeter')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fuel (L)</Label>
+                <Input type="number" step="0.01" value={form.fuelConsumed} onChange={set('fuelConsumed')} />
+              </div>
+            </div>
+          )}
+          {divisions.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Division <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.divisionId} onChange={set('divisionId')}>
+                <option value="">— No division —</option>
+                {divisions.map((d: { id: number; name: string }) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Input placeholder="Any remarks…" value={form.notes} onChange={set('notes')} />
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button disabled={mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
+              {mutation.isPending ? 'Saving…' : 'Save Changes'}
             </Button>
           </div>
         </div>
@@ -681,6 +792,8 @@ export function WorkOrderDetailPage() {
   const [addMachineOpen, setAddMachineOpen] = useState(false)
   const [closingAssignment, setClosingAssignment] = useState<MachineAssignment | null>(null)
   const [addLogOpen, setAddLogOpen] = useState(false)
+  const [editingLog, setEditingLog] = useState<DailyLog | null>(null)
+  const [deletingLogId, setDeletingLogId] = useState<number | null>(null)
   const [extendOpen, setExtendOpen] = useState(false)
   const [assigningOperatorFor, setAssigningOperatorFor] = useState<MachineAssignment | null>(null)
   const [startingWorkFor, setStartingWorkFor] = useState<MachineAssignment | null>(null)
@@ -1023,8 +1136,16 @@ export function WorkOrderDetailPage() {
                       <td className="py-2.5 px-4 text-right text-sm font-medium text-gray-800">{l.hoursWorked ?? '—'}</td>
                       <td className="py-2.5 px-4 text-right text-sm text-gray-600">{l.fuelConsumed ?? '—'}</td>
                       <td className="py-2.5 px-4 text-right">
-                        <button onClick={() => { if (confirm('Delete this log?')) deleteLogMutation.mutate(l.id) }}
-                          className="text-xs text-gray-400 hover:text-red-500">✕</button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => setEditingLog(l)}
+                            className="p-1 text-gray-400 hover:text-feros-equip-sidebar rounded transition-colors">
+                            <Pencil size={13} />
+                          </button>
+                          <button onClick={() => setDeletingLogId(l.id)}
+                            className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1109,7 +1230,23 @@ export function WorkOrderDetailPage() {
       <StartWorkDialog woId={Number(id)} assignment={startingWorkFor} open={!!startingWorkFor} onClose={() => setStartingWorkFor(null)} />
       <StopWorkDialog woId={Number(id)} assignment={stoppingWorkFor} open={!!stoppingWorkFor} onClose={() => setStoppingWorkFor(null)} />
       <AddLogDialog woId={Number(id)} clientId={wo.clientId} assignments={activeAssignments} open={addLogOpen} onClose={() => setAddLogOpen(false)} />
+      <EditLogDialog woId={Number(id)} clientId={wo.clientId} log={editingLog} open={!!editingLog} onClose={() => setEditingLog(null)} />
       <ExtendDialog woId={Number(id)} currentEndDate={res?.data?.workOrder.endDate} open={extendOpen} onClose={() => setExtendOpen(false)} />
+
+      <Dialog open={deletingLogId !== null} onOpenChange={(open: boolean) => !open && setDeletingLogId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete this log?</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-500">This action cannot be undone.</p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setDeletingLogId(null)}>Cancel</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteLogMutation.isPending}
+              onClick={() => { deleteLogMutation.mutate(deletingLogId!); setDeletingLogId(null) }}>
+              {deleteLogMutation.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
