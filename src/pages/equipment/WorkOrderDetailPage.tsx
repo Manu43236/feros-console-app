@@ -888,6 +888,7 @@ function InvoicesTab({
   onDelete: (invId: number) => void
 }) {
   const { isEquipmentMode } = useSubscription()
+  const navigate = useNavigate()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
@@ -919,7 +920,12 @@ function InvoicesTab({
                 >
                   <Receipt size={16} className="text-gray-400 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800">{inv.invoiceNumber}</p>
+                    <button
+                      className="text-sm font-medium text-feros-equip-sidebar hover:underline"
+                      onClick={e => { e.stopPropagation(); navigate(`/equipment/invoices/${inv.id}`) }}
+                    >
+                      {inv.invoiceNumber}
+                    </button>
                     <p className="text-xs text-gray-400">
                       {inv.invoiceDate}
                       {inv.billingPeriodStart && ` • ${inv.billingPeriodStart} → ${inv.billingPeriodEnd}`}

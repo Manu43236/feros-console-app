@@ -79,7 +79,8 @@ import { EquipmentDashboardPage } from '@/pages/equipment/EquipmentDashboardPage
 import { EquipmentListPage }      from '@/pages/equipment/EquipmentListPage'
 import { WorkOrdersListPage }     from '@/pages/equipment/WorkOrdersListPage'
 import { WorkOrderDetailPage }    from '@/pages/equipment/WorkOrderDetailPage'
-import { EquipmentInvoicesPage } from '@/pages/equipment/EquipmentInvoicesPage'
+import { EquipmentInvoicesPage }       from '@/pages/equipment/EquipmentInvoicesPage'
+import { EquipmentInvoiceDetailPage } from '@/pages/equipment/EquipmentInvoiceDetailPage'
 
 // GPS
 import GpsTrackerPage from '@/pages/gps/GpsTrackerPage'
@@ -199,6 +200,7 @@ export default function App() {
           <Route path="equipment/work-orders"        element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><WorkOrdersListPage /></ProtectedRoute>} />
           <Route path="equipment/work-orders/:id"    element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><WorkOrderDetailPage /></ProtectedRoute>} />
           <Route path="equipment/invoices"           element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentInvoicesPage /></ProtectedRoute>} />
+          <Route path="equipment/invoices/:id"      element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentInvoiceDetailPage /></ProtectedRoute>} />
 
           {/* Notifications */}
           <Route path="notifications" element={<NotificationsPage />} />

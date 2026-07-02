@@ -45,7 +45,7 @@ function InvoiceRow({ inv, onStatusChange }: {
       <td className="px-4 py-3">
         <button
           className="text-sm font-medium text-feros-equip-sidebar hover:underline"
-          onClick={() => navigate(`/equipment/work-orders/${inv.workOrderId}`)}
+          onClick={() => navigate(`/equipment/invoices/${inv.id}`)}
         >
           {inv.invoiceNumber}
         </button>
