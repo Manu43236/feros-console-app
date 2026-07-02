@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
-  Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2,
+  Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2, Receipt,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +19,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { staffApi } from '@/api/staff'
 import { clientsApi } from '@/api/clients'
-import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog } from '@/types'
+import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus } from '@/types'
+import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
+import { CreateEquipmentInvoiceDialog } from './CreateEquipmentInvoiceDialog'
 import { cn } from '@/lib/utils'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -60,6 +62,10 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
   const [equipmentId, setEquipmentId] = useState('')
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10))
+  const [rateType, setRateType] = useState<'HOURLY' | 'DAILY_SHIFT' | 'MONTHLY' | ''>('')
+  const [rateAmount, setRateAmount] = useState('')
+
+  function reset() { setEquipmentId(''); setRateType(''); setRateAmount('') }
 
   const { data: equipRes } = useQuery({
     queryKey: ['equipment'],
@@ -69,12 +75,17 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
   const options = (equipRes?.data ?? []).map(e => ({ value: String(e.id), label: eqLabel(e) }))
 
   const mutation = useMutation({
-    mutationFn: () => workOrdersApi.addMachine(woId, { equipmentId: Number(equipmentId), startDate }),
+    mutationFn: () => workOrdersApi.addMachine(woId, {
+      equipmentId: Number(equipmentId),
+      startDate,
+      rateType: rateType || undefined,
+      rateAmount: rateAmount ? Number(rateAmount) : undefined,
+    }),
     onSuccess: () => {
       toast.success('Machine assigned')
       qc.invalidateQueries({ queryKey: ['work-order', woId] })
       qc.invalidateQueries({ queryKey: ['equipment'] })
-      setEquipmentId(''); onClose()
+      reset(); onClose()
     },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -83,7 +94,7 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
   })
 
   return (
-    <Dialog open={open} onOpenChange={v => { if (!v) { setEquipmentId(''); onClose() } }}>
+    <Dialog open={open} onOpenChange={v => { if (!v) { reset(); onClose() } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Assign Machine</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
@@ -100,8 +111,37 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
             <Label>Start Date</Label>
             <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
           </div>
+          <div className="border-t border-gray-100 pt-3 space-y-3">
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Rate Override (optional)</p>
+            <p className="text-xs text-gray-400 -mt-2">Leave blank to use the work order rate.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Rate Type</Label>
+                <select
+                  value={rateType}
+                  onChange={e => setRateType(e.target.value as typeof rateType)}
+                  className="w-full h-9 border border-gray-200 rounded-md px-2 text-sm bg-white"
+                >
+                  <option value="">— same as WO —</option>
+                  <option value="HOURLY">Hourly</option>
+                  <option value="DAILY_SHIFT">Daily Shift</option>
+                  <option value="MONTHLY">Monthly</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Rate Amount (₹)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  placeholder="e.g. 500000"
+                  value={rateAmount}
+                  onChange={e => setRateAmount(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button variant="outline" onClick={() => { reset(); onClose() }}>Cancel</Button>
             <Button disabled={!equipmentId || mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
               {mutation.isPending ? 'Assigning…' : 'Assign'}
             </Button>
@@ -819,6 +859,147 @@ function AssignDivisionDialog({ woId, clientId, assignment, open, onClose }: {
   )
 }
 
+// ── Invoice Status Config ──────────────────────────────────────────────────────
+const INV_STATUS_LABELS: Record<EquipmentInvoiceStatus, string> = {
+  DRAFT: 'Draft', SENT: 'Sent', PARTIALLY_PAID: 'Partial', PAID: 'Paid', CANCELLED: 'Cancelled',
+}
+const INV_STATUS_COLORS: Record<EquipmentInvoiceStatus, string> = {
+  DRAFT: 'bg-gray-100 text-gray-600', SENT: 'bg-blue-50 text-blue-700',
+  PARTIALLY_PAID: 'bg-amber-50 text-amber-700', PAID: 'bg-green-50 text-green-700',
+  CANCELLED: 'bg-red-50 text-red-600',
+}
+const INV_NEXT_STATUS: Partial<Record<EquipmentInvoiceStatus, EquipmentInvoiceStatus[]>> = {
+  DRAFT: ['SENT', 'CANCELLED'],
+  SENT: ['PARTIALLY_PAID', 'PAID', 'CANCELLED'],
+  PARTIALLY_PAID: ['PAID', 'CANCELLED'],
+}
+
+function fmt(n: number) {
+  return n.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+}
+
+// ── Invoices Tab ───────────────────────────────────────────────────────────────
+function InvoicesTab({
+  woId, invoices, activeAssignments, onCreateOpen, onStatusChange, onDelete,
+}: {
+  woId: number
+  invoices: EquipmentInvoice[]
+  activeAssignments: MachineAssignment[]
+  onCreateOpen: () => void
+  onStatusChange: (invId: number, status: EquipmentInvoiceStatus) => void
+  onDelete: (invId: number) => void
+}) {
+  const { isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</p>
+        <Button size="sm" className={btnPrimary} onClick={onCreateOpen}>
+          <Plus size={14} className="mr-1" /> New Invoice
+        </Button>
+      </div>
+
+      {invoices.length === 0 ? (
+        <div className="py-12 text-center text-gray-400 border border-dashed border-gray-200 rounded-lg">
+          <Receipt size={32} className="mx-auto mb-2 text-gray-300" />
+          <p className="text-sm">No invoices yet. Create one to bill the client.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {invoices.map(inv => {
+            const expanded = expandedId === inv.id
+            const next = INV_NEXT_STATUS[inv.status] ?? []
+            return (
+              <div key={inv.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                {/* Header row */}
+                <div
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50"
+                  onClick={() => setExpandedId(expanded ? null : inv.id)}
+                >
+                  <Receipt size={16} className="text-gray-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800">{inv.invoiceNumber}</p>
+                    <p className="text-xs text-gray-400">
+                      {inv.invoiceDate}
+                      {inv.billingPeriodStart && ` • ${inv.billingPeriodStart} → ${inv.billingPeriodEnd}`}
+                    </p>
+                  </div>
+                  <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', INV_STATUS_COLORS[inv.status])}>
+                    {INV_STATUS_LABELS[inv.status]}
+                  </span>
+                  <p className="text-sm font-semibold text-gray-800 shrink-0">₹{fmt(inv.totalAmount ?? 0)}</p>
+                </div>
+
+                {/* Expanded detail */}
+                {expanded && (
+                  <div className="border-t border-gray-100 px-4 py-3 bg-gray-50/50 space-y-3">
+                    {/* Items */}
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs text-gray-400 border-b border-gray-200">
+                          <th className="text-left pb-1.5">Description</th>
+                          <th className="text-center pb-1.5">Billing</th>
+                          <th className="text-right pb-1.5">Qty</th>
+                          <th className="text-right pb-1.5">Rate</th>
+                          <th className="text-right pb-1.5">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inv.items.map(item => (
+                          <tr key={item.id} className="border-b border-gray-100 last:border-0">
+                            <td className="py-1.5 text-gray-700">
+                              {item.description}
+                              {item.serialNumber && <span className="text-gray-400 ml-1">({item.serialNumber})</span>}
+                            </td>
+                            <td className="py-1.5 text-center text-gray-500 text-xs">{item.billingType ?? '—'}</td>
+                            <td className="py-1.5 text-right text-gray-700">{item.quantity}</td>
+                            <td className="py-1.5 text-right text-gray-700">₹{fmt(item.rate)}</td>
+                            <td className="py-1.5 text-right font-medium text-gray-800">₹{fmt(item.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {/* Totals */}
+                    <div className="text-sm text-right space-y-1">
+                      <div className="text-gray-500">Subtotal: ₹{fmt(inv.subtotal ?? 0)}</div>
+                      <div className="text-gray-500">Tax ({inv.taxPercent ?? 0}%): ₹{fmt(inv.taxAmount ?? 0)}</div>
+                      <div className="font-semibold text-gray-800">Total: ₹{fmt(inv.totalAmount ?? 0)}</div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-1">
+                      {next.map(s => (
+                        <Button key={s} size="sm" variant="outline"
+                          onClick={() => onStatusChange(inv.id, s)}
+                          className="text-xs"
+                        >
+                          Mark {INV_STATUS_LABELS[s]}
+                        </Button>
+                      ))}
+                      {inv.status === 'DRAFT' && (
+                        <Button size="sm" variant="ghost"
+                          onClick={() => onDelete(inv.id)}
+                          className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50 ml-auto"
+                        >
+                          <Trash2 size={12} className="mr-1" /> Delete
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Detail Page ──────────────────────────────────────────────────────────
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -827,7 +1008,8 @@ export function WorkOrderDetailPage() {
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
 
-  const [tab, setTab] = useState<'machines' | 'sessions' | 'logs'>('machines')
+  const [tab, setTab] = useState<'machines' | 'sessions' | 'logs' | 'invoices'>('machines')
+  const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false)
   const [addMachineOpen, setAddMachineOpen] = useState(false)
   const [closingAssignment, setClosingAssignment] = useState<MachineAssignment | null>(null)
   const [addLogOpen, setAddLogOpen] = useState(false)
@@ -858,6 +1040,25 @@ export function WorkOrderDetailPage() {
     queryKey: ['work-entries', Number(id)],
     queryFn: () => workOrdersApi.getAllWorkEntries(Number(id)),
     enabled: !!id && tab === 'sessions',
+  })
+
+  const { data: invoicesRes } = useQuery({
+    queryKey: ['equip-invoices', Number(id)],
+    queryFn: () => equipmentInvoicesApi.getByWorkOrder(Number(id)),
+    enabled: !!id && tab === 'invoices',
+  })
+
+  const invoiceStatusMutation = useMutation({
+    mutationFn: ({ invId, status }: { invId: number; status: EquipmentInvoiceStatus }) =>
+      equipmentInvoicesApi.updateStatus(invId, status),
+    onSuccess: () => { toast.success('Invoice updated'); qc.invalidateQueries({ queryKey: ['equip-invoices', Number(id)] }) },
+    onError: () => toast.error('Failed to update invoice'),
+  })
+
+  const deleteInvoiceMutation = useMutation({
+    mutationFn: (invId: number) => equipmentInvoicesApi.delete(invId),
+    onSuccess: () => { toast.success('Invoice deleted'); qc.invalidateQueries({ queryKey: ['equip-invoices', Number(id)] }) },
+    onError: () => toast.error('Failed to delete invoice'),
   })
 
   const deleteLogMutation = useMutation({
@@ -983,6 +1184,7 @@ export function WorkOrderDetailPage() {
           { key: 'machines',  label: 'Machines', icon: <Wrench size={14} /> },
           { key: 'sessions',  label: 'Work Hours History', icon: <Timer size={14} /> },
           { key: 'logs',      label: 'Daily Logs', icon: <Activity size={14} /> },
+          { key: 'invoices',  label: 'Invoices', icon: <Receipt size={14} /> },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
@@ -1021,6 +1223,11 @@ export function WorkOrderDetailPage() {
                       <p className="text-xs text-gray-400 mt-0.5">
                         From {a.startDate}{a.endDate ? ` → ${a.endDate}` : ''}
                         {a.endReason && <span className="ml-2">({a.endReason.replace(/_/g, ' ')})</span>}
+                        {a.rateAmount != null && (
+                          <span className="ml-2 text-feros-equip-sidebar font-medium">
+                            ₹{a.rateAmount.toLocaleString('en-IN')}/{a.rateType === 'HOURLY' ? 'hr' : a.rateType === 'DAILY_SHIFT' ? 'day' : 'mo'}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1279,6 +1486,18 @@ export function WorkOrderDetailPage() {
         )
       })()}
 
+      {/* Tab: Invoices */}
+      {tab === 'invoices' && (
+        <InvoicesTab
+          woId={Number(id)}
+          invoices={invoicesRes?.data ?? []}
+          activeAssignments={activeAssignments}
+          onCreateOpen={() => setCreateInvoiceOpen(true)}
+          onStatusChange={(invId, status) => invoiceStatusMutation.mutate({ invId, status })}
+          onDelete={invId => deleteInvoiceMutation.mutate(invId)}
+        />
+      )}
+
       {/* Dialogs */}
       <AddMachineDialog woId={Number(id)} open={addMachineOpen} onClose={() => setAddMachineOpen(false)} />
       <CloseMachineDialog woId={Number(id)} assignment={closingAssignment} open={!!closingAssignment} onClose={() => setClosingAssignment(null)} />
@@ -1289,6 +1508,7 @@ export function WorkOrderDetailPage() {
       <AddLogDialog woId={Number(id)} clientId={wo.clientId} assignments={activeAssignments} open={addLogOpen} onClose={() => setAddLogOpen(false)} />
       <EditLogDialog woId={Number(id)} clientId={wo.clientId} log={editingLog} open={!!editingLog} onClose={() => setEditingLog(null)} />
       <ExtendDialog woId={Number(id)} currentEndDate={res?.data?.workOrder.endDate} open={extendOpen} onClose={() => setExtendOpen(false)} />
+      <CreateEquipmentInvoiceDialog woId={Number(id)} assignments={activeAssignments} open={createInvoiceOpen} onClose={() => setCreateInvoiceOpen(false)} />
 
       <Dialog open={deletingLogId !== null} onOpenChange={(open: boolean) => !open && setDeletingLogId(null)}>
         <DialogContent className="max-w-sm">

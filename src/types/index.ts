@@ -236,6 +236,7 @@ export interface MachineAssignment {
   hiredOperatorName?: string; hiredOperatorPhone?: string
   activeWorkEntry?: WorkEntry | null
   divisionId?: number | null; divisionName?: string | null
+  rateType?: RateType; rateAmount?: number
 }
 
 export interface DailyLogDivision {
@@ -266,6 +267,58 @@ export interface WorkOrderDetail {
   assignments: MachineAssignment[]
   logs: DailyLog[]
   billing: BillingSummary
+}
+
+// ─── Equipment Invoices ────────────────────────────────────────────────────────
+export type EquipmentInvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED'
+export type EquipmentBillingType = 'HOURLY' | 'DAILY' | 'MONTHLY'
+export type EquipmentInvoiceItemType = 'MACHINE' | 'CHARGE'
+
+export interface EquipmentInvoiceItem {
+  id: number
+  itemType: EquipmentInvoiceItemType
+  description: string
+  machineAssignmentId?: number
+  serialNumber?: string
+  equipmentTypeName?: string
+  billingType?: EquipmentBillingType
+  quantity: number
+  rate: number
+  amount: number
+  sortOrder: number
+}
+
+export interface EquipmentInvoice {
+  id: number
+  invoiceNumber: string
+  workOrderId: number
+  woNumber: string
+  clientId: number
+  clientName: string
+  invoiceDate: string
+  dueDate?: string
+  billingPeriodStart?: string
+  billingPeriodEnd?: string
+  status: EquipmentInvoiceStatus
+  subtotal: number
+  taxPercent: number
+  taxAmount: number
+  totalAmount: number
+  notes?: string
+  items: EquipmentInvoiceItem[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EquipmentInvoicePrefill {
+  machineAssignmentId: number
+  serialNumber?: string
+  equipmentTypeName: string
+  suggestedHours: number
+  suggestedDays: number
+  suggestedMonths: number
+  woRate: number
+  woRateType: string
 }
 
 // ─── Vehicle ──────────────────────────────────────────────────────────────────
