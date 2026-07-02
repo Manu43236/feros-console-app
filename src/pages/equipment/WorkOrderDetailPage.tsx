@@ -397,6 +397,8 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
 
   const mutation = useMutation({
     mutationFn: () => workOrdersApi.updateLog(woId, log!.id, {
+      machineAssignmentId: log!.machineAssignmentId,
+      logDate: log!.logDate,
       status: form.status,
       fuelConsumed: form.fuelConsumed ? Number(form.fuelConsumed) : undefined,
       notes: form.notes || undefined,
