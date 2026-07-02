@@ -243,6 +243,7 @@ export interface DailyLog {
   logDate: string; status: DailyLogStatus
   startHourMeter?: number; endHourMeter?: number; hoursWorked?: number; fuelConsumed?: number; notes?: string
   serialNumber?: string; equipmentTypeName?: string
+  divisionName?: string; source?: string
   createdAt: string; updatedAt: string
 }
 

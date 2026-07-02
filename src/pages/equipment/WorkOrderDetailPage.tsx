@@ -7,7 +7,7 @@ import { equipmentApi } from '@/api/equipment'
 import type { Equipment } from '@/api/equipment'
 import { toast } from 'sonner'
 import {
-  ArrowLeft, Plus, Wrench, Activity, ReceiptText,
+  ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
   Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer,
 } from 'lucide-react'
@@ -47,10 +47,6 @@ const NEXT_STATUSES: Partial<Record<WorkOrderStatus, WorkOrderStatus[]>> = {
   COMPLETED: ['INVOICED'],
 }
 
-function fmt(n?: number | null) {
-  if (n == null) return '—'
-  return `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-}
 
 // ── Add Machine Dialog ─────────────────────────────────────────────────────────
 function eqLabel(e: Equipment) {
@@ -201,8 +197,8 @@ function ExtendDialog({ woId, currentEndDate, open, onClose }: {
 }
 
 // ── Add Log Dialog ────────────────────────────────────────────────────────────
-function AddLogDialog({ woId, assignments, open, onClose }: {
-  woId: number; assignments: MachineAssignment[]; open: boolean; onClose: () => void
+function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
+  woId: number; clientId: number; assignments: MachineAssignment[]; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
   const { isEquipmentMode } = useSubscription()
@@ -212,7 +208,15 @@ function AddLogDialog({ woId, assignments, open, onClose }: {
     logDate: new Date().toISOString().slice(0, 10),
     status: 'WORKING' as DailyLogStatus,
     startHourMeter: '', endHourMeter: '', fuelConsumed: '', notes: '',
+    divisionId: '',
   })
+
+  const { data: divisionsRes } = useQuery({
+    queryKey: ['client-divisions', clientId],
+    queryFn: () => clientsApi.getDivisions(clientId),
+    enabled: open && !!clientId,
+  })
+  const divisions = divisionsRes?.data ?? []
 
   const mutation = useMutation({
     mutationFn: () => workOrdersApi.addLog(woId, {
@@ -223,6 +227,7 @@ function AddLogDialog({ woId, assignments, open, onClose }: {
       endHourMeter: form.endHourMeter ? Number(form.endHourMeter) : undefined,
       fuelConsumed: form.fuelConsumed ? Number(form.fuelConsumed) : undefined,
       notes: form.notes || undefined,
+      divisionId: form.divisionId ? Number(form.divisionId) : undefined,
     }),
     onSuccess: () => { toast.success('Log added'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); onClose() },
     onError: (e: unknown) => {
@@ -280,6 +285,17 @@ function AddLogDialog({ woId, assignments, open, onClose }: {
                 <Label>Fuel (L)</Label>
                 <Input type="number" step="0.01" placeholder="45" value={form.fuelConsumed} onChange={set('fuelConsumed')} />
               </div>
+            </div>
+          )}
+          {divisions.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Division <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.divisionId} onChange={set('divisionId')}>
+                <option value="">— No division —</option>
+                {divisions.map((d: { id: number; name: string }) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
             </div>
           )}
           <div className="space-y-1.5">
@@ -661,7 +677,7 @@ export function WorkOrderDetailPage() {
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
 
-  const [tab, setTab] = useState<'machines' | 'logs' | 'sessions' | 'billing'>('machines')
+  const [tab, setTab] = useState<'machines' | 'sessions' | 'logs'>('machines')
   const [addMachineOpen, setAddMachineOpen] = useState(false)
   const [closingAssignment, setClosingAssignment] = useState<MachineAssignment | null>(null)
   const [addLogOpen, setAddLogOpen] = useState(false)
@@ -815,7 +831,6 @@ export function WorkOrderDetailPage() {
           { key: 'machines',  label: 'Machines', icon: <Wrench size={14} /> },
           { key: 'sessions',  label: 'Work Hours History', icon: <Timer size={14} /> },
           { key: 'logs',      label: 'Daily Logs', icon: <Activity size={14} /> },
-          { key: 'billing',   label: 'Billing', icon: <ReceiptText size={14} /> },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
@@ -974,6 +989,7 @@ export function WorkOrderDetailPage() {
                   <tr>
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Machine</th>
+                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Division</th>
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Start HM</th>
                     <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">End HM</th>
@@ -985,8 +1001,18 @@ export function WorkOrderDetailPage() {
                 <tbody>
                   {logs.map(l => (
                     <tr key={l.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                      <td className="py-2.5 px-4 text-sm text-gray-700">{l.logDate}</td>
+                      <td className="py-2.5 px-4 text-sm text-gray-700">
+                        <div className="flex items-center gap-1.5">
+                          {l.logDate}
+                          {l.source === 'AUTO' && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">Auto</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-2.5 px-4 text-xs text-gray-500">{l.serialNumber ?? `#${l.machineAssignmentId}`}</td>
+                      <td className="py-2.5 px-4 text-sm text-gray-600">
+                        {l.divisionName ?? <span className="text-gray-300">—</span>}
+                      </td>
                       <td className="py-2.5 px-4">
                         <span className={cn('flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full w-fit', LOG_STATUS_COLORS[l.status])}>
                           {LOG_STATUS_ICONS[l.status]} {l.status.replace('_', ' ')}
@@ -1075,48 +1101,6 @@ export function WorkOrderDetailPage() {
         )
       })()}
 
-      {/* Tab: Billing */}
-      {tab === 'billing' && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 max-w-md space-y-4">
-          <p className="text-sm font-semibold text-gray-700">Billing Preview</p>
-          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
-            Preview only — actual invoice generated in Phase 5
-          </p>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Machine Rental</span>
-              <span className="font-medium">{fmt(billing.machineRentalAmount)}</span>
-            </div>
-            {billing.operatorAmount > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Operator Charges</span>
-                <span className="font-medium">{fmt(billing.operatorAmount)}</span>
-              </div>
-            )}
-            {billing.mobilizationCharge > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Mobilization</span>
-                <span className="font-medium">{fmt(billing.mobilizationCharge)}</span>
-              </div>
-            )}
-            {billing.demobilizationCharge > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">De-mobilization</span>
-                <span className="font-medium">{fmt(billing.demobilizationCharge)}</span>
-              </div>
-            )}
-            <div className="flex justify-between pt-2 border-t font-semibold text-gray-900">
-              <span>Total</span>
-              <span>{fmt(billing.totalAmount)}</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t text-xs text-gray-500">
-            <div>Working Days: <strong className="text-gray-700">{billing.totalWorkingDays}</strong></div>
-            {billing.totalHours != null && <div>Total Hours: <strong className="text-gray-700">{billing.totalHours}</strong></div>}
-          </div>
-        </div>
-      )}
-
       {/* Dialogs */}
       <AddMachineDialog woId={Number(id)} open={addMachineOpen} onClose={() => setAddMachineOpen(false)} />
       <CloseMachineDialog woId={Number(id)} assignment={closingAssignment} open={!!closingAssignment} onClose={() => setClosingAssignment(null)} />
@@ -1124,7 +1108,7 @@ export function WorkOrderDetailPage() {
       <AssignDivisionDialog woId={Number(id)} clientId={wo.clientId} assignment={assigningDivisionFor} open={!!assigningDivisionFor} onClose={() => setAssigningDivisionFor(null)} />
       <StartWorkDialog woId={Number(id)} assignment={startingWorkFor} open={!!startingWorkFor} onClose={() => setStartingWorkFor(null)} />
       <StopWorkDialog woId={Number(id)} assignment={stoppingWorkFor} open={!!stoppingWorkFor} onClose={() => setStoppingWorkFor(null)} />
-      <AddLogDialog woId={Number(id)} assignments={activeAssignments} open={addLogOpen} onClose={() => setAddLogOpen(false)} />
+      <AddLogDialog woId={Number(id)} clientId={wo.clientId} assignments={activeAssignments} open={addLogOpen} onClose={() => setAddLogOpen(false)} />
       <ExtendDialog woId={Number(id)} currentEndDate={res?.data?.workOrder.endDate} open={extendOpen} onClose={() => setExtendOpen(false)} />
     </div>
   )
