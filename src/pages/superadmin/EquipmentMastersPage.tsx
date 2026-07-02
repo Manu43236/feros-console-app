@@ -205,6 +205,8 @@ function TypesSection({ makes }: { makes: EquipmentMake[] }) {
   const [selectedMake, setSelectedMake] = useState('')
   const [selectedModel, setSelectedModel] = useState('')
   const [meterType, setMeterType] = useState<'OMR' | 'HMR' | 'BOTH'>('HMR')
+  const [capacity, setCapacity]   = useState('')
+  const [capacityUnit, setCapacityUnit] = useState('')
   const [errs, setErrs]           = useState({ name: '', modelId: '' })
   const [dlg, setDlg]             = useState<{ name: string; id: number } | null>(null)
 
@@ -215,17 +217,23 @@ function TypesSection({ makes }: { makes: EquipmentMake[] }) {
   const mutEdit = useMutation({ mutationFn: ({ id, d }: { id: number; d: { modelId: number; name: string; defaultMeterType: string } }) => equipmentMastersApi.updateType(id, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-types'] }); setOpen(false) }, onError: e => toast.error(errMsg(e)) })
   const mutDel  = useMutation({ mutationFn: (id: number) => equipmentMastersApi.deleteType(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['eq-types'] }), onError: e => toast.error(errMsg(e)) })
 
-  function openAdd() { setEditItem(null); setName(''); setSelectedMake(''); setSelectedModel(''); setMeterType('HMR'); setErrs({ name: '', modelId: '' }); setOpen(true) }
+  function openAdd() { setEditItem(null); setName(''); setSelectedMake(''); setSelectedModel(''); setMeterType('HMR'); setCapacity(''); setCapacityUnit(''); setErrs({ name: '', modelId: '' }); setOpen(true) }
   function openEdit(it: EquipmentType) {
     setEditItem(it); setName(it.name); setSelectedMake(String(it.makeId)); setSelectedModel(String(it.modelId))
-    setMeterType(it.defaultMeterType); setErrs({ name: '', modelId: '' }); setOpen(true)
+    setMeterType(it.defaultMeterType); setCapacity(it.capacity != null ? String(it.capacity) : ''); setCapacityUnit(it.capacityUnit ?? ''); setErrs({ name: '', modelId: '' }); setOpen(true)
   }
   function submit(e: React.FormEvent) {
     e.preventDefault()
     const e2 = { name: !name.trim() ? 'Name is required' : '', modelId: !selectedModel ? 'Select a model' : '' }
     setErrs(e2)
     if (e2.name || e2.modelId) return
-    const d = { name: name.trim(), modelId: Number(selectedModel), defaultMeterType: meterType }
+    const d = {
+      name: name.trim(),
+      modelId: Number(selectedModel),
+      defaultMeterType: meterType,
+      capacity: capacity ? Number(capacity) : null,
+      capacityUnit: capacityUnit.trim() || null,
+    }
     if (editItem) mutEdit.mutate({ id: editItem.id, d })
     else mutAdd.mutate(d)
   }
@@ -262,6 +270,7 @@ function TypesSection({ makes }: { makes: EquipmentMake[] }) {
                 <span className="text-sm text-gray-700">{it.name}</span>
                 <span className="ml-2 text-xs text-gray-400">{it.makeName} · {it.modelName}</span>
                 <span className="ml-2 text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{it.defaultMeterType}</span>
+                {it.capacity != null && <span className="ml-1 text-xs text-gray-500">{it.capacity}{it.capacityUnit}</span>}
               </div>
               <div className="flex gap-1">
                 <button onClick={() => openEdit(it)} className="p-1 text-gray-400 hover:text-gray-600"><Pencil size={11} /></button>
@@ -310,6 +319,16 @@ function TypesSection({ makes }: { makes: EquipmentMake[] }) {
                 options={meterTypeOptions}
                 className="mt-1"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Capacity</Label>
+                <Input type="number" min={0} step="0.1" placeholder="e.g. 14" value={capacity} onChange={e => setCapacity(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label>Unit</Label>
+                <Input placeholder="e.g. T, m³" value={capacityUnit} onChange={e => setCapacityUnit(e.target.value)} className="mt-1" />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>

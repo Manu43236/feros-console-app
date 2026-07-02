@@ -23,6 +23,8 @@ export interface EquipmentType {
   makeId: number
   makeName: string
   defaultMeterType: 'OMR' | 'HMR' | 'BOTH'
+  capacity?: number | null
+  capacityUnit?: string | null
   isActive: boolean
 }
 
@@ -43,7 +45,7 @@ export const equipmentMastersApi = {
 
   // Types
   getTypes: (modelId?: number) => apiClient.get<ApiResponse<EquipmentType[]>>(`${BASE}/types`, { params: modelId ? { modelId } : {} }).then(r => r.data),
-  createType: (data: { modelId: number; name: string; defaultMeterType: string }) => apiClient.post<ApiResponse<EquipmentType>>(`${BASE}/types`, data).then(r => r.data),
-  updateType: (id: number, data: { modelId: number; name: string; defaultMeterType: string }) => apiClient.put<ApiResponse<EquipmentType>>(`${BASE}/types/${id}`, data).then(r => r.data),
+  createType: (data: { modelId: number; name: string; defaultMeterType: string; capacity?: number | null; capacityUnit?: string | null }) => apiClient.post<ApiResponse<EquipmentType>>(`${BASE}/types`, data).then(r => r.data),
+  updateType: (id: number, data: { modelId: number; name: string; defaultMeterType: string; capacity?: number | null; capacityUnit?: string | null }) => apiClient.put<ApiResponse<EquipmentType>>(`${BASE}/types/${id}`, data).then(r => r.data),
   deleteType: (id: number) => apiClient.delete(`${BASE}/types/${id}`),
 }

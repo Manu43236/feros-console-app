@@ -53,7 +53,8 @@ const NEXT_STATUSES: Partial<Record<WorkOrderStatus, WorkOrderStatus[]>> = {
 // ── Add Machine Dialog ─────────────────────────────────────────────────────────
 function eqLabel(e: Equipment) {
   const reg = e.registrationNumber ?? e.serialNumber ?? `#${e.id}`
-  return `${reg} — ${e.makeName} ${e.modelName} (${e.equipmentTypeName})`
+  const cap = e.capacity != null ? ` ${e.capacity}${e.capacityUnit ?? ''}` : ''
+  return `${reg} — ${e.makeName} ${e.modelName} (${e.equipmentTypeName}${cap})`
 }
 
 function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean; onClose: () => void }) {
@@ -72,7 +73,9 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
     queryFn: () => equipmentApi.getAll(),
     enabled: open,
   })
-  const options = (equipRes?.data ?? []).map(e => ({ value: String(e.id), label: eqLabel(e) }))
+  const allEquip = equipRes?.data ?? []
+  const options = allEquip.map(e => ({ value: String(e.id), label: eqLabel(e) }))
+  const selectedEquip = equipmentId ? allEquip.find(e => String(e.id) === equipmentId) : null
 
   const mutation = useMutation({
     mutationFn: () => workOrdersApi.addMachine(woId, {
@@ -106,6 +109,9 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
               options={options}
               placeholder="Search by reg. number, serial…"
             />
+            {selectedEquip?.capacity != null && (
+              <p className="text-xs text-gray-500 mt-1">Capacity: <span className="font-medium">{selectedEquip.capacity}{selectedEquip.capacityUnit}</span></p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Start Date</Label>

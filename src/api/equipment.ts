@@ -10,6 +10,8 @@ export interface Equipment {
   id: number
   equipmentTypeId: number
   equipmentTypeName: string
+  capacity?: number | null
+  capacityUnit?: string | null
   modelId: number
   modelName: string
   makeId: number
