@@ -208,7 +208,12 @@ function EquipmentFormDialog({
             />
             {errors.equipmentTypeId && <p className="text-red-500 text-xs mt-1">{errors.equipmentTypeId}</p>}
             {selectedType && (
-              <p className="text-xs text-gray-400 mt-1">Meter type: <span className="font-medium text-gray-600">{selectedType.defaultMeterType}</span></p>
+              <p className="text-xs text-gray-400 mt-1">
+                Meter type: <span className="font-medium text-gray-600">{selectedType.defaultMeterType}</span>
+                {selectedType.capacity != null && (
+                  <span className="ml-3">Capacity: <span className="font-medium text-gray-600">{selectedType.capacity}{selectedType.capacityUnit}</span></span>
+                )}
+              </p>
             )}
           </div>
 
