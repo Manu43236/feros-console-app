@@ -717,7 +717,7 @@ export function WorkOrderDetailPage() {
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading…</div>
   if (!res?.data) return <div className="p-12 text-center text-gray-400">Work order not found</div>
 
-  const { workOrder: wo, assignments, logs, billing } = res.data
+  const { workOrder: wo, assignments, logs } = res.data
   const woStatus = wo.status as WorkOrderStatus
   const nextStatuses = NEXT_STATUSES[woStatus] ?? []
   const activeAssignments = assignments.filter(a => a.isActive)
