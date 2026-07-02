@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
+import { workOrdersApi } from '@/api/workOrders'
 import { useAuthStore } from '@/store/authStore'
+import type { DailyLog, DailyLogStatus } from '@/types'
 import { useState } from 'react'
 import type { EquipmentInvoiceStatus } from '@/types'
 import { cn } from '@/lib/utils'
@@ -71,9 +73,14 @@ const cell = (style?: React.CSSProperties): React.CSSProperties => ({
   border: B, padding: '4px 6px', fontSize: 11, ...style,
 })
 
-export function EquipmentInvoiceDocument({ invoice, companyName }: {
+const LOG_STATUS_LABEL: Record<DailyLogStatus, string> = {
+  WORKING: 'Working', IDLE: 'Idle', BREAKDOWN: 'Breakdown', NO_MACHINE: 'No Machine',
+}
+
+export function EquipmentInvoiceDocument({ invoice, companyName, logs }: {
   invoice: import('@/types').EquipmentInvoice
   companyName: string
+  logs?: DailyLog[]
 }) {
   const subtotal   = Number(invoice.subtotal   ?? 0)
   const taxPercent = Number(invoice.taxPercent ?? 0)
@@ -210,6 +217,66 @@ export function EquipmentInvoiceDocument({ invoice, companyName }: {
 
         </tbody>
       </table>
+      {/* Annexure — Daily Logs */}
+      {logs && logs.length > 0 && (() => {
+        const workingLogs  = logs.filter(l => l.status === 'WORKING')
+        const idleLogs     = logs.filter(l => l.status === 'IDLE')
+        const totalHours   = workingLogs.reduce((s, l) => s + Number(l.hoursWorked ?? 0), 0)
+        return (
+          <div style={{ pageBreakBefore: 'always', maxWidth: 860, margin: '24px auto 0', fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#000' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: B }}>
+              <tbody>
+                <tr>
+                  <td colSpan={5} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 13, padding: '6px 8px', borderBottom: B }}>
+                    ANNEXURE — DAILY LOG SUMMARY
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={5} style={{ ...cell(), fontSize: 10, color: '#555', padding: '3px 8px', borderBottom: B }}>
+                    {invoice.woNumber} · Billing period: {fmtDate(invoice.billingPeriodStart)} to {fmtDate(invoice.billingPeriodEnd)}
+                  </td>
+                </tr>
+                <tr style={{ background: '#f0f0f0' }}>
+                  <th style={{ ...cell(), textAlign: 'left', width: 90 }}>Date</th>
+                  <th style={{ ...cell(), textAlign: 'left' }}>Machine</th>
+                  <th style={{ ...cell(), textAlign: 'left', width: 60 }}>Serial #</th>
+                  <th style={{ ...cell(), textAlign: 'center', width: 90 }}>Status</th>
+                  <th style={{ ...cell(), textAlign: 'right', width: 80 }}>Hours Worked</th>
+                </tr>
+                {logs.map(l => (
+                  <tr key={l.id} style={{ background: l.status === 'BREAKDOWN' || l.status === 'NO_MACHINE' ? '#fafafa' : 'transparent' }}>
+                    <td style={{ ...cell(), color: l.status === 'BREAKDOWN' || l.status === 'NO_MACHINE' ? '#999' : '#000' }}>
+                      {fmtDate(l.logDate)}
+                    </td>
+                    <td style={{ ...cell(), color: l.status === 'BREAKDOWN' || l.status === 'NO_MACHINE' ? '#999' : '#000' }}>
+                      {l.equipmentTypeName ?? '—'}
+                    </td>
+                    <td style={{ ...cell(), color: l.status === 'BREAKDOWN' || l.status === 'NO_MACHINE' ? '#999' : '#000' }}>
+                      {l.serialNumber ?? '—'}
+                    </td>
+                    <td style={{ ...cell(), textAlign: 'center', fontWeight: l.status === 'WORKING' ? 600 : 400,
+                      color: l.status === 'WORKING' ? '#166534' : l.status === 'IDLE' ? '#92400e' : '#999' }}>
+                      {LOG_STATUS_LABEL[l.status]}
+                    </td>
+                    <td style={{ ...cell(), textAlign: 'right', color: l.status === 'WORKING' ? '#000' : '#bbb' }}>
+                      {l.hoursWorked != null ? Number(l.hoursWorked).toFixed(2) : '—'}
+                    </td>
+                  </tr>
+                ))}
+                {/* Summary row */}
+                <tr style={{ background: '#f0f0f0', fontWeight: 700 }}>
+                  <td colSpan={3} style={{ ...cell(), padding: '5px 8px' }}>
+                    Summary: {workingLogs.length} working day{workingLogs.length !== 1 ? 's' : ''}
+                    {idleLogs.length > 0 ? `, ${idleLogs.length} idle day${idleLogs.length !== 1 ? 's' : ''}` : ''}
+                  </td>
+                  <td style={{ ...cell(), textAlign: 'center' }}>Total Hours</td>
+                  <td style={{ ...cell(), textAlign: 'right' }}>{totalHours.toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -246,6 +313,17 @@ export function EquipmentInvoiceDetailPage() {
   })
 
   const invoice = data?.data
+
+  const { data: logsData } = useQuery({
+    queryKey: ['equip-invoice-logs', invoice?.workOrderId, invoice?.billingPeriodStart, invoice?.billingPeriodEnd],
+    queryFn: () => workOrdersApi.getLogs(
+      invoice!.workOrderId,
+      invoice!.billingPeriodStart ?? undefined,
+      invoice!.billingPeriodEnd ?? undefined,
+    ),
+    enabled: !!invoice?.workOrderId && !!invoice?.billingPeriodStart,
+  })
+  const logs = logsData?.data
 
   const statusMutation = useMutation({
     mutationFn: (status: EquipmentInvoiceStatus) =>
@@ -481,7 +559,7 @@ export function EquipmentInvoiceDetailPage() {
           </div>
           <div className="flex-1 overflow-y-auto bg-white">
             <div ref={invoiceRef}>
-              <EquipmentInvoiceDocument invoice={invoice} companyName={companyName} />
+              <EquipmentInvoiceDocument invoice={invoice} companyName={companyName} logs={logs} />
             </div>
           </div>
         </DialogContent>

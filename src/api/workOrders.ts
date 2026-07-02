@@ -1,6 +1,7 @@
 import apiClient from './client'
 import type { ApiResponse, PageResponse, WorkOrder, WorkOrderDetail, MachineAssignment, DailyLog, WorkEntry } from '@/types'
 
+
 export const workOrdersApi = {
   getAll: (params?: { page?: number; size?: number; status?: string; clientId?: number }) =>
     apiClient.get<ApiResponse<PageResponse<WorkOrder>>>('/work-orders', { params }).then(r => r.data),
@@ -52,4 +53,7 @@ export const workOrdersApi = {
 
   assignDivision: (woId: number, assignmentId: number, divisionId: number | null) =>
     apiClient.put<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/division`, { divisionId }).then(r => r.data),
+
+  getLogs: (woId: number, from?: string, to?: string) =>
+    apiClient.get<ApiResponse<DailyLog[]>>(`/work-orders/${woId}/logs`, { params: { from, to } }).then(r => r.data),
 }

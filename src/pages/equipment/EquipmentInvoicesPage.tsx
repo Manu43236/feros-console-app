@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import { Receipt, ChevronDown } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
@@ -21,24 +20,14 @@ const STATUS_COLORS: Record<EquipmentInvoiceStatus, string> = {
   PAID: 'bg-green-50 text-green-700 hover:bg-green-50',
   CANCELLED: 'bg-red-50 text-red-600 hover:bg-red-50',
 }
-const NEXT_STATUS: Partial<Record<EquipmentInvoiceStatus, EquipmentInvoiceStatus[]>> = {
-  DRAFT: ['SENT', 'CANCELLED'],
-  SENT: ['PARTIALLY_PAID', 'PAID', 'CANCELLED'],
-  PARTIALLY_PAID: ['PAID', 'CANCELLED'],
-}
 
 function fmt(n: number) {
   return n.toLocaleString('en-IN', { maximumFractionDigits: 2 })
 }
 
 // ── Row ────────────────────────────────────────────────────────────────────────
-function InvoiceRow({ inv, onStatusChange }: {
-  inv: EquipmentInvoice
-  onStatusChange: (id: number, status: EquipmentInvoiceStatus) => void
-}) {
+function InvoiceRow({ inv }: { inv: EquipmentInvoice }) {
   const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const next = NEXT_STATUS[inv.status] ?? []
 
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
@@ -66,45 +55,12 @@ function InvoiceRow({ inv, onStatusChange }: {
       <td className="px-4 py-3 text-sm font-semibold text-gray-800 text-right">
         ₹{fmt(inv.totalAmount ?? 0)}
       </td>
-      <td className="px-4 py-3 text-right">
-        {next.length > 0 ? (
-          <div className="relative inline-block">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs gap-1"
-              onClick={() => setMenuOpen(v => !v)}
-            >
-              Action <ChevronDown size={12} />
-            </Button>
-            {menuOpen && (
-              <div
-                className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-100 z-10 py-1"
-                onMouseLeave={() => setMenuOpen(false)}
-              >
-                {next.map(s => (
-                  <button
-                    key={s}
-                    className="w-full text-left text-sm px-3 py-1.5 hover:bg-gray-50 text-gray-700"
-                    onClick={() => { onStatusChange(inv.id, s); setMenuOpen(false) }}
-                  >
-                    Mark {STATUS_LABELS[s]}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <span className="text-xs text-gray-300">—</span>
-        )}
-      </td>
     </tr>
   )
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function EquipmentInvoicesPage() {
-  const qc = useQueryClient()
   const [page, setPage] = useState(0)
   const [statusFilter, setStatusFilter] = useState<EquipmentInvoiceStatus | ''>('')
 
@@ -115,16 +71,6 @@ export function EquipmentInvoicesPage() {
       size: 20,
       status: statusFilter || undefined,
     }),
-  })
-
-  const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: EquipmentInvoiceStatus }) =>
-      equipmentInvoicesApi.updateStatus(id, status),
-    onSuccess: () => {
-      toast.success('Invoice updated')
-      qc.invalidateQueries({ queryKey: ['equip-invoices-all'] })
-    },
-    onError: () => toast.error('Failed to update invoice'),
   })
 
   const invoices = data?.data?.content ?? []
@@ -175,28 +121,23 @@ export function EquipmentInvoicesPage() {
               <th className="px-4 py-3 text-left">Billing Period</th>
               <th className="px-4 py-3 text-left">Status</th>
               <th className="px-4 py-3 text-right">Total</th>
-              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-gray-400 animate-pulse">Loading…</td>
+                <td colSpan={7} className="px-4 py-12 text-center text-gray-400 animate-pulse">Loading…</td>
               </tr>
             ) : invoices.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center">
+                <td colSpan={7} className="px-4 py-12 text-center">
                   <Receipt size={32} className="mx-auto mb-2 text-gray-300" />
                   <p className="text-sm text-gray-400">No invoices found</p>
                 </td>
               </tr>
             ) : (
               invoices.map(inv => (
-                <InvoiceRow
-                  key={inv.id}
-                  inv={inv}
-                  onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
-                />
+                <InvoiceRow key={inv.id} inv={inv} />
               ))
             )}
           </tbody>
