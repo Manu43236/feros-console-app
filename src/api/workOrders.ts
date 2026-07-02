@@ -20,7 +20,7 @@ export const workOrdersApi = {
   extend: (id: number, newEndDate: string) =>
     apiClient.put<ApiResponse<WorkOrder>>(`/work-orders/${id}/extend`, { newEndDate }).then(r => r.data),
 
-  addMachine: (woId: number, data: { equipmentId: number; startDate?: string }) =>
+  addMachine: (woId: number, data: { equipmentId: number; startDate?: string; rateType?: string; rateAmount?: number }) =>
     apiClient.post<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines`, data).then(r => r.data),
 
   closeMachine: (woId: number, assignmentId: number, data: { endDate?: string; endReason: string }) =>

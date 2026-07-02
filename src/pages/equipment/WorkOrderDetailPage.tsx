@@ -880,11 +880,9 @@ function fmt(n: number) {
 
 // ── Invoices Tab ───────────────────────────────────────────────────────────────
 function InvoicesTab({
-  woId, invoices, activeAssignments, onCreateOpen, onStatusChange, onDelete,
+  invoices, onCreateOpen, onStatusChange, onDelete,
 }: {
-  woId: number
   invoices: EquipmentInvoice[]
-  activeAssignments: MachineAssignment[]
   onCreateOpen: () => void
   onStatusChange: (invId: number, status: EquipmentInvoiceStatus) => void
   onDelete: (invId: number) => void
@@ -1489,9 +1487,7 @@ export function WorkOrderDetailPage() {
       {/* Tab: Invoices */}
       {tab === 'invoices' && (
         <InvoicesTab
-          woId={Number(id)}
           invoices={invoicesRes?.data ?? []}
-          activeAssignments={activeAssignments}
           onCreateOpen={() => setCreateInvoiceOpen(true)}
           onStatusChange={(invId, status) => invoiceStatusMutation.mutate({ invId, status })}
           onDelete={invId => deleteInvoiceMutation.mutate(invId)}
