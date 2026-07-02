@@ -197,6 +197,61 @@ function ExtendDialog({ woId, currentEndDate, open, onClose }: {
 }
 
 // ── Add Log Dialog ────────────────────────────────────────────────────────────
+type DivLine = { divisionId: string; startHm: string; endHm: string; notes: string }
+const emptyLine = (): DivLine => ({ divisionId: '', startHm: '', endHm: '', notes: '' })
+
+function DivisionLinesEditor({ lines, onChange, clientDivisions }: {
+  lines: DivLine[]
+  onChange: (lines: DivLine[]) => void
+  clientDivisions: { id: number; name: string }[]
+}) {
+  const set = (i: number, k: keyof DivLine, v: string) =>
+    onChange(lines.map((l, idx) => idx === i ? { ...l, [k]: v } : l))
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>Division Lines</Label>
+        <button type="button" onClick={() => onChange([...lines, emptyLine()])}
+          className="text-xs text-feros-equip-sidebar hover:underline flex items-center gap-0.5">
+          <Plus size={11} /> Add line
+        </button>
+      </div>
+      {lines.length === 0 && (
+        <p className="text-xs text-gray-400 italic">No division lines — click "+ Add line" to track per-division hours.</p>
+      )}
+      {lines.map((line, i) => (
+        <div key={i} className="grid grid-cols-[1fr_80px_80px_1fr_20px] gap-2 items-center">
+          <select className="border rounded-md px-2 py-1.5 text-sm"
+            value={line.divisionId}
+            onChange={e => set(i, 'divisionId', e.target.value)}>
+            <option value="">— No division —</option>
+            {clientDivisions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+          <Input type="number" step="0.01" placeholder="Start HM" className="text-sm"
+            value={line.startHm} onChange={e => set(i, 'startHm', e.target.value)} />
+          <Input type="number" step="0.01" placeholder="End HM" className="text-sm"
+            value={line.endHm} onChange={e => set(i, 'endHm', e.target.value)} />
+          <Input placeholder="Notes" className="text-sm"
+            value={line.notes} onChange={e => set(i, 'notes', e.target.value)} />
+          <button type="button" onClick={() => onChange(lines.filter((_, idx) => idx !== i))}
+            className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 size={13} /></button>
+        </div>
+      ))}
+      {lines.length > 0 && (
+        <p className="text-[11px] text-gray-400">
+          Total: {lines.reduce((sum, l) => {
+            const h = l.startHm && l.endHm ? Number(l.endHm) - Number(l.startHm) : 0
+            return sum + (h > 0 ? h : 0)
+          }, 0).toFixed(2)} hrs &nbsp;·&nbsp; HMR {
+            Math.min(...lines.filter(l => l.startHm).map(l => Number(l.startHm))) || '—'
+          } → {Math.max(...lines.filter(l => l.endHm).map(l => Number(l.endHm))) || '—'}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
   woId: number; clientId: number; assignments: MachineAssignment[]; open: boolean; onClose: () => void
 }) {
@@ -204,50 +259,57 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
   const [form, setForm] = useState({
-    machineAssignmentId: assignments[0]?.id ?? '',
+    machineAssignmentId: String(assignments[0]?.id ?? ''),
     logDate: new Date().toISOString().slice(0, 10),
     status: 'WORKING' as DailyLogStatus,
-    startHourMeter: '', endHourMeter: '', fuelConsumed: '', notes: '',
-    divisionId: '',
+    fuelConsumed: '', notes: '',
   })
+  const [divLines, setDivLines] = useState<DivLine[]>([emptyLine()])
 
   const { data: divisionsRes } = useQuery({
     queryKey: ['client-divisions', clientId],
     queryFn: () => clientsApi.getDivisions(clientId),
     enabled: open && !!clientId,
   })
-  const divisions = divisionsRes?.data ?? []
+  const clientDivisions: { id: number; name: string }[] = divisionsRes?.data ?? []
 
   const mutation = useMutation({
     mutationFn: () => workOrdersApi.addLog(woId, {
       machineAssignmentId: Number(form.machineAssignmentId),
       logDate: form.logDate,
       status: form.status,
-      startHourMeter: form.startHourMeter ? Number(form.startHourMeter) : undefined,
-      endHourMeter: form.endHourMeter ? Number(form.endHourMeter) : undefined,
       fuelConsumed: form.fuelConsumed ? Number(form.fuelConsumed) : undefined,
       notes: form.notes || undefined,
-      divisionId: form.divisionId ? Number(form.divisionId) : undefined,
+      divisions: form.status === 'WORKING' ? divLines.map(l => ({
+        divisionId: l.divisionId ? Number(l.divisionId) : undefined,
+        startHourMeter: l.startHm ? Number(l.startHm) : undefined,
+        endHourMeter: l.endHm ? Number(l.endHm) : undefined,
+        notes: l.notes || undefined,
+      })) : [],
     }),
-    onSuccess: () => { toast.success('Log added'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); onClose() },
+    onSuccess: () => {
+      toast.success('Log added')
+      qc.invalidateQueries({ queryKey: ['work-order', woId] })
+      setDivLines([emptyLine()])
+      onClose()
+    },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
       toast.error(msg ?? 'Failed to add log')
     },
   })
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm(f => ({ ...f, [k]: e.target.value }))
-
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Add Daily Log</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Machine</Label>
-              <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.machineAssignmentId} onChange={set('machineAssignmentId')}>
+              <select className="w-full border rounded-md px-3 py-2 text-sm"
+                value={form.machineAssignmentId}
+                onChange={e => setForm(f => ({ ...f, machineAssignmentId: e.target.value }))}>
                 {assignments.map(a => (
                   <option key={a.id} value={a.id}>{a.serialNumber ?? `Machine #${a.equipmentId}`} ({a.equipmentTypeName})</option>
                 ))}
@@ -255,7 +317,7 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
             </div>
             <div className="space-y-1.5">
               <Label>Date</Label>
-              <Input type="date" value={form.logDate} onChange={set('logDate')} />
+              <Input type="date" value={form.logDate} onChange={e => setForm(f => ({ ...f, logDate: e.target.value }))} />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -271,38 +333,24 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
               ))}
             </div>
           </div>
-          {form.status === 'WORKING' && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Start HM</Label>
-                <Input type="number" step="0.01" placeholder="1200.5" value={form.startHourMeter} onChange={set('startHourMeter')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>End HM</Label>
-                <Input type="number" step="0.01" placeholder="1208.5" value={form.endHourMeter} onChange={set('endHourMeter')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Fuel (L)</Label>
-                <Input type="number" step="0.01" placeholder="45" value={form.fuelConsumed} onChange={set('fuelConsumed')} />
-              </div>
-            </div>
-          )}
-          {divisions.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Division <span className="text-gray-400 font-normal">(optional)</span></Label>
-              <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.divisionId} onChange={set('divisionId')}>
-                <option value="">— No division —</option>
-                {divisions.map((d: { id: number; name: string }) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
+              <Label>Fuel (L)</Label>
+              <Input type="number" step="0.01" placeholder="45" value={form.fuelConsumed}
+                onChange={e => setForm(f => ({ ...f, fuelConsumed: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Input placeholder="Any remarks…" value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+          </div>
+          {form.status === 'WORKING' && (
+            <div className="border-t pt-3">
+              <DivisionLinesEditor lines={divLines} onChange={setDivLines} clientDivisions={clientDivisions} />
             </div>
           )}
-          <div className="space-y-1.5">
-            <Label>Notes</Label>
-            <Input placeholder="Any remarks…" value={form.notes} onChange={set('notes')} />
-          </div>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-1">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button disabled={mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
               {mutation.isPending ? 'Saving…' : 'Add Log'}
@@ -321,37 +369,43 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
   const qc = useQueryClient()
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
-  const [form, setForm] = useState({
-    status: 'WORKING' as DailyLogStatus,
-    startHourMeter: '', endHourMeter: '', fuelConsumed: '', notes: '', divisionId: '',
-  })
-
-  useEffect(() => {
-    if (log) setForm({
-      status: log.status,
-      startHourMeter: log.startHourMeter != null ? String(log.startHourMeter) : '',
-      endHourMeter: log.endHourMeter != null ? String(log.endHourMeter) : '',
-      fuelConsumed: log.fuelConsumed != null ? String(log.fuelConsumed) : '',
-      notes: log.notes ?? '',
-      divisionId: '',
-    })
-  }, [log])
+  const [form, setForm] = useState({ status: 'WORKING' as DailyLogStatus, fuelConsumed: '', notes: '' })
+  const [divLines, setDivLines] = useState<DivLine[]>([])
 
   const { data: divisionsRes } = useQuery({
     queryKey: ['client-divisions', clientId],
     queryFn: () => clientsApi.getDivisions(clientId),
     enabled: open && !!clientId,
   })
-  const divisions = divisionsRes?.data ?? []
+  const clientDivisions: { id: number; name: string }[] = divisionsRes?.data ?? []
+
+  useEffect(() => {
+    if (!log) return
+    setForm({
+      status: log.status,
+      fuelConsumed: log.fuelConsumed != null ? String(log.fuelConsumed) : '',
+      notes: log.notes ?? '',
+    })
+    // Pre-fill division lines — match name back to id where possible
+    setDivLines((log.divisions ?? []).map(d => ({
+      divisionId: String(clientDivisions.find(cd => cd.name === d.divisionName)?.id ?? ''),
+      startHm: d.startHourMeter != null ? String(d.startHourMeter) : '',
+      endHm: d.endHourMeter != null ? String(d.endHourMeter) : '',
+      notes: d.notes ?? '',
+    })))
+  }, [log]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const mutation = useMutation({
     mutationFn: () => workOrdersApi.updateLog(woId, log!.id, {
       status: form.status,
-      startHourMeter: form.startHourMeter ? Number(form.startHourMeter) : undefined,
-      endHourMeter: form.endHourMeter ? Number(form.endHourMeter) : undefined,
       fuelConsumed: form.fuelConsumed ? Number(form.fuelConsumed) : undefined,
       notes: form.notes || undefined,
-      divisionId: form.divisionId ? Number(form.divisionId) : undefined,
+      divisions: form.status === 'WORKING' ? divLines.map(l => ({
+        divisionId: l.divisionId ? Number(l.divisionId) : undefined,
+        startHourMeter: l.startHm ? Number(l.startHm) : undefined,
+        endHourMeter: l.endHm ? Number(l.endHm) : undefined,
+        notes: l.notes || undefined,
+      })) : [],
     }),
     onSuccess: () => { toast.success('Log updated'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); onClose() },
     onError: (e: unknown) => {
@@ -360,13 +414,10 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
     },
   })
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm(f => ({ ...f, [k]: e.target.value }))
-
   if (!log) return null
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Edit Daily Log — {log.logDate}</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
@@ -382,38 +433,24 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
               ))}
             </div>
           </div>
-          {form.status === 'WORKING' && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Start HM</Label>
-                <Input type="number" step="0.01" value={form.startHourMeter} onChange={set('startHourMeter')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>End HM</Label>
-                <Input type="number" step="0.01" value={form.endHourMeter} onChange={set('endHourMeter')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Fuel (L)</Label>
-                <Input type="number" step="0.01" value={form.fuelConsumed} onChange={set('fuelConsumed')} />
-              </div>
-            </div>
-          )}
-          {divisions.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Division <span className="text-gray-400 font-normal">(optional)</span></Label>
-              <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.divisionId} onChange={set('divisionId')}>
-                <option value="">— No division —</option>
-                {divisions.map((d: { id: number; name: string }) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
+              <Label>Fuel (L)</Label>
+              <Input type="number" step="0.01" value={form.fuelConsumed}
+                onChange={e => setForm(f => ({ ...f, fuelConsumed: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Input placeholder="Any remarks…" value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+          </div>
+          {form.status === 'WORKING' && (
+            <div className="border-t pt-3">
+              <DivisionLinesEditor lines={divLines} onChange={setDivLines} clientDivisions={clientDivisions} />
             </div>
           )}
-          <div className="space-y-1.5">
-            <Label>Notes</Label>
-            <Input placeholder="Any remarks…" value={form.notes} onChange={set('notes')} />
-          </div>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-1">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button disabled={mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
               {mutation.isPending ? 'Saving…' : 'Save Changes'}
@@ -1102,52 +1139,70 @@ export function WorkOrderDetailPage() {
                   <tr>
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Machine</th>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Division</th>
                     <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Start HM</th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">End HM</th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Hours</th>
+                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">HMR Range</th>
+                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Total Hrs</th>
                     <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Fuel (L)</th>
                     <th className="py-2.5 px-4" />
                   </tr>
                 </thead>
                 <tbody>
                   {logs.map(l => (
-                    <tr key={l.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                      <td className="py-2.5 px-4 text-sm text-gray-700">
-                        <div className="flex items-center gap-1.5">
-                          {l.logDate}
-                          {l.source === 'AUTO' && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">Auto</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-4 text-xs text-gray-500">{l.serialNumber ?? `#${l.machineAssignmentId}`}</td>
-                      <td className="py-2.5 px-4 text-sm text-gray-600">
-                        {l.divisionName ?? <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <span className={cn('flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full w-fit', LOG_STATUS_COLORS[l.status])}>
-                          {LOG_STATUS_ICONS[l.status]} {l.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-right text-sm text-gray-600">{l.startHourMeter ?? '—'}</td>
-                      <td className="py-2.5 px-4 text-right text-sm text-gray-600">{l.endHourMeter ?? '—'}</td>
-                      <td className="py-2.5 px-4 text-right text-sm font-medium text-gray-800">{l.hoursWorked ?? '—'}</td>
-                      <td className="py-2.5 px-4 text-right text-sm text-gray-600">{l.fuelConsumed ?? '—'}</td>
-                      <td className="py-2.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => setEditingLog(l)}
-                            className="p-1 text-gray-400 hover:text-feros-equip-sidebar rounded transition-colors">
-                            <Pencil size={13} />
-                          </button>
-                          <button onClick={() => setDeletingLogId(l.id)}
-                            className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors">
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <>
+                      {/* Log header row */}
+                      <tr key={l.id} className="border-b border-gray-100 bg-gray-50/50">
+                        <td className="py-2.5 px-4 text-sm text-gray-700 font-medium">
+                          <div className="flex items-center gap-1.5">
+                            {l.logDate}
+                            {l.source === 'AUTO' && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">Auto</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-4 text-xs text-gray-500">{l.serialNumber ?? `#${l.machineAssignmentId}`}</td>
+                        <td className="py-2.5 px-4">
+                          <span className={cn('flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full w-fit', LOG_STATUS_COLORS[l.status])}>
+                            {LOG_STATUS_ICONS[l.status]} {l.status.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-right text-sm text-gray-600">
+                          {l.startHourMeter != null && l.endHourMeter != null
+                            ? `${l.startHourMeter} → ${l.endHourMeter}`
+                            : '—'}
+                        </td>
+                        <td className="py-2.5 px-4 text-right text-sm font-semibold text-gray-800">{l.hoursWorked ?? '—'}</td>
+                        <td className="py-2.5 px-4 text-right text-sm text-gray-600">{l.fuelConsumed ?? '—'}</td>
+                        <td className="py-2.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => setEditingLog(l)}
+                              className="p-1 text-gray-400 hover:text-feros-equip-sidebar rounded transition-colors">
+                              <Pencil size={13} />
+                            </button>
+                            <button onClick={() => setDeletingLogId(l.id)}
+                              className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* Division sub-rows */}
+                      {(l.divisions ?? []).map((d, di) => (
+                        <tr key={`${l.id}-div-${di}`} className="border-b border-gray-50 last:border-gray-100">
+                          <td className="py-1.5 pl-8 pr-4 text-xs text-gray-400">└</td>
+                          <td className="py-1.5 px-4 text-xs font-medium text-gray-600" colSpan={1}>
+                            {d.divisionName ?? <span className="italic text-gray-400">No division</span>}
+                          </td>
+                          <td className="py-1.5 px-4" />
+                          <td className="py-1.5 px-4 text-right text-xs text-gray-500">
+                            {d.startHourMeter != null && d.endHourMeter != null
+                              ? `${d.startHourMeter} → ${d.endHourMeter}`
+                              : '—'}
+                          </td>
+                          <td className="py-1.5 px-4 text-right text-xs text-gray-600">{d.hoursWorked ?? '—'}</td>
+                          <td className="py-1.5 px-4 text-xs text-gray-400 text-right" colSpan={2}>{d.notes ?? ''}</td>
+                        </tr>
+                      ))}
+                    </>
                   ))}
                 </tbody>
               </table>

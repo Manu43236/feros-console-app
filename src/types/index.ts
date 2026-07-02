@@ -238,12 +238,20 @@ export interface MachineAssignment {
   divisionId?: number | null; divisionName?: string | null
 }
 
+export interface DailyLogDivision {
+  id: number
+  divisionName?: string
+  startHourMeter?: number; endHourMeter?: number; hoursWorked?: number
+  notes?: string
+}
+
 export interface DailyLog {
   id: number; machineAssignmentId: number; workOrderId: number
   logDate: string; status: DailyLogStatus
   startHourMeter?: number; endHourMeter?: number; hoursWorked?: number; fuelConsumed?: number; notes?: string
   serialNumber?: string; equipmentTypeName?: string
-  divisionName?: string; source?: string
+  source?: string
+  divisions: DailyLogDivision[]
   createdAt: string; updatedAt: string
 }
 
