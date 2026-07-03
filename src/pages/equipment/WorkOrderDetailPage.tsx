@@ -1030,6 +1030,10 @@ export function WorkOrderDetailPage() {
   const [startingWorkFor, setStartingWorkFor] = useState<MachineAssignment | null>(null)
   const [stoppingWorkFor, setStoppingWorkFor] = useState<MachineAssignment | null>(null)
   const [assigningDivisionFor, setAssigningDivisionFor] = useState<MachineAssignment | null>(null)
+  const [logsFrom, setLogsFrom]         = useState('')
+  const [logsTo, setLogsTo]             = useState('')
+  const [sessionsFrom, setSessionsFrom] = useState('')
+  const [sessionsTo, setSessionsTo]     = useState('')
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['work-order', Number(id)],
@@ -1338,16 +1342,32 @@ export function WorkOrderDetailPage() {
       )}
 
       {/* Tab: Daily Logs */}
-      {tab === 'logs' && (
+      {tab === 'logs' && (() => {
+        const filteredLogs = logs.filter(l =>
+          (!logsFrom || l.logDate >= logsFrom) &&
+          (!logsTo   || l.logDate <= logsTo)
+        )
+        return (
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-500">{logs.length} log{logs.length !== 1 ? 's' : ''}</p>
-            <Button size="sm" onClick={() => setAddLogOpen(true)} disabled={activeAssignments.length === 0}
-              className={`${btnPrimary} gap-1.5`}>
-              <Plus size={13} /> Add Log
-            </Button>
+          <div className="flex flex-wrap items-center gap-3 justify-between">
+            <p className="text-sm text-gray-500">{filteredLogs.length} log{filteredLogs.length !== 1 ? 's' : ''}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input type="date" value={logsFrom} onChange={e => setLogsFrom(e.target.value)}
+                className="h-8 text-xs border border-gray-200 rounded-lg px-2 text-gray-600" />
+              <span className="text-gray-400 text-xs">→</span>
+              <input type="date" value={logsTo} onChange={e => setLogsTo(e.target.value)}
+                className="h-8 text-xs border border-gray-200 rounded-lg px-2 text-gray-600" />
+              {(logsFrom || logsTo) && (
+                <button onClick={() => { setLogsFrom(''); setLogsTo('') }}
+                  className="text-xs text-gray-400 hover:text-gray-600">Clear</button>
+              )}
+              <Button size="sm" onClick={() => setAddLogOpen(true)} disabled={activeAssignments.length === 0}
+                className={`${btnPrimary} gap-1.5`}>
+                <Plus size={13} /> Add Log
+              </Button>
+            </div>
           </div>
-          {logs.length === 0 ? (
+          {filteredLogs.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
               No daily logs yet
             </div>
@@ -1366,7 +1386,7 @@ export function WorkOrderDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map(l => (
+                  {filteredLogs.map(l => (
                     <>
                       {/* Log header row */}
                       <tr key={l.id} className="border-b border-gray-100 bg-gray-50/50">
@@ -1428,19 +1448,35 @@ export function WorkOrderDetailPage() {
             </div>
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* Tab: Sessions */}
       {tab === 'sessions' && (() => {
-        const entries = sessionsRes?.data ?? []
+        const allEntries = sessionsRes?.data ?? []
+        const entries = allEntries.filter(e =>
+          (!sessionsFrom || e.startTime.slice(0, 10) >= sessionsFrom) &&
+          (!sessionsTo   || e.startTime.slice(0, 10) <= sessionsTo)
+        )
         const totalHours = entries.reduce((sum, e) => sum + (e.hoursWorked ?? 0), 0)
         return (
           <div className="space-y-3">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-wrap items-center gap-3 justify-between">
               <p className="text-sm text-gray-500">
                 {entries.length} session{entries.length !== 1 ? 's' : ''}
                 {totalHours > 0 && <span className="ml-2 font-medium text-gray-700">· {totalHours.toFixed(2)} hrs total</span>}
               </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input type="date" value={sessionsFrom} onChange={e => setSessionsFrom(e.target.value)}
+                  className="h-8 text-xs border border-gray-200 rounded-lg px-2 text-gray-600" />
+                <span className="text-gray-400 text-xs">→</span>
+                <input type="date" value={sessionsTo} onChange={e => setSessionsTo(e.target.value)}
+                  className="h-8 text-xs border border-gray-200 rounded-lg px-2 text-gray-600" />
+                {(sessionsFrom || sessionsTo) && (
+                  <button onClick={() => { setSessionsFrom(''); setSessionsTo('') }}
+                    className="text-xs text-gray-400 hover:text-gray-600">Clear</button>
+                )}
+              </div>
             </div>
             {entries.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
