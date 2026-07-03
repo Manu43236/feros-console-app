@@ -317,7 +317,7 @@ export function EquipmentInvoiceDetailPage() {
   const { data: logsData } = useQuery({
     queryKey: ['equip-invoice-logs', invoice?.workOrderId, invoice?.billingPeriodStart, invoice?.billingPeriodEnd],
     queryFn: () => workOrdersApi.getLogs(
-      invoice!.workOrderId,
+      invoice!.workOrderId!,
       invoice!.billingPeriodStart ?? undefined,
       invoice!.billingPeriodEnd ?? undefined,
     ),

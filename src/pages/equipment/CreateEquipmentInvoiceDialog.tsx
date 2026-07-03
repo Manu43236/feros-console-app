@@ -73,7 +73,7 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
     queryFn: () => clientsApi.getAll(),
     enabled: open,
   })
-  const clients = clientsData?.data ?? []
+  const clients = clientsData?.data?.content ?? []
 
   // reset when opened
   useEffect(() => {
@@ -218,7 +218,7 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
               <SearchableSelect
                 options={clients.map(c => ({ value: String(c.id), label: c.clientName }))}
                 value={clientId ? String(clientId) : ''}
-                onChange={v => setClientId(v ? Number(v) : null)}
+                onValueChange={v => setClientId(v ? Number(v) : null)}
                 placeholder="Select client…"
               />
             )}
