@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, Trash2, Sparkles, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
-import type { EquipmentBillingType, EquipmentInvoicePrefill, MachineAssignment } from '@/types'
+import { clientsApi } from '@/api/clients'
+import type { EquipmentBillingType, EquipmentInvoicePrefill } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -43,32 +45,40 @@ function fmt(n: number) {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 interface Props {
-  woId: number
   open: boolean
   onClose: () => void
-  assignments: MachineAssignment[]
+  defaultClientId?: number   // pre-selected when opened from WO detail
+  defaultClientName?: string
 }
 
-export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments }: Props) {
+export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, defaultClientName }: Props) {
   const qc = useQueryClient()
   const today = new Date().toISOString().slice(0, 10)
 
+  const [clientId, setClientId]     = useState<number | null>(defaultClientId ?? null)
   const [invoiceDate, setInvoiceDate] = useState(today)
-  const [dueDate, setDueDate] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+  const [dueDate, setDueDate]       = useState('')
+  const [from, setFrom]             = useState('')
+  const [to, setTo]                 = useState('')
   const [taxPercent, setTaxPercent] = useState('18')
-  const [notes, setNotes] = useState('')
-  const [items, setItems] = useState<LineItem[]>([])
-  const [prefills, setPrefills] = useState<EquipmentInvoicePrefill[]>([])
+  const [notes, setNotes]           = useState('')
+  const [items, setItems]           = useState<LineItem[]>([])
+  const [prefills, setPrefills]     = useState<EquipmentInvoicePrefill[]>([])
   const [loadingPrefill, setLoadingPrefill] = useState(false)
-  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<Set<number>>(
-    () => new Set(assignments.map(a => a.id))
-  )
+  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<Set<number>>(new Set())
+
+  // clients for picker
+  const { data: clientsData } = useQuery({
+    queryKey: ['clients-list'],
+    queryFn: () => clientsApi.getAll(),
+    enabled: open,
+  })
+  const clients = clientsData?.data ?? []
 
   // reset when opened
   useEffect(() => {
     if (open) {
+      setClientId(defaultClientId ?? null)
       setInvoiceDate(today)
       setDueDate('')
       setFrom('')
@@ -77,29 +87,30 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
       setNotes('')
       setItems([])
       setPrefills([])
-      setSelectedAssignmentIds(new Set(assignments.map(a => a.id)))
+      setSelectedAssignmentIds(new Set())
     }
   }, [open])
 
   // ── Prefill ─────────────────────────────────────────────────────────────────
   async function loadPrefill() {
+    if (!clientId) { toast.error('Select a client first'); return }
     setLoadingPrefill(true)
     try {
-      const res = await equipmentInvoicesApi.prefill(woId, {
+      const res = await equipmentInvoicesApi.prefillByClient(clientId, {
         from: from || undefined,
-        to: to || undefined,
+        to:   to   || undefined,
       })
-      const ps = (res.data ?? []).filter(p => selectedAssignmentIds.has(p.machineAssignmentId))
+      const ps = res.data ?? []
       setPrefills(ps)
+      setSelectedAssignmentIds(new Set(ps.map(p => p.machineAssignmentId)))
 
-      // Replace only MACHINE items with fresh prefill; keep existing CHARGE items
       const chargeItems = items.filter(i => i.itemType === 'CHARGE')
       const machineItems: LineItem[] = ps.map(p => {
         const billing = woRateToBilling(p.woRateType)
         return {
           _key: nextKey(),
           itemType: 'MACHINE',
-          description: `${p.equipmentTypeName}${p.serialNumber ? ` — ${p.serialNumber}` : ''}`,
+          description: `${p.equipmentTypeName}${p.serialNumber ? ` — ${p.serialNumber}` : ''} (${p.woNumber})`,
           machineAssignmentId: p.machineAssignmentId,
           billingType: billing,
           quantity: suggestedQty(p, billing),
@@ -130,7 +141,6 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
     setItems(prev => prev.map(i => {
       if (i._key !== key) return i
       const next = { ...i, ...patch }
-      // if billingType changed on a MACHINE item, auto-update qty from prefill
       if (patch.billingType && i.itemType === 'MACHINE' && i.machineAssignmentId) {
         const p = prefills.find(p => p.machineAssignmentId === i.machineAssignmentId)
         if (p) next.quantity = suggestedQty(p, patch.billingType)
@@ -141,21 +151,22 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
 
   // ── Totals ───────────────────────────────────────────────────────────────────
   const subtotal = items.reduce((sum, i) => {
-    const qty = parseFloat(i.quantity) || 0
+    const qty  = parseFloat(i.quantity) || 0
     const rate = parseFloat(i.rate) || 0
     return sum + qty * rate
   }, 0)
-  const tax = parseFloat(taxPercent) || 0
+  const tax       = parseFloat(taxPercent) || 0
   const taxAmount = subtotal * tax / 100
-  const total = subtotal + taxAmount
+  const total     = subtotal + taxAmount
 
   // ── Save ─────────────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
-    mutationFn: () => equipmentInvoicesApi.create(woId, {
+    mutationFn: () => equipmentInvoicesApi.createForClient({
+      clientId,
       invoiceDate,
-      dueDate: dueDate || null,
-      billingPeriodStart: from || null,
-      billingPeriodEnd: to || null,
+      dueDate:            dueDate || null,
+      billingPeriodStart: from    || null,
+      billingPeriodEnd:   to      || null,
       taxPercent: parseFloat(taxPercent) || 0,
       notes: notes || null,
       items: items.map((i, idx) => ({
@@ -164,14 +175,14 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
         machineAssignmentId: i.machineAssignmentId ?? null,
         billingType: i.itemType === 'MACHINE' ? i.billingType : null,
         quantity: parseFloat(i.quantity) || 0,
-        rate: parseFloat(i.rate) || 0,
+        rate:     parseFloat(i.rate)     || 0,
         sortOrder: idx,
       })),
     }),
     onSuccess: () => {
       toast.success('Invoice created')
-      qc.invalidateQueries({ queryKey: ['equip-invoices', woId] })
       qc.invalidateQueries({ queryKey: ['equip-invoices-all'] })
+      qc.invalidateQueries({ queryKey: ['equip-invoices-by-wo'] })
       onClose()
     },
     onError: (e: unknown) => {
@@ -180,7 +191,15 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
     },
   })
 
-  const canSave = items.length > 0 && items.every(i => i.description && i.rate)
+  const canSave = !!clientId && items.length > 0 && items.every(i => i.description && i.rate)
+
+  // group prefills by WO for display
+  const prefillByWo = prefills.reduce<Record<string, EquipmentInvoicePrefill[]>>((acc, p) => {
+    const key = p.woNumber
+    if (!acc[key]) acc[key] = []
+    acc[key].push(p)
+    return acc
+  }, {})
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -190,6 +209,21 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
         </DialogHeader>
 
         <div className="space-y-5 pt-1">
+          {/* ── Client picker ── */}
+          <div className="space-y-1.5">
+            <Label>Client <span className="text-red-500">*</span></Label>
+            {defaultClientId ? (
+              <p className="text-sm font-medium text-gray-800 py-2">{defaultClientName}</p>
+            ) : (
+              <SearchableSelect
+                options={clients.map(c => ({ value: String(c.id), label: c.clientName }))}
+                value={clientId ? String(clientId) : ''}
+                onChange={v => setClientId(v ? Number(v) : null)}
+                placeholder="Select client…"
+              />
+            )}
+          </div>
+
           {/* ── Date row ── */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="space-y-1.5">
@@ -210,59 +244,6 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
             </div>
           </div>
 
-          {/* ── Machine selector ── */}
-          {assignments.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-700">Machines to include</p>
-                <div className="flex gap-3 text-xs">
-                  <button type="button" className="text-feros-equip-sidebar hover:underline"
-                    onClick={() => setSelectedAssignmentIds(new Set(assignments.map(a => a.id)))}>
-                    All
-                  </button>
-                  <button type="button" className="text-gray-400 hover:underline"
-                    onClick={() => setSelectedAssignmentIds(new Set())}>
-                    None
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {assignments.map(a => {
-                  const checked = selectedAssignmentIds.has(a.id)
-                  const label = a.serialNumber
-                    ? `${a.equipmentTypeName} — ${a.serialNumber}`
-                    : a.equipmentTypeName
-                  const rateLabel = a.rateAmount
-                    ? ` (₹${a.rateAmount.toLocaleString('en-IN')}/${a.rateType === 'HOURLY' ? 'hr' : a.rateType === 'DAILY_SHIFT' ? 'day' : 'mo'})`
-                    : ''
-                  return (
-                    <label key={a.id}
-                      className={cn('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors',
-                        checked
-                          ? 'bg-feros-equip-sidebar/10 border-feros-equip-sidebar/40 text-feros-equip-sidebar'
-                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        className="accent-feros-equip-sidebar"
-                        checked={checked}
-                        onChange={e => {
-                          setSelectedAssignmentIds(prev => {
-                            const next = new Set(prev)
-                            e.target.checked ? next.add(a.id) : next.delete(a.id)
-                            return next
-                          })
-                        }}
-                      />
-                      <span>{label}{rateLabel}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
           {/* ── Prefill bar ── */}
           <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <Sparkles size={16} className="text-amber-600 shrink-0" />
@@ -275,17 +256,86 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
               size="sm"
               className="border-amber-400 text-amber-700 hover:bg-amber-100 shrink-0"
               onClick={loadPrefill}
-              disabled={loadingPrefill}
+              disabled={loadingPrefill || !clientId}
             >
               {loadingPrefill ? <Loader2 size={14} className="animate-spin mr-1" /> : <Sparkles size={14} className="mr-1" />}
               Load Suggestions
             </Button>
           </div>
 
+          {/* ── Machine selector (grouped by WO) ── */}
+          {Object.keys(prefillByWo).length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700">Machines to include</p>
+                <div className="flex gap-3 text-xs">
+                  <button type="button" className="text-feros-equip-sidebar hover:underline"
+                    onClick={() => setSelectedAssignmentIds(new Set(prefills.map(p => p.machineAssignmentId)))}>
+                    All
+                  </button>
+                  <button type="button" className="text-gray-400 hover:underline"
+                    onClick={() => setSelectedAssignmentIds(new Set())}>
+                    None
+                  </button>
+                </div>
+              </div>
+              {Object.entries(prefillByWo).map(([woNum, woPrefills]) => (
+                <div key={woNum} className="space-y-1.5">
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{woNum}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {woPrefills.map(p => {
+                      const checked = selectedAssignmentIds.has(p.machineAssignmentId)
+                      const label = p.serialNumber
+                        ? `${p.equipmentTypeName} — ${p.serialNumber}`
+                        : p.equipmentTypeName
+                      return (
+                        <label key={p.machineAssignmentId}
+                          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors',
+                            checked
+                              ? 'bg-feros-equip-sidebar/10 border-feros-equip-sidebar/40 text-feros-equip-sidebar'
+                              : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="accent-feros-equip-sidebar"
+                            checked={checked}
+                            onChange={e => {
+                              setSelectedAssignmentIds(prev => {
+                                const next = new Set(prev)
+                                e.target.checked ? next.add(p.machineAssignmentId) : next.delete(p.machineAssignmentId)
+                                return next
+                              })
+                              // sync items list with checkbox state
+                              if (!e.target.checked) {
+                                setItems(prev => prev.filter(i => i.machineAssignmentId !== p.machineAssignmentId))
+                              } else {
+                                const billing = woRateToBilling(p.woRateType)
+                                setItems(prev => [...prev, {
+                                  _key: nextKey(),
+                                  itemType: 'MACHINE',
+                                  description: `${p.equipmentTypeName}${p.serialNumber ? ` — ${p.serialNumber}` : ''} (${p.woNumber})`,
+                                  machineAssignmentId: p.machineAssignmentId,
+                                  billingType: billing,
+                                  quantity: suggestedQty(p, billing),
+                                  rate: String(p.woRate ?? 0),
+                                }])
+                              }
+                            }}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* ── Line items ── */}
           <div>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              {/* Header */}
               <div className="grid grid-cols-[1fr_100px_80px_100px_90px_36px] gap-2 bg-gray-50 border-b border-gray-200 px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
                 <span>Description / Machine</span>
                 <span>Billing</span>
@@ -295,15 +345,14 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
                 <span />
               </div>
 
-              {/* Rows */}
               {items.length === 0 ? (
                 <div className="px-3 py-8 text-center text-sm text-gray-400">
                   Click "Load Suggestions" or add a charge below.
                 </div>
               ) : (
                 items.map(item => {
-                  const qty = parseFloat(item.quantity) || 0
-                  const rate = parseFloat(item.rate) || 0
+                  const qty    = parseFloat(item.quantity) || 0
+                  const rate   = parseFloat(item.rate)     || 0
                   const amount = qty * rate
                   return (
                     <div key={item._key}
@@ -311,7 +360,6 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
                         item.itemType === 'MACHINE' ? 'bg-white' : 'bg-blue-50/40'
                       )}
                     >
-                      {/* Description */}
                       {item.itemType === 'MACHINE' ? (
                         <p className="text-sm text-gray-800 truncate">{item.description}</p>
                       ) : (
@@ -323,7 +371,6 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
                         />
                       )}
 
-                      {/* Billing type */}
                       {item.itemType === 'MACHINE' ? (
                         <select
                           value={item.billingType}
@@ -338,32 +385,19 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
                         <span className="text-xs text-gray-400 text-center">—</span>
                       )}
 
-                      {/* Qty */}
                       <Input
                         className="h-7 text-sm text-right"
-                        type="number"
-                        min={0}
-                        step="0.01"
+                        type="number" min={0} step="0.01"
                         value={item.quantity}
                         onChange={e => updateItem(item._key, { quantity: e.target.value })}
                       />
-
-                      {/* Rate */}
                       <Input
                         className="h-7 text-sm text-right"
-                        type="number"
-                        min={0}
-                        step="0.01"
+                        type="number" min={0} step="0.01"
                         value={item.rate}
                         onChange={e => updateItem(item._key, { rate: e.target.value })}
                       />
-
-                      {/* Amount */}
-                      <p className="text-sm font-medium text-right text-gray-800">
-                        ₹{fmt(amount)}
-                      </p>
-
-                      {/* Delete */}
+                      <p className="text-sm font-medium text-right text-gray-800">₹{fmt(amount)}</p>
                       <button
                         onClick={() => removeItem(item._key)}
                         className="text-gray-300 hover:text-red-500 transition-colors flex items-center justify-center"
@@ -377,9 +411,7 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
             </div>
 
             <Button
-              type="button"
-              variant="ghost"
-              size="sm"
+              type="button" variant="ghost" size="sm"
               className="mt-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
               onClick={addChargeLine}
             >
@@ -395,8 +427,7 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
                 <div className="flex gap-2 flex-wrap">
                   {[0, 5, 12, 18, 28].map(t => (
                     <button
-                      key={t}
-                      type="button"
+                      key={t} type="button"
                       onClick={() => setTaxPercent(String(t))}
                       className={cn('px-2.5 py-1 rounded text-sm font-medium border transition-colors',
                         taxPercent === String(t)
@@ -409,9 +440,7 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
                   ))}
                   <Input
                     className="h-7 w-20 text-sm"
-                    type="number"
-                    min={0}
-                    max={100}
+                    type="number" min={0} max={100}
                     value={taxPercent}
                     onChange={e => setTaxPercent(e.target.value)}
                     placeholder="Custom"
@@ -432,16 +461,13 @@ export function CreateEquipmentInvoiceDialog({ woId, open, onClose, assignments 
             <div className="space-y-2">
               <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>Subtotal</span>
-                  <span>₹{fmt(subtotal)}</span>
+                  <span>Subtotal</span><span>₹{fmt(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>Tax ({tax}%)</span>
-                  <span>₹{fmt(taxAmount)}</span>
+                  <span>Tax ({tax}%)</span><span>₹{fmt(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between text-base font-semibold text-gray-900 border-t border-gray-200 pt-2 mt-1">
-                  <span>Total</span>
-                  <span>₹{fmt(total)}</span>
+                  <span>Total</span><span>₹{fmt(total)}</span>
                 </div>
               </div>
 

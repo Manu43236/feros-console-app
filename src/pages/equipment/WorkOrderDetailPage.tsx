@@ -1053,7 +1053,7 @@ export function WorkOrderDetailPage() {
   })
 
   const { data: invoicesRes } = useQuery({
-    queryKey: ['equip-invoices', Number(id)],
+    queryKey: ['equip-invoices-by-wo', Number(id)],
     queryFn: () => equipmentInvoicesApi.getByWorkOrder(Number(id)),
     enabled: !!id && tab === 'invoices',
   })
@@ -1061,13 +1061,13 @@ export function WorkOrderDetailPage() {
   const invoiceStatusMutation = useMutation({
     mutationFn: ({ invId, status }: { invId: number; status: EquipmentInvoiceStatus }) =>
       equipmentInvoicesApi.updateStatus(invId, status),
-    onSuccess: () => { toast.success('Invoice updated'); qc.invalidateQueries({ queryKey: ['equip-invoices', Number(id)] }) },
+    onSuccess: () => { toast.success('Invoice updated'); qc.invalidateQueries({ queryKey: ['equip-invoices-by-wo', Number(id)] }) },
     onError: () => toast.error('Failed to update invoice'),
   })
 
   const deleteInvoiceMutation = useMutation({
     mutationFn: (invId: number) => equipmentInvoicesApi.delete(invId),
-    onSuccess: () => { toast.success('Invoice deleted'); qc.invalidateQueries({ queryKey: ['equip-invoices', Number(id)] }) },
+    onSuccess: () => { toast.success('Invoice deleted'); qc.invalidateQueries({ queryKey: ['equip-invoices-by-wo', Number(id)] }) },
     onError: () => toast.error('Failed to delete invoice'),
   })
 
@@ -1516,7 +1516,7 @@ export function WorkOrderDetailPage() {
       <AddLogDialog woId={Number(id)} clientId={wo.clientId} assignments={activeAssignments} open={addLogOpen} onClose={() => setAddLogOpen(false)} />
       <EditLogDialog woId={Number(id)} clientId={wo.clientId} log={editingLog} open={!!editingLog} onClose={() => setEditingLog(null)} />
       <ExtendDialog woId={Number(id)} currentEndDate={res?.data?.workOrder.endDate} open={extendOpen} onClose={() => setExtendOpen(false)} />
-      <CreateEquipmentInvoiceDialog woId={Number(id)} assignments={activeAssignments} open={createInvoiceOpen} onClose={() => setCreateInvoiceOpen(false)} />
+      <CreateEquipmentInvoiceDialog defaultClientId={wo.clientId} defaultClientName={wo.clientName} open={createInvoiceOpen} onClose={() => setCreateInvoiceOpen(false)} />
 
       <Dialog open={deletingLogId !== null} onOpenChange={(open: boolean) => !open && setDeletingLogId(null)}>
         <DialogContent className="max-w-sm">

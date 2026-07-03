@@ -291,8 +291,8 @@ export interface EquipmentInvoiceItem {
 export interface EquipmentInvoice {
   id: number
   invoiceNumber: string
-  workOrderId: number
-  woNumber: string
+  workOrderId?: number | null
+  woNumber?: string | null
   clientId: number
   clientName: string
   invoiceDate: string
@@ -312,6 +312,8 @@ export interface EquipmentInvoice {
 
 export interface EquipmentInvoicePrefill {
   machineAssignmentId: number
+  workOrderId: number
+  woNumber: string
   serialNumber?: string
   equipmentTypeName: string
   suggestedHours: number

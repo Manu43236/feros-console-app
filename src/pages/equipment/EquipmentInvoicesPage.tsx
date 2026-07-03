@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Receipt } from 'lucide-react'
+import { Plus, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
+import { CreateEquipmentInvoiceDialog } from './CreateEquipmentInvoiceDialog'
 import type { EquipmentInvoice, EquipmentInvoiceStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -63,6 +64,7 @@ function InvoiceRow({ inv }: { inv: EquipmentInvoice }) {
 export function EquipmentInvoicesPage() {
   const [page, setPage] = useState(0)
   const [statusFilter, setStatusFilter] = useState<EquipmentInvoiceStatus | ''>('')
+  const [createOpen, setCreateOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['equip-invoices-all', page, statusFilter],
@@ -84,7 +86,15 @@ export function EquipmentInvoicesPage() {
           <h1 className="text-xl font-semibold text-gray-900">Equipment Invoices</h1>
           <p className="text-sm text-gray-400 mt-0.5">All invoices across work orders</p>
         </div>
+        <Button
+          onClick={() => setCreateOpen(true)}
+          className="bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white"
+        >
+          <Plus size={16} className="mr-1.5" /> New Invoice
+        </Button>
       </div>
+
+      <CreateEquipmentInvoiceDialog open={createOpen} onClose={() => setCreateOpen(false)} />
 
       {/* Status filter */}
       <div className="flex gap-2 flex-wrap">

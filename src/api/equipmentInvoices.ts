@@ -27,4 +27,12 @@ export const equipmentInvoicesApi = {
     apiClient.get<ApiResponse<EquipmentInvoicePrefill[]>>(
       `/work-orders/${woId}/equipment-invoices/prefill`, { params }
     ).then(r => r.data),
+
+  createForClient: (data: Record<string, unknown>) =>
+    apiClient.post<ApiResponse<EquipmentInvoice>>('/equipment-invoices', data).then(r => r.data),
+
+  prefillByClient: (clientId: number, params?: { from?: string; to?: string }) =>
+    apiClient.get<ApiResponse<EquipmentInvoicePrefill[]>>(
+      '/equipment-invoices/prefill', { params: { clientId, ...params } }
+    ).then(r => r.data),
 }
