@@ -101,16 +101,19 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
         to:   to   || undefined,
       })
       const ps = res.data ?? []
-      setPrefills(ps)
-      setSelectedAssignmentIds(new Set(ps.map(p => p.machineAssignmentId)))
+      // Fix 2: only show machines that have actual activity (skip zero-qty)
+      const active = ps.filter(p => (p.suggestedHours ?? 0) > 0 || (p.suggestedDays ?? 0) > 0)
+      setPrefills(active)
+      setSelectedAssignmentIds(new Set(active.map(p => p.machineAssignmentId)))
 
       const chargeItems = items.filter(i => i.itemType === 'CHARGE')
-      const machineItems: LineItem[] = ps.map(p => {
+      const machineItems: LineItem[] = active.map(p => {
         const billing = woRateToBilling(p.woRateType)
+        const machineLabel = p.serialNumber ?? `Machine #${p.equipmentId}`
         return {
           _key: nextKey(),
           itemType: 'MACHINE',
-          description: `${p.equipmentTypeName}${p.serialNumber ? ` — ${p.serialNumber}` : ''} (${p.woNumber})`,
+          description: `${machineLabel} · ${p.equipmentTypeName} (${p.woNumber})`,
           machineAssignmentId: p.machineAssignmentId,
           billingType: billing,
           quantity: suggestedQty(p, billing),
@@ -285,9 +288,8 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
                   <div className="flex flex-wrap gap-2">
                     {woPrefills.map(p => {
                       const checked = selectedAssignmentIds.has(p.machineAssignmentId)
-                      const label = p.serialNumber
-                        ? `${p.equipmentTypeName} — ${p.serialNumber}`
-                        : p.equipmentTypeName
+                      const machineId = p.serialNumber ?? `#${p.equipmentId}`
+                      const label = `${machineId} · ${p.equipmentTypeName}`
                       return (
                         <label key={p.machineAssignmentId}
                           className={cn('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors',
@@ -314,7 +316,7 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
                                 setItems(prev => [...prev, {
                                   _key: nextKey(),
                                   itemType: 'MACHINE',
-                                  description: `${p.equipmentTypeName}${p.serialNumber ? ` — ${p.serialNumber}` : ''} (${p.woNumber})`,
+                                  description: `${p.serialNumber ?? `Machine #${p.equipmentId}`} · ${p.equipmentTypeName} (${p.woNumber})`,
                                   machineAssignmentId: p.machineAssignmentId,
                                   billingType: billing,
                                   quantity: suggestedQty(p, billing),

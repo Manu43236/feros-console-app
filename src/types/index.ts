@@ -312,6 +312,7 @@ export interface EquipmentInvoice {
 
 export interface EquipmentInvoicePrefill {
   machineAssignmentId: number
+  equipmentId: number
   workOrderId: number
   woNumber: string
   serialNumber?: string
