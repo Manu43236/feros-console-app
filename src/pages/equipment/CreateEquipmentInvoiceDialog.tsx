@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Trash2, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Sparkles, Loader2, Pencil, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -66,6 +66,7 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
   const [prefills, setPrefills]     = useState<EquipmentInvoicePrefill[]>([])
   const [loadingPrefill, setLoadingPrefill] = useState(false)
   const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<Set<number>>(new Set())
+  const [overriddenKeys, setOverriddenKeys] = useState<Set<string>>(new Set())
 
   // clients for picker
   const { data: clientsData } = useQuery({
@@ -88,6 +89,7 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
       setItems([])
       setPrefills([])
       setSelectedAssignmentIds(new Set())
+      setOverriddenKeys(new Set())
     }
   }, [open])
 
@@ -338,7 +340,7 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
           {/* ── Line items ── */}
           <div>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="grid grid-cols-[1fr_100px_80px_100px_90px_36px] gap-2 bg-gray-50 border-b border-gray-200 px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <div className="grid grid-cols-[1fr_100px_80px_100px_90px_52px] gap-2 bg-gray-50 border-b border-gray-200 px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
                 <span>Description / Machine</span>
                 <span>Billing</span>
                 <span className="text-right">Qty</span>
@@ -353,16 +355,23 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
                 </div>
               ) : (
                 items.map(item => {
-                  const qty    = parseFloat(item.quantity) || 0
-                  const rate   = parseFloat(item.rate)     || 0
-                  const amount = qty * rate
+                  const qty      = parseFloat(item.quantity) || 0
+                  const rate     = parseFloat(item.rate)     || 0
+                  const amount   = qty * rate
+                  const isMachine = item.itemType === 'MACHINE'
+                  const overriding = overriddenKeys.has(item._key)
+                  const toggleOverride = () => setOverriddenKeys(prev => {
+                    const next = new Set(prev)
+                    overriding ? next.delete(item._key) : next.add(item._key)
+                    return next
+                  })
                   return (
                     <div key={item._key}
-                      className={cn('grid grid-cols-[1fr_100px_80px_100px_90px_36px] gap-2 items-center px-3 py-2 border-b border-gray-100 last:border-0',
-                        item.itemType === 'MACHINE' ? 'bg-white' : 'bg-blue-50/40'
+                      className={cn('grid grid-cols-[1fr_100px_80px_100px_90px_52px] gap-2 items-center px-3 py-2 border-b border-gray-100 last:border-0',
+                        isMachine ? 'bg-white' : 'bg-blue-50/40'
                       )}
                     >
-                      {item.itemType === 'MACHINE' ? (
+                      {isMachine ? (
                         <p className="text-sm text-gray-800 truncate">{item.description}</p>
                       ) : (
                         <Input
@@ -373,7 +382,7 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
                         />
                       )}
 
-                      {item.itemType === 'MACHINE' ? (
+                      {isMachine ? (
                         <select
                           value={item.billingType}
                           onChange={e => updateItem(item._key, { billingType: e.target.value as BillingType })}
@@ -387,25 +396,52 @@ export function CreateEquipmentInvoiceDialog({ open, onClose, defaultClientId, d
                         <span className="text-xs text-gray-400 text-center">—</span>
                       )}
 
-                      <Input
-                        className="h-7 text-sm text-right"
-                        type="number" min={0} step="0.01"
-                        value={item.quantity}
-                        onChange={e => updateItem(item._key, { quantity: e.target.value })}
-                      />
-                      <Input
-                        className="h-7 text-sm text-right"
-                        type="number" min={0} step="0.01"
-                        value={item.rate}
-                        onChange={e => updateItem(item._key, { rate: e.target.value })}
-                      />
-                      <p className="text-sm font-medium text-right text-gray-800">₹{fmt(amount)}</p>
-                      <button
-                        onClick={() => removeItem(item._key)}
-                        className="text-gray-300 hover:text-red-500 transition-colors flex items-center justify-center"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {/* QTY — read-only for machine unless overriding */}
+                      {isMachine && !overriding ? (
+                        <p className="text-sm text-right text-gray-800 font-medium">{qty}</p>
+                      ) : (
+                        <Input
+                          className="h-7 text-sm text-right"
+                          type="number" min={0} step="0.01"
+                          value={item.quantity}
+                          onChange={e => updateItem(item._key, { quantity: e.target.value })}
+                        />
+                      )}
+
+                      {/* RATE — read-only for machine unless overriding */}
+                      {isMachine && !overriding ? (
+                        <p className="text-sm text-right text-gray-800 font-medium">₹{fmt(rate)}</p>
+                      ) : (
+                        <Input
+                          className="h-7 text-sm text-right"
+                          type="number" min={0} step="0.01"
+                          value={item.rate}
+                          onChange={e => updateItem(item._key, { rate: e.target.value })}
+                        />
+                      )}
+
+                      <p className="text-sm font-semibold text-right text-gray-900">₹{fmt(amount)}</p>
+
+                      {/* Actions: override toggle + delete */}
+                      <div className="flex items-center justify-end gap-1">
+                        {isMachine && (
+                          <button
+                            type="button"
+                            title={overriding ? 'Lock values' : 'Override values'}
+                            onClick={toggleOverride}
+                            className={cn('transition-colors', overriding ? 'text-amber-500 hover:text-amber-600' : 'text-gray-300 hover:text-gray-500')}
+                          >
+                            {overriding ? <Lock size={13} /> : <Pencil size={13} />}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item._key)}
+                          className="text-gray-300 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   )
                 })
