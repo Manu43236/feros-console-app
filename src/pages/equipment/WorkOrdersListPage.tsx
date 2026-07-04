@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { workOrdersApi } from '@/api/workOrders'
 import { clientsApi } from '@/api/clients'
-import { staffApi } from '@/api/staff'
 import { toast } from 'sonner'
 import { Plus, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import type { WorkOrderStatus, RateType } from '@/types'
+import type { WorkOrderStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
@@ -32,28 +31,14 @@ const STATUS_LABELS: Record<WorkOrderStatus, string> = {
   DRAFT: 'Draft', CONFIRMED: 'Confirmed', IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed', INVOICED: 'Invoiced', CANCELLED: 'Cancelled',
 }
-const RATE_LABELS: Record<RateType, string> = {
-  HOURLY: 'Hourly', DAILY_SHIFT: 'Daily Shift', MONTHLY: 'Monthly',
-}
-
 // ── WO Form schema ────────────────────────────────────────────────────────────
 const schema = z.object({
-  clientId:              z.coerce.number().min(1, 'Select client'),
-  site:                  z.string().optional(),
-  rateType:              z.enum(['HOURLY', 'DAILY_SHIFT', 'MONTHLY']),
-  rateAmount:            z.coerce.number().min(0.01, 'Rate is required'),
-  shiftHours:            z.coerce.number().optional(),
-  overtimeRatePerHour:   z.coerce.number().optional(),
-  operatorType:          z.enum(['OWN_STAFF', 'HIRED', 'CLIENT_PROVIDED']).optional(),
-  operatorStaffId:       z.coerce.number().optional(),
-  hiredOperatorName:     z.string().optional(),
-  hiredOperatorPhone:    z.string().optional(),
-  operatorBilling:       z.enum(['INCLUDED_IN_RATE', 'BILLED_SEPARATELY', 'NOT_BILLED']).optional(),
-  operatorRatePerDay:    z.coerce.number().optional(),
-  mobilizationCharge:    z.coerce.number().optional(),
-  startDate:             z.string().min(1, 'Start date is required'),
-  endDate:               z.string().optional(),
-  notes:                 z.string().optional(),
+  clientId:           z.coerce.number().min(1, 'Select client'),
+  site:               z.string().optional(),
+  mobilizationCharge: z.coerce.number().optional(),
+  startDate:          z.string().min(1, 'Start date is required'),
+  endDate:            z.string().optional(),
+  notes:              z.string().optional(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -68,19 +53,10 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
     queryKey: ['clients', 0, ''],
     queryFn: () => clientsApi.getAll({ page: 0, size: 100 }),
   })
-  const { data: equipStaffRes } = useQuery({
-    queryKey: ['staff-equipment'],
-    queryFn: () => staffApi.getAll({ equipmentOnly: true }),
-  })
 
-  const { register, handleSubmit, control, watch, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: { rateType: 'HOURLY', operatorBilling: 'NOT_BILLED', shiftHours: 8 },
   })
-
-  const rateType = watch('rateType')
-  const operatorType = watch('operatorType')
-  const operatorBilling = watch('operatorBilling')
 
   const mutation = useMutation({
     mutationFn: (data: FormData) => workOrdersApi.create({
@@ -127,109 +103,7 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
             </div>
           </div>
 
-          {/* Rate */}
-          <div className="border-t pt-4">
-            <p className="text-sm font-medium text-gray-700 mb-3">Rate</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Rate Type *</Label>
-                <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
-                  {(['HOURLY', 'DAILY_SHIFT', 'MONTHLY'] as RateType[]).map(rt => (
-                    <label key={rt} className={cn(
-                      'flex-1 text-center text-xs py-1.5 rounded-md cursor-pointer font-medium transition-colors',
-                      rateType === rt ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'
-                    )}>
-                      <input type="radio" className="hidden" value={rt} {...register('rateType')} />
-                      {RATE_LABELS[rt]}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Rate Amount (₹) *</Label>
-                <Input type="number" step="0.01" placeholder="5000" {...register('rateAmount')} />
-                {errors.rateAmount && <p className="text-red-500 text-xs">{errors.rateAmount.message}</p>}
-              </div>
-              {rateType === 'DAILY_SHIFT' && <>
-                <div className="space-y-1.5">
-                  <Label>Shift Hours</Label>
-                  <Input type="number" placeholder="8" {...register('shiftHours')} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>OT Rate / Hour (₹) <span className="text-gray-400 font-normal">optional</span></Label>
-                  <Input type="number" step="0.01" placeholder="leave blank for flat rate" {...register('overtimeRatePerHour')} />
-                </div>
-              </>}
-            </div>
-          </div>
-
-          {/* Operator */}
-          <div className="border-t pt-4">
-            <p className="text-sm font-medium text-gray-700 mb-3">Operator <span className="text-xs text-gray-400 font-normal">optional</span></p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Operator Type</Label>
-                <Controller name="operatorType" control={control} render={({ field }) => (
-                  <SearchableSelect
-                    value={field.value ?? ''}
-                    onValueChange={v => field.onChange(v || undefined)}
-                    options={[
-                      { value: 'OWN_STAFF', label: 'Own Staff' },
-                      { value: 'HIRED', label: 'Hired' },
-                      { value: 'CLIENT_PROVIDED', label: 'Client Provided' },
-                    ]}
-                    placeholder="No operator"
-                  />
-                )} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Operator Billing</Label>
-                <Controller name="operatorBilling" control={control} render={({ field }) => (
-                  <SearchableSelect
-                    value={field.value ?? 'NOT_BILLED'}
-                    onValueChange={v => field.onChange(v)}
-                    options={[
-                      { value: 'NOT_BILLED', label: 'Not Billed (salary)' },
-                      { value: 'INCLUDED_IN_RATE', label: 'Included in Rate' },
-                      { value: 'BILLED_SEPARATELY', label: 'Billed Separately' },
-                    ]}
-                    placeholder="Not billed"
-                  />
-                )} />
-              </div>
-              {operatorType === 'OWN_STAFF' && (
-                <div className="space-y-1.5">
-                  <Label>Select Operator</Label>
-                  <Controller name="operatorStaffId" control={control} render={({ field }) => (
-                    <SearchableSelect
-                      value={field.value ? String(field.value) : ''}
-                      onValueChange={v => field.onChange(v ? Number(v) : undefined)}
-                      options={(equipStaffRes?.data ?? []).map(s => ({ value: String(s.userId), label: `${s.userName} (${s.roleName})` }))}
-                      placeholder="Select staff member"
-                    />
-                  )} />
-                </div>
-              )}
-              {operatorType === 'HIRED' && <>
-                <div className="space-y-1.5">
-                  <Label>Operator Name</Label>
-                  <Input placeholder="Ramesh Kumar" {...register('hiredOperatorName')} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Operator Phone</Label>
-                  <Input placeholder="9876543210" maxLength={10} {...register('hiredOperatorPhone')} />
-                </div>
-              </>}
-              {operatorBilling === 'BILLED_SEPARATELY' && (
-                <div className="space-y-1.5">
-                  <Label>Operator Rate / Day (₹)</Label>
-                  <Input type="number" step="0.01" placeholder="800" {...register('operatorRatePerDay')} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Charges + Dates */}
+          {/* Dates & Charges */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Dates & Charges</p>
             <div className="grid grid-cols-2 gap-4">
@@ -374,7 +248,6 @@ export function WorkOrdersListPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">WO #</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Client</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Site</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Rate</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Machines</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Dates</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
@@ -389,10 +262,6 @@ export function WorkOrdersListPage() {
                     <td className="py-3 px-4 text-sm font-mono font-medium text-gray-800">{wo.woNumber}</td>
                     <td className="py-3 px-4 text-sm text-gray-700">{wo.clientName}</td>
                     <td className="py-3 px-4 text-sm text-gray-500">{wo.site ?? '—'}</td>
-                    <td className="py-3 px-4">
-                      <div className="text-sm text-gray-700">₹{wo.rateAmount.toLocaleString('en-IN')}</div>
-                      <div className="text-xs text-gray-400">{RATE_LABELS[wo.rateType]}</div>
-                    </td>
                     <td className="py-3 px-4 text-sm text-gray-600">{wo.machineCount}</td>
                     <td className="py-3 px-4">
                       <div className="text-xs text-gray-600">{wo.startDate}</div>
