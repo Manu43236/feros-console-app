@@ -126,6 +126,82 @@ export interface EquipmentMeterReadingRequest {
   notes?: string
 }
 
+
+export type ServiceTriggeredBy = 'SCHEDULED' | 'BREAKDOWN' | 'ACCIDENT' | 'COMPLIANCE' | 'WARRANTY'
+export type EquipmentServiceType = 'INTERNAL' | 'THIRD_PARTY' | 'OEM_CENTER'
+export type ServicePayerType = 'OWN_EXPENSE' | 'WARRANTY_OEM' | 'WARRANTY_ANC' | 'INSURANCE' | 'AMC'
+export type ServiceStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
+export type ServiceTaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
+
+export interface EquipmentServiceTask {
+  id: number
+  taskTypeId: number | null
+  taskTypeName: string | null
+  customName: string | null
+  displayName: string | null
+  isRecurring: boolean
+  frequencyHmr: number | null
+  cost: number | null
+  status: ServiceTaskStatus
+  startedAt: string | null
+  completedAt: string | null
+}
+
+export interface EquipmentServiceRecord {
+  id: number
+  equipmentId: number
+  equipmentIdentifier: string | null
+  serviceNumber: string
+  triggeredBy: ServiceTriggeredBy
+  serviceType: EquipmentServiceType
+  payerType: ServicePayerType
+  status: ServiceStatus
+  hmrAtService: number | null
+  dueAtHmr: number | null
+  vendorName: string | null
+  location: string | null
+  serviceDate: string | null
+  completedDate: string | null
+  startedAt: string | null
+  totalCost: number | null
+  insuranceClaimNo: string | null
+  insuranceClaimAmt: number | null
+  certificateNumber: string | null
+  certificateValidUntil: string | null
+  isEscalated: boolean
+  notes: string | null
+  invoiceId: number | null
+  tasks: EquipmentServiceTask[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EquipmentServiceTaskRequest {
+  taskTypeId?: number | null
+  customName?: string | null
+  isRecurring: boolean
+  frequencyHmr?: number | null
+  cost?: number | null
+}
+
+export interface EquipmentServiceRequest {
+  triggeredBy: ServiceTriggeredBy
+  serviceType: EquipmentServiceType
+  payerType?: ServicePayerType
+  vendorName?: string | null
+  location?: string | null
+  serviceDate?: string | null
+  hmrAtService?: number | null
+  dueAtHmr?: number | null
+  notes?: string | null
+  insuranceClaimNo?: string | null
+  insuranceClaimAmt?: number | null
+  certificateNumber?: string | null
+  certificateValidUntil?: string | null
+  isEscalated?: boolean
+  tasks: EquipmentServiceTaskRequest[]
+}
+
 export const equipmentApi = {
   getDashboard: () => apiClient.get<ApiResponse<EquipmentDashboardResponse>>('/equipment/dashboard').then(r => r.data),
   getAll: () => apiClient.get<ApiResponse<Equipment[]>>('/equipment').then(r => r.data),
@@ -146,4 +222,12 @@ export const equipmentApi = {
   addMeterReading: (id: number, data: EquipmentMeterReadingRequest) => apiClient.post<ApiResponse<EquipmentMeterReading>>(`/equipment/${id}/meter-readings`, data).then(r => r.data),
   updateMeterReading: (id: number, readingId: number, data: EquipmentMeterReadingRequest) => apiClient.put<ApiResponse<EquipmentMeterReading>>(`/equipment/${id}/meter-readings/${readingId}`, data).then(r => r.data),
   deleteMeterReading: (id: number, readingId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/meter-readings/${readingId}`).then(r => r.data),
+
+  // Service records
+  getServices: (id: number) => apiClient.get<ApiResponse<EquipmentServiceRecord[]>>(`/equipment/${id}/services`).then(r => r.data),
+  createService: (id: number, data: EquipmentServiceRequest) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services`, data).then(r => r.data),
+  updateService: (id: number, serviceId: number, data: EquipmentServiceRequest) => apiClient.put<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}`, data).then(r => r.data),
+  startService: (id: number, serviceId: number) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/start`, {}).then(r => r.data),
+  completeService: (id: number, serviceId: number) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/complete`, {}).then(r => r.data),
+  deleteService: (id: number, serviceId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/services/${serviceId}`).then(r => r.data),
 }

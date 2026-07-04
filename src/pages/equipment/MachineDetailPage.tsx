@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Info, TrendingUp, Gauge, Droplets,
   ClipboardList, FileText, AlertTriangle, ChevronRight,
-  Plus, Pencil, Trash2,
+  Plus, Pencil, Trash2, Wrench, ChevronDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -14,8 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { equipmentApi } from '@/api/equipment'
+import { globalMastersApi } from '@/api/masters'
 import { machinesApi } from '@/api/machines'
-import type { Equipment, EquipmentWorkStatus, EquipmentFuelLog, EquipmentFuelLogRequest, EquipmentMeterReading, EquipmentMeterReadingRequest } from '@/api/equipment'
+import type { Equipment, EquipmentWorkStatus, EquipmentFuelLog, EquipmentFuelLogRequest, EquipmentMeterReading, EquipmentMeterReadingRequest, EquipmentServiceRecord, EquipmentServiceRequest, ServiceTriggeredBy, EquipmentServiceType, ServicePayerType } from '@/api/equipment'
+import type { MasterItem } from '@/types'
 import type { MachineAssignmentHistory, MachineDailyLog, MachineInvoiceItem } from '@/api/machines'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -46,11 +48,11 @@ const WORK_STATUS: Record<EquipmentWorkStatus, { label: string; cls: string }> =
   ASSIGNED:  { label: 'Assigned',   cls: 'bg-blue-100 text-blue-700' },
   BUSY:      { label: 'Busy',       cls: 'bg-orange-100 text-orange-700' },
   BREAKDOWN: { label: 'Breakdown',  cls: 'bg-red-100 text-red-700' },
-  IN_REPAIR: { label: 'In Repair',  cls: 'bg-yellow-100 text-yellow-700' },
+  IN_REPAIR:          { label: 'In Repair',         cls: 'bg-yellow-100 text-yellow-700' },
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Utilization', 'HMR', 'Fuel', 'WO History', 'Billings'] as const
+const TABS = ['Basic Info', 'Utilization', 'HMR', 'Fuel', 'Service', 'WO History', 'Billings'] as const
 type Tab = typeof TABS[number]
 
 function tabIcon(t: Tab) {
@@ -60,6 +62,7 @@ function tabIcon(t: Tab) {
   if (t === 'Fuel')        return <Droplets size={14} />
   if (t === 'WO History')  return <ClipboardList size={14} />
   if (t === 'Billings')    return <FileText size={14} />
+  if (t === 'Service')     return <Wrench size={14} />
 }
 
 // ── Date filter bar ───────────────────────────────────────────────────────────
@@ -572,6 +575,523 @@ function FuelTab({ equipmentId }: { equipmentId: number }) {
   )
 }
 
+
+// ── Service Tab ───────────────────────────────────────────────────────────────
+const TRIGGER_LABELS: Record<string, string> = {
+  SCHEDULED: 'Scheduled', BREAKDOWN: 'Breakdown', ACCIDENT: 'Accident',
+  COMPLIANCE: 'Compliance', WARRANTY: 'Warranty',
+}
+const TRIGGER_CLS: Record<string, string> = {
+  SCHEDULED: 'bg-blue-100 text-blue-700', BREAKDOWN: 'bg-red-100 text-red-700',
+  ACCIDENT: 'bg-orange-100 text-orange-700', COMPLIANCE: 'bg-purple-100 text-purple-700',
+  WARRANTY: 'bg-green-100 text-green-700',
+}
+const SERVICE_STATUS_CLS: Record<string, string> = {
+  OPEN: 'bg-gray-100 text-gray-600', IN_PROGRESS: 'bg-amber-100 text-amber-700',
+  COMPLETED: 'bg-green-100 text-green-700',
+}
+const PAYER_LABELS: Record<string, string> = {
+  OWN_EXPENSE: 'Own', WARRANTY_OEM: 'OEM Warranty', WARRANTY_ANC: 'ANC Warranty',
+  INSURANCE: 'Insurance', AMC: 'AMC',
+}
+const SVC_TYPE_LABELS: Record<string, string> = {
+  INTERNAL: 'Internal', THIRD_PARTY: '3rd Party', OEM_CENTER: 'OEM Center',
+}
+
+interface ServiceDraft {
+  triggeredBy: ServiceTriggeredBy
+  serviceType: EquipmentServiceType
+  payerType: ServicePayerType
+  vendorName: string
+  location: string
+  serviceDate: string
+  hmrAtService: string
+  dueAtHmr: string
+  notes: string
+  insuranceClaimNo: string
+  insuranceClaimAmt: string
+  certificateNumber: string
+  certificateValidUntil: string
+  isEscalated: boolean
+}
+
+interface TaskDraft {
+  taskTypeId?: number
+  customName?: string
+  isRecurring: boolean
+  frequencyHmr?: string
+  cost?: string
+}
+
+function defaultDraft(): ServiceDraft {
+  return {
+    triggeredBy: 'SCHEDULED', serviceType: 'INTERNAL', payerType: 'OWN_EXPENSE',
+    vendorName: '', location: '', serviceDate: '', hmrAtService: '', dueAtHmr: '',
+    notes: '', insuranceClaimNo: '', insuranceClaimAmt: '',
+    certificateNumber: '', certificateValidUntil: '', isEscalated: false,
+  }
+}
+
+function ServiceDialog({
+  open, onClose, equipmentId, editing,
+}: { open: boolean; onClose: () => void; equipmentId: number; editing: EquipmentServiceRecord | null }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState<ServiceDraft>(defaultDraft())
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
+  const [taskDrafts, setTaskDrafts] = useState<Record<number, TaskDraft>>({})
+  const [customTasks, setCustomTasks] = useState<TaskDraft[]>([])
+  const [customName, setCustomName] = useState('')
+  const [showCustom, setShowCustom] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
+
+  const { data: taskTypesRes } = useQuery({
+    queryKey: ['service-task-types'],
+    queryFn: globalMastersApi.getServiceTaskTypes,
+    enabled: open,
+  })
+  const taskTypes: MasterItem[] = taskTypesRes?.data ?? []
+
+  // Populate form when editing
+  useState(() => {
+    if (editing) {
+      setForm({
+        triggeredBy: editing.triggeredBy, serviceType: editing.serviceType,
+        payerType: editing.payerType, vendorName: editing.vendorName ?? '',
+        location: editing.location ?? '', serviceDate: editing.serviceDate ?? '',
+        hmrAtService: editing.hmrAtService != null ? String(editing.hmrAtService) : '',
+        dueAtHmr: editing.dueAtHmr != null ? String(editing.dueAtHmr) : '',
+        notes: editing.notes ?? '', insuranceClaimNo: editing.insuranceClaimNo ?? '',
+        insuranceClaimAmt: editing.insuranceClaimAmt != null ? String(editing.insuranceClaimAmt) : '',
+        certificateNumber: editing.certificateNumber ?? '',
+        certificateValidUntil: editing.certificateValidUntil ?? '',
+        isEscalated: editing.isEscalated ?? false,
+      })
+      // Rebuild tasks
+      const ids = new Set<number>()
+      const drafts: Record<number, TaskDraft> = {}
+      const customs: TaskDraft[] = []
+      for (const t of editing.tasks) {
+        if (t.taskTypeId != null) {
+          ids.add(t.taskTypeId)
+          drafts[t.taskTypeId] = { taskTypeId: t.taskTypeId, isRecurring: t.isRecurring, frequencyHmr: t.frequencyHmr != null ? String(t.frequencyHmr) : undefined, cost: t.cost != null ? String(t.cost) : undefined }
+        } else {
+          customs.push({ customName: t.customName ?? '', isRecurring: t.isRecurring, frequencyHmr: t.frequencyHmr != null ? String(t.frequencyHmr) : undefined, cost: t.cost != null ? String(t.cost) : undefined })
+        }
+      }
+      setSelectedTaskIds(ids)
+      setTaskDrafts(drafts)
+      setCustomTasks(customs)
+    }
+  })
+
+  const mut = useMutation({
+    mutationFn: (data: EquipmentServiceRequest) =>
+      editing
+        ? equipmentApi.updateService(equipmentId, editing.id, data)
+        : equipmentApi.createService(equipmentId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] })
+      toast.success(editing ? 'Service updated' : 'Service created')
+      handleClose()
+    },
+    onError: () => toast.error('Failed to save service'),
+  })
+
+  function handleClose() {
+    setForm(defaultDraft())
+    setSelectedTaskIds(new Set()); setTaskDrafts({}); setCustomTasks([])
+    setCustomName(''); setShowCustom(false)
+    onClose()
+  }
+
+  function set<K extends keyof ServiceDraft>(k: K, v: ServiceDraft[K]) {
+    setForm(f => ({ ...f, [k]: v }))
+  }
+
+  function toggleTask(id: number) {
+    setSelectedTaskIds(prev => {
+      const s = new Set(prev)
+      if (s.has(id)) { s.delete(id); setTaskDrafts(d => { const n = { ...d }; delete n[id]; return n }) }
+      else { s.add(id); setTaskDrafts(d => ({ ...d, [id]: { taskTypeId: id, isRecurring: false } })) }
+      return s
+    })
+  }
+
+  function updateDraft(id: number, patch: Partial<TaskDraft>) {
+    setTaskDrafts(d => ({ ...d, [id]: { ...(d[id] ?? {}), ...patch } as TaskDraft }))
+  }
+
+  function handleSubmit() {
+    const tasks = [
+      ...Array.from(selectedTaskIds).map(id => {
+        const d = taskDrafts[id] ?? { isRecurring: false }
+        return { taskTypeId: id, customName: null, isRecurring: d.isRecurring, frequencyHmr: d.isRecurring && d.frequencyHmr ? Number(d.frequencyHmr) : null, cost: d.cost ? Number(d.cost) : null }
+      }),
+      ...customTasks.map(ct => ({ taskTypeId: null, customName: ct.customName ?? null, isRecurring: ct.isRecurring, frequencyHmr: ct.isRecurring && ct.frequencyHmr ? Number(ct.frequencyHmr) : null, cost: ct.cost ? Number(ct.cost) : null })),
+    ]
+    if (tasks.length === 0) { toast.error('Add at least one task'); return }
+    mut.mutate({
+      triggeredBy: form.triggeredBy, serviceType: form.serviceType, payerType: form.payerType,
+      vendorName: form.vendorName || null, location: form.location || null,
+      serviceDate: form.serviceDate || null,
+      hmrAtService: form.hmrAtService ? Number(form.hmrAtService) : null,
+      dueAtHmr: form.dueAtHmr ? Number(form.dueAtHmr) : null,
+      notes: form.notes || null,
+      insuranceClaimNo: form.payerType === 'INSURANCE' ? form.insuranceClaimNo || null : null,
+      insuranceClaimAmt: form.payerType === 'INSURANCE' && form.insuranceClaimAmt ? Number(form.insuranceClaimAmt) : null,
+      certificateNumber: form.triggeredBy === 'COMPLIANCE' ? form.certificateNumber || null : null,
+      certificateValidUntil: form.triggeredBy === 'COMPLIANCE' ? form.certificateValidUntil || null : null,
+      isEscalated: form.isEscalated,
+      tasks,
+    })
+  }
+
+  const btnCls = (active: boolean) => cn('py-2 rounded-lg border-2 text-xs font-medium transition-colors',
+    active ? 'border-[#1C1400] bg-[#1C1400]/5 text-[#1C1400]' : 'border-gray-200 text-gray-500 hover:border-gray-300')
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wrench size={16} className="text-[#1C1400]" />
+            {editing ? 'Edit Service' : 'New Service Record'}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-1">
+
+          {/* Trigger */}
+          <div className="space-y-1.5">
+            <Label>Reason / Trigger <span className="text-red-500">*</span></Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['SCHEDULED', 'BREAKDOWN', 'ACCIDENT', 'COMPLIANCE', 'WARRANTY'] as ServiceTriggeredBy[]).map(v => (
+                <button key={v} type="button" onClick={() => set('triggeredBy', v)} className={btnCls(form.triggeredBy === v)}>
+                  {TRIGGER_LABELS[v]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Service Type */}
+          <div className="space-y-1.5">
+            <Label>Service Location <span className="text-red-500">*</span></Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['INTERNAL', 'THIRD_PARTY', 'OEM_CENTER'] as EquipmentServiceType[]).map(v => (
+                <button key={v} type="button" onClick={() => set('serviceType', v)} className={btnCls(form.serviceType === v)}>
+                  {SVC_TYPE_LABELS[v]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Payer */}
+          <div className="space-y-1.5">
+            <Label>Who Pays?</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['OWN_EXPENSE', 'WARRANTY_OEM', 'WARRANTY_ANC', 'INSURANCE', 'AMC'] as ServicePayerType[]).map(v => (
+                <button key={v} type="button" onClick={() => set('payerType', v)} className={btnCls(form.payerType === v)}>
+                  {PAYER_LABELS[v]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Vendor */}
+          {form.serviceType !== 'INTERNAL' && (
+            <div className="space-y-1.5">
+              <Label>{form.serviceType === 'OEM_CENTER' ? 'OEM Service Center' : 'Vendor / Workshop'}</Label>
+              <Input value={form.vendorName} onChange={e => set('vendorName', e.target.value)} placeholder="e.g. Atlas Copco Service Center" />
+            </div>
+          )}
+
+          {/* Insurance */}
+          {form.payerType === 'INSURANCE' && (
+            <div className="grid grid-cols-2 gap-3 bg-blue-50 rounded-lg p-3">
+              <div className="space-y-1.5">
+                <Label>Claim Number <span className="text-red-500">*</span></Label>
+                <Input value={form.insuranceClaimNo} onChange={e => set('insuranceClaimNo', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Claim Amount (₹)</Label>
+                <Input type="number" value={form.insuranceClaimAmt} onChange={e => set('insuranceClaimAmt', e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* Compliance */}
+          {form.triggeredBy === 'COMPLIANCE' && (
+            <div className="grid grid-cols-2 gap-3 bg-purple-50 rounded-lg p-3">
+              <div className="space-y-1.5">
+                <Label>Certificate Number <span className="text-red-500">*</span></Label>
+                <Input value={form.certificateNumber} onChange={e => set('certificateNumber', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Valid Until</Label>
+                <Input type="date" value={form.certificateValidUntil} onChange={e => set('certificateValidUntil', e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* Escalated */}
+          {form.serviceType === 'THIRD_PARTY' && form.triggeredBy === 'BREAKDOWN' && (
+            <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" checked={form.isEscalated} onChange={e => set('isEscalated', e.target.checked)} className="w-4 h-4 accent-[#1C1400]" />
+              Internal mechanic could not fix — escalated to 3rd party
+            </label>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>Location <span className="text-gray-400 font-normal">(optional)</span></Label>
+            <Input value={form.location} onChange={e => set('location', e.target.value)} placeholder="e.g. Site yard, Vizag" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Service Date</Label>
+              <Input type="date" value={form.serviceDate} onChange={e => set('serviceDate', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>HMR at Service</Label>
+              <Input type="number" placeholder="e.g. 1240" value={form.hmrAtService} onChange={e => set('hmrAtService', e.target.value)} />
+            </div>
+          </div>
+
+          {form.triggeredBy === 'SCHEDULED' && (
+            <div className="space-y-1.5">
+              <Label>Due At HMR <span className="text-gray-400 font-normal">(hrs)</span></Label>
+              <Input type="number" placeholder="e.g. 1500" value={form.dueAtHmr} onChange={e => set('dueAtHmr', e.target.value)} />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>Notes <span className="text-gray-400 font-normal">(optional)</span></Label>
+            <Input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Any additional notes…" />
+          </div>
+
+          {/* Tasks */}
+          <div className="space-y-2">
+            <Label>Tasks <span className="text-red-500">*</span></Label>
+            <div className="flex gap-2">
+              <select value="" onChange={e => { if (e.target.value) toggleTask(Number(e.target.value)) }}
+                className="flex-1 h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none">
+                <option value="">+ Select a task…</option>
+                {taskTypes.filter(t => !selectedTaskIds.has(t.id)).map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              <Button type="button" variant="outline" size="sm" className="h-9 text-xs px-3 shrink-0"
+                onClick={() => setShowCustom(v => !v)}>
+                <Plus size={13} className="mr-1" /> Custom
+              </Button>
+            </div>
+
+            {showCustom && (
+              <div className="flex gap-2">
+                <Input placeholder="Custom task name…" className="h-8 text-sm flex-1" value={customName} onChange={e => setCustomName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (customName.trim()) { setCustomTasks(c => [...c, { customName: customName.trim(), isRecurring: false }]); setCustomName('') } } }} />
+                <Button type="button" size="sm" className="h-8 bg-[#1C1400] text-white shrink-0" onClick={() => { if (customName.trim()) { setCustomTasks(c => [...c, { customName: customName.trim(), isRecurring: false }]); setCustomName('') } }}>Add</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => { setShowCustom(false); setCustomName('') }} className="h-8 shrink-0">✕</Button>
+              </div>
+            )}
+
+            {(selectedTaskIds.size > 0 || customTasks.length > 0) && (
+              <div className="space-y-2 pt-1">
+                {Array.from(selectedTaskIds).map(id => {
+                  const t = taskTypes.find(x => x.id === id)
+                  const d = taskDrafts[id]
+                  return (
+                    <div key={id} className="rounded-lg border border-[#1C1400]/20 bg-[#1C1400]/[0.03] px-3 py-2.5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#1C1400]">{t?.name}</span>
+                        <button type="button" onClick={() => toggleTask(id)} className="text-gray-300 hover:text-red-500 transition-colors ml-2">✕</button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
+                          <Input type="number" placeholder="0" className="h-7 text-xs" value={d?.cost ?? ''} onChange={e => updateDraft(id, { cost: e.target.value || undefined })} /></div>
+                        <div><p className="text-xs text-gray-400 mb-1">Recurring?</p>
+                          <button type="button" onClick={() => updateDraft(id, { isRecurring: !d?.isRecurring })}
+                            className={cn('h-7 w-full rounded-md border text-xs font-medium transition-colors', d?.isRecurring ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500')}>
+                            {d?.isRecurring ? '🔄 Recurring' : 'One-time'}</button></div>
+                      </div>
+                      {d?.isRecurring && (
+                        <div><p className="text-xs text-gray-400 mb-1">Every (hrs)</p>
+                          <Input type="number" placeholder="250" className="h-7 text-xs" value={d?.frequencyHmr ?? ''} onChange={e => updateDraft(id, { frequencyHmr: e.target.value || undefined })} /></div>
+                      )}
+                    </div>
+                  )
+                })}
+                {customTasks.map((ct, i) => (
+                  <div key={`ct-${i}`} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">{ct.customName}</span>
+                      <button type="button" onClick={() => setCustomTasks(c => c.filter((_, j) => j !== i))} className="text-gray-300 hover:text-red-500 ml-2">✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={handleClose} disabled={mut.isPending}>Cancel</Button>
+            <Button type="button" onClick={handleSubmit} disabled={mut.isPending}
+              className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white">
+              {mut.isPending ? 'Saving…' : editing ? 'Update Service' : 'Create Service'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ServiceTab({ equipmentId }: { equipmentId: number }) {
+  const qc = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<EquipmentServiceRecord | null>(null)
+  const [expanded, setExpanded] = useState<number | null>(null)
+
+  const { data } = useQuery({
+    queryKey: ['eq-services', equipmentId],
+    queryFn: () => equipmentApi.getServices(equipmentId),
+  })
+  const services = (data?.data ?? []) as EquipmentServiceRecord[]
+
+  const startMut = useMutation({
+    mutationFn: (id: number) => equipmentApi.startService(equipmentId, id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] }); qc.invalidateQueries({ queryKey: ['equipment', equipmentId] }); toast.success('Service started — machine is now Under Maintenance') },
+    onError: () => toast.error('Failed to start service'),
+  })
+
+  const completeMut = useMutation({
+    mutationFn: (id: number) => equipmentApi.completeService(equipmentId, id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] }); qc.invalidateQueries({ queryKey: ['equipment', equipmentId] }); toast.success('Service completed') },
+    onError: () => toast.error('Failed to complete service'),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (id: number) => equipmentApi.deleteService(equipmentId, id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] }); toast.success('Deleted') },
+    onError: () => toast.error('Failed to delete'),
+  })
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-3">
+          <div className="bg-gray-50 rounded-lg px-4 py-2.5 border border-gray-100">
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Total</p>
+            <p className="text-lg font-bold text-gray-700">{services.length}</p>
+          </div>
+          <div className="bg-amber-50 rounded-lg px-4 py-2.5 border border-amber-100">
+            <p className="text-xs text-amber-600 font-semibold uppercase tracking-wide">Open / Active</p>
+            <p className="text-lg font-bold text-amber-700">{services.filter(s => s.status !== 'COMPLETED').length}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg px-4 py-2.5 border border-green-100">
+            <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">Total Cost</p>
+            <p className="text-lg font-bold text-green-700">{fmtMoney(services.reduce((s, r) => s + Number(r.totalCost ?? 0), 0)) || '—'}</p>
+          </div>
+        </div>
+        <Button size="sm" className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1.5"
+          onClick={() => { setEditing(null); setDialogOpen(true) }}>
+          <Plus size={14} /> New Service
+        </Button>
+      </div>
+
+      {services.length === 0 ? (
+        <div className="py-12 text-center text-gray-400">
+          <Wrench size={32} className="mx-auto mb-3 text-gray-200" />
+          <p className="text-sm">No service records yet</p>
+        </div>
+      ) : (
+        <div className="border border-gray-100 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                {['#', 'Date', 'Trigger', 'Type', 'Status', 'HMR', 'Cost', 'Tasks', ''].map(h => (
+                  <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {services.map(s => (
+                <>
+                  <tr key={s.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
+                    <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{s.serviceNumber}</td>
+                    <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{fmtDate(s.serviceDate)}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', TRIGGER_CLS[s.triggeredBy] ?? 'bg-gray-100 text-gray-600')}>
+                        {TRIGGER_LABELS[s.triggeredBy]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-gray-600">{SVC_TYPE_LABELS[s.serviceType]}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', SERVICE_STATUS_CLS[s.status] ?? 'bg-gray-100 text-gray-600')}>
+                        {s.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-600">{s.hmrAtService != null ? `${s.hmrAtService} hrs` : '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-800">{s.totalCost != null ? fmtMoney(s.totalCost) : '—'}</td>
+                    <td className="px-4 py-2.5 text-xs text-gray-500">{s.tasks.length} task{s.tasks.length !== 1 ? 's' : ''}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        {s.status === 'OPEN' && (
+                          <>
+                            <button onClick={() => startMut.mutate(s.id)} disabled={startMut.isPending}
+                              className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors whitespace-nowrap">Start</button>
+                            <button onClick={() => { setEditing(s); setDialogOpen(true) }} className="text-gray-400 hover:text-gray-700"><Pencil size={13} /></button>
+                            <button onClick={() => { if (confirm('Delete this service record?')) deleteMut.mutate(s.id) }} className="text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
+                          </>
+                        )}
+                        {s.status === 'IN_PROGRESS' && (
+                          <button onClick={() => completeMut.mutate(s.id)} disabled={completeMut.isPending}
+                            className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 transition-colors whitespace-nowrap">Complete</button>
+                        )}
+                        <ChevronDown size={13} className={cn('text-gray-400 transition-transform', expanded === s.id ? 'rotate-180' : '')} />
+                      </div>
+                    </td>
+                  </tr>
+                  {expanded === s.id && (
+                    <tr key={`${s.id}-detail`} className="bg-gray-50">
+                      <td colSpan={9} className="px-6 py-4">
+                        <div className="space-y-3">
+                          {s.vendorName && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Vendor:</span> {s.vendorName}</p>}
+                          {s.location && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Location:</span> {s.location}</p>}
+                          {s.payerType && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Payer:</span> {PAYER_LABELS[s.payerType]}</p>}
+                          {s.notes && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Notes:</span> {s.notes}</p>}
+                          {s.tasks.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-2">Tasks</p>
+                              <div className="space-y-1">
+                                {s.tasks.map(t => (
+                                  <div key={t.id} className="flex items-center justify-between bg-white rounded-md px-3 py-2 border border-gray-100">
+                                    <span className="text-xs text-gray-700">{t.displayName ?? t.customName ?? t.taskTypeName ?? '—'}</span>
+                                    <div className="flex items-center gap-3">
+                                      {t.cost != null && <span className="text-xs text-gray-500">{fmtMoney(t.cost)}</span>}
+                                      {t.isRecurring && <span className="text-xs text-blue-600">Every {t.frequencyHmr} hrs</span>}
+                                      <span className={cn('text-xs px-1.5 py-0.5 rounded-full', SERVICE_STATUS_CLS[t.status] ?? 'bg-gray-100 text-gray-500')}>{t.status}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <ServiceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} equipmentId={equipmentId} editing={editing} />
+    </div>
+  )
+}
+
 // ── WO History Tab ────────────────────────────────────────────────────────────
 const WO_STATUS_CLS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700', COMPLETED: 'bg-gray-100 text-gray-600',
@@ -873,6 +1393,7 @@ export function MachineDetailPage() {
           {activeTab === 'Utilization' && <UtilizationTab logs={logs} from="" to="" onFrom={() => {}} onTo={() => {}} />}
           {activeTab === 'HMR'         && <HmrTab equipmentId={id} logs={logs} />}
           {activeTab === 'Fuel'        && <FuelTab equipmentId={id} />}
+          {activeTab === 'Service'      && <ServiceTab equipmentId={id} />}
           {activeTab === 'WO History'  && <WoHistoryTab history={history} navigate={navigate} />}
           {activeTab === 'Billings'    && <BillingsTab items={invItems} navigate={navigate} />}
         </div>
