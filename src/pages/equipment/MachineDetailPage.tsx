@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Info, TrendingUp, Gauge, Droplets,
   ClipboardList, FileText, AlertTriangle, ChevronRight,
-  Plus, Pencil, Trash2, Wrench, ChevronDown,
+  Plus, Pencil, Trash2, Wrench, ChevronDown, Search, Check,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -581,11 +581,6 @@ const TRIGGER_LABELS: Record<string, string> = {
   SCHEDULED: 'Scheduled', BREAKDOWN: 'Breakdown', ACCIDENT: 'Accident',
   COMPLIANCE: 'Compliance', WARRANTY: 'Warranty',
 }
-const TRIGGER_CLS: Record<string, string> = {
-  SCHEDULED: 'bg-blue-100 text-blue-700', BREAKDOWN: 'bg-red-100 text-red-700',
-  ACCIDENT: 'bg-orange-100 text-orange-700', COMPLIANCE: 'bg-purple-100 text-purple-700',
-  WARRANTY: 'bg-green-100 text-green-700',
-}
 const SERVICE_STATUS_CLS: Record<string, string> = {
   OPEN: 'bg-gray-100 text-gray-600', IN_PROGRESS: 'bg-amber-100 text-amber-700',
   COMPLETED: 'bg-green-100 text-green-700',
@@ -944,13 +939,25 @@ function ServiceDialog({
   )
 }
 
+const SVC_STATUS_CHIP: Record<string, string> = {
+  OPEN:        'bg-blue-50 text-blue-600 border-blue-200',
+  IN_PROGRESS: 'bg-amber-50 text-amber-600 border-amber-200',
+  COMPLETED:   'bg-green-50 text-green-700 border-green-200',
+}
+const SVC_STATUS_LABEL: Record<string, string> = {
+  OPEN: 'Open', IN_PROGRESS: 'In Progress', COMPLETED: 'Completed',
+}
+
 function ServiceTab({ equipmentId }: { equipmentId: number }) {
   const qc = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<EquipmentServiceRecord | null>(null)
+  const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'completed'>('all')
+  const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<number | null>(null)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['eq-services', equipmentId],
     queryFn: () => equipmentApi.getServices(equipmentId),
   })
@@ -958,135 +965,227 @@ function ServiceTab({ equipmentId }: { equipmentId: number }) {
 
   const startMut = useMutation({
     mutationFn: (id: number) => equipmentApi.startService(equipmentId, id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] }); qc.invalidateQueries({ queryKey: ['equipment', equipmentId] }); toast.success('Service started — machine is now Under Maintenance') },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] })
+      qc.invalidateQueries({ queryKey: ['equipment', equipmentId] })
+      toast.success('Service started — machine is now In Repair')
+    },
     onError: () => toast.error('Failed to start service'),
   })
 
   const completeMut = useMutation({
     mutationFn: (id: number) => equipmentApi.completeService(equipmentId, id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] }); qc.invalidateQueries({ queryKey: ['equipment', equipmentId] }); toast.success('Service completed') },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] })
+      qc.invalidateQueries({ queryKey: ['equipment', equipmentId] })
+      toast.success('Service completed')
+    },
     onError: () => toast.error('Failed to complete service'),
   })
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => equipmentApi.deleteService(equipmentId, id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] }); toast.success('Deleted') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] }); toast.success('Deleted'); setDeleteId(null) },
     onError: () => toast.error('Failed to delete'),
   })
 
+  const filtered = services.filter(s => {
+    if (filter === 'open'        && s.status !== 'OPEN')        return false
+    if (filter === 'in_progress' && s.status !== 'IN_PROGRESS') return false
+    if (filter === 'completed'   && s.status !== 'COMPLETED')   return false
+    if (search && !s.serviceNumber?.toLowerCase().includes(search.toLowerCase()) &&
+        !s.notes?.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-3">
-          <div className="bg-gray-50 rounded-lg px-4 py-2.5 border border-gray-100">
-            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Total</p>
-            <p className="text-lg font-bold text-gray-700">{services.length}</p>
-          </div>
-          <div className="bg-amber-50 rounded-lg px-4 py-2.5 border border-amber-100">
-            <p className="text-xs text-amber-600 font-semibold uppercase tracking-wide">Open / Active</p>
-            <p className="text-lg font-bold text-amber-700">{services.filter(s => s.status !== 'COMPLETED').length}</p>
-          </div>
-          <div className="bg-green-50 rounded-lg px-4 py-2.5 border border-green-100">
-            <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">Total Cost</p>
-            <p className="text-lg font-bold text-green-700">{fmtMoney(services.reduce((s, r) => s + Number(r.totalCost ?? 0), 0)) || '—'}</p>
-          </div>
+    <div className="space-y-4">
+      {/* Search + New Service */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Input placeholder="Search services…" className="pl-8 h-9"
+            value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <Button size="sm" className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1.5"
-          onClick={() => { setEditing(null); setDialogOpen(true) }}>
-          <Plus size={14} /> New Service
+        <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true) }}
+          className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1.5 h-9 text-xs">
+          <Plus size={13} /> New Service
         </Button>
       </div>
 
-      {services.length === 0 ? (
+      {/* Filter pills */}
+      <div className="flex gap-2 flex-wrap">
+        {([
+          { key: 'all',         label: 'All',         count: services.length },
+          { key: 'open',        label: 'Open',        count: services.filter(s => s.status === 'OPEN').length },
+          { key: 'in_progress', label: 'In Progress', count: services.filter(s => s.status === 'IN_PROGRESS').length },
+          { key: 'completed',   label: 'Completed',   count: services.filter(s => s.status === 'COMPLETED').length },
+        ] as const).map(f => (
+          <button key={f.key} onClick={() => setFilter(f.key)}
+            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+              filter === f.key
+                ? 'bg-[#1C1400] text-white border-[#1C1400]'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+            )}>
+            {f.label}
+            <span className={cn('px-1.5 py-0.5 rounded-full text-xs',
+              filter === f.key ? 'bg-white/20' : 'bg-gray-100'
+            )}>{f.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Service list */}
+      {isLoading ? (
+        <div className="py-8 text-center text-gray-400 text-sm animate-pulse">Loading…</div>
+      ) : filtered.length === 0 ? (
         <div className="py-12 text-center text-gray-400">
           <Wrench size={32} className="mx-auto mb-3 text-gray-200" />
-          <p className="text-sm">No service records yet</p>
+          <p className="text-sm font-medium text-gray-500">
+            {services.length === 0 ? 'No services yet' : 'No services match filter'}
+          </p>
+          {services.length === 0 && (
+            <p className="text-xs mt-1 text-gray-400">Create the first service to start tracking.</p>
+          )}
         </div>
       ) : (
-        <div className="border border-gray-100 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                {['#', 'Date', 'Trigger', 'Type', 'Status', 'HMR', 'Cost', 'Tasks', ''].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {services.map(s => (
-                <>
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
-                    <td className="px-4 py-2.5 font-mono text-xs text-gray-500">{s.serviceNumber}</td>
-                    <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{fmtDate(s.serviceDate)}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', TRIGGER_CLS[s.triggeredBy] ?? 'bg-gray-100 text-gray-600')}>
-                        {TRIGGER_LABELS[s.triggeredBy]}
+        <div className="space-y-2">
+          {filtered.map(s => (
+            <div key={s.id} className="border border-gray-100 rounded-xl overflow-hidden hover:border-gray-200 transition-colors">
+              <div className="p-4 cursor-pointer" onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    {/* Header row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono text-gray-400">{s.serviceNumber}</span>
+                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', SVC_STATUS_CHIP[s.status])}>
+                        {SVC_STATUS_LABEL[s.status]}
                       </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-gray-600">{SVC_TYPE_LABELS[s.serviceType]}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', SERVICE_STATUS_CLS[s.status] ?? 'bg-gray-100 text-gray-600')}>
-                        {s.status.replace('_', ' ')}
+                      <span className="text-xs text-gray-400">
+                        {s.triggeredBy === 'BREAKDOWN'  ? '⚡ Breakdown'  :
+                         s.triggeredBy === 'ACCIDENT'   ? '💥 Accident'   :
+                         s.triggeredBy === 'COMPLIANCE' ? '📋 Compliance' :
+                         s.triggeredBy === 'WARRANTY'   ? '🔒 Warranty'   : '📅 Scheduled'}
                       </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-gray-600">{s.hmrAtService != null ? `${s.hmrAtService} hrs` : '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-800">{s.totalCost != null ? fmtMoney(s.totalCost) : '—'}</td>
-                    <td className="px-4 py-2.5 text-xs text-gray-500">{s.tasks.length} task{s.tasks.length !== 1 ? 's' : ''}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                        {s.status === 'OPEN' && (
-                          <>
-                            <button onClick={() => startMut.mutate(s.id)} disabled={startMut.isPending}
-                              className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors whitespace-nowrap">Start</button>
-                            <button onClick={() => { setEditing(s); setDialogOpen(true) }} className="text-gray-400 hover:text-gray-700"><Pencil size={13} /></button>
-                            <button onClick={() => { if (confirm('Delete this service record?')) deleteMut.mutate(s.id) }} className="text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
-                          </>
-                        )}
-                        {s.status === 'IN_PROGRESS' && (
-                          <button onClick={() => completeMut.mutate(s.id)} disabled={completeMut.isPending}
-                            className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 transition-colors whitespace-nowrap">Complete</button>
-                        )}
-                        <ChevronDown size={13} className={cn('text-gray-400 transition-transform', expanded === s.id ? 'rotate-180' : '')} />
+                      <span className="text-xs text-gray-400">
+                        {s.serviceType === 'INTERNAL'   ? '🏭 Internal' :
+                         s.serviceType === 'OEM_CENTER'  ? `🏢 ${s.vendorName ?? 'OEM Center'}` :
+                         `🔧 ${s.vendorName ?? '3rd Party'}`}
+                      </span>
+                    </div>
+
+                    {/* Task chips */}
+                    {s.tasks.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {s.tasks.map(t => (
+                          <span key={t.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                            {t.displayName ?? t.customName ?? t.taskTypeName ?? '—'}
+                            {t.isRecurring ? ` 🔄 ${t.frequencyHmr}hrs` : ''}
+                          </span>
+                        ))}
                       </div>
-                    </td>
-                  </tr>
-                  {expanded === s.id && (
-                    <tr key={`${s.id}-detail`} className="bg-gray-50">
-                      <td colSpan={9} className="px-6 py-4">
-                        <div className="space-y-3">
-                          {s.vendorName && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Vendor:</span> {s.vendorName}</p>}
-                          {s.location && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Location:</span> {s.location}</p>}
-                          {s.payerType && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Payer:</span> {PAYER_LABELS[s.payerType]}</p>}
-                          {s.notes && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Notes:</span> {s.notes}</p>}
-                          {s.tasks.length > 0 && (
-                            <div>
-                              <p className="text-xs font-semibold text-gray-600 mb-2">Tasks</p>
-                              <div className="space-y-1">
-                                {s.tasks.map(t => (
-                                  <div key={t.id} className="flex items-center justify-between bg-white rounded-md px-3 py-2 border border-gray-100">
-                                    <span className="text-xs text-gray-700">{t.displayName ?? t.customName ?? t.taskTypeName ?? '—'}</span>
-                                    <div className="flex items-center gap-3">
-                                      {t.cost != null && <span className="text-xs text-gray-500">{fmtMoney(t.cost)}</span>}
-                                      {t.isRecurring && <span className="text-xs text-blue-600">Every {t.frequencyHmr} hrs</span>}
-                                      <span className={cn('text-xs px-1.5 py-0.5 rounded-full', SERVICE_STATUS_CLS[t.status] ?? 'bg-gray-100 text-gray-500')}>{t.status}</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                    )}
+
+                    {/* Meta row */}
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 flex-wrap">
+                      {s.hmrAtService != null && <span>⏱ {s.hmrAtService} hrs</span>}
+                      {s.dueAtHmr != null && <span>Due at {s.dueAtHmr} hrs</span>}
+                      {s.serviceDate && <span>📅 {fmtDate(s.serviceDate)}</span>}
+                      {s.location && <span>📍 {s.location}</span>}
+                      {(s.totalCost ?? 0) > 0 && (
+                        <span className="text-green-600 font-medium">
+                          ₹{Number(s.totalCost).toLocaleString('en-IN')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                    {s.status === 'OPEN' && (
+                      <Button size="sm" onClick={() => startMut.mutate(s.id)}
+                        disabled={startMut.isPending}
+                        className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white gap-1">
+                        <Wrench size={12} /> Start
+                      </Button>
+                    )}
+                    {s.status === 'IN_PROGRESS' && (
+                      <Button size="sm" onClick={() => completeMut.mutate(s.id)}
+                        disabled={completeMut.isPending}
+                        className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1">
+                        <Check size={12} /> Done
+                      </Button>
+                    )}
+                    {s.status === 'OPEN' && (
+                      <>
+                        <button onClick={() => { setEditing(s); setDialogOpen(true) }}
+                          className="p-1.5 text-gray-300 hover:text-[#1C1400] rounded transition-colors">
+                          <Pencil size={14} />
+                        </button>
+                        <button onClick={() => setDeleteId(s.id)}
+                          className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                    <ChevronDown size={13} className={cn('text-gray-400 transition-transform', expanded === s.id ? 'rotate-180' : '')} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Expanded detail */}
+              {expanded === s.id && (
+                <div className="border-t bg-gray-50/50 px-4 py-3 space-y-3">
+                  {s.tasks.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Tasks</p>
+                      <div className="space-y-1.5">
+                        {s.tasks.map(t => (
+                          <div key={t.id} className="flex items-center justify-between bg-white rounded-md px-3 py-2 border border-gray-100">
+                            <span className="text-xs text-gray-700">{t.displayName ?? t.customName ?? t.taskTypeName ?? '—'}</span>
+                            <div className="flex items-center gap-3">
+                              {t.cost != null && <span className="text-xs text-gray-500">{fmtMoney(t.cost)}</span>}
+                              {t.isRecurring && <span className="text-xs text-blue-600">Every {t.frequencyHmr} hrs</span>}
+                              <span className={cn('text-xs px-1.5 py-0.5 rounded-full', SERVICE_STATUS_CLS[t.status] ?? 'bg-gray-100 text-gray-500')}>
+                                {t.status.replace('_', ' ')}
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </>
-              ))}
-            </tbody>
-          </table>
+                  {(s.vendorName || s.location || s.payerType || s.notes) && (
+                    <div className="space-y-1">
+                      {s.vendorName && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Vendor:</span> {s.vendorName}</p>}
+                      {s.location && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Location:</span> {s.location}</p>}
+                      {s.payerType && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Payer:</span> {PAYER_LABELS[s.payerType]}</p>}
+                      {s.notes && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Notes:</span> {s.notes}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
       <ServiceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} equipmentId={equipmentId} editing={editing} />
+
+      {/* Delete confirm */}
+      <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete Service</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600">Delete this service record? This cannot be undone.</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={deleteMut.isPending}
+              onClick={() => deleteId && deleteMut.mutate(deleteId)}>
+              {deleteMut.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
