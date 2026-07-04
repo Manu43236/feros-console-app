@@ -502,7 +502,7 @@ export function MachineDetailPage() {
           {/* Back link */}
           <button
             onClick={() => navigate('/equipment/machines')}
-            className="flex items-center gap-1.5 text-yellow-700/80 hover:text-yellow-500 text-sm transition-colors"
+            className="flex items-center gap-1.5 text-[#c8a96e] hover:text-white text-sm transition-colors"
           >
             <ArrowLeft size={15} /> Machines
           </button>

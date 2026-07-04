@@ -473,18 +473,18 @@ export function EquipmentListPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {['Make', 'Model', 'Type', 'Serial No.', 'Reg. No.', 'Ownership', 'Status', 'Work Status', ''].map(h => (
+              {['Make', 'Model', 'Type', 'Serial No.', 'Reg. No.', 'Ownership', 'Status', 'Work Status'].map(h => (
                 <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y">
             {isLoading ? (
-              <tr><td colSpan={9} className="px-3 py-8 text-center text-gray-400 text-sm">Loading…</td></tr>
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-400 text-sm">Loading…</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={9} className="px-3 py-8 text-center text-gray-400 text-sm">{search ? 'No machines match your search' : 'No machines yet. Click "Add Machine" to get started.'}</td></tr>
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-400 text-sm">{search ? 'No machines match your search' : 'No machines yet. Click "Add Machine" to get started.'}</td></tr>
             ) : filtered.map(m => (
-              <tr key={m.id} className="hover:bg-gray-50">
+              <tr key={m.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/equipment/machines/${m.id}`)}>
                 <td className="px-3 py-2 font-medium text-gray-800">{m.makeName}</td>
                 <td className="px-3 py-2 text-gray-600">{m.modelName}</td>
                 <td className="px-3 py-2 text-gray-600">{m.equipmentTypeName}</td>
@@ -501,14 +501,6 @@ export function EquipmentListPage() {
                   </span>
                 </td>
                 <td className="px-3 py-2"><WorkStatusBadge status={m.workStatus} /></td>
-                <td className="px-3 py-2 text-right">
-                  <button
-                    onClick={() => navigate(`/equipment/machines/${m.id}`)}
-                    className="text-xs text-blue-600 hover:underline font-medium"
-                  >
-                    View →
-                  </button>
-                </td>
               </tr>
             ))}
           </tbody>
