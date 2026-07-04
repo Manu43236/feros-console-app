@@ -260,8 +260,6 @@ const EQUIPMENT_ADMIN_NAV: SectionedNav = {
       icon: Construction,
       items: [
         { to: '/equipment/machines',       label: 'Machines',       icon: Construction },
-        { to: '/equipment/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
-        { to: '/equipment/meter-readings', label: 'Meter Readings', icon: Gauge },
       ],
     },
     {

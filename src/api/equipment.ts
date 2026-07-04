@@ -82,6 +82,50 @@ export interface EquipmentDashboardResponse {
   hoursThisMonth: number | null
 }
 
+export interface EquipmentFuelLog {
+  id: number
+  equipmentId: number
+  fillDate: string
+  litresFilled: number
+  hmrAtFill: number | null
+  costPerLitre: number | null
+  totalCost: number | null
+  isFullTank: boolean
+  paymentMode: 'CASH' | 'COMPANY_ACCOUNT' | 'REIMBURSEMENT' | null
+  fuelStation: string | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EquipmentFuelLogRequest {
+  fillDate: string
+  litresFilled: number
+  hmrAtFill?: number
+  costPerLitre?: number
+  totalCost?: number
+  isFullTank?: boolean
+  paymentMode?: 'CASH' | 'COMPANY_ACCOUNT' | 'REIMBURSEMENT'
+  fuelStation?: string
+  notes?: string
+}
+
+export interface EquipmentMeterReading {
+  id: number
+  equipmentId: number
+  readingDate: string
+  readingValue: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EquipmentMeterReadingRequest {
+  readingDate: string
+  readingValue: number
+  notes?: string
+}
+
 export const equipmentApi = {
   getDashboard: () => apiClient.get<ApiResponse<EquipmentDashboardResponse>>('/equipment/dashboard').then(r => r.data),
   getAll: () => apiClient.get<ApiResponse<Equipment[]>>('/equipment').then(r => r.data),
@@ -90,4 +134,16 @@ export const equipmentApi = {
   update: (id: number, data: EquipmentRequest) => apiClient.put<ApiResponse<Equipment>>(`/equipment/${id}`, data).then(r => r.data),
   updateWorkStatus: (id: number, workStatus: EquipmentWorkStatus) =>
     apiClient.patch<ApiResponse<Equipment>>(`/equipment/${id}/work-status`, { workStatus }).then(r => r.data),
+
+  // Fuel logs
+  getFuelLogs: (id: number) => apiClient.get<ApiResponse<EquipmentFuelLog[]>>(`/equipment/${id}/fuel-logs`).then(r => r.data),
+  addFuelLog: (id: number, data: EquipmentFuelLogRequest) => apiClient.post<ApiResponse<EquipmentFuelLog>>(`/equipment/${id}/fuel-logs`, data).then(r => r.data),
+  updateFuelLog: (id: number, logId: number, data: EquipmentFuelLogRequest) => apiClient.put<ApiResponse<EquipmentFuelLog>>(`/equipment/${id}/fuel-logs/${logId}`, data).then(r => r.data),
+  deleteFuelLog: (id: number, logId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/fuel-logs/${logId}`).then(r => r.data),
+
+  // Meter readings
+  getMeterReadings: (id: number) => apiClient.get<ApiResponse<EquipmentMeterReading[]>>(`/equipment/${id}/meter-readings`).then(r => r.data),
+  addMeterReading: (id: number, data: EquipmentMeterReadingRequest) => apiClient.post<ApiResponse<EquipmentMeterReading>>(`/equipment/${id}/meter-readings`, data).then(r => r.data),
+  updateMeterReading: (id: number, readingId: number, data: EquipmentMeterReadingRequest) => apiClient.put<ApiResponse<EquipmentMeterReading>>(`/equipment/${id}/meter-readings/${readingId}`, data).then(r => r.data),
+  deleteMeterReading: (id: number, readingId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/meter-readings/${readingId}`).then(r => r.data),
 }

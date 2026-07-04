@@ -1,15 +1,21 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Info, TrendingUp, Gauge, Droplets,
   ClipboardList, FileText, AlertTriangle, ChevronRight,
+  Plus, Pencil, Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { toast } from 'sonner'
 import { equipmentApi } from '@/api/equipment'
 import { machinesApi } from '@/api/machines'
-import type { Equipment, EquipmentWorkStatus } from '@/api/equipment'
+import type { Equipment, EquipmentWorkStatus, EquipmentFuelLog, EquipmentFuelLogRequest, EquipmentMeterReading, EquipmentMeterReadingRequest } from '@/api/equipment'
 import type { MachineAssignmentHistory, MachineDailyLog, MachineInvoiceItem } from '@/api/machines'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -217,116 +223,345 @@ function UtilizationTab({ logs, from, to, onFrom, onTo }: { logs: MachineDailyLo
 }
 
 // ── HMR Tab ───────────────────────────────────────────────────────────────────
-function HmrTab({ logs, from, to, onFrom, onTo }: { logs: MachineDailyLog[]; from: string; to: string; onFrom: (v: string) => void; onTo: (v: string) => void }) {
+function MeterReadingDialog({
+  open, onClose, equipmentId, editing,
+}: { open: boolean; onClose: () => void; equipmentId: number; editing: EquipmentMeterReading | null }) {
+  const qc = useQueryClient()
+  const blank: EquipmentMeterReadingRequest = { readingDate: '', readingValue: 0 }
+  const [form, setForm] = useState<EquipmentMeterReadingRequest>(blank)
+
+  useMemo(() => {
+    if (open) setForm(editing
+      ? { readingDate: editing.readingDate, readingValue: editing.readingValue, notes: editing.notes ?? undefined }
+      : blank)
+  }, [open, editing])
+
+  const set = (k: keyof EquipmentMeterReadingRequest, v: unknown) => setForm(f => ({ ...f, [k]: v }))
+
+  const mut = useMutation({
+    mutationFn: () => editing
+      ? equipmentApi.updateMeterReading(equipmentId, editing.id, form)
+      : equipmentApi.addMeterReading(equipmentId, form),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-meter-readings', equipmentId] }); toast.success(editing ? 'Reading updated' : 'Reading added'); onClose() },
+    onError: () => toast.error('Failed to save reading'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>{editing ? 'Edit Meter Reading' : 'Add Meter Reading'}</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <Label className="text-xs">Date *</Label>
+            <Input type="date" className="mt-1" value={form.readingDate} onChange={e => set('readingDate', e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">HMR Reading *</Label>
+            <Input type="number" step="0.01" min={0} className="mt-1" value={form.readingValue || ''} onChange={e => set('readingValue', Number(e.target.value))} placeholder="e.g. 2450.5" />
+          </div>
+          <div>
+            <Label className="text-xs">Notes</Label>
+            <Input className="mt-1" value={form.notes ?? ''} onChange={e => set('notes', e.target.value || undefined)} placeholder="Optional" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white" onClick={() => mut.mutate()} disabled={!form.readingDate || !form.readingValue || mut.isPending}>
+            {mut.isPending ? 'Saving…' : editing ? 'Update' : 'Add'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function HmrTab({ equipmentId, logs }: { equipmentId: number; logs: MachineDailyLog[] }) {
+  const qc = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<EquipmentMeterReading | null>(null)
+
+  const { data } = useQuery({
+    queryKey: ['eq-meter-readings', equipmentId],
+    queryFn: () => equipmentApi.getMeterReadings(equipmentId),
+  })
+  const readings = (data?.data ?? []) as EquipmentMeterReading[]
+
+  const delMut = useMutation({
+    mutationFn: (readingId: number) => equipmentApi.deleteMeterReading(equipmentId, readingId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-meter-readings', equipmentId] }); toast.success('Deleted') },
+    onError: () => toast.error('Failed to delete'),
+  })
+
+  // Daily log HMR data (from work sessions) — read-only reference
   const sorted = [...logs].sort((a, b) => a.logDate.localeCompare(b.logDate))
 
   return (
-    <div className="space-y-5">
-      <DateFilter from={from} to={to} onFrom={onFrom} onTo={onTo} />
-
-      {sorted.length === 0 ? (
-        <div className="py-12 text-center text-gray-400">
-          <Gauge size={32} className="mx-auto mb-3 text-gray-200" />
-          <p className="text-sm">No HMR data for this period</p>
+    <div className="space-y-6">
+      {/* ── Manual Meter Readings (CRUD) ── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Manual Readings</p>
+          <Button size="sm" className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1.5"
+            onClick={() => { setEditing(null); setDialogOpen(true) }}>
+            <Plus size={14} /> Add Reading
+          </Button>
         </div>
-      ) : (
-        <div className="border border-gray-100 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                {['Date', 'WO#', 'Start HMR', 'End HMR', 'Hours', 'Continuity'].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {sorted.map((l, i) => {
-                const prev = sorted[i - 1]
-                const gap = prev?.endHourMeter != null && l.startHourMeter != null
-                  ? Math.abs(l.startHourMeter - prev.endHourMeter)
-                  : null
-                const hasGap = gap != null && gap > 0.01
-                return (
-                  <tr key={l.id} className={cn('hover:bg-gray-50 transition-colors', hasGap && 'bg-amber-50/40')}>
-                    <td className="px-4 py-2.5 text-gray-700">{fmtDate(l.logDate)}</td>
-                    <td className="px-4 py-2.5 text-xs text-gray-500 font-mono">{l.woNumber ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-600">{fmtN(l.startHourMeter)}</td>
-                    <td className="px-4 py-2.5 text-gray-600">{fmtN(l.endHourMeter)}</td>
-                    <td className="px-4 py-2.5 font-semibold text-gray-800">{fmtN(l.hoursWorked)}</td>
+        {readings.length === 0 ? (
+          <div className="py-8 text-center text-gray-400 border border-dashed border-gray-200 rounded-xl">
+            <Gauge size={28} className="mx-auto mb-2 text-gray-200" />
+            <p className="text-sm">No manual readings yet</p>
+          </div>
+        ) : (
+          <div className="border border-gray-100 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  {['Date', 'HMR Reading', 'Notes', ''].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {readings.map(r => (
+                  <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{fmtDate(r.readingDate)}</td>
+                    <td className="px-4 py-2.5 font-semibold text-gray-800">{fmtN(r.readingValue)} hrs</td>
+                    <td className="px-4 py-2.5 text-xs text-gray-500">{r.notes ?? '—'}</td>
                     <td className="px-4 py-2.5">
-                      {i === 0 ? (
-                        <span className="text-xs text-gray-300">First entry</span>
-                      ) : hasGap ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
-                          <AlertTriangle size={11} /> Gap {fmtN(gap, 2)}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-green-500 font-medium">✓ OK</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setEditing(r); setDialogOpen(true) }} className="text-gray-400 hover:text-gray-700"><Pencil size={13} /></button>
+                        <button onClick={() => { if (confirm('Delete this reading?')) delMut.mutate(r.id) }} className="text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
+                      </div>
                     </td>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── HMR from Daily Logs (read-only reference) ── */}
+      {sorted.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">From Daily Work Logs</p>
+          <div className="border border-gray-100 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  {['Date', 'WO#', 'Start HMR', 'End HMR', 'Hours', 'Continuity'].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {sorted.map((l, i) => {
+                  const prev = sorted[i - 1]
+                  const gap = prev?.endHourMeter != null && l.startHourMeter != null
+                    ? Math.abs(l.startHourMeter - prev.endHourMeter) : null
+                  const hasGap = gap != null && gap > 0.01
+                  return (
+                    <tr key={l.id} className={cn('hover:bg-gray-50 transition-colors', hasGap && 'bg-amber-50/40')}>
+                      <td className="px-4 py-2.5 text-gray-700">{fmtDate(l.logDate)}</td>
+                      <td className="px-4 py-2.5 text-xs text-gray-500 font-mono">{l.woNumber ?? '—'}</td>
+                      <td className="px-4 py-2.5 text-gray-600">{fmtN(l.startHourMeter)}</td>
+                      <td className="px-4 py-2.5 text-gray-600">{fmtN(l.endHourMeter)}</td>
+                      <td className="px-4 py-2.5 font-semibold text-gray-800">{fmtN(l.hoursWorked)}</td>
+                      <td className="px-4 py-2.5">
+                        {i === 0 ? <span className="text-xs text-gray-300">First entry</span>
+                          : hasGap ? <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium"><AlertTriangle size={11} /> Gap {fmtN(gap, 2)}</span>
+                          : <span className="text-xs text-green-500 font-medium">✓ OK</span>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+      <MeterReadingDialog open={dialogOpen} onClose={() => setDialogOpen(false)} equipmentId={equipmentId} editing={editing} />
     </div>
   )
 }
 
 // ── Fuel Tab ──────────────────────────────────────────────────────────────────
-function FuelTab({ logs, from, to, onFrom, onTo }: { logs: MachineDailyLog[]; from: string; to: string; onFrom: (v: string) => void; onTo: (v: string) => void }) {
-  const withFuel  = logs.filter(l => l.fuelConsumed != null && l.fuelConsumed > 0)
-  const totalFuel = withFuel.reduce((s, l) => s + (l.fuelConsumed ?? 0), 0)
-  const avgFuel   = withFuel.length > 0 ? totalFuel / withFuel.length : 0
+const PAYMENT_LABELS: Record<string, string> = {
+  CASH: 'Cash', COMPANY_ACCOUNT: 'Company Account', REIMBURSEMENT: 'Reimbursement',
+}
+
+function FuelLogDialog({
+  open, onClose, equipmentId, editing,
+}: { open: boolean; onClose: () => void; equipmentId: number; editing: EquipmentFuelLog | null }) {
+  const qc = useQueryClient()
+  const blank: EquipmentFuelLogRequest = { fillDate: '', litresFilled: 0 }
+  const [form, setForm] = useState<EquipmentFuelLogRequest>(blank)
+
+  useMemo(() => {
+    if (open) setForm(editing
+      ? { fillDate: editing.fillDate, litresFilled: editing.litresFilled, hmrAtFill: editing.hmrAtFill ?? undefined, costPerLitre: editing.costPerLitre ?? undefined, totalCost: editing.totalCost ?? undefined, isFullTank: editing.isFullTank, paymentMode: editing.paymentMode ?? undefined, fuelStation: editing.fuelStation ?? undefined, notes: editing.notes ?? undefined }
+      : blank)
+  }, [open, editing])
+
+  const set = (k: keyof EquipmentFuelLogRequest, v: unknown) => setForm(f => ({ ...f, [k]: v }))
+
+  const mut = useMutation({
+    mutationFn: () => editing
+      ? equipmentApi.updateFuelLog(equipmentId, editing.id, form)
+      : equipmentApi.addFuelLog(equipmentId, form),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-fuel-logs', equipmentId] }); toast.success(editing ? 'Fuel log updated' : 'Fuel log added'); onClose() },
+    onError: () => toast.error('Failed to save fuel log'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{editing ? 'Edit Fuel Log' : 'Add Fuel Log'}</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Date *</Label>
+              <Input type="date" className="mt-1" value={form.fillDate} onChange={e => set('fillDate', e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Litres Filled *</Label>
+              <Input type="number" step="0.01" min={0} className="mt-1" value={form.litresFilled || ''} onChange={e => set('litresFilled', Number(e.target.value))} placeholder="e.g. 120" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">HMR at Fill</Label>
+              <Input type="number" step="0.01" min={0} className="mt-1" value={form.hmrAtFill ?? ''} onChange={e => set('hmrAtFill', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 1540" />
+            </div>
+            <div>
+              <Label className="text-xs">Cost / Litre (₹)</Label>
+              <Input type="number" step="0.01" min={0} className="mt-1" value={form.costPerLitre ?? ''} onChange={e => set('costPerLitre', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 95" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Total Cost (₹)</Label>
+              <Input type="number" step="0.01" min={0} className="mt-1" value={form.totalCost ?? ''} onChange={e => set('totalCost', e.target.value ? Number(e.target.value) : undefined)} placeholder="auto or manual" />
+            </div>
+            <div>
+              <Label className="text-xs">Payment Mode</Label>
+              <Select value={form.paymentMode ?? ''} onValueChange={v => set('paymentMode', v || undefined)}>
+                <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PAYMENT_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Fuel Station</Label>
+              <Input className="mt-1" value={form.fuelStation ?? ''} onChange={e => set('fuelStation', e.target.value || undefined)} placeholder="Optional" />
+            </div>
+            <div className="flex items-end gap-2 pb-0.5">
+              <input type="checkbox" id="fullTank" checked={!!form.isFullTank} onChange={e => set('isFullTank', e.target.checked)} className="h-4 w-4" />
+              <Label htmlFor="fullTank" className="text-sm cursor-pointer">Full Tank</Label>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Notes</Label>
+            <Input className="mt-1" value={form.notes ?? ''} onChange={e => set('notes', e.target.value || undefined)} placeholder="Optional" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white" onClick={() => mut.mutate()} disabled={!form.fillDate || !form.litresFilled || mut.isPending}>
+            {mut.isPending ? 'Saving…' : editing ? 'Update' : 'Add'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function FuelTab({ equipmentId }: { equipmentId: number }) {
+  const qc = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<EquipmentFuelLog | null>(null)
+
+  const { data } = useQuery({
+    queryKey: ['eq-fuel-logs', equipmentId],
+    queryFn: () => equipmentApi.getFuelLogs(equipmentId),
+  })
+  const logs = (data?.data ?? []) as EquipmentFuelLog[]
+
+  const delMut = useMutation({
+    mutationFn: (logId: number) => equipmentApi.deleteFuelLog(equipmentId, logId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-fuel-logs', equipmentId] }); toast.success('Deleted') },
+    onError: () => toast.error('Failed to delete'),
+  })
+
+  const totalFuel = logs.reduce((s, l) => s + Number(l.litresFilled ?? 0), 0)
+  const totalCost = logs.reduce((s, l) => s + Number(l.totalCost ?? 0), 0)
 
   return (
     <div className="space-y-5">
-      <DateFilter from={from} to={to} onFrom={onFrom} onTo={onTo} />
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-          <p className="text-xs text-blue-500 font-semibold uppercase tracking-wide mb-1">Total Consumed</p>
-          <p className="text-xl font-bold text-blue-700">{totalFuel.toFixed(1)} L</p>
+      <div className="flex items-center justify-between">
+        <div className="flex gap-3">
+          <div className="bg-blue-50 rounded-lg px-4 py-2.5 border border-blue-100">
+            <p className="text-xs text-blue-500 font-semibold uppercase tracking-wide">Total Filled</p>
+            <p className="text-lg font-bold text-blue-700">{totalFuel.toFixed(1)} L</p>
+          </div>
+          <div className="bg-orange-50 rounded-lg px-4 py-2.5 border border-orange-100">
+            <p className="text-xs text-orange-500 font-semibold uppercase tracking-wide">Total Cost</p>
+            <p className="text-lg font-bold text-orange-700">{totalCost > 0 ? fmtMoney(totalCost) : '—'}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg px-4 py-2.5 border border-gray-100">
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Entries</p>
+            <p className="text-lg font-bold text-gray-700">{logs.length}</p>
+          </div>
         </div>
-        <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
-          <p className="text-xs text-orange-500 font-semibold uppercase tracking-wide mb-1">Avg Per Day</p>
-          <p className="text-xl font-bold text-orange-700">{avgFuel.toFixed(1)} L</p>
-        </div>
-        <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">Days with Data</p>
-          <p className="text-xl font-bold text-gray-700">{withFuel.length}</p>
-        </div>
+        <Button size="sm" className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1.5"
+          onClick={() => { setEditing(null); setDialogOpen(true) }}>
+          <Plus size={14} /> Add Fuel Log
+        </Button>
       </div>
 
-      {withFuel.length === 0 ? (
+      {logs.length === 0 ? (
         <div className="py-12 text-center text-gray-400">
           <Droplets size={32} className="mx-auto mb-3 text-gray-200" />
-          <p className="text-sm">No fuel data for this period</p>
+          <p className="text-sm">No fuel logs yet</p>
         </div>
       ) : (
         <div className="border border-gray-100 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                {['Date', 'WO#', 'Fuel Consumed (L)'].map(h => (
+                {['Date', 'Litres', 'HMR at Fill', 'Cost/L', 'Total', 'Payment', 'Station', ''].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {withFuel.map(l => (
+              {logs.map(l => (
                 <tr key={l.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-2.5 text-gray-700">{fmtDate(l.logDate)}</td>
-                  <td className="px-4 py-2.5 text-xs text-gray-500 font-mono">{l.woNumber ?? '—'}</td>
-                  <td className="px-4 py-2.5 font-semibold text-gray-800">{fmtN(l.fuelConsumed)}</td>
+                  <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{fmtDate(l.fillDate)}</td>
+                  <td className="px-4 py-2.5 font-semibold text-gray-800">{fmtN(l.litresFilled)} L{l.isFullTank && <span className="ml-1 text-xs text-green-600">Full</span>}</td>
+                  <td className="px-4 py-2.5 text-gray-600">{l.hmrAtFill != null ? fmtN(l.hmrAtFill) : '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-600">{l.costPerLitre != null ? fmtMoney(l.costPerLitre) : '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-800">{l.totalCost != null ? fmtMoney(l.totalCost) : '—'}</td>
+                  <td className="px-4 py-2.5 text-xs text-gray-500">{l.paymentMode ? PAYMENT_LABELS[l.paymentMode] : '—'}</td>
+                  <td className="px-4 py-2.5 text-xs text-gray-500">{l.fuelStation ?? '—'}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => { setEditing(l); setDialogOpen(true) }} className="text-gray-400 hover:text-gray-700"><Pencil size={13} /></button>
+                      <button onClick={() => { if (confirm('Delete this fuel log?')) delMut.mutate(l.id) }} className="text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <FuelLogDialog open={dialogOpen} onClose={() => setDialogOpen(false)} equipmentId={equipmentId} editing={editing} />
     </div>
   )
 }
@@ -518,8 +753,6 @@ export function MachineDetailPage() {
   const id = Number(equipmentId)
 
   const [activeTab, setActiveTab] = useState<Tab>('Basic Info')
-  const [logsFrom, setLogsFrom]   = useState('')
-  const [logsTo,   setLogsTo]     = useState('')
 
   const { data: eqData, isLoading } = useQuery({
     queryKey: ['equipment', id],
@@ -532,8 +765,8 @@ export function MachineDetailPage() {
     enabled: !!id,
   })
   const { data: logsData } = useQuery({
-    queryKey: ['machine-logs', id, logsFrom, logsTo],
-    queryFn: () => machinesApi.getLogs(id, logsFrom || undefined, logsTo || undefined),
+    queryKey: ['machine-logs', id],
+    queryFn: () => machinesApi.getLogs(id),
     enabled: !!id,
   })
   const { data: invoiceItemsData } = useQuery({
@@ -547,6 +780,7 @@ export function MachineDetailPage() {
   const logs     = (logsData?.data ?? []) as MachineDailyLog[]
   const invItems = (invoiceItemsData?.data ?? []) as MachineInvoiceItem[]
 
+
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading machine…</div>
   if (!machine) return (
     <div className="p-12 text-center text-gray-400">
@@ -556,7 +790,6 @@ export function MachineDetailPage() {
   )
 
   const ws = WORK_STATUS[machine.workStatus] ?? { label: machine.workStatus, cls: 'bg-gray-100 text-gray-600' }
-  const logTabProps = { logs, from: logsFrom, to: logsTo, onFrom: setLogsFrom, onTo: setLogsTo }
 
   return (
     <div className="space-y-0">
@@ -631,9 +864,9 @@ export function MachineDetailPage() {
         {/* Tab content */}
         <div className="p-5">
           {activeTab === 'Basic Info'  && <BasicInfoTab m={machine} />}
-          {activeTab === 'Utilization' && <UtilizationTab {...logTabProps} />}
-          {activeTab === 'HMR'         && <HmrTab {...logTabProps} />}
-          {activeTab === 'Fuel'        && <FuelTab {...logTabProps} />}
+          {activeTab === 'Utilization' && <UtilizationTab logs={logs} from="" to="" onFrom={() => {}} onTo={() => {}} />}
+          {activeTab === 'HMR'         && <HmrTab equipmentId={id} logs={logs} />}
+          {activeTab === 'Fuel'        && <FuelTab equipmentId={id} />}
           {activeTab === 'WO History'  && <WoHistoryTab history={history} navigate={navigate} />}
           {activeTab === 'Billings'    && <BillingsTab items={invItems} navigate={navigate} />}
         </div>
