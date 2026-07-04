@@ -642,7 +642,6 @@ function ServiceDialog({
   const [customTasks, setCustomTasks] = useState<TaskDraft[]>([])
   const [customName, setCustomName] = useState('')
   const [showCustom, setShowCustom] = useState(false)
-  const [detailOpen, setDetailOpen] = useState(false)
 
   const { data: taskTypesRes } = useQuery({
     queryKey: ['service-task-types'],
