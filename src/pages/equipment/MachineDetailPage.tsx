@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft, Info, TrendingUp, Gauge, Droplets,
-  ClipboardList, FileText, AlertTriangle,
+  ClipboardList, FileText, AlertTriangle, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -339,50 +339,115 @@ const WO_STATUS_CLS: Record<string, string> = {
 }
 
 function WoHistoryTab({ history, navigate }: { history: MachineAssignmentHistory[]; navigate: (to: string) => void }) {
-  return history.length === 0 ? (
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+
+  // Group assignments by workOrderId — preserve insertion order (already sorted by startDate DESC from API)
+  const groups = useMemo(() => {
+    const map = new Map<number, { meta: MachineAssignmentHistory; assignments: MachineAssignmentHistory[] }>()
+    for (const a of history) {
+      if (!map.has(a.workOrderId)) {
+        map.set(a.workOrderId, { meta: a, assignments: [] })
+      }
+      map.get(a.workOrderId)!.assignments.push(a)
+    }
+    return [...map.values()]
+  }, [history])
+
+  const toggle = (woId: number) =>
+    setExpanded(prev => {
+      const next = new Set(prev)
+      next.has(woId) ? next.delete(woId) : next.add(woId)
+      return next
+    })
+
+  if (history.length === 0) return (
     <div className="py-12 text-center text-gray-400">
       <ClipboardList size={32} className="mx-auto mb-3 text-gray-200" />
       <p className="text-sm">No work order history</p>
     </div>
-  ) : (
+  )
+
+  return (
     <div className="border border-gray-100 rounded-xl overflow-hidden">
       <table className="w-full text-sm">
         <thead className="bg-gray-50 border-b border-gray-100">
           <tr>
-            {['WO#', 'Client', 'Site', 'Period', 'Status', 'Hours', 'Rate'].map(h => (
+            {['WO#', 'Client', 'Site', 'Status', 'Total Hours', 'Assignments'].map(h => (
               <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-50">
-          {history.map(a => (
-            <tr key={a.id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-4 py-2.5">
-                <button
-                  onClick={() => navigate(`/equipment/work-orders/${a.workOrderId}`)}
-                  className="text-feros-navy hover:underline font-semibold text-xs"
+        <tbody className="divide-y divide-gray-100">
+          {groups.map(({ meta, assignments }) => {
+            const isOpen = expanded.has(meta.workOrderId)
+            const totalHrs = assignments.reduce((s, a) => s + Number(a.totalHoursWorked ?? 0), 0)
+            const hasActive = assignments.some(a => a.isActive)
+            return (
+              <>
+                {/* ── Group header row ── */}
+                <tr
+                  key={`wo-${meta.workOrderId}`}
+                  className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => toggle(meta.workOrderId)}
                 >
-                  {a.woNumber}
-                </button>
-              </td>
-              <td className="px-4 py-2.5 text-gray-600 text-xs">{a.clientName}</td>
-              <td className="px-4 py-2.5 text-gray-500 text-xs">{a.site ?? '—'}</td>
-              <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
-                {fmtDate(a.startDate)} – {a.endDate ? fmtDate(a.endDate) : <span className="text-green-600 font-medium">Active</span>}
-              </td>
-              <td className="px-4 py-2.5">
-                <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', WO_STATUS_CLS[a.workOrderStatus] ?? 'bg-gray-100 text-gray-500')}>
-                  {a.workOrderStatus}
-                </span>
-              </td>
-              <td className="px-4 py-2.5 font-semibold text-gray-800">
-                {Number(a.totalHoursWorked) > 0 ? `${Number(a.totalHoursWorked).toFixed(1)} hrs` : '—'}
-              </td>
-              <td className="px-4 py-2.5 text-gray-500 text-xs">
-                {a.rateType && a.rateAmount ? `${fmtMoney(a.rateAmount)} / ${a.rateType.toLowerCase()}` : '—'}
-              </td>
-            </tr>
-          ))}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <ChevronRight
+                        size={14}
+                        className={cn('text-gray-400 transition-transform shrink-0', isOpen && 'rotate-90')}
+                      />
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(`/equipment/work-orders/${meta.workOrderId}`) }}
+                        className="text-feros-navy hover:underline font-semibold text-xs"
+                      >
+                        {meta.woNumber}
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">{meta.clientName}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{meta.site ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', WO_STATUS_CLS[meta.workOrderStatus] ?? 'bg-gray-100 text-gray-500')}>
+                        {meta.workOrderStatus.replace('_', ' ')}
+                      </span>
+                      {hasActive && <span className="text-xs text-green-600 font-medium">● Active</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-semibold text-gray-800">
+                    {totalHrs > 0 ? `${totalHrs.toFixed(1)} hrs` : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">{assignments.length} period{assignments.length !== 1 ? 's' : ''}</td>
+                </tr>
+
+                {/* ── Expanded assignment rows ── */}
+                {isOpen && assignments.map(a => (
+                  <tr key={`assign-${a.id}`} className="bg-gray-50/70">
+                    <td className="pl-10 pr-4 py-2 text-gray-400 text-xs">└</td>
+                    <td colSpan={2} className="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">
+                      {fmtDate(a.startDate)} → {a.endDate
+                        ? fmtDate(a.endDate)
+                        : <span className="text-green-600 font-medium">Active</span>
+                      }
+                      {a.endReason && <span className="ml-2 text-gray-400">({a.endReason})</span>}
+                    </td>
+                    <td className="px-4 py-2">
+                      {a.isActive
+                        ? <span className="text-xs text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded">Active</span>
+                        : <span className="text-xs text-gray-400">Ended</span>
+                      }
+                    </td>
+                    <td className="px-4 py-2 text-xs font-medium text-gray-700">
+                      {Number(a.totalHoursWorked) > 0 ? `${Number(a.totalHoursWorked).toFixed(1)} hrs` : '—'}
+                    </td>
+                    <td className="px-4 py-2 text-xs text-gray-500">
+                      {a.rateType && a.rateAmount ? `${fmtMoney(a.rateAmount)} / ${a.rateType.toLowerCase()}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </>
+            )
+          })}
         </tbody>
       </table>
     </div>
