@@ -426,7 +426,10 @@ function FuelLogDialog({
             </div>
             <div>
               <Label className="text-xs">Litres Filled *</Label>
-              <Input type="number" step="0.01" min={0} className="mt-1" value={form.litresFilled || ''} onChange={e => set('litresFilled', Number(e.target.value))} placeholder="e.g. 120" />
+              <Input type="number" step="0.01" min={0} className="mt-1" value={form.litresFilled || ''} onChange={e => {
+                const l = Number(e.target.value)
+                setForm(f => ({ ...f, litresFilled: l, totalCost: l && f.costPerLitre ? Math.round(l * f.costPerLitre * 100) / 100 : f.totalCost }))
+              }} placeholder="e.g. 120" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -436,7 +439,10 @@ function FuelLogDialog({
             </div>
             <div>
               <Label className="text-xs">Cost / Litre (₹)</Label>
-              <Input type="number" step="0.01" min={0} className="mt-1" value={form.costPerLitre ?? ''} onChange={e => set('costPerLitre', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 95" />
+              <Input type="number" step="0.01" min={0} className="mt-1" value={form.costPerLitre ?? ''} onChange={e => {
+                const cpl = e.target.value ? Number(e.target.value) : undefined
+                setForm(f => ({ ...f, costPerLitre: cpl, totalCost: cpl && f.litresFilled ? Math.round(cpl * f.litresFilled * 100) / 100 : f.totalCost }))
+              }} placeholder="e.g. 95" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
