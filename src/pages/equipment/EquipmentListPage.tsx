@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -418,6 +419,7 @@ function EquipmentFormDialog({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function EquipmentListPage() {
   const { isEquipmentMode } = useSubscription()
+  const navigate = useNavigate()
   const btnPrimary = isEquipmentMode
     ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white'
     : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
@@ -499,7 +501,14 @@ export function EquipmentListPage() {
                   </span>
                 </td>
                 <td className="px-3 py-2"><WorkStatusBadge status={m.workStatus} /></td>
-                <td className="px-3 py-2"></td>
+                <td className="px-3 py-2 text-right">
+                  <button
+                    onClick={() => navigate(`/equipment/machines/${m.id}`)}
+                    className="text-xs text-blue-600 hover:underline font-medium"
+                  >
+                    View →
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
