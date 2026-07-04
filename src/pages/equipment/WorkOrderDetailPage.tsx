@@ -1051,9 +1051,22 @@ export function WorkOrderDetailPage() {
   })
 
   const { data: sessionsRes } = useQuery({
-    queryKey: ['work-entries', Number(id)],
-    queryFn: () => workOrdersApi.getAllWorkEntries(Number(id)),
+    queryKey: ['work-entries', Number(id), sessionsFrom, sessionsTo],
+    queryFn: () => workOrdersApi.getAllWorkEntries(Number(id), {
+      from: sessionsFrom || undefined,
+      to:   sessionsTo   || undefined,
+    }),
     enabled: !!id && tab === 'sessions',
+  })
+
+  const convertToLogsMutation = useMutation({
+    mutationFn: () => workOrdersApi.convertEntriesToLogs(Number(id)),
+    onSuccess: (res) => {
+      const count = res.data ?? 0
+      toast.success(count > 0 ? `${count} daily log${count !== 1 ? 's' : ''} created` : 'All sessions already synced')
+      qc.invalidateQueries({ queryKey: ['work-order', Number(id)] })
+    },
+    onError: () => toast.error('Failed to convert sessions'),
   })
 
   const { data: invoicesRes } = useQuery({
@@ -1453,11 +1466,7 @@ export function WorkOrderDetailPage() {
 
       {/* Tab: Sessions */}
       {tab === 'sessions' && (() => {
-        const allEntries = sessionsRes?.data ?? []
-        const entries = allEntries.filter(e =>
-          (!sessionsFrom || e.startTime.slice(0, 10) >= sessionsFrom) &&
-          (!sessionsTo   || e.startTime.slice(0, 10) <= sessionsTo)
-        )
+        const entries = sessionsRes?.data ?? []
         const totalHours = entries.reduce((sum, e) => sum + (e.hoursWorked ?? 0), 0)
         return (
           <div className="space-y-3">
@@ -1475,6 +1484,16 @@ export function WorkOrderDetailPage() {
                 {(sessionsFrom || sessionsTo) && (
                   <button onClick={() => { setSessionsFrom(''); setSessionsTo('') }}
                     className="text-xs text-gray-400 hover:text-gray-600">Clear</button>
+                )}
+                {(sessionsRes?.data?.length ?? 0) > 0 && (
+                  <Button size="sm" variant="outline"
+                    className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50 gap-1.5"
+                    disabled={convertToLogsMutation.isPending}
+                    onClick={() => convertToLogsMutation.mutate()}
+                  >
+                    <Activity size={13} />
+                    {convertToLogsMutation.isPending ? 'Syncing…' : 'Sync to Daily Logs'}
+                  </Button>
                 )}
               </div>
             </div>
