@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { equipmentMastersApi } from '@/api/equipmentMasters'
+import { globalMastersApi } from '@/api/masters'
+import type { MasterItem } from '@/types'
 import type { EquipmentMake, EquipmentModel, EquipmentType } from '@/api/equipmentMasters'
 
 const errMsg = (e: unknown) =>
@@ -349,13 +351,114 @@ function TypesSection({ makes }: { makes: EquipmentMake[] }) {
   )
 }
 
+
+// ── Service Task Types Section ────────────────────────────────────────────────
+function ServiceTaskTypesSection() {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [editItem, setEditItem] = useState<MasterItem | null>(null)
+  const [name, setName] = useState('')
+  const [nameErr, setNameErr] = useState('')
+
+  const { data } = useQuery({ queryKey: ['eq-service-task-types'], queryFn: globalMastersApi.getEquipmentServiceTaskTypes })
+  const items: MasterItem[] = data?.data ?? []
+
+  const mut = useMutation({
+    mutationFn: (d: { name: string }) =>
+      editItem
+        ? globalMastersApi.updateEquipmentServiceTaskType(editItem.id, d)
+        : globalMastersApi.createEquipmentServiceTaskType(d),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-service-task-types'] }); toast.success(editItem ? 'Updated' : 'Created'); setOpen(false) },
+    onError: (e: unknown) => toast.error(errMsg(e)),
+  })
+
+  const delMut = useMutation({
+    mutationFn: (id: number) => globalMastersApi.deleteEquipmentServiceTaskType(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-service-task-types'] }); toast.success('Deleted') },
+    onError: (e: unknown) => toast.error(errMsg(e)),
+  })
+
+  function openAdd() { setEditItem(null); setName(''); setNameErr(''); setOpen(true) }
+  function openEdit(it: MasterItem) { setEditItem(it); setName(it.name); setNameErr(''); setOpen(true) }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) { setNameErr('Name is required'); return }
+    mut.mutate({ name: name.trim() })
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-gray-800">Service Task Types</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Task types for equipment service records</p>
+        </div>
+        <Button size="sm" onClick={openAdd} className="gap-1.5 bg-[#1C1400] hover:bg-[#1C1400]/90 text-white">
+          <Plus size={14} /> Add Task Type
+        </Button>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="text-sm text-gray-400 py-8 text-center">No task types yet</p>
+      ) : (
+        <div className="border border-gray-100 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Name</th>
+                <th className="px-4 py-2.5 w-20"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {items.map(it => (
+                <tr key={it.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-2.5 text-gray-700">{it.name}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2 justify-end">
+                      <button onClick={() => openEdit(it)} className="text-gray-400 hover:text-gray-700"><Pencil size={13} /></button>
+                      <button onClick={() => { if (confirm('Delete this task type?')) delMut.mutate(it.id) }} className="text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editItem ? 'Edit' : 'Add'} Task Type</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submit} className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <Label>Name <span className="text-red-500">*</span></Label>
+              <Input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} placeholder="e.g. Hydraulic Oil Change" />
+              {nameErr && <p className="text-xs text-red-500">{nameErr}</p>}
+            </div>
+            <div className="flex justify-end gap-3 pt-1">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={mut.isPending} className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white">
+                {mut.isPending ? 'Saving…' : editItem ? 'Update' : 'Create'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 // ── Section registry ──────────────────────────────────────────────────────────
-type SectionId = 'makes' | 'models' | 'types'
+type SectionId = 'makes' | 'models' | 'types' | 'service-task-types'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'makes',  label: 'Makes' },
   { id: 'models', label: 'Models' },
   { id: 'types',  label: 'Equipment Types' },
+  { id: 'service-task-types', label: 'Service Task Types' },
 ]
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -369,6 +472,7 @@ export function EquipmentMastersPage() {
     makes:  <MakesSection />,
     models: <ModelsSection makes={makes} />,
     types:  <TypesSection makes={makes} />,
+    'service-task-types': <ServiceTaskTypesSection />,
   }
 
   return (

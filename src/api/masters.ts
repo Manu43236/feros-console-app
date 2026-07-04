@@ -20,6 +20,10 @@ export const globalMastersApi = {
   getTaxes:            () => apiClient.get<ApiResponse<TaxItem[]>>('/masters/global/taxes').then(r => r.data),
   getPaymentStatuses:  () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/payment-statuses').then(r => r.data),
   getServiceTaskTypes: () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/service-task-types').then(r => r.data),
+  getEquipmentServiceTaskTypes: () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/equipment-service-task-types').then(r => r.data),
+  createEquipmentServiceTaskType: (data: { name: string }) => apiClient.post<ApiResponse<MasterItem>>('/masters/global/equipment-service-task-types', data).then(r => r.data),
+  updateEquipmentServiceTaskType: (id: number, data: { name: string }) => apiClient.put<ApiResponse<MasterItem>>('/masters/global/equipment-service-task-types/' + id, data).then(r => r.data),
+  deleteEquipmentServiceTaskType: (id: number) => apiClient.delete<ApiResponse<void>>('/masters/global/equipment-service-task-types/' + id).then(r => r.data),
   getRoles:            () => apiClient.get<ApiResponse<{ id: number; name: string; description: string }[]>>('/masters/global/roles').then(r => r.data),
 }
 

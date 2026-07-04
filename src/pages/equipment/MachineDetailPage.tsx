@@ -644,8 +644,8 @@ function ServiceDialog({
   const [showCustom, setShowCustom] = useState(false)
 
   const { data: taskTypesRes } = useQuery({
-    queryKey: ['service-task-types'],
-    queryFn: globalMastersApi.getServiceTaskTypes,
+    queryKey: ['equipment-service-task-types'],
+    queryFn: globalMastersApi.getEquipmentServiceTaskTypes,
     enabled: open,
   })
   const taskTypes: MasterItem[] = taskTypesRes?.data ?? []
