@@ -118,8 +118,7 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
             <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
           </div>
           <div className="border-t border-gray-100 pt-3 space-y-3">
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Rate Override (optional)</p>
-            <p className="text-xs text-gray-400 -mt-2">Leave blank to use the work order rate.</p>
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Rate <span className="normal-case font-normal">(optional)</span></p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Rate Type</Label>
@@ -128,7 +127,7 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
                   onChange={e => setRateType(e.target.value as typeof rateType)}
                   className="w-full h-9 border border-gray-200 rounded-md px-2 text-sm bg-white"
                 >
-                  <option value="">— same as WO —</option>
+                  <option value="">— select —</option>
                   <option value="HOURLY">Hourly</option>
                   <option value="DAILY_SHIFT">Daily Shift</option>
                   <option value="MONTHLY">Monthly</option>

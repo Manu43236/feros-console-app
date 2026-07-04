@@ -69,7 +69,21 @@ export interface EquipmentRequest {
   notes?: string
 }
 
+export interface EquipmentDashboardResponse {
+  totalMachines: number
+  available: number
+  assigned: number
+  busy: number
+  inRepair: number
+  breakdown: number
+  activeWorkOrders: number
+  totalWorkOrders: number
+  hoursToday: number | null
+  hoursThisMonth: number | null
+}
+
 export const equipmentApi = {
+  getDashboard: () => apiClient.get<ApiResponse<EquipmentDashboardResponse>>('/equipment/dashboard').then(r => r.data),
   getAll: () => apiClient.get<ApiResponse<Equipment[]>>('/equipment').then(r => r.data),
   getById: (id: number) => apiClient.get<ApiResponse<Equipment>>(`/equipment/${id}`).then(r => r.data),
   create: (data: EquipmentRequest) => apiClient.post<ApiResponse<Equipment>>('/equipment', data).then(r => r.data),
