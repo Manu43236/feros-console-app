@@ -1160,12 +1160,12 @@ export function WorkOrderDetailPage() {
         <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-gray-400 mb-2">
             <Gauge size={13} />
-            <span className="text-xs font-medium uppercase tracking-wide">Rate</span>
+            <span className="text-xs font-medium uppercase tracking-wide">Mobilization</span>
           </div>
-          <p className="text-sm font-semibold text-gray-800">₹{wo.rateAmount.toLocaleString('en-IN')}</p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {wo.rateType === 'HOURLY' ? 'per hour' : wo.rateType === 'DAILY_SHIFT' ? `per shift${wo.shiftHours ? ` (${wo.shiftHours}h)` : ''}` : 'per month'}
+          <p className="text-sm font-semibold text-gray-800">
+            {wo.mobilizationCharge ? `₹${wo.mobilizationCharge.toLocaleString('en-IN')}` : '—'}
           </p>
+          <p className="text-xs text-gray-400 mt-0.5">one-time charge</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
@@ -1191,17 +1191,10 @@ export function WorkOrderDetailPage() {
         <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-gray-400 mb-2">
             <User size={13} />
-            <span className="text-xs font-medium uppercase tracking-wide">Operator</span>
+            <span className="text-xs font-medium uppercase tracking-wide">Site</span>
           </div>
-          <p className="text-sm font-semibold text-gray-800">
-            {wo.operatorType
-              ? wo.operatorType === 'OWN_STAFF' ? (wo.operatorStaffName ?? 'Own Staff')
-                : wo.operatorType === 'HIRED' ? (wo.hiredOperatorName ?? 'Hired')
-                : 'Client Provided'
-              : '—'}
-          </p>
-          {wo.operatorBilling === 'BILLED_SEPARATELY' && wo.operatorRatePerDay &&
-            <p className="text-xs text-gray-400 mt-0.5">₹{wo.operatorRatePerDay}/day</p>}
+          <p className="text-sm font-semibold text-gray-800 truncate">{wo.site ?? '—'}</p>
+          <p className="text-xs text-gray-400 mt-0.5">location</p>
         </div>
       </div>
 
