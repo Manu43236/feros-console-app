@@ -1161,8 +1161,14 @@ function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentH
 
                     {/* Meta row */}
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 flex-wrap">
-                      {s.hmrAtService != null && <span>⏱ {s.hmrAtService} hrs</span>}
-                      {s.dueAtHmr != null && <span>Due at {s.dueAtHmr} hrs</span>}
+                      {s.hmrAtService != null && <span>Scheduled: {s.hmrAtService} hrs</span>}
+                      {s.dueAtHmr != null && <span>🎯 Due: {s.dueAtHmr} hrs</span>}
+                      {s.status === 'IN_PROGRESS' && currentHmr != null && s.dueAtHmr != null && currentHmr > s.dueAtHmr && (
+                        <span className="text-red-500 font-medium">⚠ {(currentHmr - s.dueAtHmr).toFixed(0)} hrs overdue (current: {currentHmr} hrs)</span>
+                      )}
+                      {s.status === 'IN_PROGRESS' && currentHmr != null && s.dueAtHmr != null && currentHmr <= s.dueAtHmr && (
+                        <span className="text-gray-400">Current: {currentHmr} hrs</span>
+                      )}
                       {s.serviceDate && <span>📅 {fmtDate(s.serviceDate)}</span>}
                       {s.location && <span>📍 {s.location}</span>}
                       {(s.totalCost ?? 0) > 0 && (
@@ -1227,8 +1233,12 @@ function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentH
                       </div>
                     </div>
                   )}
-                  {(s.vendorName || s.location || s.payerType || s.notes) && (
+                  {(s.vendorName || s.location || s.payerType || s.notes || s.completedDate || (s.status === 'COMPLETED' && s.hmrAtService)) && (
                     <div className="space-y-1">
+                      {s.status === 'COMPLETED' && s.hmrAtService != null && (
+                        <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Completed at HMR:</span> {s.hmrAtService} hrs</p>
+                      )}
+                      {s.completedDate && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Completed on:</span> {fmtDate(s.completedDate)}</p>}
                       {s.vendorName && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Vendor:</span> {s.vendorName}</p>}
                       {s.location && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Location:</span> {s.location}</p>}
                       {s.payerType && <p className="text-xs text-gray-500"><span className="font-medium text-gray-700">Payer:</span> {PAYER_LABELS[s.payerType]}</p>}
