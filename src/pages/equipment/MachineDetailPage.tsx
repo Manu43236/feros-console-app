@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Info, TrendingUp, Gauge, Droplets,
@@ -1460,6 +1461,9 @@ export function MachineDetailPage() {
   const { equipmentId } = useParams<{ equipmentId: string }>()
   const navigate = useNavigate()
   const id = Number(equipmentId)
+  const role = useAuthStore(s => s.role)
+
+  const visibleTabs = TABS.filter(t => !(t === 'Billings' && role === 'SUPERVISOR'))
 
   const [activeTab, setActiveTab] = useState<Tab>('Basic Info')
 
@@ -1553,7 +1557,7 @@ export function MachineDetailPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Tab bar */}
         <div className="flex border-b border-gray-100 overflow-x-auto">
-          {TABS.map(t => (
+          {visibleTabs.map(t => (
             <button
               key={t}
               onClick={() => setActiveTab(t)}
