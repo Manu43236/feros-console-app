@@ -1485,7 +1485,7 @@ export function MachineDetailPage() {
   const { data: invoiceItemsData } = useQuery({
     queryKey: ['machine-invoice-items', id],
     queryFn: () => machinesApi.getInvoiceItems(id),
-    enabled: !!id,
+    enabled: !!id && role !== 'SUPERVISOR',
   })
 
   const machine  = eqData?.data as Equipment | undefined
