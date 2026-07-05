@@ -82,7 +82,7 @@ function NewLeaseDialog({ open, onClose }: { open: boolean; onClose: () => void 
                 <SearchableSelect
                   options={clients.map(c => ({ value: String(c.id), label: c.clientName }))}
                   value={field.value ? String(field.value) : ''}
-                  onChange={v => field.onChange(Number(v))}
+                  onValueChange={(v: string) => field.onChange(Number(v))}
                   placeholder="Select client"
                 />
               )}
@@ -119,7 +119,7 @@ function NewLeaseDialog({ open, onClose }: { open: boolean; onClose: () => void 
                     { value: 'MONTHLY',     label: 'Per Month' },
                   ]}
                   value={field.value}
-                  onChange={v => field.onChange(v as RateType)}
+                  onValueChange={(v: string) => field.onChange(v as RateType)}
                   placeholder="Select rate type"
                 />
               )}

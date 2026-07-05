@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vehicleLeasesApi } from '@/api/vehicleLeases'
 import { vehiclesApi } from '@/api/vehicles'
-import { clientsApi } from '@/api/clients'
 import { staffApi } from '@/api/staff'
 import { toast } from 'sonner'
 import {
@@ -59,15 +58,15 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
   })
 
   const vehicles = vehiclesRes?.data ?? []
-  const drivers = (staffRes?.data ?? []).filter(s => s.role === 'DRIVER')
+  const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
 
   const vehicleOptions = vehicles.map(v => ({
     value: String(v.id),
     label: `${v.registrationNumber}${v.vehicleTypeName ? ` — ${v.vehicleTypeName}` : ''}`,
   }))
   const driverOptions = drivers.map(d => ({
-    value: String(d.id),
-    label: d.name,
+    value: String(d.userId),
+    label: d.userName,
   }))
 
   const mutation = useMutation({
@@ -102,7 +101,7 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
             <SearchableSelect
               options={vehicleOptions}
               value={vehicleId}
-              onChange={setVehicleId}
+              onValueChange={setVehicleId}
               placeholder="Search by reg. number"
             />
           </div>
@@ -112,7 +111,7 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
             <SearchableSelect
               options={driverOptions}
               value={driverStaffId}
-              onChange={setDriverStaffId}
+              onValueChange={setDriverStaffId}
               placeholder="Select driver"
             />
           </div>
