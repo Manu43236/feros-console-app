@@ -164,6 +164,7 @@ export interface EquipmentServiceRecord {
   location: string | null
   serviceDate: string | null
   completedDate: string | null
+  completedHmr: number | null
   startedAt: string | null
   totalCost: number | null
   insuranceClaimNo: string | null
