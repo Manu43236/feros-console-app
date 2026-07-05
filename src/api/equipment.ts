@@ -131,6 +131,7 @@ export type ServiceTriggeredBy = 'SCHEDULED' | 'BREAKDOWN' | 'ACCIDENT' | 'COMPL
 export type EquipmentServiceType = 'INTERNAL' | 'THIRD_PARTY' | 'OEM_CENTER'
 export type ServicePayerType = 'OWN_EXPENSE' | 'WARRANTY_OEM' | 'WARRANTY_ANC' | 'INSURANCE' | 'AMC'
 export type ServiceStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
+export type ServiceDisplayStatus = 'OPEN' | 'DUE_SOON' | 'OVERDUE' | 'IN_PROGRESS' | 'COMPLETED'
 export type ServiceTaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
 
 export interface EquipmentServiceTask {
@@ -156,6 +157,7 @@ export interface EquipmentServiceRecord {
   serviceType: EquipmentServiceType
   payerType: ServicePayerType
   status: ServiceStatus
+  displayStatus: ServiceDisplayStatus
   hmrAtService: number | null
   dueAtHmr: number | null
   vendorName: string | null
@@ -228,6 +230,6 @@ export const equipmentApi = {
   createService: (id: number, data: EquipmentServiceRequest) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services`, data).then(r => r.data),
   updateService: (id: number, serviceId: number, data: EquipmentServiceRequest) => apiClient.put<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}`, data).then(r => r.data),
   startService: (id: number, serviceId: number) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/start`, {}).then(r => r.data),
-  completeService: (id: number, serviceId: number) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/complete`, {}).then(r => r.data),
+  completeService: (id: number, serviceId: number, data: { completedHmr?: number | null; completedDate?: string | null }) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/complete`, data).then(r => r.data),
   deleteService: (id: number, serviceId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/services/${serviceId}`).then(r => r.data),
 }

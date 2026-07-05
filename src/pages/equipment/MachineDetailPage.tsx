@@ -951,19 +951,75 @@ function ServiceDialog({
 }
 
 const SVC_STATUS_CHIP: Record<string, string> = {
-  OPEN:        'bg-blue-50 text-blue-600 border-blue-200',
-  IN_PROGRESS: 'bg-amber-50 text-amber-600 border-amber-200',
+  OPEN:        'bg-gray-100 text-gray-600 border-gray-200',
+  DUE_SOON:    'bg-amber-50 text-amber-700 border-amber-200',
+  OVERDUE:     'bg-red-50 text-red-600 border-red-200',
+  IN_PROGRESS: 'bg-orange-50 text-orange-600 border-orange-200',
   COMPLETED:   'bg-green-50 text-green-700 border-green-200',
 }
 const SVC_STATUS_LABEL: Record<string, string> = {
-  OPEN: 'Open', IN_PROGRESS: 'In Progress', COMPLETED: 'Completed',
+  OPEN: 'Open', DUE_SOON: 'Due Soon', OVERDUE: 'Overdue',
+  IN_PROGRESS: 'In Progress', COMPLETED: 'Completed',
+}
+
+function CompleteServiceDialog({
+  service, currentHmr, open, onClose,
+}: { service: EquipmentServiceRecord | null; currentHmr?: number | null; open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [completedDate, setCompletedDate] = useState(todayStr())
+  const [completedHmr, setCompletedHmr] = useState(currentHmr != null ? String(currentHmr) : '')
+
+  const mut = useMutation({
+    mutationFn: () => equipmentApi.completeService(
+      service!.equipmentId, service!.id,
+      { completedHmr: completedHmr ? Number(completedHmr) : null, completedDate: completedDate || null }
+    ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eq-services', service!.equipmentId] })
+      qc.invalidateQueries({ queryKey: ['equipment', service!.equipmentId] })
+      toast.success('Service completed — next service scheduled automatically')
+      onClose()
+    },
+    onError: () => toast.error('Failed to complete service'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Complete Service</DialogTitle></DialogHeader>
+        <p className="text-xs font-mono text-gray-400 -mt-1">{service?.serviceNumber}</p>
+        <div className="space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <Label>Completed Date *</Label>
+            <Input type="date" value={completedDate} onChange={e => setCompletedDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>HMR at Completion (hrs)</Label>
+            <Input type="number" placeholder="e.g. 2300"
+              value={completedHmr} onChange={e => setCompletedHmr(e.target.value)} />
+            {service?.dueAtHmr && completedHmr && Number(completedHmr) > service.dueAtHmr && (
+              <p className="text-xs text-amber-600">⚠ Completed {Number(completedHmr) - service.dueAtHmr} hrs late — next service adjusted accordingly</p>
+            )}
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose} disabled={mut.isPending}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending || !completedDate}
+            className="bg-green-600 hover:bg-green-700 text-white">
+            {mut.isPending ? 'Saving…' : 'Mark Complete'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentHmr?: number | null }) {
   const qc = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<EquipmentServiceRecord | null>(null)
-  const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'completed'>('all')
+  const [completing, setCompleting] = useState<EquipmentServiceRecord | null>(null)
+  const [filter, setFilter] = useState<'all' | 'open' | 'due_soon' | 'overdue' | 'in_progress' | 'completed'>('all')
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<number | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
@@ -984,15 +1040,6 @@ function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentH
     onError: () => toast.error('Failed to start service'),
   })
 
-  const completeMut = useMutation({
-    mutationFn: (id: number) => equipmentApi.completeService(equipmentId, id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] })
-      qc.invalidateQueries({ queryKey: ['equipment', equipmentId] })
-      toast.success('Service completed')
-    },
-    onError: () => toast.error('Failed to complete service'),
-  })
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => equipmentApi.deleteService(equipmentId, id),
@@ -1001,9 +1048,11 @@ function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentH
   })
 
   const filtered = services.filter(s => {
-    if (filter === 'open'        && s.status !== 'OPEN')        return false
-    if (filter === 'in_progress' && s.status !== 'IN_PROGRESS') return false
-    if (filter === 'completed'   && s.status !== 'COMPLETED')   return false
+    if (filter === 'open'        && s.displayStatus !== 'OPEN')        return false
+    if (filter === 'due_soon'    && s.displayStatus !== 'DUE_SOON')    return false
+    if (filter === 'overdue'     && s.displayStatus !== 'OVERDUE')     return false
+    if (filter === 'in_progress' && s.displayStatus !== 'IN_PROGRESS') return false
+    if (filter === 'completed'   && s.displayStatus !== 'COMPLETED')   return false
     if (search && !s.serviceNumber?.toLowerCase().includes(search.toLowerCase()) &&
         !s.notes?.toLowerCase().includes(search.toLowerCase())) return false
     return true
@@ -1028,9 +1077,11 @@ function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentH
       <div className="flex gap-2 flex-wrap">
         {([
           { key: 'all',         label: 'All',         count: services.length },
-          { key: 'open',        label: 'Open',        count: services.filter(s => s.status === 'OPEN').length },
-          { key: 'in_progress', label: 'In Progress', count: services.filter(s => s.status === 'IN_PROGRESS').length },
-          { key: 'completed',   label: 'Completed',   count: services.filter(s => s.status === 'COMPLETED').length },
+          { key: 'open',        label: 'Open',        count: services.filter(s => s.displayStatus === 'OPEN').length },
+          { key: 'due_soon',    label: 'Due Soon',    count: services.filter(s => s.displayStatus === 'DUE_SOON').length },
+          { key: 'overdue',     label: 'Overdue',     count: services.filter(s => s.displayStatus === 'OVERDUE').length },
+          { key: 'in_progress', label: 'In Progress', count: services.filter(s => s.displayStatus === 'IN_PROGRESS').length },
+          { key: 'completed',   label: 'Completed',   count: services.filter(s => s.displayStatus === 'COMPLETED').length },
         ] as const).map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)}
             className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
@@ -1069,8 +1120,8 @@ function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentH
                     {/* Header row */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-mono text-gray-400">{s.serviceNumber}</span>
-                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', SVC_STATUS_CHIP[s.status])}>
-                        {SVC_STATUS_LABEL[s.status]}
+                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', SVC_STATUS_CHIP[s.displayStatus])}>
+                        {SVC_STATUS_LABEL[s.displayStatus]}
                       </span>
                       <span className="text-xs text-gray-400">
                         {s.triggeredBy === 'BREAKDOWN'  ? '⚡ Breakdown'  :
@@ -1121,8 +1172,7 @@ function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentH
                       </Button>
                     )}
                     {s.status === 'IN_PROGRESS' && (
-                      <Button size="sm" onClick={() => completeMut.mutate(s.id)}
-                        disabled={completeMut.isPending}
+                      <Button size="sm" onClick={() => setCompleting(s)}
                         className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1">
                         <Check size={12} /> Done
                       </Button>
@@ -1182,6 +1232,7 @@ function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentH
       )}
 
       <ServiceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} equipmentId={equipmentId} editing={editing} currentHmr={currentHmr} />
+      <CompleteServiceDialog service={completing} currentHmr={currentHmr} open={!!completing} onClose={() => setCompleting(null)} />
 
       {/* Delete confirm */}
       <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
