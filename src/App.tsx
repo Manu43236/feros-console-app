@@ -197,8 +197,8 @@ export default function App() {
 
           {/* Equipment */}
           <Route path="equipment/dashboard"          element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><EquipmentDashboardPage /></ProtectedRoute>} />
-          <Route path="equipment/machines"              element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentListPage /></ProtectedRoute>} />
-          <Route path="equipment/machines/:equipmentId" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><MachineDetailPage /></ProtectedRoute>} />
+          <Route path="equipment/machines"              element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><EquipmentListPage /></ProtectedRoute>} />
+          <Route path="equipment/machines/:equipmentId" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><MachineDetailPage /></ProtectedRoute>} />
           <Route path="equipment/work-orders"        element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><WorkOrdersListPage /></ProtectedRoute>} />
           <Route path="equipment/work-orders/:id"    element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><WorkOrderDetailPage /></ProtectedRoute>} />
           <Route path="equipment/invoices"           element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentInvoicesPage /></ProtectedRoute>} />
