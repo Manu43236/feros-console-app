@@ -299,6 +299,13 @@ const EQUIPMENT_SUPERVISOR_NAV: SectionedNav = {
       ],
     },
     {
+      section: 'Equipment',
+      icon: Construction,
+      items: [
+        { to: '/equipment/machines', label: 'Machines', icon: Construction },
+      ],
+    },
+    {
       section: 'HR',
       icon: UserCheck,
       items: [
