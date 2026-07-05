@@ -76,7 +76,48 @@ export interface DocumentTypeItem extends MasterItem { applicableFor: 'VEHICLE' 
 export interface TaxItem extends MasterItem { rate: number; taxType: string }
 
 // Vehicle status type enum
-export type VehicleStatusType = 'AVAILABLE' | 'ASSIGNED' | 'ON_TRIP' | 'IN_REPAIR' | 'BREAKDOWN' | 'OTHER'
+export type VehicleStatusType = 'AVAILABLE' | 'ASSIGNED' | 'ON_TRIP' | 'IN_REPAIR' | 'BREAKDOWN' | 'ON_LEASE' | 'OTHER'
+
+// ── Vehicle Leases ────────────────────────────────────────────────────────────
+export type LeaseStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED'
+
+export interface VehicleLease {
+  id: number; tenantId: number
+  leaseNumber: string
+  clientId: number; clientName: string
+  site?: string
+  startDate: string; endDate?: string
+  rateType: RateType
+  status: LeaseStatus
+  notes?: string
+  vehicleCount: number
+  createdAt: string; updatedAt: string
+}
+
+export interface LeaseVehicleAssignment {
+  id: number; leaseId: number
+  vehicleId: number; registrationNumber: string; vehicleType?: string
+  driverStaffId?: number; driverName?: string
+  ratePerVehicle: number
+  startDate: string; endDate?: string
+  odometerAtStart?: number; odometerAtEnd?: number
+  isActive: boolean; notes?: string
+  createdAt: string
+}
+
+export interface LeaseBillingLine {
+  assignmentId: number
+  registrationNumber: string
+  ratePerVehicle: number
+  days: number
+  amount: number
+}
+
+export interface LeaseBilling {
+  leaseId: number; leaseNumber: string; rateType: RateType
+  lines: LeaseBillingLine[]
+  totalAmount: number
+}
 
 // Global vehicle status (no tenantId)
 export interface VehicleStatusItem extends MasterItem {

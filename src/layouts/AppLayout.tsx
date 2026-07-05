@@ -12,7 +12,7 @@ import {
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
   Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin, ScrollText,
-  Construction,
+  Construction, KeyRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
@@ -53,10 +53,11 @@ const ADMIN_NAV: SectionedNav = {
       section: 'Fleet',
       icon: Truck,
       items: [
-        { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
-        { to: '/gps',            label: 'GPS Tracker',    icon: MapPin },
-        { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
-        { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
+        { to: '/vehicles',         label: 'Vehicles',       icon: Truck },
+        { to: '/gps',              label: 'GPS Tracker',    icon: MapPin },
+        { to: '/fuel-logs',        label: 'Fuel Logs',      icon: Fuel },
+        { to: '/meter-readings',   label: 'Meter Readings', icon: Gauge },
+        { to: '/vehicles/leases',  label: 'Leases',         icon: KeyRound },
       ],
     },
     {
@@ -132,10 +133,11 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       section: 'Fleet',
       icon: Truck,
       items: [
-        { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
-        { to: '/gps',            label: 'GPS Tracker',    icon: MapPin },
-        { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
-        { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
+        { to: '/vehicles',        label: 'Vehicles',       icon: Truck },
+        { to: '/gps',             label: 'GPS Tracker',    icon: MapPin },
+        { to: '/fuel-logs',       label: 'Fuel Logs',      icon: Fuel },
+        { to: '/meter-readings',  label: 'Meter Readings', icon: Gauge },
+        { to: '/vehicles/leases', label: 'Leases',         icon: KeyRound },
       ],
     },
     {
@@ -198,10 +200,11 @@ const SUPERVISOR_NAV: SectionedNav = {
       section: 'Fleet',
       icon: Truck,
       items: [
-        { to: '/vehicles',       label: 'Vehicles',       icon: Truck },
-        { to: '/gps',            label: 'GPS Tracker',    icon: MapPin },
-        { to: '/fuel-logs',      label: 'Fuel Logs',      icon: Fuel },
-        { to: '/meter-readings', label: 'Meter Readings', icon: Gauge },
+        { to: '/vehicles',        label: 'Vehicles',       icon: Truck },
+        { to: '/gps',             label: 'GPS Tracker',    icon: MapPin },
+        { to: '/fuel-logs',       label: 'Fuel Logs',      icon: Fuel },
+        { to: '/meter-readings',  label: 'Meter Readings', icon: Gauge },
+        { to: '/vehicles/leases', label: 'Leases',         icon: KeyRound },
       ],
     },
     {
