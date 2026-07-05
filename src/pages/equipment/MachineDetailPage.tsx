@@ -618,20 +618,23 @@ interface TaskDraft {
   cost?: string
 }
 
-function defaultDraft(): ServiceDraft {
+function todayStr() { return new Date().toISOString().split('T')[0] }
+
+function defaultDraft(currentHmr?: number | null): ServiceDraft {
   return {
     triggeredBy: 'SCHEDULED', serviceType: 'INTERNAL', payerType: 'OWN_EXPENSE',
-    vendorName: '', location: '', serviceDate: '', hmrAtService: '', dueAtHmr: '',
+    vendorName: '', location: '', serviceDate: todayStr(),
+    hmrAtService: currentHmr != null ? String(currentHmr) : '', dueAtHmr: '',
     notes: '', insuranceClaimNo: '', insuranceClaimAmt: '',
     certificateNumber: '', certificateValidUntil: '', isEscalated: false,
   }
 }
 
 function ServiceDialog({
-  open, onClose, equipmentId, editing,
-}: { open: boolean; onClose: () => void; equipmentId: number; editing: EquipmentServiceRecord | null }) {
+  open, onClose, equipmentId, editing, currentHmr,
+}: { open: boolean; onClose: () => void; equipmentId: number; editing: EquipmentServiceRecord | null; currentHmr?: number | null }) {
   const qc = useQueryClient()
-  const [form, setForm] = useState<ServiceDraft>(defaultDraft())
+  const [form, setForm] = useState<ServiceDraft>(defaultDraft(editing ? null : currentHmr))
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
   const [taskDrafts, setTaskDrafts] = useState<Record<number, TaskDraft>>({})
   const [customTasks, setCustomTasks] = useState<TaskDraft[]>([])
@@ -692,7 +695,7 @@ function ServiceDialog({
   })
 
   function handleClose() {
-    setForm(defaultDraft())
+    setForm(defaultDraft(currentHmr))
     setSelectedTaskIds(new Set()); setTaskDrafts({}); setCustomTasks([])
     setCustomName(''); setShowCustom(false)
     onClose()
@@ -850,9 +853,9 @@ function ServiceDialog({
             </div>
           </div>
 
-          {form.triggeredBy === 'SCHEDULED' && (
+          {Array.from(selectedTaskIds).some(id => taskDrafts[id]?.isRecurring) && (
             <div className="space-y-1.5">
-              <Label>Due At HMR <span className="text-gray-400 font-normal">(hrs)</span></Label>
+              <Label>Next Due HMR <span className="text-gray-400 font-normal">(hrs)</span></Label>
               <Input type="number" placeholder="e.g. 1500" value={form.dueAtHmr} onChange={e => set('dueAtHmr', e.target.value)} />
             </div>
           )}
@@ -948,7 +951,7 @@ const SVC_STATUS_LABEL: Record<string, string> = {
   OPEN: 'Open', IN_PROGRESS: 'In Progress', COMPLETED: 'Completed',
 }
 
-function ServiceTab({ equipmentId }: { equipmentId: number }) {
+function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentHmr?: number | null }) {
   const qc = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<EquipmentServiceRecord | null>(null)
@@ -1170,7 +1173,7 @@ function ServiceTab({ equipmentId }: { equipmentId: number }) {
         </div>
       )}
 
-      <ServiceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} equipmentId={equipmentId} editing={editing} />
+      <ServiceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} equipmentId={equipmentId} editing={editing} currentHmr={currentHmr} />
 
       {/* Delete confirm */}
       <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
@@ -1491,7 +1494,7 @@ export function MachineDetailPage() {
           {activeTab === 'Utilization' && <UtilizationTab logs={logs} from="" to="" onFrom={() => {}} onTo={() => {}} />}
           {activeTab === 'HMR'         && <HmrTab equipmentId={id} logs={logs} />}
           {activeTab === 'Fuel'        && <FuelTab equipmentId={id} />}
-          {activeTab === 'Service'      && <ServiceTab equipmentId={id} />}
+          {activeTab === 'Service'      && <ServiceTab equipmentId={id} currentHmr={machine.currentMeterReading != null ? Number(machine.currentMeterReading) : null} />}
           {activeTab === 'WO History'  && <WoHistoryTab history={history} navigate={navigate} />}
           {activeTab === 'Billings'    && <BillingsTab items={invItems} navigate={navigate} />}
         </div>
