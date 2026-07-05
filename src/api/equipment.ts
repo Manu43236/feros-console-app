@@ -182,7 +182,7 @@ export interface EquipmentServiceRecord {
 export interface EquipmentServiceTaskRequest {
   taskTypeId?: number | null
   customName?: string | null
-  isRecurring: boolean
+  recurring: boolean
   frequencyHmr?: number | null
   cost?: number | null
 }

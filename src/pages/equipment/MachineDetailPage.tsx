@@ -733,9 +733,9 @@ function ServiceDialog({
     const tasks = [
       ...Array.from(selectedTaskIds).map(id => {
         const d = taskDrafts[id] ?? { isRecurring: false }
-        return { taskTypeId: id, customName: null, isRecurring: d.isRecurring, frequencyHmr: d.isRecurring && d.frequencyHmr ? Number(d.frequencyHmr) : null, cost: d.cost ? Number(d.cost) : null }
+        return { taskTypeId: id, customName: null, recurring: d.isRecurring, frequencyHmr: d.isRecurring && d.frequencyHmr ? Number(d.frequencyHmr) : null, cost: d.cost ? Number(d.cost) : null }
       }),
-      ...customTasks.map(ct => ({ taskTypeId: null, customName: ct.customName ?? null, isRecurring: ct.isRecurring, frequencyHmr: ct.isRecurring && ct.frequencyHmr ? Number(ct.frequencyHmr) : null, cost: ct.cost ? Number(ct.cost) : null })),
+      ...customTasks.map(ct => ({ taskTypeId: null, customName: ct.customName ?? null, recurring: ct.isRecurring, frequencyHmr: ct.isRecurring && ct.frequencyHmr ? Number(ct.frequencyHmr) : null, cost: ct.cost ? Number(ct.cost) : null })),
     ]
     if (tasks.length === 0) { toast.error('Add at least one task'); return }
     const hmrBase = form.hmrAtService ? Number(form.hmrAtService) : null
