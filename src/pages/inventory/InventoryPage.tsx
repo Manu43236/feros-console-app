@@ -532,6 +532,7 @@ function txChip(type: StockTransactionType) {
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 
 function TransactionsTab() {
+  const { isEquipmentMode } = useSubscription()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<StockTransactionType | 'ALL'>('ALL')
 
@@ -563,7 +564,7 @@ function TransactionsTab() {
         <div className="flex gap-1 shrink-0">
           {(['ALL', 'IN', 'OUT', 'DAMAGE'] as const).map(t => (
             <button key={t} onClick={() => setTypeFilter(t)}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-medium border ${typeFilter === t ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-medium border ${typeFilter === t ? (isEquipmentMode ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar' : 'bg-feros-navy text-white border-feros-navy') : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
               {t}
             </button>
           ))}

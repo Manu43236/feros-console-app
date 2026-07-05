@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { LoginResponse } from '@/types'
+import type { LoginResponse, ModuleType } from '@/types'
 
 interface AuthState {
   token:          string | null
@@ -14,6 +14,13 @@ interface AuthState {
   isAuthenticated: boolean
   /** Null = ADMIN/SA (all modules visible). Array = only these module keys visible. */
   allowedModules: string[] | null
+  /** Which modules this tenant has access to */
+  moduleType: ModuleType | null
+  /** Current active mode — only relevant when moduleType === 'BOTH' */
+  currentMode: 'VEHICLES' | 'EQUIPMENT'
+  /** Null for ADMIN/SA. For staff roles: whether they can access vehicles/equipment */
+  canAccessVehicles: boolean | null
+  canAccessEquipment: boolean | null
 
   // Impersonation — saved SA session while impersonating
   saSession: {
@@ -29,6 +36,7 @@ interface AuthState {
   exitImpersonation:  () => void
   setLogoUrl:         (url: string) => void
   setSessionDisplaced: (val: boolean) => void
+  setCurrentMode:     (mode: 'VEHICLES' | 'EQUIPMENT') => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -44,6 +52,10 @@ export const useAuthStore = create<AuthState>()(
       logoUrl:        null,
       isAuthenticated: false,
       allowedModules: null,
+      moduleType:     null,
+      currentMode:    'VEHICLES',
+      canAccessVehicles: null,
+      canAccessEquipment: null,
       saSession:      null,
       sessionDisplaced: false,
 
@@ -59,6 +71,13 @@ export const useAuthStore = create<AuthState>()(
           logoUrl:        data.logoUrl ?? null,
           isAuthenticated: true,
           allowedModules: data.allowedModules ?? null,
+          moduleType:     data.moduleType ?? null,
+          // Equipment-only supervisor → start in equipment mode
+          currentMode:    (data.canAccessVehicles === false && data.canAccessEquipment === true)
+                            ? 'EQUIPMENT'
+                            : 'VEHICLES',
+          canAccessVehicles:  data.canAccessVehicles ?? null,
+          canAccessEquipment: data.canAccessEquipment ?? null,
           saSession:      null,
         })
       },
@@ -67,7 +86,9 @@ export const useAuthStore = create<AuthState>()(
         set({
           token: null, userId: null, tenantId: null,
           phone: null, name: null, role: null, companyName: null, logoUrl: null,
-          isAuthenticated: false, allowedModules: null, saSession: null,
+          isAuthenticated: false, allowedModules: null, moduleType: null,
+          currentMode: 'VEHICLES', canAccessVehicles: null, canAccessEquipment: null,
+          saSession: null,
         })
       },
 
@@ -93,12 +114,17 @@ export const useAuthStore = create<AuthState>()(
           logoUrl:        data.logoUrl ?? null,
           isAuthenticated: true,
           allowedModules: null, // Impersonating as ADMIN — all visible
+          moduleType:     data.moduleType ?? null,
+          currentMode:    'VEHICLES',
+          canAccessVehicles:  null,
+          canAccessEquipment: null,
           saSession,
         })
       },
 
       setLogoUrl: (url: string) => set({ logoUrl: url }),
       setSessionDisplaced: (val: boolean) => set({ sessionDisplaced: val }),
+      setCurrentMode: (mode) => set({ currentMode: mode }),
 
       exitImpersonation: () => {
         const { saSession } = get()
@@ -125,6 +151,8 @@ export const useAuthStore = create<AuthState>()(
         phone: state.phone, name: state.name, role: state.role,
         companyName: state.companyName, logoUrl: state.logoUrl,
         isAuthenticated: state.isAuthenticated, allowedModules: state.allowedModules,
+        moduleType: state.moduleType, currentMode: state.currentMode,
+        canAccessVehicles: state.canAccessVehicles, canAccessEquipment: state.canAccessEquipment,
         saSession: state.saSession,
         // sessionDisplaced intentionally excluded — must not survive page refresh
       }),

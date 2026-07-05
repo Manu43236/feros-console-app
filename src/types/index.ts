@@ -25,6 +25,8 @@ export interface LoginRequest {
   appVersion?: string
   fcmToken?: string
 }
+export type ModuleType = 'VEHICLES_ONLY' | 'EQUIPMENT_ONLY' | 'BOTH'
+
 export interface LoginResponse {
   token: string
   userId: number
@@ -36,6 +38,9 @@ export interface LoginResponse {
   logoUrl?: string
   isPinResetRequired?: boolean
   allowedModules?: string[] | null
+  moduleType?: ModuleType | null
+  canAccessVehicles?: boolean | null
+  canAccessEquipment?: boolean | null
 }
 
 // ─── Module Access ─────────────────────────────────────────────────────────────
@@ -171,9 +176,16 @@ export interface TripExpense {
 }
 
 // ─── Client ───────────────────────────────────────────────────────────────────
+export type ClientCategory = 'COMPANY' | 'INDIVIDUAL'
+
+export interface ClientDivision {
+  id: number
+  name: string
+}
+
 export interface Client {
   id: number; tenantId: number
-  clientName: string; clientTypeId: number; clientTypeName: string
+  clientName: string; clientCategory: ClientCategory; clientTypeId: number; clientTypeName: string
   phone: string; email?: string; address?: string
   cityId?: number; cityName?: string; stateId?: number; stateName?: string; pincode?: string
   gstin?: string; panNumber?: string
@@ -181,6 +193,135 @@ export interface Client {
   paymentTermsId?: number; paymentTermsName?: string
   creditLimit?: number; openingBalance?: number
   isActive: boolean; createdAt: string; updatedAt: string
+  divisions?: ClientDivision[]
+}
+
+// ─── Work Orders ──────────────────────────────────────────────────────────────
+export type WorkOrderStatus = 'DRAFT' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'INVOICED' | 'CANCELLED'
+export type RateType = 'HOURLY' | 'DAILY_SHIFT' | 'MONTHLY'
+export type OperatorType = 'OWN_STAFF' | 'HIRED' | 'CLIENT_PROVIDED'
+export type OperatorBilling = 'INCLUDED_IN_RATE' | 'BILLED_SEPARATELY' | 'NOT_BILLED'
+export type DailyLogStatus = 'WORKING' | 'BREAKDOWN' | 'NO_MACHINE' | 'IDLE'
+export type AssignmentEndReason = 'COMPLETED' | 'BREAKDOWN_REPLACED' | 'BREAKDOWN_RETURNED'
+
+export interface WorkOrder {
+  id: number; tenantId: number; woNumber: string
+  clientId: number; clientName: string; site?: string
+  rateType: RateType; rateAmount: number
+  shiftHours?: number; overtimeRatePerHour?: number
+  operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string
+  hiredOperatorName?: string; hiredOperatorPhone?: string
+  operatorBilling: OperatorBilling; operatorRatePerDay?: number
+  mobilizationCharge?: number; demobilizationCharge?: number
+  startDate: string; endDate?: string
+  status: WorkOrderStatus; parentWoId?: number; notes?: string
+  machineCount: number; createdAt: string; updatedAt: string
+}
+
+export type WorkEntryStatus = 'ACTIVE' | 'COMPLETED'
+
+export interface WorkEntry {
+  id: number; machineAssignmentId: number; status: WorkEntryStatus
+  serialNumber?: string; equipmentTypeName?: string; divisionName?: string
+  operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string; hiredOperatorName?: string
+  startTime: string; endTime?: string
+  startMeter?: number; endMeter?: number; hoursWorked?: number; notes?: string
+}
+
+export interface MachineAssignment {
+  id: number; workOrderId: number; equipmentId: number
+  serialNumber?: string; equipmentTypeName: string; makeName?: string; modelName?: string
+  startDate: string; endDate?: string; endReason?: AssignmentEndReason; isActive: boolean
+  operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string
+  hiredOperatorName?: string; hiredOperatorPhone?: string
+  activeWorkEntry?: WorkEntry | null
+  divisionId?: number | null; divisionName?: string | null
+  rateType?: RateType; rateAmount?: number
+}
+
+export interface DailyLogDivision {
+  id: number
+  divisionName?: string
+  startHourMeter?: number; endHourMeter?: number; hoursWorked?: number
+  notes?: string
+}
+
+export interface DailyLog {
+  id: number; machineAssignmentId: number; workOrderId: number
+  logDate: string; status: DailyLogStatus
+  startHourMeter?: number; endHourMeter?: number; hoursWorked?: number; fuelConsumed?: number; notes?: string
+  serialNumber?: string; equipmentTypeName?: string
+  source?: string
+  divisions: DailyLogDivision[]
+  createdAt: string; updatedAt: string
+}
+
+export interface BillingSummary {
+  machineRentalAmount: number; operatorAmount: number
+  mobilizationCharge: number; demobilizationCharge: number
+  totalAmount: number; totalHours?: number; totalWorkingDays: number
+}
+
+export interface WorkOrderDetail {
+  workOrder: WorkOrder
+  assignments: MachineAssignment[]
+  logs: DailyLog[]
+  billing: BillingSummary
+}
+
+// ─── Equipment Invoices ────────────────────────────────────────────────────────
+export type EquipmentInvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED'
+export type EquipmentBillingType = 'HOURLY' | 'DAILY' | 'MONTHLY'
+export type EquipmentInvoiceItemType = 'MACHINE' | 'CHARGE'
+
+export interface EquipmentInvoiceItem {
+  id: number
+  itemType: EquipmentInvoiceItemType
+  description: string
+  machineAssignmentId?: number
+  serialNumber?: string
+  equipmentTypeName?: string
+  billingType?: EquipmentBillingType
+  quantity: number
+  rate: number
+  amount: number
+  sortOrder: number
+}
+
+export interface EquipmentInvoice {
+  id: number
+  invoiceNumber: string
+  workOrderId?: number | null
+  woNumber?: string | null
+  clientId: number
+  clientName: string
+  invoiceDate: string
+  dueDate?: string
+  billingPeriodStart?: string
+  billingPeriodEnd?: string
+  status: EquipmentInvoiceStatus
+  subtotal: number
+  taxPercent: number
+  taxAmount: number
+  totalAmount: number
+  notes?: string
+  items: EquipmentInvoiceItem[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EquipmentInvoicePrefill {
+  machineAssignmentId: number
+  equipmentId: number
+  workOrderId: number
+  woNumber: string
+  serialNumber?: string
+  equipmentTypeName: string
+  suggestedHours: number
+  suggestedDays: number
+  suggestedMonths: number
+  woRate: number
+  woRateType: string
 }
 
 // ─── Vehicle ──────────────────────────────────────────────────────────────────
@@ -418,6 +559,8 @@ export interface StaffProfile {
   licenseNumber?: string; licenseExpiryDate?: string
   profilePhotoUrl?: string
   salaryType?: 'DAILY' | 'MONTHLY'; monthlySalary?: number
+  canAccessVehicles?: boolean
+  canAccessEquipment?: boolean
   isActive: boolean
   createdAt: string; updatedAt: string
 }
@@ -848,7 +991,8 @@ export interface Tenant {
   gstin?: string; panNumber?: string; tanNumber?: string; cinNumber?: string; transportLicenseNumber?: string
   bankName?: string; accountNumber?: string; ifscCode?: string; branchName?: string; accountHolderName?: string
   ownerName: string; ownerPhone: string; ownerEmail?: string
-  prefix?: string; logoUrl?: string; lorryCount?: number
+  prefix?: string; logoUrl?: string; totalSlotsCount?: number
+  moduleType?: ModuleType
   subscriptionStatus: SubscriptionStatus
   trialStartDate?: string; trialEndDate?: string
   subscriptionStartDate?: string; subscriptionEndDate?: string

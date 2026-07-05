@@ -12,6 +12,7 @@ import {
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
   Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin, ScrollText,
+  Construction,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
@@ -174,6 +175,7 @@ const SUPER_ADMIN_NAV: FlatNav = [
   { to: '/sa/demo-requests',  label: 'Demo Requests',  icon: ClipboardList },
   { to: '/sa/users',          label: 'Users',          icon: UserCog },
   { to: '/sa/global-masters',        label: 'Global Masters',      icon: Globe },
+  { to: '/sa/equipment-masters',    label: 'Equipment Masters',   icon: Construction },
   { to: '/sa/attendance-locations', label: 'Attendance Locations', icon: MapPin },
   { to: '/sa/mou',                   label: 'MOU Generator',        icon: ScrollText },
   { to: '/sa/settings',       label: 'Settings',       icon: Settings },
@@ -240,6 +242,84 @@ const SERVICE_MANAGER_NAV: FlatNav = [
   { to: '/my/attendance',    label: 'My Attendance',    icon: Calendar },
   { to: '/my/payslip',       label: 'My Payslip',       icon: Wallet },
 ]
+
+// ─── Equipment nav ───────────────────────────────────────────────────────────────
+const EQUIPMENT_ADMIN_NAV: SectionedNav = {
+  dashboard: { to: '/equipment/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  sections: [
+    {
+      section: 'Operations',
+      icon: Activity,
+      items: [
+        { to: '/clients',               label: 'Clients',     icon: Users },
+        { to: '/equipment/work-orders', label: 'Work Orders', icon: ClipboardList },
+      ],
+    },
+    {
+      section: 'Equipment',
+      icon: Construction,
+      items: [
+        { to: '/equipment/machines',       label: 'Machines',       icon: Construction },
+      ],
+    },
+    {
+      section: 'HR',
+      icon: UserCheck,
+      items: [
+        { to: '/staff', label: 'Staff', icon: UserCheck },
+      ],
+    },
+    {
+      section: 'Inventory',
+      icon: Package,
+      items: [
+        { to: '/inventory', label: 'Spare Parts', icon: Boxes },
+      ],
+    },
+    {
+      section: '',
+      items: [
+        { to: '/equipment/invoices', label: 'Invoices', icon: Receipt },
+        { to: '/masters',            label: 'Masters',  icon: Settings },
+        { to: '/settings',           label: 'Settings', icon: UserCog },
+        { to: '/equipment/reports',  label: 'Reports',  icon: BarChart2 },
+      ],
+    },
+  ],
+}
+
+const EQUIPMENT_SUPERVISOR_NAV: SectionedNav = {
+  dashboard: { to: '/equipment/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  sections: [
+    {
+      section: 'Operations',
+      icon: Activity,
+      items: [
+        { to: '/equipment/work-orders', label: 'Work Orders', icon: ClipboardList },
+      ],
+    },
+    {
+      section: 'Equipment',
+      icon: Construction,
+      items: [
+        { to: '/equipment/machines', label: 'Machines', icon: Construction },
+      ],
+    },
+    {
+      section: 'HR',
+      icon: UserCheck,
+      items: [
+        { to: '/staff', label: 'Staff', icon: UserCheck },
+      ],
+    },
+    {
+      section: '',
+      items: [
+        { to: '/my/payslip', label: 'My Payslip', icon: Wallet },
+      ],
+    },
+  ],
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 function isSectionedNav(nav: SectionedNav | FlatNav): nav is SectionedNav {
@@ -388,6 +468,7 @@ type SidebarPanelProps = {
   isRouteAllowed: (item: NavItem) => boolean
   onCloseMobile?: () => void
   onOpenLogout: () => void
+  isEquipmentMode: boolean
 }
 
 function SidebarPanel({
@@ -400,9 +481,10 @@ function SidebarPanel({
   isRouteAllowed,
   onCloseMobile,
   onOpenLogout,
+  isEquipmentMode,
 }: SidebarPanelProps) {
   return (
-    <aside className={cn('flex flex-col h-full bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
+    <aside className={cn('flex flex-col h-full', isEquipmentMode ? 'bg-feros-equip-sidebar' : 'bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
       {/* Logo */}
       <div className="flex items-center justify-center h-16 px-5 border-b border-white/10 shrink-0 relative">
         {logoUrl ? (
@@ -434,6 +516,7 @@ function SidebarPanel({
                   open={openSections.has(section)}
                   onToggle={() => onToggleSection(section)}
                   onNavClick={onCloseMobile}
+                 
                 />
               )
             })}
@@ -489,6 +572,11 @@ export function AppLayout() {
   const logout             = useAuthStore(s => s.logout)
   const exitImpersonation  = useAuthStore(s => s.exitImpersonation)
   const allowedModules     = useAuthStore(s => s.allowedModules)
+  const moduleType         = useAuthStore(s => s.moduleType)
+  const currentMode        = useAuthStore(s => s.currentMode)
+  const setCurrentMode     = useAuthStore(s => s.setCurrentMode)
+  const canAccessVehicles  = useAuthStore(s => s.canAccessVehicles)
+  const canAccessEquipment = useAuthStore(s => s.canAccessEquipment)
   const navigate = useNavigate()
   const qc = useQueryClient()
 
@@ -504,15 +592,19 @@ export function AppLayout() {
   const subStatus = mySubRes?.data?.status
   const subFeatures = mySubRes?.data
 
+  const isEquipmentMode =
+    moduleType === 'EQUIPMENT_ONLY' ||
+    (moduleType === 'BOTH' && currentMode === 'EQUIPMENT')
+
   const nav: SectionedNav | FlatNav =
     role === 'SUPER_ADMIN'  ? SUPER_ADMIN_NAV :
-    role === 'OFFICE_STAFF' ? OFFICE_STAFF_NAV :
-    role === 'SUPERVISOR'   ? SUPERVISOR_NAV :
+    role === 'OFFICE_STAFF' ? (isEquipmentMode ? EQUIPMENT_ADMIN_NAV : OFFICE_STAFF_NAV) :
+    role === 'SUPERVISOR'   ? (isEquipmentMode ? EQUIPMENT_SUPERVISOR_NAV : SUPERVISOR_NAV) :
     role === 'DRIVER'       ? DRIVER_CLEANER_NAV :
     role === 'CLEANER'      ? DRIVER_CLEANER_NAV :
     role === 'STORE_KEEPER'    ? STORE_KEEPER_NAV :
     role === 'SERVICE_MANAGER' ? SERVICE_MANAGER_NAV :
-    ADMIN_NAV
+    isEquipmentMode ? EQUIPMENT_ADMIN_NAV : ADMIN_NAV
 
   const location = useLocation()
 
@@ -588,6 +680,7 @@ export function AppLayout() {
     onToggleSection: toggleSection,
     isRouteAllowed,
     onOpenLogout: () => setLogoutOpen(true),
+    isEquipmentMode,
   }
 
   return (
@@ -619,26 +712,56 @@ export function AppLayout() {
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 shrink-0 gap-2">
           <button
             onClick={() => setSidebarOpen(true)}
             className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100"
           >
             <Menu size={20} />
           </button>
+
+          {/* Module toggle — only for BOTH tenants with access to both modules */}
+          {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (
+            <div className="flex items-center bg-gray-100 rounded-full p-1 gap-1">
+              <button
+                onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }}
+                className={cn(
+                  'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
+                  currentMode === 'VEHICLES'
+                    ? 'bg-feros-navy text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                Vehicles
+              </button>
+              <button
+                onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }}
+                className={cn(
+                  'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
+                  currentMode === 'EQUIPMENT'
+                    ? 'bg-feros-equip-sidebar text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                Equipment
+              </button>
+            </div>
+          )}
+
+          {/* Spacer */}
           <div className="flex-1" />
 
           <button
             onClick={() => navigate('/profile')}
             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-feros-navy flex items-center justify-center text-white text-sm font-semibold">
+            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold', isEquipmentMode ? 'bg-feros-equip-sidebar' : 'bg-feros-navy')}>
               {name?.[0] ?? phone?.[0] ?? 'U'}
             </div>
             <div className="hidden sm:block text-left">
               <p className="text-sm font-medium text-gray-800">{name ?? phone}</p>
               <p className="text-xs text-gray-500">{companyName}</p>
-              {role && <p className="text-xs text-feros-navy font-medium">{getRoleLabel(role)}</p>}
+              {role && <p className={cn('text-xs font-medium', isEquipmentMode ? 'text-feros-equip-sidebar' : 'text-feros-navy')}>{getRoleLabel(role)}</p>}
             </div>
           </button>
         </header>
@@ -683,7 +806,7 @@ export function AppLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-6">
-          <SubscriptionContext.Provider value={{ locked }}>
+          <SubscriptionContext.Provider value={{ locked, isEquipmentMode }}>
             <Outlet />
           </SubscriptionContext.Provider>
         </main>

@@ -1,0 +1,63 @@
+name: Deploy Frontend to Staging
+
+on:
+  push:
+    branches:
+      - main-dev
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy to Staging
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: https://stg.console.feros.in/api/v1
+
+      - name: Prepare deploy directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STG_EC2_HOST }}
+          username: ${{ secrets.STG_EC2_USER }}
+          key: ${{ secrets.STG_EC2_SSH_KEY }}
+          port: 1995
+          script: |
+            sudo mkdir -p /home/ubuntu/feros-stg-web/dist
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/feros-stg-web
+
+      - name: Copy dist to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STG_EC2_HOST }}
+          username: ${{ secrets.STG_EC2_USER }}
+          key: ${{ secrets.STG_EC2_SSH_KEY }}
+          port: 1995
+          source: "dist/"
+          target: /home/ubuntu/feros-stg-web
+          rm: false
+
+      - name: Reload nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STG_EC2_HOST }}
+          username: ${{ secrets.STG_EC2_USER }}
+          key: ${{ secrets.STG_EC2_SSH_KEY }}
+          port: 1995
+          script: |
+            sudo docker exec feros_stg_nginx nginx -s reload 2>/dev/null || true
+            echo "==> Staging frontend deployed successfully!"

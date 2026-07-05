@@ -59,6 +59,7 @@ import { TenantsPage }        from '@/pages/superadmin/TenantsPage'
 import { SubscriptionsPage }  from '@/pages/superadmin/SubscriptionsPage'
 import { SAUsersPage }        from '@/pages/superadmin/SAUsersPage'
 import { GlobalMastersPage }         from '@/pages/superadmin/GlobalMastersPage'
+import { EquipmentMastersPage }      from '@/pages/superadmin/EquipmentMastersPage'
 import { AttendanceLocationsPage }   from '@/pages/superadmin/AttendanceLocationsPage'
 import { SASettingsPage }            from '@/pages/superadmin/SASettingsPage'
 import { SAMouPage }          from '@/pages/superadmin/SAMouPage'
@@ -72,6 +73,15 @@ import { ProfilePage } from '@/pages/profile/ProfilePage'
 
 // Notifications
 import { NotificationsPage } from '@/pages/notifications/NotificationsPage'
+
+// Equipment
+import { EquipmentDashboardPage } from '@/pages/equipment/EquipmentDashboardPage'
+import { EquipmentListPage }      from '@/pages/equipment/EquipmentListPage'
+import { MachineDetailPage }      from '@/pages/equipment/MachineDetailPage'
+import { WorkOrdersListPage }     from '@/pages/equipment/WorkOrdersListPage'
+import { WorkOrderDetailPage }    from '@/pages/equipment/WorkOrderDetailPage'
+import { EquipmentInvoicesPage }       from '@/pages/equipment/EquipmentInvoicesPage'
+import { EquipmentInvoiceDetailPage } from '@/pages/equipment/EquipmentInvoiceDetailPage'
 
 // GPS
 import GpsTrackerPage from '@/pages/gps/GpsTrackerPage'
@@ -174,6 +184,7 @@ export default function App() {
           <Route path="sa/demo-requests"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><DemoRequestsPage /></ProtectedRoute>} />
           <Route path="sa/users"          element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SAUsersPage /></ProtectedRoute>} />
           <Route path="sa/global-masters"        element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><GlobalMastersPage /></ProtectedRoute>} />
+          <Route path="sa/equipment-masters"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><EquipmentMastersPage /></ProtectedRoute>} />
           <Route path="sa/attendance-locations" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AttendanceLocationsPage /></ProtectedRoute>} />
           <Route path="sa/settings"              element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SASettingsPage /></ProtectedRoute>} />
           <Route path="sa/mou"            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SAMouPage /></ProtectedRoute>} />
@@ -183,6 +194,15 @@ export default function App() {
 
           {/* Profile */}
           <Route path="profile" element={<ProfilePage />} />
+
+          {/* Equipment */}
+          <Route path="equipment/dashboard"          element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><EquipmentDashboardPage /></ProtectedRoute>} />
+          <Route path="equipment/machines"              element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><EquipmentListPage /></ProtectedRoute>} />
+          <Route path="equipment/machines/:equipmentId" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><MachineDetailPage /></ProtectedRoute>} />
+          <Route path="equipment/work-orders"        element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><WorkOrdersListPage /></ProtectedRoute>} />
+          <Route path="equipment/work-orders/:id"    element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><WorkOrderDetailPage /></ProtectedRoute>} />
+          <Route path="equipment/invoices"           element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentInvoicesPage /></ProtectedRoute>} />
+          <Route path="equipment/invoices/:id"      element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentInvoiceDetailPage /></ProtectedRoute>} />
 
           {/* Notifications */}
           <Route path="notifications" element={<NotificationsPage />} />

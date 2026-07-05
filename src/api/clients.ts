@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, Client, ClientAdvance, PageResponse } from '@/types'
+import type { ApiResponse, Client, ClientAdvance, ClientDivision, PageResponse } from '@/types'
 
 export const clientsApi = {
   getAll: (params?: { page?: number; size?: number; search?: string }) =>
@@ -8,6 +8,9 @@ export const clientsApi = {
   create:    (data: Partial<Client>) => apiClient.post<ApiResponse<Client>>('/clients', data).then(r => r.data),
   update:    (id: number, data: Partial<Client>) => apiClient.put<ApiResponse<Client>>(`/clients/${id}`, data).then(r => r.data),
   toggleStatus: (id: number, isActive: boolean) => apiClient.put<ApiResponse<Client>>(`/clients/${id}/status`, { isActive }).then(r => r.data),
+  getDivisions: (id: number) => apiClient.get<ApiResponse<ClientDivision[]>>(`/clients/${id}/divisions`).then(r => r.data),
+  addDivision:  (id: number, name: string) => apiClient.post<ApiResponse<ClientDivision>>(`/clients/${id}/divisions`, { name }).then(r => r.data),
+  deleteDivision: (id: number, divisionId: number) => apiClient.delete<ApiResponse<void>>(`/clients/${id}/divisions/${divisionId}`).then(r => r.data),
   bulkUpload: (file: File) => {
     const form = new FormData()
     form.append('file', file)
