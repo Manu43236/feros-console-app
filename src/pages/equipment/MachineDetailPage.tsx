@@ -727,12 +727,19 @@ function ServiceDialog({
       ...customTasks.map(ct => ({ taskTypeId: null, customName: ct.customName ?? null, isRecurring: ct.isRecurring, frequencyHmr: ct.isRecurring && ct.frequencyHmr ? Number(ct.frequencyHmr) : null, cost: ct.cost ? Number(ct.cost) : null })),
     ]
     if (tasks.length === 0) { toast.error('Add at least one task'); return }
+    const hmrBase = form.hmrAtService ? Number(form.hmrAtService) : null
+    const recurringFreqs = Array.from(selectedTaskIds)
+      .map(id => taskDrafts[id])
+      .filter(d => d?.isRecurring && d.frequencyHmr)
+      .map(d => Number(d!.frequencyHmr))
+    const minFreq = recurringFreqs.length > 0 ? Math.min(...recurringFreqs) : null
+    const autoDueAtHmr = hmrBase != null && minFreq != null ? hmrBase + minFreq : null
     mut.mutate({
       triggeredBy: form.triggeredBy, serviceType: form.serviceType, payerType: form.payerType,
       vendorName: form.vendorName || null, location: form.location || null,
       serviceDate: form.serviceDate || null,
-      hmrAtService: form.hmrAtService ? Number(form.hmrAtService) : null,
-      dueAtHmr: form.dueAtHmr ? Number(form.dueAtHmr) : null,
+      hmrAtService: hmrBase,
+      dueAtHmr: autoDueAtHmr,
       notes: form.notes || null,
       insuranceClaimNo: form.payerType === 'INSURANCE' ? form.insuranceClaimNo || null : null,
       insuranceClaimAmt: form.payerType === 'INSURANCE' && form.insuranceClaimAmt ? Number(form.insuranceClaimAmt) : null,
@@ -853,12 +860,6 @@ function ServiceDialog({
             </div>
           </div>
 
-          {Array.from(selectedTaskIds).some(id => taskDrafts[id]?.isRecurring) && (
-            <div className="space-y-1.5">
-              <Label>Next Due HMR <span className="text-gray-400 font-normal">(hrs)</span></Label>
-              <Input type="number" placeholder="e.g. 1500" value={form.dueAtHmr} onChange={e => set('dueAtHmr', e.target.value)} />
-            </div>
-          )}
 
           <div className="space-y-1.5">
             <Label>Notes <span className="text-gray-400 font-normal">(optional)</span></Label>
@@ -911,8 +912,15 @@ function ServiceDialog({
                             {d?.isRecurring ? '🔄 Recurring' : 'One-time'}</button></div>
                       </div>
                       {d?.isRecurring && (
-                        <div><p className="text-xs text-gray-400 mb-1">Every (hrs)</p>
-                          <Input type="number" placeholder="250" className="h-7 text-xs" value={d?.frequencyHmr ?? ''} onChange={e => updateDraft(id, { frequencyHmr: e.target.value || undefined })} /></div>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">Every (hrs)</p>
+                          <Input type="number" placeholder="250" className="h-7 text-xs" value={d?.frequencyHmr ?? ''} onChange={e => updateDraft(id, { frequencyHmr: e.target.value || undefined })} />
+                          {d?.frequencyHmr && form.hmrAtService && (
+                            <p className="text-xs text-[#1C1400] mt-1 font-medium">
+                              → Next due at {Number(form.hmrAtService) + Number(d.frequencyHmr)} hrs
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   )
