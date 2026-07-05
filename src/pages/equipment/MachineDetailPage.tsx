@@ -25,6 +25,18 @@ function fmtDate(d?: string | null) {
   if (!d) return '—'
   try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) } catch { return d }
 }
+function fmtDateTime(d?: string | null) {
+  if (!d) return '—'
+  try {
+    const dt = new Date(d)
+    return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' +
+      dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })
+  } catch { return d }
+}
+function nowLocalDt() {
+  const d = new Date(); d.setSeconds(0, 0)
+  return d.toISOString().slice(0, 16) // YYYY-MM-DDTHH:mm
+}
 function fmtMoney(n?: number | null) {
   return n != null ? `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '—'
 }
@@ -230,13 +242,12 @@ function MeterReadingDialog({
   open, onClose, equipmentId, editing,
 }: { open: boolean; onClose: () => void; equipmentId: number; editing: EquipmentMeterReading | null }) {
   const qc = useQueryClient()
-  const blank: EquipmentMeterReadingRequest = { readingDate: '', readingValue: 0 }
-  const [form, setForm] = useState<EquipmentMeterReadingRequest>(blank)
+  const [form, setForm] = useState<EquipmentMeterReadingRequest>({ readingDate: '', readingValue: 0 })
 
   useMemo(() => {
     if (open) setForm(editing
-      ? { readingDate: editing.readingDate, readingValue: editing.readingValue, notes: editing.notes ?? undefined }
-      : blank)
+      ? { readingDate: editing.readingDate?.slice(0, 16) ?? '', readingValue: editing.readingValue, notes: editing.notes ?? undefined }
+      : { readingDate: nowLocalDt(), readingValue: 0 })
   }, [open, editing])
 
   const set = (k: keyof EquipmentMeterReadingRequest, v: unknown) => setForm(f => ({ ...f, [k]: v }))
@@ -246,7 +257,7 @@ function MeterReadingDialog({
       ? equipmentApi.updateMeterReading(equipmentId, editing.id, form)
       : equipmentApi.addMeterReading(equipmentId, form),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-meter-readings', equipmentId] }); toast.success(editing ? 'Reading updated' : 'Reading added'); onClose() },
-    onError: () => toast.error('Failed to save reading'),
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to save reading'),
   })
 
   return (
@@ -255,8 +266,8 @@ function MeterReadingDialog({
         <DialogHeader><DialogTitle>{editing ? 'Edit Meter Reading' : 'Add Meter Reading'}</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Label className="text-xs">Date *</Label>
-            <Input type="date" className="mt-1" value={form.readingDate} onChange={e => set('readingDate', e.target.value)} />
+            <Label className="text-xs">Date & Time *</Label>
+            <Input type="datetime-local" className="mt-1" value={form.readingDate} onChange={e => set('readingDate', e.target.value)} />
           </div>
           <div>
             <Label className="text-xs">HMR Reading *</Label>
@@ -319,7 +330,7 @@ function HmrTab({ equipmentId, logs }: { equipmentId: number; logs: MachineDaily
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  {['Date', 'HMR Reading', 'Notes', ''].map(h => (
+                  {['Date & Time', 'HMR Reading', 'Notes', ''].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -327,7 +338,7 @@ function HmrTab({ equipmentId, logs }: { equipmentId: number; logs: MachineDaily
               <tbody className="divide-y divide-gray-50">
                 {readings.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{fmtDate(r.readingDate)}</td>
+                    <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{fmtDateTime(r.readingDate)}</td>
                     <td className="px-4 py-2.5 font-semibold text-gray-800">{fmtN(r.readingValue)} hrs</td>
                     <td className="px-4 py-2.5 text-xs text-gray-500">{r.notes ?? '—'}</td>
                     <td className="px-4 py-2.5">
