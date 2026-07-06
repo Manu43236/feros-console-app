@@ -436,7 +436,7 @@ export default function LeaseDetailPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-100">
-        {(['vehicles', 'billing'] as const).map(tab => (
+        {(['vehicles', ...(role !== 'SUPERVISOR' ? ['billing'] : [])] as ('vehicles' | 'billing')[]).map(tab => (
           <button key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
