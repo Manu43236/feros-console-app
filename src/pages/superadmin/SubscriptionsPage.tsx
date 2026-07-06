@@ -529,33 +529,33 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                 ) : history.length === 0 ? (
                   <p className="text-xs text-gray-400 py-4 text-center">No history</p>
                 ) : (
-                  <div className="border rounded-xl overflow-hidden">
+                  <div className="border rounded-xl overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead className="bg-gray-50 text-gray-500">
                         <tr>
-                          <th className="px-3 py-2 text-left">Status</th>
-                          <th className="px-3 py-2 text-left">Plan</th>
-                          <th className="px-3 py-2 text-left">Vehicles</th>
-                          <th className="px-3 py-2 text-left">Period</th>
-                          <th className="px-3 py-2 text-right">Total</th>
-                          <th className="px-3 py-2 text-right">Invoice</th>
+                          <th className="px-3 py-2 text-left whitespace-nowrap">Status</th>
+                          <th className="px-3 py-2 text-left whitespace-nowrap">Plan</th>
+                          <th className="px-3 py-2 text-left whitespace-nowrap">Period</th>
+                          <th className="px-3 py-2 text-right whitespace-nowrap">Total</th>
+                          <th className="px-3 py-2 text-right whitespace-nowrap">Invoice</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
                         {history.map(h => (
                           <tr key={h.id} className="hover:bg-gray-50">
-                            <td className="px-3 py-2"><StatusBadge status={h.status} /></td>
-                            <td className="px-3 py-2 font-medium">
+                            <td className="px-3 py-2 whitespace-nowrap"><StatusBadge status={h.status} /></td>
+                            <td className="px-3 py-2 font-medium whitespace-nowrap">
                               {h.notes?.startsWith('[CORRECTION]')
                                 ? <span className="text-amber-600">✎ {h.planName}</span>
                                 : (h.planName && h.planName !== '-' ? h.planName : '—')}
                             </td>
-                            <td className="px-3 py-2 text-gray-600">
-                              {h.vehicleCount ? `${h.vehicleCount}` : '—'}
+                            <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
+                              {h.startDate ? new Date(h.startDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'2-digit' }) : '—'}
+                              {' → '}
+                              {h.endDate ? new Date(h.endDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'2-digit' }) : '∞'}
                             </td>
-                            <td className="px-3 py-2 text-gray-500">{h.startDate} → {h.endDate ?? '∞'}</td>
-                            <td className="px-3 py-2 text-right">{fmt(h.totalAmount)}</td>
-                            <td className="px-3 py-2 text-right">
+                            <td className="px-3 py-2 text-right whitespace-nowrap">{fmt(h.totalAmount)}</td>
+                            <td className="px-3 py-2 text-right whitespace-nowrap">
                               {h.invoiceId ? (
                                 <button
                                   onClick={() => window.open(`/subscription/invoice/${h.invoiceId}/print`, '_blank')}
