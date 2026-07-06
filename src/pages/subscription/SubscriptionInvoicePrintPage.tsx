@@ -56,10 +56,11 @@ const tdStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
   borderRight: '1px solid #e5e7eb', verticalAlign: 'top', ...extra,
 })
 
-// ── FEROS company details (vendor side of subscription invoice) ───────────
+// ── MandM Technologies company details (vendor side of subscription invoice) ─
 const FEROS = {
-  name:    'FEROS Platform Pvt. Ltd.',
+  name:    'MandM Technologies',
   address: 'Technology Hub, Bangalore, Karnataka - 560001',
+  pan:     'ACHFM8981H',
   gstin:   'Applicable',
   hsn:     '998315', // Cloud/SaaS subscription services
   state:   'Karnataka',
@@ -97,6 +98,7 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
               </div>
               <div style={{ fontSize: 11, color: '#333', lineHeight: 1.6 }}>
                 <div>{FEROS.address}</div>
+                <div><strong>PAN:</strong> {FEROS.pan}</div>
                 <div><strong>GSTIN/UIN:</strong> {FEROS.gstin}</div>
                 <div>State Name: {FEROS.state}</div>
               </div>
@@ -202,24 +204,6 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
         </tfoot>
       </table>
 
-      {/* ── Amount in Words ── */}
-      <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 11 }}>
-        <tbody>
-          <tr>
-            <td style={{ padding: '4px 8px', borderRight: '1px solid #333', width: '60%' }}>
-              <span style={{ fontWeight: 600 }}>Amount Chargeable (in words)</span>
-              <span style={{ float: 'right', fontStyle: 'italic' }}>E. &amp; O.E</span>
-            </td>
-            <td style={{ padding: '4px 8px' }}></td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={{ padding: '4px 8px', fontWeight: 700 }}>
-              {amountInWords(totalAmt)}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
       {/* ── GST Breakdown ── */}
       <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 11 }}>
         <thead>
@@ -253,13 +237,29 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
             <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(gstAmt)}</td>
           </tr>
         </tbody>
-        <tfoot>
+      </table>
+
+      {/* ── Amount in Words ── */}
+      <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 11 }}>
+        <tbody>
           <tr>
-            <td colSpan={7} style={{ padding: '4px 8px', border: '1px solid #333', fontStyle: 'italic' }}>
+            <td style={{ padding: '4px 8px', borderRight: '1px solid #333', width: '60%' }}>
+              <span style={{ fontWeight: 600 }}>Amount Chargeable (in words)</span>
+              <span style={{ float: 'right', fontStyle: 'italic' }}>E. &amp; O.E</span>
+            </td>
+            <td style={{ padding: '4px 8px' }}></td>
+          </tr>
+          <tr>
+            <td colSpan={2} style={{ padding: '4px 8px', fontWeight: 700 }}>
+              {amountInWords(totalAmt)}
+            </td>
+          </tr>
+          <tr>
+            <td colSpan={2} style={{ padding: '4px 8px', fontStyle: 'italic', color: '#555' }}>
               Tax Amount (in words): {amountInWords(gstAmt)}
             </td>
           </tr>
-        </tfoot>
+        </tbody>
       </table>
 
       {/* ── Total & Signature ── */}
