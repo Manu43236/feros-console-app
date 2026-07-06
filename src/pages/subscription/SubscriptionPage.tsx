@@ -135,7 +135,7 @@ export function SubscriptionPage() {
   const userLimit    = sub.maxUsers ?? -1
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Subscription</h1>
         <p className="text-sm text-gray-500 mt-0.5">Your plan details, usage, and billing history</p>
