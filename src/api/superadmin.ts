@@ -62,32 +62,20 @@ export const tenantsApi = {
     apiClient.patch<ApiResponse<Tenant>>(`/tenants/${tenantId}/user-limit`, null, { params: { customUserLimit } }).then(r => r.data),
 }
 
-// ── Subscription Plans ────────────────────────────────────────────────────────
-export const subscriptionPlansApi = {
-  getAll:     () => apiClient.get<ApiResponse<import('@/types').SubscriptionPlan[]>>('/subscription-plans/all').then(r => r.data),
-  getActive:  () => apiClient.get<ApiResponse<import('@/types').SubscriptionPlan[]>>('/subscription-plans').then(r => r.data),
-  create:     (data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionPlan>>('/subscription-plans', data).then(r => r.data),
-  update:     (id: number, data: unknown) => apiClient.put<ApiResponse<import('@/types').SubscriptionPlan>>(`/subscription-plans/${id}`, data).then(r => r.data),
-  toggle:     (id: number) => apiClient.patch<ApiResponse<void>>(`/subscription-plans/${id}/toggle`).then(r => r.data),
-}
-
 // ── Subscriptions (SA manages tenants) ────────────────────────────────────────
 export const subscriptionsApi = {
-  activate:         (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/activate`, data).then(r => r.data),
-  extendTrial:      (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/extend-trial`, data).then(r => r.data),
-  extend:           (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/extend`, data).then(r => r.data),
-  suspend:          (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/suspend`, data).then(r => r.data),
-  reactivate:       (tenantId: number) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/reactivate`).then(r => r.data),
-  getHistory:       (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory[]>>(`/subscriptions/${tenantId}/history`).then(r => r.data),
-  getInvoices:      (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>(`/subscriptions/${tenantId}/invoices`).then(r => r.data),
-  getCurrent:       (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/current`).then(r => r.data),
-  getMy:                () => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>('/subscriptions/my').then(r => r.data),
-  getMyInvoices:        () => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/my/invoices').then(r => r.data),
-  getMyInvoice:         (id: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/my/invoices/${id}`).then(r => r.data),
-  submitUpgradeRequest: (data: unknown) => apiClient.post<ApiResponse<import('@/types').UpgradeRequest>>('/subscriptions/upgrade-request', data).then(r => r.data),
-  getUpgradeRequests:   () => apiClient.get<ApiResponse<import('@/types').UpgradeRequest[]>>('/subscriptions/upgrade-requests').then(r => r.data),
-  dismissUpgradeRequest:(id: number) => apiClient.patch<ApiResponse<void>>(`/subscriptions/upgrade-requests/${id}/dismiss`).then(r => r.data),
-  correct: (tenantId: number, data: unknown) => apiClient.patch<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/correct`, data).then(r => r.data),
+  activate:    (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/activate`, data).then(r => r.data),
+  extendTrial: (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/extend-trial`, data).then(r => r.data),
+  extend:      (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/extend`, data).then(r => r.data),
+  suspend:     (tenantId: number, data: unknown) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/suspend`, data).then(r => r.data),
+  reactivate:  (tenantId: number) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/reactivate`).then(r => r.data),
+  getHistory:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory[]>>(`/subscriptions/${tenantId}/history`).then(r => r.data),
+  getInvoices: (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>(`/subscriptions/${tenantId}/invoices`).then(r => r.data),
+  getCurrent:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/current`).then(r => r.data),
+  getMy:           () => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>('/subscriptions/my').then(r => r.data),
+  getMyInvoices:   () => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/my/invoices').then(r => r.data),
+  getMyInvoice:    (id: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/my/invoices/${id}`).then(r => r.data),
+  correct:     (tenantId: number, data: unknown) => apiClient.patch<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/correct`, data).then(r => r.data),
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────
