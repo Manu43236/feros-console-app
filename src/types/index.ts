@@ -1100,6 +1100,7 @@ export interface SubscriptionHistory {
   paymentRef?: string
   notes?: string
   createdAt: string
+  invoiceId?: number
 }
 
 export interface SubscriptionInvoice {

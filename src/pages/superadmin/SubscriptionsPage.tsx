@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
   History, FileText, Megaphone, Calculator, Truck,
-  X, ChevronDown, ChevronUp, Users, AlertTriangle, Pencil,
+  X, ChevronDown, ChevronUp, Users, AlertTriangle, Pencil, Printer, Receipt,
 } from 'lucide-react'
 import type { Tenant } from '@/types'
 import { tenantsApi, subscriptionsApi, notificationsApi } from '@/api/superadmin'
@@ -116,6 +116,24 @@ function ExpiryCell({ date }: { date?: string | null }) {
 }
 
 // ─── Subscription Drawer ──────────────────────────────────────────────────────
+function GenerateInvoiceButton({ tenantId, historyId, onDone }: { tenantId: number; historyId: number; onDone: () => void }) {
+  const mutation = useMutation({
+    mutationFn: () => subscriptionsApi.generateInvoice(tenantId, historyId),
+    onSuccess: onDone,
+  })
+  return (
+    <button
+      onClick={() => mutation.mutate()}
+      disabled={mutation.isPending}
+      className="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 ml-auto disabled:opacity-50"
+      title="Generate Invoice"
+    >
+      <Receipt size={11} />
+      {mutation.isPending ? '…' : 'Generate'}
+    </button>
+  )
+}
+
 function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () => void }) {
   const qc = useQueryClient()
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -520,6 +538,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                           <th className="px-3 py-2 text-left">Vehicles</th>
                           <th className="px-3 py-2 text-left">Period</th>
                           <th className="px-3 py-2 text-right">Total</th>
+                          <th className="px-3 py-2 text-right">Invoice</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -536,6 +555,18 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                             </td>
                             <td className="px-3 py-2 text-gray-500">{h.startDate} → {h.endDate ?? '∞'}</td>
                             <td className="px-3 py-2 text-right">{fmt(h.totalAmount)}</td>
+                            <td className="px-3 py-2 text-right">
+                              {h.invoiceId ? (
+                                <button
+                                  onClick={() => window.open(`/subscription/invoice/${h.invoiceId}/print`, '_blank')}
+                                  className="text-blue-600 hover:text-blue-800 flex items-center gap-1 ml-auto"
+                                >
+                                  <Printer size={11} /> View
+                                </button>
+                              ) : h.totalAmount && h.totalAmount > 0 ? (
+                                <GenerateInvoiceButton tenantId={tenant.id} historyId={h.id} onDone={() => qc.invalidateQueries({ queryKey: ['sa-sub-history', tenant.id] })} />
+                              ) : null}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
