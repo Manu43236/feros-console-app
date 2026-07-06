@@ -101,6 +101,7 @@ export interface LeaseVehicleAssignment {
   ratePerVehicle: number
   startDate: string; endDate?: string
   odometerAtStart?: number; odometerAtEnd?: number
+  divisionId?: number | null; divisionName?: string | null
   isActive: boolean; notes?: string
   createdAt: string
 }

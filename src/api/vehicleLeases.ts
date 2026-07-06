@@ -32,6 +32,12 @@ export const vehicleLeasesApi = {
       odometerAtEnd != null ? { odometerAtEnd: String(odometerAtEnd) } : {}
     ).then(r => r.data),
 
+  assignDivision: (leaseId: number, assignmentId: number, divisionId: number | null) =>
+    apiClient.put<ApiResponse<LeaseVehicleAssignment>>(
+      `/vehicle-leases/${leaseId}/vehicles/${assignmentId}/division`,
+      { divisionId }
+    ).then(r => r.data),
+
   getBilling: (leaseId: number) =>
     apiClient.get<ApiResponse<LeaseBilling>>(`/vehicle-leases/${leaseId}/billing`).then(r => r.data),
 }

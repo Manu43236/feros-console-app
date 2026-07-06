@@ -4,10 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vehicleLeasesApi } from '@/api/vehicleLeases'
 import { vehiclesApi } from '@/api/vehicles'
 import { staffApi } from '@/api/staff'
+import { clientsApi } from '@/api/clients'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Plus, Truck, CalendarDays, MapPin,
-  X, Receipt, User, Gauge,
+  X, Receipt, User, Gauge, Building2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -218,17 +219,86 @@ function CloseVehicleDialog({
   )
 }
 
+// ── Assign Division Dialog ─────────────────────────────────────────────────────
+function AssignDivisionDialog({ leaseId, clientId, assignment, open, onClose }: {
+  leaseId: number; clientId: number; assignment: LeaseVehicleAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [divisionId, setDivisionId] = useState('')
+
+  const { data: divRes } = useQuery({
+    queryKey: ['client-divisions', clientId],
+    queryFn: () => clientsApi.getDivisions(clientId),
+    enabled: open && !!clientId,
+  })
+  const options = (divRes?.data ?? []).map(d => ({ value: String(d.id), label: d.name }))
+
+  const mutation = useMutation({
+    mutationFn: () => vehicleLeasesApi.assignDivision(leaseId, assignment!.id, divisionId ? Number(divisionId) : null),
+    onSuccess: () => {
+      toast.success(divisionId ? 'Division assigned' : 'Division removed')
+      qc.invalidateQueries({ queryKey: ['lease-vehicles', leaseId] })
+      setDivisionId(''); onClose()
+    },
+    onError: () => toast.error('Failed to assign division'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) { setDivisionId(''); onClose() } }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Assign Division</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-1">
+          <p className="text-xs text-gray-500">
+            Vehicle: <strong>{assignment?.registrationNumber}</strong>
+          </p>
+          {options.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">This client has no divisions set up.</p>
+          ) : (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1.5 block">Division / Site</Label>
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={divisionId || (assignment?.divisionId ? String(assignment.divisionId) : '')}
+                onChange={e => setDivisionId(e.target.value)}
+              >
+                <option value="">— Select division —</option>
+                {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="flex gap-2 pt-1">
+            {assignment?.divisionId && (
+              <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => { setDivisionId(''); mutation.mutate() }}
+                disabled={mutation.isPending}>
+                Remove
+              </Button>
+            )}
+            <Button className="flex-1 bg-feros-navy hover:bg-feros-navy/90 text-white"
+              disabled={!divisionId || mutation.isPending || options.length === 0}
+              onClick={() => mutation.mutate()}>
+              {mutation.isPending ? 'Saving…' : 'Assign'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Vehicle Card ───────────────────────────────────────────────────────────────
 function VehicleCard({
-  assignment, leaseId, canEdit,
-}: { assignment: LeaseVehicleAssignment; leaseId: number; canEdit: boolean }) {
+  assignment, leaseId, clientId, canEdit,
+}: { assignment: LeaseVehicleAssignment; leaseId: number; clientId: number; canEdit: boolean }) {
   const [showClose, setShowClose] = useState(false)
+  const [showDivision, setShowDivision] = useState(false)
 
   return (
     <div className={cn(
       'bg-white rounded-xl border p-4 space-y-3',
       assignment.isActive ? 'border-gray-100' : 'border-gray-100 opacity-60'
     )}>
+      {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
@@ -252,6 +322,24 @@ function VehicleCard({
         )}
       </div>
 
+      {/* Division row */}
+      <div className="pt-2 border-t border-gray-50 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+          <Building2 size={12} />
+          {assignment.divisionName
+            ? <span className="font-medium text-feros-navy">{assignment.divisionName}</span>
+            : <span className="text-gray-400 italic">No division assigned</span>
+          }
+        </div>
+        {canEdit && assignment.isActive && (
+          <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-navy"
+            onClick={() => setShowDivision(true)}>
+            {assignment.divisionName ? 'Change' : 'Assign Division'}
+          </Button>
+        )}
+      </div>
+
+      {/* Details grid */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
         <div className="flex items-center gap-1.5 text-gray-600">
           <User size={11} className="text-gray-400" />
@@ -282,6 +370,15 @@ function VehicleCard({
           assignment={assignment}
           open={showClose}
           onClose={() => setShowClose(false)}
+        />
+      )}
+      {showDivision && (
+        <AssignDivisionDialog
+          leaseId={leaseId}
+          clientId={clientId}
+          assignment={assignment}
+          open={showDivision}
+          onClose={() => setShowDivision(false)}
         />
       )}
     </div>
@@ -469,7 +566,7 @@ export default function LeaseDetailPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {assignments.map(a => (
-                <VehicleCard key={a.id} assignment={a} leaseId={leaseId} canEdit={canEdit} />
+                <VehicleCard key={a.id} assignment={a} leaseId={leaseId} clientId={lease.clientId} canEdit={canEdit} />
               ))}
             </div>
           )}
