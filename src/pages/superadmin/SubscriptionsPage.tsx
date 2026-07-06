@@ -127,7 +127,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
     type: 'activate' | 'extend-trial' | 'extend' | 'suspend' | 'reactivate'
   } | null>(null)
 
-  const emptyForm = { planName: '', pricePerVehicle: '', billingCycle: 'MONTHLY', startDate: '', vehicleCount: '', newEndDate: '', amount: '', paymentRef: '', notes: '' }
+  const emptyForm = { planName: '', pricePerVehicle: '', billingCycle: 'MONTHLY', startDate: '', vehicleCount: '', newEndDate: '', amount: '', installationCharges: '', paymentRef: '', notes: '' }
   const emptyErrs = { planName: '', startDate: '', vehicleCount: '', newEndDate: '', notes: '' }
   const [actionForm, setActionForm] = useState(emptyForm)
   const [actionErrs, setActionErrs] = useState(emptyErrs)
@@ -174,6 +174,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
         pricePerVehicle: actionForm.pricePerVehicle ? Number(actionForm.pricePerVehicle) : undefined,
         billingCycle: actionForm.billingCycle, startDate: actionForm.startDate,
         amount: actionForm.amount ? Number(actionForm.amount) : undefined,
+        installationCharges: actionForm.installationCharges ? Number(actionForm.installationCharges) : undefined,
         paymentRef: actionForm.paymentRef || undefined, notes: actionForm.notes || undefined,
       })
       if (type === 'extend-trial') return subscriptionsApi.extendTrial(tenant.id, {
@@ -603,11 +604,20 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                     onChange={e => { setActionForm(f => ({ ...f, startDate: e.target.value })); setActionErrs(v => ({ ...v, startDate: '' })) }} />
                   {actionErrs.startDate && <p className="text-red-500 text-xs mt-1">{actionErrs.startDate}</p>}
                 </div>
-                <div>
-                  <label className="text-xs text-gray-600 mb-1 block">Amount Override (₹, optional)</label>
-                  <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
-                    value={actionForm.amount} onChange={e => setActionForm(f => ({ ...f, amount: e.target.value }))}
-                    placeholder="Leave blank to auto-calculate" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-600 mb-1 block">Amount Override (₹, optional)</label>
+                    <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+                      value={actionForm.amount} onChange={e => setActionForm(f => ({ ...f, amount: e.target.value }))}
+                      placeholder="Auto-calculated" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 mb-1 block">Installation Charges (₹, optional)</label>
+                    <input type="number" min={0} className="w-full border rounded-lg px-3 py-2 text-sm"
+                      value={actionForm.installationCharges}
+                      onChange={e => setActionForm(f => ({ ...f, installationCharges: e.target.value }))}
+                      placeholder="e.g. 29999" />
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Payment Reference</label>

@@ -68,11 +68,13 @@ const FEROS = {
 
 // ── Invoice Document ──────────────────────────────────────────────────────
 function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
-  const subtotal   = Number(inv.amount ?? 0)
-  const gstAmt     = Number(inv.gstAmount ?? 0)
-  const totalAmt   = Number(inv.totalAmount ?? 0)
-  const cgst       = gstAmt / 2
-  const sgst       = gstAmt / 2
+  const subtotal      = Number(inv.amount ?? 0)
+  const installation  = Number(inv.installationCharges ?? 0)
+  const gstAmt        = Number(inv.gstAmount ?? 0)
+  const totalAmt      = Number(inv.totalAmount ?? 0)
+  const cgst          = gstAmt / 2
+  const sgst          = gstAmt / 2
+  const taxableTotal  = subtotal + installation
 
   const tenantAddr = [
     inv.tenantAddress,
@@ -201,17 +203,32 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
             <td style={tdStyle({ textAlign: 'center' })}>{FEROS.hsn}</td>
             <td style={tdStyle({ textAlign: 'center' })}>1</td>
             <td style={tdStyle({ textAlign: 'right' })}>{fmt(subtotal)}</td>
-            <td style={tdStyle({ textAlign: 'right' })}>{fmt(cgst)}</td>
-            <td style={tdStyle({ textAlign: 'right' })}>{fmt(sgst)}</td>
-            <td style={tdStyle({ textAlign: 'right', borderRight: 'none', fontWeight: 700 })}>{fmt(totalAmt)}</td>
+            <td style={tdStyle({ textAlign: 'right' })}>—</td>
+            <td style={tdStyle({ textAlign: 'right' })}>—</td>
+            <td style={tdStyle({ textAlign: 'right', borderRight: 'none' })}>{fmt(subtotal)}</td>
           </tr>
+          {installation > 0 && (
+            <tr>
+              <td style={tdStyle({ textAlign: 'center' })}>2</td>
+              <td style={tdStyle()}>
+                <div style={{ fontWeight: 600 }}>Installation / Onboarding Charges</div>
+                <div style={{ color: '#555', marginTop: 2 }}>One-time setup fee</div>
+              </td>
+              <td style={tdStyle({ textAlign: 'center' })}>{FEROS.hsn}</td>
+              <td style={tdStyle({ textAlign: 'center' })}>1</td>
+              <td style={tdStyle({ textAlign: 'right' })}>{fmt(installation)}</td>
+              <td style={tdStyle({ textAlign: 'right' })}>—</td>
+              <td style={tdStyle({ textAlign: 'right' })}>—</td>
+              <td style={tdStyle({ textAlign: 'right', borderRight: 'none' })}>{fmt(installation)}</td>
+            </tr>
+          )}
         </tbody>
         <tfoot>
           <tr style={{ background: '#f9fafb', fontWeight: 700 }}>
             <td colSpan={4} style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', fontSize: 11 }}>
-              Total
+              Total (Taxable)
             </td>
-            <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(subtotal)}</td>
+            <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(taxableTotal)}</td>
             <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(cgst)}</td>
             <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(sgst)}</td>
             <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(totalAmt)}</td>
