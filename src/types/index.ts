@@ -1114,6 +1114,7 @@ export interface SubscriptionInvoice {
   periodStart?: string
   periodEnd?: string
   amount?: number
+  installationCharges?: number
   gstAmount?: number
   totalAmount?: number
   paymentRef?: string
