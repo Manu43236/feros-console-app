@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { X, CheckCircle2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { X } from 'lucide-react'
 import { subscriptionsApi } from '@/api/superadmin'
 import { useAuthStore } from '@/store/authStore'
 import { differenceInDays, parseISO } from 'date-fns'
-import { toast } from 'sonner'
 
 export function SubscriptionExpiryBanner() {
   const role       = useAuthStore(s => s.role)
@@ -12,30 +11,13 @@ export function SubscriptionExpiryBanner() {
   const companyName = useAuthStore(s => s.companyName)
 
   const dismissedKey = `feros_sub_dismissed_${tenantId}`
-  const requestedKey = `feros_sub_requested_${tenantId}`
 
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(dismissedKey) === '1')
-  const [requested, setRequested] = useState(() => localStorage.getItem(requestedKey) === '1')
 
   const { data: subRes } = useQuery({
     queryKey: ['subscription-my'],
     queryFn: subscriptionsApi.getMy,
     enabled: role === 'ADMIN' && !dismissed,
-  })
-
-  const requestMutation = useMutation({
-    mutationFn: () => subscriptionsApi.submitUpgradeRequest({
-      planId: subRes?.data?.planId,
-      vehicleCount: subRes?.data?.vehicleCount,
-      billingCycle: subRes?.data?.billingCycle,
-      notes: `Subscription renewal request from ${companyName}`,
-    }),
-    onSuccess: () => {
-      localStorage.setItem(requestedKey, '1')
-      setRequested(true)
-      toast.success('Renewal request sent to FEROS support!')
-    },
-    onError: () => toast.error('Failed to send request. Please try again.'),
   })
 
   if (role !== 'ADMIN' || dismissed) return null
@@ -64,21 +46,6 @@ export function SubscriptionExpiryBanner() {
       </p>
 
       <div className="flex items-center gap-2 shrink-0">
-        {requested ? (
-          <div className="flex items-center gap-1.5 bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
-            <CheckCircle2 size={12} />
-            <span>Requested</span>
-          </div>
-        ) : (
-          <button
-            onClick={() => requestMutation.mutate()}
-            disabled={requestMutation.isPending}
-            className="bg-white text-red-600 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-70"
-          >
-            {requestMutation.isPending ? 'Sending…' : 'Request Renewal'}
-          </button>
-        )}
-
         <button
           onClick={() => { localStorage.setItem(dismissedKey, '1'); setDismissed(true) }}
           className="text-white/80 hover:text-white p-1 rounded transition-colors"

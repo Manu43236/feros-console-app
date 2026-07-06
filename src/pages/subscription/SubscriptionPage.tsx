@@ -15,6 +15,11 @@ function fmt(n?: number | null) {
   return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 }
 
+function fmtDate(d?: string | null) {
+  if (!d) return '∞'
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })
+}
+
 function daysLeft(endDate?: string | null) {
   if (!endDate) return null
   return Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000)
@@ -130,7 +135,7 @@ export function SubscriptionPage() {
   const userLimit    = sub.maxUsers ?? -1
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Subscription</h1>
         <p className="text-sm text-gray-500 mt-0.5">Your plan details, usage, and billing history</p>
@@ -286,16 +291,16 @@ export function SubscriptionPage() {
             <tbody className="divide-y">
               {invoices.map(inv => (
                 <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 font-mono text-xs font-semibold text-blue-700">{inv.invoiceNumber}</td>
-                  <td className="px-5 py-3 font-medium text-gray-800">{inv.planName ?? '—'}</td>
-                  <td className="px-5 py-3 text-gray-600 text-xs">
+                  <td className="px-5 py-3 font-mono text-xs font-semibold text-blue-700 whitespace-nowrap">{inv.invoiceNumber}</td>
+                  <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{inv.planName ?? '—'}</td>
+                  <td className="px-5 py-3 text-gray-600 text-xs whitespace-nowrap">
                     {inv.vehicleCount && inv.pricePerVehicle
                       ? <span>{inv.vehicleCount} × {fmt(inv.pricePerVehicle)}</span>
                       : '—'
                     }
                   </td>
-                  <td className="px-5 py-3 text-gray-500 text-xs">
-                    {inv.periodStart} → {inv.periodEnd ?? '∞'}
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
+                    {fmtDate(inv.periodStart)} – {fmtDate(inv.periodEnd)}
                   </td>
                   <td className="px-5 py-3 text-right">{fmt(inv.amount)}</td>
                   <td className="px-5 py-3 text-right text-gray-500">{fmt(inv.gstAmount)}</td>

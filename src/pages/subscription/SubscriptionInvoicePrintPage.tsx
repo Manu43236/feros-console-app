@@ -56,13 +56,14 @@ const tdStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
   borderRight: '1px solid #e5e7eb', verticalAlign: 'top', ...extra,
 })
 
-// ── FEROS company details (vendor side of subscription invoice) ───────────
+// ── MandM Technologies company details (vendor side of subscription invoice) ─
 const FEROS = {
-  name:    'FEROS Platform Pvt. Ltd.',
-  address: 'Technology Hub, Bangalore, Karnataka - 560001',
+  name:    'MandM Technologies',
+  address: '2nd Floor, Dwaraka Meadows, Madhurawada, Visakhapatnam, Andhra Pradesh',
+  pan:     'ACHFM8981H',
   gstin:   'Applicable',
   hsn:     '998315', // Cloud/SaaS subscription services
-  state:   'Karnataka',
+  state:   'Andhra Pradesh',
 }
 
 // ── Invoice Document ──────────────────────────────────────────────────────
@@ -92,18 +93,29 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
           <tr>
             {/* Left: FEROS (vendor) */}
             <td style={{ width: '55%', verticalAlign: 'top', paddingRight: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                {FEROS.name}
+              <div style={{
+                background: '#1e3a5f', color: '#fff',
+                padding: '8px 12px', borderRadius: 4, marginBottom: 6,
+              }}>
+                <div style={{ fontSize: 17, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  {FEROS.name}
+                </div>
+                <div style={{ fontSize: 10, opacity: 0.75, marginTop: 1 }}>FEROS Fleet Management Platform</div>
               </div>
-              <div style={{ fontSize: 11, color: '#333', lineHeight: 1.6 }}>
+              <div style={{ fontSize: 11, color: '#333', lineHeight: 1.7, paddingLeft: 2 }}>
                 <div>{FEROS.address}</div>
+                <div><strong>PAN:</strong> {FEROS.pan}</div>
                 <div><strong>GSTIN/UIN:</strong> {FEROS.gstin}</div>
-                <div>State Name: {FEROS.state}</div>
+                <div><strong>State:</strong> {FEROS.state}</div>
               </div>
             </td>
             {/* Right: invoice meta */}
             <td style={{ width: '45%', verticalAlign: 'top' }}>
-              <div style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: 1 }}>
+              <div style={{
+                textAlign: 'center', fontSize: 16, fontWeight: 700,
+                marginBottom: 8, letterSpacing: 2, textTransform: 'uppercase',
+                color: '#1e3a5f', borderBottom: '2px solid #1e3a5f', paddingBottom: 6,
+              }}>
                 Tax Invoice
               </div>
               <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', fontSize: 11 }}>
@@ -156,16 +168,18 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
         </tbody>
       </table>
 
-      {/* ── Service Line Items ── */}
-      <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 11 }}>
+      {/* ── Service Line Items (with GST columns inline) ── */}
+      <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 10 }}>
         <thead>
           <tr>
-            <th style={thStyle({ width: 40, textAlign: 'center' })}>#</th>
+            <th style={thStyle({ width: 28, textAlign: 'center' })}>#</th>
             <th style={thStyle()}>Description of Service</th>
-            <th style={thStyle({ width: 80, textAlign: 'center' })}>HSN/SAC</th>
-            <th style={thStyle({ width: 80, textAlign: 'center' })}>Qty</th>
-            <th style={thStyle({ width: 80, textAlign: 'right' })}>Rate (₹)</th>
-            <th style={thStyle({ width: 80, textAlign: 'right', borderRight: 'none' })}>Amount (₹)</th>
+            <th style={thStyle({ width: 58, textAlign: 'center' })}>HSN/SAC</th>
+            <th style={thStyle({ width: 30, textAlign: 'center' })}>Qty</th>
+            <th style={thStyle({ width: 90, textAlign: 'right' })}>Taxable (₹)</th>
+            <th style={thStyle({ width: 72, textAlign: 'right' })}>CGST @9%</th>
+            <th style={thStyle({ width: 72, textAlign: 'right' })}>SGST @9%</th>
+            <th style={thStyle({ width: 90, textAlign: 'right', borderRight: 'none' })}>Total (₹)</th>
           </tr>
         </thead>
         <tbody>
@@ -187,17 +201,20 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
             <td style={tdStyle({ textAlign: 'center' })}>{FEROS.hsn}</td>
             <td style={tdStyle({ textAlign: 'center' })}>1</td>
             <td style={tdStyle({ textAlign: 'right' })}>{fmt(subtotal)}</td>
-            <td style={tdStyle({ textAlign: 'right', borderRight: 'none' })}>{fmt(subtotal)}</td>
+            <td style={tdStyle({ textAlign: 'right' })}>{fmt(cgst)}</td>
+            <td style={tdStyle({ textAlign: 'right' })}>{fmt(sgst)}</td>
+            <td style={tdStyle({ textAlign: 'right', borderRight: 'none', fontWeight: 700 })}>{fmt(totalAmt)}</td>
           </tr>
         </tbody>
         <tfoot>
-          <tr style={{ background: '#f9fafb' }}>
-            <td colSpan={5} style={{ padding: '5px 8px', fontWeight: 600, textAlign: 'right', borderTop: '1px solid #e5e7eb', fontSize: 11 }}>
-              Sub Total
+          <tr style={{ background: '#f9fafb', fontWeight: 700 }}>
+            <td colSpan={4} style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', fontSize: 11 }}>
+              Total
             </td>
-            <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #e5e7eb', fontWeight: 600, fontSize: 11, borderLeft: '1px solid #e5e7eb' }}>
-              {fmt(subtotal)}
-            </td>
+            <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(subtotal)}</td>
+            <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(cgst)}</td>
+            <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(sgst)}</td>
+            <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(totalAmt)}</td>
           </tr>
         </tfoot>
       </table>
@@ -218,48 +235,6 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
             </td>
           </tr>
         </tbody>
-      </table>
-
-      {/* ── GST Breakdown ── */}
-      <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 11 }}>
-        <thead>
-          <tr style={{ background: '#f0f4ff' }}>
-            <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'left' }}>HSN/SAC</th>
-            <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>Taxable Value</th>
-            <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>CGST Rate</th>
-            <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>CGST Amount</th>
-            <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>SGST Rate</th>
-            <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>SGST Amount</th>
-            <th style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>Total Tax</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style={{ padding: '4px 8px', border: '1px solid #333' }}>{FEROS.hsn}</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(subtotal)}</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>9%</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(cgst)}</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>9%</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(sgst)}</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right', fontWeight: 700 }}>{fmt(gstAmt)}</td>
-          </tr>
-          <tr style={{ background: '#f9fafb', fontWeight: 700 }}>
-            <td style={{ padding: '4px 8px', border: '1px solid #333' }}>Total</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(subtotal)}</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333' }}></td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(cgst)}</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333' }}></td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(sgst)}</td>
-            <td style={{ padding: '4px 8px', border: '1px solid #333', textAlign: 'right' }}>{fmt(gstAmt)}</td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colSpan={7} style={{ padding: '4px 8px', border: '1px solid #333', fontStyle: 'italic' }}>
-              Tax Amount (in words): {amountInWords(gstAmt)}
-            </td>
-          </tr>
-        </tfoot>
       </table>
 
       {/* ── Total & Signature ── */}

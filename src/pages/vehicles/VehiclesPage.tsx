@@ -1031,6 +1031,7 @@ const vehicleStatusBadge: Record<VehicleStatusType, string> = {
   ON_TRIP:    'bg-orange-100 text-orange-700',
   IN_REPAIR:  'bg-yellow-100 text-yellow-700',
   BREAKDOWN:  'bg-red-100 text-red-700',
+  ON_LEASE:   'bg-purple-100 text-purple-700',
   OTHER:      'bg-gray-100 text-gray-600',
 }
 
