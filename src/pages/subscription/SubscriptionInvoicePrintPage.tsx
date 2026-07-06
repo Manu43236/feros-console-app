@@ -72,9 +72,19 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
   const installation  = Number(inv.installationCharges ?? 0)
   const gstAmt        = Number(inv.gstAmount ?? 0)
   const totalAmt      = Number(inv.totalAmount ?? 0)
-  const cgst          = gstAmt / 2
-  const sgst          = gstAmt / 2
   const taxableTotal  = subtotal + installation
+
+  // Intra-state (AP → AP): CGST 9% + SGST 9%
+  // Inter-state (AP → other): IGST 18%
+  const isIntraState  = (inv.tenantState ?? '').toLowerCase() === FEROS.state.toLowerCase()
+  const cgst          = isIntraState ? gstAmt / 2 : 0
+  const sgst          = isIntraState ? gstAmt / 2 : 0
+  const igst          = isIntraState ? 0 : gstAmt
+
+  // Per-line tax amounts (for display on each row)
+  const GST_RATE = 0.18
+  const line1Tax  = subtotal * GST_RATE
+  const line2Tax  = installation * GST_RATE
 
   const tenantAddr = [
     inv.tenantAddress,
@@ -170,7 +180,7 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
         </tbody>
       </table>
 
-      {/* ── Service Line Items (with GST columns inline) ── */}
+      {/* ── Service Line Items ── */}
       <table style={{ width: '100%', border: '1px solid #333', borderCollapse: 'collapse', borderTop: 'none', fontSize: 10 }}>
         <thead>
           <tr>
@@ -179,12 +189,19 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
             <th style={thStyle({ width: 58, textAlign: 'center' })}>HSN/SAC</th>
             <th style={thStyle({ width: 30, textAlign: 'center' })}>Qty</th>
             <th style={thStyle({ width: 90, textAlign: 'right' })}>Taxable (₹)</th>
-            <th style={thStyle({ width: 72, textAlign: 'right' })}>CGST @9%</th>
-            <th style={thStyle({ width: 72, textAlign: 'right' })}>SGST @9%</th>
+            {isIntraState ? (
+              <>
+                <th style={thStyle({ width: 72, textAlign: 'right' })}>CGST @9%</th>
+                <th style={thStyle({ width: 72, textAlign: 'right' })}>SGST @9%</th>
+              </>
+            ) : (
+              <th style={thStyle({ width: 90, textAlign: 'right' })}>IGST @18%</th>
+            )}
             <th style={thStyle({ width: 90, textAlign: 'right', borderRight: 'none' })}>Total (₹)</th>
           </tr>
         </thead>
         <tbody>
+          {/* Line 1 — Subscription */}
           <tr>
             <td style={tdStyle({ textAlign: 'center' })}>1</td>
             <td style={tdStyle()}>
@@ -203,10 +220,17 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
             <td style={tdStyle({ textAlign: 'center' })}>{FEROS.hsn}</td>
             <td style={tdStyle({ textAlign: 'center' })}>1</td>
             <td style={tdStyle({ textAlign: 'right' })}>{fmt(subtotal)}</td>
-            <td style={tdStyle({ textAlign: 'right' })}>—</td>
-            <td style={tdStyle({ textAlign: 'right' })}>—</td>
-            <td style={tdStyle({ textAlign: 'right', borderRight: 'none' })}>{fmt(subtotal)}</td>
+            {isIntraState ? (
+              <>
+                <td style={tdStyle({ textAlign: 'right' })}>{fmt(line1Tax / 2)}</td>
+                <td style={tdStyle({ textAlign: 'right' })}>{fmt(line1Tax / 2)}</td>
+              </>
+            ) : (
+              <td style={tdStyle({ textAlign: 'right' })}>{fmt(line1Tax)}</td>
+            )}
+            <td style={tdStyle({ textAlign: 'right', borderRight: 'none' })}>{fmt(subtotal + line1Tax)}</td>
           </tr>
+          {/* Line 2 — Installation (optional) */}
           {installation > 0 && (
             <tr>
               <td style={tdStyle({ textAlign: 'center' })}>2</td>
@@ -217,20 +241,32 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
               <td style={tdStyle({ textAlign: 'center' })}>{FEROS.hsn}</td>
               <td style={tdStyle({ textAlign: 'center' })}>1</td>
               <td style={tdStyle({ textAlign: 'right' })}>{fmt(installation)}</td>
-              <td style={tdStyle({ textAlign: 'right' })}>—</td>
-              <td style={tdStyle({ textAlign: 'right' })}>—</td>
-              <td style={tdStyle({ textAlign: 'right', borderRight: 'none' })}>{fmt(installation)}</td>
+              {isIntraState ? (
+                <>
+                  <td style={tdStyle({ textAlign: 'right' })}>{fmt(line2Tax / 2)}</td>
+                  <td style={tdStyle({ textAlign: 'right' })}>{fmt(line2Tax / 2)}</td>
+                </>
+              ) : (
+                <td style={tdStyle({ textAlign: 'right' })}>{fmt(line2Tax)}</td>
+              )}
+              <td style={tdStyle({ textAlign: 'right', borderRight: 'none' })}>{fmt(installation + line2Tax)}</td>
             </tr>
           )}
         </tbody>
         <tfoot>
           <tr style={{ background: '#f9fafb', fontWeight: 700 }}>
             <td colSpan={4} style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', fontSize: 11 }}>
-              Total (Taxable)
+              Total
             </td>
             <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(taxableTotal)}</td>
-            <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(cgst)}</td>
-            <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(sgst)}</td>
+            {isIntraState ? (
+              <>
+                <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(cgst)}</td>
+                <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(sgst)}</td>
+              </>
+            ) : (
+              <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(igst)}</td>
+            )}
             <td style={{ padding: '5px 8px', textAlign: 'right', borderTop: '1px solid #ccc', borderLeft: '1px solid #e5e7eb' }}>{fmt(totalAmt)}</td>
           </tr>
         </tfoot>
