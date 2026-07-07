@@ -762,15 +762,15 @@ export default function LeaseDetailPage() {
                       <div className="flex items-center gap-3 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
                           <Building2 size={12} />
-                          {a.divisionName
-                            ? <span className="font-medium text-feros-navy">{a.divisionName}</span>
+                          {(activeSession?.divisionName ?? a.divisionName)
+                            ? <span className="font-medium text-feros-navy">{activeSession?.divisionName ?? a.divisionName}</span>
                             : <span className="text-gray-400 italic">No division</span>
                           }
                         </span>
                         <span className="flex items-center gap-1">
                           <User size={12} />
-                          {a.driverName
-                            ? <span className="font-medium text-gray-700">{a.driverName}</span>
+                          {(activeSession !== null ? activeSession.driverName : a.driverName)
+                            ? <span className="font-medium text-gray-700">{activeSession !== null ? activeSession.driverName : a.driverName}</span>
                             : <span className="text-gray-400 italic">Client's driver</span>
                           }
                         </span>
