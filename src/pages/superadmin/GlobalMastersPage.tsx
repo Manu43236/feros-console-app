@@ -608,12 +608,14 @@ const EmploymentTypesSection  = makeSimpleSection('Employment Types',  'g-employ
 const OwnershipTypesSection   = makeSimpleSection('Ownership Types',   'g-ownership-types',   globalMastersApi.getOwnershipTypes,    globalMastersWriteApi.createOwnershipType, globalMastersWriteApi.updateOwnershipType, globalMastersWriteApi.deleteOwnershipType)
 const DeductionTypesSection   = makeSimpleSection('Deduction Types',   'g-deduction-types',   globalMastersApi.getDeductionTypes,    globalMastersWriteApi.createDeductionType, globalMastersWriteApi.updateDeductionType, globalMastersWriteApi.deleteDeductionType)
 const PaymentStatusesSection  = makeSimpleSection('Payment Statuses',  'g-payment-statuses',  globalMastersApi.getPaymentStatuses,   globalMastersWriteApi.createPaymentStatus, globalMastersWriteApi.updatePaymentStatus, globalMastersWriteApi.deletePaymentStatus)
+const PartCategoriesSection   = makeSimpleSection('Part Categories',   'g-part-categories',   globalMastersApi.getPartCategories,    globalMastersWriteApi.createPartCategory,  globalMastersWriteApi.updatePartCategory,  globalMastersWriteApi.deletePartCategory)
 
 // ── Section registry ──────────────────────────────────────────────────────────
 type SectionId =
   | 'states' | 'cities' | 'vehicleBrands' | 'vehicleTypes' | 'fuelTypes'
   | 'materialTypes' | 'documentTypes' | 'attendanceTypes' | 'leaveTypes'
   | 'employmentTypes' | 'ownershipTypes' | 'deductionTypes' | 'taxes' | 'paymentStatuses'
+  | 'partCategories'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'states',          label: 'States' },
@@ -630,6 +632,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'deductionTypes',  label: 'Deduction Types' },
   { id: 'taxes',           label: 'Taxes' },
   { id: 'paymentStatuses', label: 'Payment Statuses' },
+  { id: 'partCategories',  label: 'Part Categories' },
 ]
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -654,6 +657,7 @@ export function GlobalMastersPage() {
     deductionTypes:  <DeductionTypesSection />,
     taxes:           <TaxesSection />,
     paymentStatuses: <PaymentStatusesSection />,
+    partCategories:  <PartCategoriesSection />,
   }
 
   return (

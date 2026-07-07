@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sparePartsApi } from '@/api/inventory'
+import { globalMastersApi } from '@/api/masters'
 import type { SparePart } from '@/types'
 import { toast } from 'sonner'
 import { Plus, Search, Pencil, Trash2, Package } from 'lucide-react'
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 
 // ── Form Dialog ────────────────────────────────────────────────────────────────
-function SparePartDialog({ part, onClose }: { part?: SparePart | null; onClose: () => void }) {
+function SparePartDialog({ part, categories, onClose }: { part?: SparePart | null; categories: string[]; onClose: () => void }) {
   const qc = useQueryClient()
   const isEdit = !!part
   const [form, setForm] = useState({
@@ -55,7 +56,14 @@ function SparePartDialog({ part, onClose }: { part?: SparePart | null; onClose: 
             </div>
             <div>
               <Label>Category</Label>
-              <Input value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder="e.g. Engine" />
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={form.category}
+                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+              >
+                <option value="">— Select —</option>
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -140,6 +148,9 @@ export default function SparePartsPage() {
     queryFn: sparePartsApi.getAll,
   })
   const parts = data?.data ?? []
+
+  const { data: catData } = useQuery({ queryKey: ['partCategories'], queryFn: globalMastersApi.getPartCategories })
+  const categories = (catData?.data ?? []).map((c: { name: string }) => c.name)
   const filtered = parts.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.category ?? '').toLowerCase().includes(search.toLowerCase()) ||
@@ -236,7 +247,7 @@ export default function SparePartsPage() {
         )}
       </div>
 
-      {formPart !== undefined && <SparePartDialog part={formPart} onClose={() => setFormPart(undefined)} />}
+      {formPart !== undefined && <SparePartDialog part={formPart} categories={categories} onClose={() => setFormPart(undefined)} />}
       <DeleteDialog part={deletePart} onClose={() => setDeletePart(null)} />
     </div>
   )

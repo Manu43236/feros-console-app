@@ -158,6 +158,11 @@ export const globalMastersWriteApi = {
   createPaymentStatus:  (data: { name: string }) => apiClient.post<ApiResponse<MasterItem>>('/masters/global/payment-statuses', data).then(r => r.data),
   updatePaymentStatus:  (id: number, data: { name: string }) => apiClient.put<ApiResponse<MasterItem>>(`/masters/global/payment-statuses/${id}`, data).then(r => r.data),
   deletePaymentStatus:  (id: number) => apiClient.delete(`/masters/global/payment-statuses/${id}`),
+
+  // Part Categories
+  createPartCategory:  (data: { name: string }) => apiClient.post<ApiResponse<MasterItem>>('/masters/global/part-categories', data).then(r => r.data),
+  updatePartCategory:  (id: number, data: { name: string }) => apiClient.put<ApiResponse<MasterItem>>(`/masters/global/part-categories/${id}`, data).then(r => r.data),
+  deletePartCategory:  (id: number) => apiClient.delete(`/masters/global/part-categories/${id}`),
 }
 
 // ── Attendance Locations ──────────────────────────────────────────────────────
