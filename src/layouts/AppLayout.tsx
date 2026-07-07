@@ -725,32 +725,44 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
 
-          {/* Module toggle — inactive icon left, active pill right overlapping */}
+          {/* Module toggle — two overlapping circles, swap with text expand/collapse */}
           {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (() => {
             const isVehicles = currentMode === 'VEHICLES'
-            const inactiveBg  = isVehicles ? 'bg-feros-equip-sidebar' : 'bg-feros-navy'
-            const activeBg    = isVehicles ? 'bg-feros-navy' : 'bg-feros-equip-sidebar'
-            const inactiveIcon = isVehicles ? equipmentIcon : lorryIcon
-            const activeIcon   = isVehicles ? lorryIcon : equipmentIcon
-            const activeLabel  = isVehicles ? 'Vehicles' : 'Equipment'
+            // active:   left-7 (28px), w-[128px] pill, z-10, shadow
+            // inactive: left-0, w-9 circle, opacity-50, z-0
+            const pillCls = (active: boolean, bg: string) => cn(
+              'absolute top-0.5 h-9 rounded-full flex items-center overflow-hidden transition-all duration-300 ease-in-out',
+              bg,
+              active
+                ? 'left-7 w-[128px] opacity-100 pl-2.5 pr-4 z-10 shadow-md'
+                : 'left-0 w-9 opacity-50 justify-center z-0 hover:opacity-70'
+            )
             return (
               <div className="relative shrink-0 h-10 w-[160px]">
-                {/* Inactive circle — left, behind */}
+                {/* Lorry / Vehicles */}
                 <button
-                  onClick={() => {
-                    if (isVehicles) { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }
-                    else { setCurrentMode('VEHICLES'); navigate('/dashboard') }
-                  }}
-                  className={cn('absolute top-0.5 left-0 w-9 h-9 rounded-full flex items-center justify-center z-0 opacity-50 hover:opacity-75 transition-opacity duration-200', inactiveBg)}
-                  title={isVehicles ? 'Switch to Equipment' : 'Switch to Vehicles'}
+                  onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }}
+                  className={pillCls(isVehicles, 'bg-feros-navy')}
+                  title="Vehicles"
                 >
-                  <img src={inactiveIcon} alt="" className="w-[17px] h-[17px] brightness-0 invert" />
+                  <img src={lorryIcon} alt="" className="w-[17px] h-[17px] brightness-0 invert shrink-0" />
+                  <span className={cn(
+                    'text-white text-xs font-semibold whitespace-nowrap overflow-hidden transition-all duration-200',
+                    isVehicles ? 'max-w-[80px] opacity-100 ml-2' : 'max-w-0 opacity-0 ml-0'
+                  )}>Vehicles</span>
                 </button>
-                {/* Active pill — overlaps circle, right side */}
-                <div className={cn('absolute top-0.5 left-6 h-9 w-[130px] rounded-full flex items-center gap-2 pl-2.5 pr-4 z-10 shadow-md', activeBg)}>
-                  <img src={activeIcon} alt="" className="w-[17px] h-[17px] brightness-0 invert shrink-0" />
-                  <span className="text-white text-xs font-semibold whitespace-nowrap">{activeLabel}</span>
-                </div>
+                {/* Equipment */}
+                <button
+                  onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }}
+                  className={pillCls(!isVehicles, 'bg-feros-equip-sidebar')}
+                  title="Equipment"
+                >
+                  <img src={equipmentIcon} alt="" className="w-[17px] h-[17px] brightness-0 invert shrink-0" />
+                  <span className={cn(
+                    'text-white text-xs font-semibold whitespace-nowrap overflow-hidden transition-all duration-200',
+                    !isVehicles ? 'max-w-[80px] opacity-100 ml-2' : 'max-w-0 opacity-0 ml-0'
+                  )}>Equipment</span>
+                </button>
               </div>
             )
           })()}
