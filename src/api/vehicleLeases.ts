@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, PageResponse, VehicleLease, LeaseVehicleAssignment, LeaseBilling, LeaseStatus } from '@/types'
+import type { ApiResponse, PageResponse, VehicleLease, LeaseVehicleAssignment, LeaseBilling, LeaseStatus, LeaseVehicleSession, LeaseSessionStatus } from '@/types'
 
 export const vehicleLeasesApi = {
   getAll: (params?: { page?: number; size?: number; status?: LeaseStatus; clientId?: number }) =>
@@ -40,4 +40,25 @@ export const vehicleLeasesApi = {
 
   getBilling: (leaseId: number) =>
     apiClient.get<ApiResponse<LeaseBilling>>(`/vehicle-leases/${leaseId}/billing`).then(r => r.data),
+
+  startSession: (leaseId: number, assignmentId: number, data: {
+    status: LeaseSessionStatus
+    startTime?: string
+    driverStaffId?: number | null
+    divisionId?: number | null
+    notes?: string
+  }) =>
+    apiClient.post<ApiResponse<LeaseVehicleSession>>(
+      `/vehicle-leases/${leaseId}/vehicles/${assignmentId}/sessions`, data
+    ).then(r => r.data),
+
+  endSession: (leaseId: number, assignmentId: number, data?: { endTime?: string; notes?: string }) =>
+    apiClient.put<ApiResponse<LeaseVehicleSession>>(
+      `/vehicle-leases/${leaseId}/vehicles/${assignmentId}/sessions/end`, data ?? {}
+    ).then(r => r.data),
+
+  getSessions: (leaseId: number, assignmentId?: number) =>
+    apiClient.get<ApiResponse<LeaseVehicleSession[]>>(`/vehicle-leases/${leaseId}/sessions`, {
+      params: assignmentId ? { assignmentId } : undefined,
+    }).then(r => r.data),
 }

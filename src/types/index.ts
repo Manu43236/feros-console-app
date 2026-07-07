@@ -120,6 +120,26 @@ export interface LeaseBilling {
   totalAmount: number
 }
 
+export type LeaseSessionStatus = 'WORKING' | 'IDLE' | 'BREAKDOWN'
+
+export interface LeaseVehicleSession {
+  id: number
+  assignmentId: number
+  vehicleId: number
+  registrationNumber: string
+  driverStaffId?: number
+  driverName?: string
+  divisionId?: number
+  divisionName?: string
+  status: LeaseSessionStatus
+  startTime: string        // ISO datetime
+  endTime: string | null   // null while active
+  hoursWorked: number | null
+  isActive: boolean
+  notes?: string
+  createdAt: string
+}
+
 // Global vehicle status (no tenantId)
 export interface VehicleStatusItem extends MasterItem {
   statusType: VehicleStatusType

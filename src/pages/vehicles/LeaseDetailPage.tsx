@@ -8,7 +8,7 @@ import { clientsApi } from '@/api/clients'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Plus, Truck, CalendarDays, MapPin,
-  X, Receipt, User, Gauge, Building2,
+  X, Receipt, User, Gauge, Building2, Clock, Play, Square,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
-import type { LeaseStatus, LeaseVehicleAssignment } from '@/types'
+import type { LeaseStatus, LeaseVehicleAssignment, LeaseVehicleSession, LeaseSessionStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
 const STATUS_COLORS: Record<LeaseStatus, string> = {
@@ -31,6 +31,20 @@ const STATUS_LABELS: Record<LeaseStatus, string> = {
 const NEXT_STATUSES: Partial<Record<LeaseStatus, LeaseStatus[]>> = {
   DRAFT:  ['ACTIVE'],
   ACTIVE: ['CLOSED'],
+}
+const SESSION_COLORS: Record<LeaseSessionStatus, { dot: string; text: string; pill: string; tabBtn: string }> = {
+  WORKING:   { dot: 'bg-green-500',  text: 'text-green-700',  pill: 'bg-green-50 border border-green-200 text-green-700',  tabBtn: 'border-green-200 text-green-700 hover:bg-green-50' },
+  IDLE:      { dot: 'bg-yellow-400', text: 'text-yellow-600', pill: 'bg-yellow-50 border border-yellow-200 text-yellow-700', tabBtn: 'border-yellow-200 text-yellow-700 hover:bg-yellow-50' },
+  BREAKDOWN: { dot: 'bg-red-500',    text: 'text-red-700',    pill: 'bg-red-50 border border-red-200 text-red-700',         tabBtn: 'border-red-200 text-red-700 hover:bg-red-50' },
+}
+
+function nowLocal() {
+  const d = new Date()
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+}
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 // ── Add Vehicle Dialog ──────────────────────────────────────────────────────────
@@ -152,6 +166,7 @@ function CloseVehicleDialog({
       toast.success('Vehicle assignment closed')
       qc.invalidateQueries({ queryKey: ['lease-vehicles', leaseId] })
       qc.invalidateQueries({ queryKey: ['vehicle-lease', leaseId] })
+      qc.invalidateQueries({ queryKey: ['lease-sessions', leaseId] })
       onClose()
     },
     onError: (e: unknown) => {
@@ -166,7 +181,7 @@ function CloseVehicleDialog({
         <DialogHeader><DialogTitle>Close Vehicle Assignment</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-2">
           <p className="text-sm text-gray-600">
-            Closing <strong>{assignment.registrationNumber}</strong> from this lease.
+            Closing <strong>{assignment.registrationNumber}</strong> from this lease. Any active session will be auto-closed.
           </p>
           <div>
             <Label>Odometer at Return (km)</Label>
@@ -248,6 +263,221 @@ function AssignDivisionDialog({ leaseId, clientId, assignment, open, onClose }: 
   )
 }
 
+// ── Start Session Dialog ────────────────────────────────────────────────────────
+function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
+  leaseId: number; clientId: number; assignment: LeaseVehicleAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [status, setStatus] = useState<LeaseSessionStatus>('WORKING')
+  const [divisionId, setDivisionId] = useState('')
+  const [clientDriver, setClientDriver] = useState(true)
+  const [driverStaffId, setDriverStaffId] = useState('')
+  const [startTime, setStartTime] = useState(nowLocal())
+  const [notes, setNotes] = useState('')
+
+  function reset() {
+    setStatus('WORKING'); setDivisionId(''); setClientDriver(true)
+    setDriverStaffId(''); setStartTime(nowLocal()); setNotes('')
+  }
+
+  const { data: divRes } = useQuery({
+    queryKey: ['client-divisions', clientId],
+    queryFn: () => clientsApi.getDivisions(clientId),
+    enabled: open && !!clientId,
+  })
+  const { data: staffRes } = useQuery({
+    queryKey: ['staff'],
+    queryFn: () => staffApi.getAll(),
+    enabled: open && !clientDriver,
+  })
+
+  const divisions = (divRes?.data ?? []).map(d => ({ value: String(d.id), label: d.name }))
+  const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
+
+  const mutation = useMutation({
+    mutationFn: () => vehicleLeasesApi.startSession(leaseId, assignment!.id, {
+      status,
+      startTime,
+      driverStaffId: clientDriver ? null : (driverStaffId ? Number(driverStaffId) : null),
+      divisionId: status === 'WORKING' && divisionId ? Number(divisionId) : null,
+      notes: notes || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Session started')
+      qc.invalidateQueries({ queryKey: ['lease-sessions', leaseId] })
+      reset(); onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to start session')
+    },
+  })
+
+  const canSubmit = status !== 'WORKING' || !!divisionId
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) { reset(); onClose() } }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Start Session — {assignment?.registrationNumber}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+
+          {/* Status selector */}
+          <div>
+            <Label>Status *</Label>
+            <div className="flex gap-2 mt-1.5">
+              {(['WORKING', 'IDLE', 'BREAKDOWN'] as LeaseSessionStatus[]).map(s => (
+                <button key={s}
+                  onClick={() => { setStatus(s); if (s !== 'WORKING') setDivisionId('') }}
+                  className={cn(
+                    'flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                    status === s ? SESSION_COLORS[s].pill : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  )}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Division — required for WORKING */}
+          {status === 'WORKING' && (
+            <div>
+              <Label>Division *</Label>
+              {divisions.length === 0 ? (
+                <p className="text-xs text-red-500 mt-1">No divisions set up for this client.</p>
+              ) : (
+                <select className="w-full border rounded-md px-3 py-2 text-sm mt-1"
+                  value={divisionId} onChange={e => setDivisionId(e.target.value)}>
+                  <option value="">— Select division —</option>
+                  {divisions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                </select>
+              )}
+            </div>
+          )}
+
+          {/* Driver */}
+          <div>
+            <Label>Driver</Label>
+            <div className="flex gap-2 mt-1.5">
+              <button
+                onClick={() => { setClientDriver(true); setDriverStaffId('') }}
+                className={cn('px-3 py-1.5 rounded-lg text-xs border transition-colors',
+                  clientDriver ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-500 hover:bg-gray-50')}>
+                Client's Driver
+              </button>
+              <button
+                onClick={() => setClientDriver(false)}
+                className={cn('px-3 py-1.5 rounded-lg text-xs border transition-colors',
+                  !clientDriver ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-500 hover:bg-gray-50')}>
+                Own Staff
+              </button>
+            </div>
+            {!clientDriver && (
+              <div className="mt-2">
+                <SearchableSelect
+                  options={drivers.map(d => ({ value: String(d.userId), label: d.userName }))}
+                  value={driverStaffId}
+                  onValueChange={setDriverStaffId}
+                  placeholder="Select driver"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Start time */}
+          <div>
+            <Label>Start Time *</Label>
+            <Input type="datetime-local" value={startTime} max={nowLocal()}
+              onChange={e => setStartTime(e.target.value)} className="mt-1" />
+            <p className="text-xs text-gray-400 mt-1">Cannot be a future time.</p>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <Label>Notes (optional)</Label>
+            <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any notes…" className="mt-1" />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => { reset(); onClose() }}>Cancel</Button>
+            <Button disabled={!canSubmit || mutation.isPending} onClick={() => mutation.mutate()}
+              className="bg-green-600 hover:bg-green-700 text-white">
+              {mutation.isPending ? 'Starting…' : 'Start Session'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── End Session Dialog ──────────────────────────────────────────────────────────
+function EndSessionDialog({ leaseId, assignment, activeSession, open, onClose }: {
+  leaseId: number; assignment: LeaseVehicleAssignment | null
+  activeSession: LeaseVehicleSession | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [endTime, setEndTime] = useState(nowLocal())
+  const [notes, setNotes] = useState('')
+
+  function reset() { setEndTime(nowLocal()); setNotes('') }
+
+  const mutation = useMutation({
+    mutationFn: () => vehicleLeasesApi.endSession(leaseId, assignment!.id, {
+      endTime,
+      notes: notes || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Session ended')
+      qc.invalidateQueries({ queryKey: ['lease-sessions', leaseId] })
+      reset(); onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to end session')
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) { reset(); onClose() } }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>End Session — {assignment?.registrationNumber}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          {activeSession && (
+            <div className={cn('rounded-lg p-3 text-xs', SESSION_COLORS[activeSession.status].pill)}>
+              <span className="font-semibold">{activeSession.status}</span>
+              {activeSession.divisionName && <span> in {activeSession.divisionName}</span>}
+              {activeSession.driverName && <span> · {activeSession.driverName}</span>}
+              <br />
+              <span className="opacity-80">Active since {fmtDateTime(activeSession.startTime)}</span>
+            </div>
+          )}
+          <div>
+            <Label>End Time *</Label>
+            <Input type="datetime-local" value={endTime} max={nowLocal()}
+              onChange={e => setEndTime(e.target.value)} className="mt-1" />
+            <p className="text-xs text-gray-400 mt-1">Cannot be a future time.</p>
+          </div>
+          <div>
+            <Label>Notes (optional)</Label>
+            <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any notes…" className="mt-1" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { reset(); onClose() }}>Cancel</Button>
+            <Button disabled={mutation.isPending} onClick={() => mutation.mutate()}
+              className="bg-red-600 hover:bg-red-700 text-white">
+              {mutation.isPending ? 'Ending…' : 'End Session'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Main Page ───────────────────────────────────────────────────────────────────
 export default function LeaseDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -255,12 +485,14 @@ export default function LeaseDetailPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const role = useAuthStore(s => s.role)
-  const [activeTab, setActiveTab] = useState<'vehicles' | 'billing'>('vehicles')
+  const [activeTab, setActiveTab] = useState<'vehicles' | 'sessions' | 'billing'>('vehicles')
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [extendDate, setExtendDate] = useState('')
   const [showExtend, setShowExtend] = useState(false)
   const [closingAssignment, setClosingAssignment] = useState<LeaseVehicleAssignment | null>(null)
   const [assigningDivisionFor, setAssigningDivisionFor] = useState<LeaseVehicleAssignment | null>(null)
+  const [startingSessionFor, setStartingSessionFor] = useState<LeaseVehicleAssignment | null>(null)
+  const [endingSessionFor, setEndingSessionFor] = useState<LeaseVehicleAssignment | null>(null)
 
   const { data: leaseRes, isLoading } = useQuery({
     queryKey: ['vehicle-lease', leaseId],
@@ -270,6 +502,10 @@ export default function LeaseDetailPage() {
     queryKey: ['lease-vehicles', leaseId],
     queryFn: () => vehicleLeasesApi.getVehicles(leaseId),
   })
+  const { data: sessionsRes } = useQuery({
+    queryKey: ['lease-sessions', leaseId],
+    queryFn: () => vehicleLeasesApi.getSessions(leaseId),
+  })
   const { data: billingRes } = useQuery({
     queryKey: ['lease-billing', leaseId],
     queryFn: () => vehicleLeasesApi.getBilling(leaseId),
@@ -278,8 +514,14 @@ export default function LeaseDetailPage() {
 
   const lease = leaseRes?.data
   const assignments = vehiclesRes?.data ?? []
+  const sessions = sessionsRes?.data ?? []
   const billing = billingRes?.data
   const activeAssignments = assignments.filter(a => a.isActive)
+
+  // Map of assignmentId → active session (for vehicle card indicators)
+  const activeSessionMap = new Map<number, LeaseVehicleSession>(
+    sessions.filter(s => s.isActive).map(s => [s.assignmentId, s])
+  )
 
   const statusMutation = useMutation({
     mutationFn: (status: LeaseStatus) => vehicleLeasesApi.updateStatus(leaseId, status),
@@ -287,6 +529,7 @@ export default function LeaseDetailPage() {
       toast.success('Status updated')
       qc.invalidateQueries({ queryKey: ['vehicle-lease', leaseId] })
       qc.invalidateQueries({ queryKey: ['vehicle-leases'] })
+      qc.invalidateQueries({ queryKey: ['lease-sessions', leaseId] })
     },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -319,12 +562,10 @@ export default function LeaseDetailPage() {
 
       {/* ── Banner ── */}
       <div className="relative bg-gradient-to-br from-feros-navy via-feros-navy to-feros-navy/80 rounded-xl overflow-hidden">
-        {/* Ghost icon */}
         <div className="absolute right-0 top-0 bottom-0 w-64 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
           <Truck size={180} />
         </div>
         <div className="relative px-6 py-6">
-          {/* Top row: back + actions */}
           <div className="flex items-start justify-between gap-4">
             <button
               onClick={() => navigate('/vehicles/leases')}
@@ -352,7 +593,6 @@ export default function LeaseDetailPage() {
             </div>
           </div>
 
-          {/* Lease identity */}
           <div className="mt-5">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-3xl font-bold text-white">{lease.leaseNumber}</h1>
@@ -412,8 +652,9 @@ export default function LeaseDetailPage() {
       <div className="flex gap-1 border-b border-gray-200">
         {([
           { key: 'vehicles', label: 'Vehicles', icon: <Truck size={14} /> },
+          { key: 'sessions', label: 'Sessions', icon: <Clock size={14} /> },
           ...(role !== 'SUPERVISOR' ? [{ key: 'billing', label: 'Billing', icon: <Receipt size={14} /> }] : []),
-        ] as { key: 'vehicles' | 'billing'; label: string; icon: React.ReactNode }[]).map(t => (
+        ] as { key: 'vehicles' | 'sessions' | 'billing'; label: string; icon: React.ReactNode }[]).map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
               activeTab === t.key
@@ -446,75 +687,176 @@ export default function LeaseDetailPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {assignments.map(a => (
-                <div key={a.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3">
-                  {/* Main row */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">
-                        {a.registrationNumber}
-                        {a.vehicleType && <span className="text-gray-400 font-normal ml-2">· {a.vehicleType}</span>}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        From {a.startDate}{a.endDate ? ` → ${a.endDate}` : ''}
-                        <span className="ml-2 text-feros-navy font-medium">
-                          ₹{a.ratePerVehicle.toLocaleString('en-IN')}/{lease.rateType === 'MONTHLY' ? 'mo' : 'day'}
-                        </span>
-                      </p>
+              {assignments.map(a => {
+                const activeSession = activeSessionMap.get(a.id) ?? null
+                return (
+                  <div key={a.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+                    {/* Main row */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {a.registrationNumber}
+                          {a.vehicleType && <span className="text-gray-400 font-normal ml-2">· {a.vehicleType}</span>}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          From {a.startDate}{a.endDate ? ` → ${a.endDate}` : ''}
+                          <span className="ml-2 text-feros-navy font-medium">
+                            ₹{a.ratePerVehicle.toLocaleString('en-IN')}/{lease.rateType === 'MONTHLY' ? 'mo' : 'day'}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={a.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}>
+                          {a.isActive ? 'Active' : 'Closed'}
+                        </Badge>
+                        {canEdit && a.isActive && (
+                          <Button size="sm" variant="outline"
+                            className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => setClosingAssignment(a)}>
+                            <X size={11} className="mr-1" /> Close
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={a.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}>
-                        {a.isActive ? 'Active' : 'Closed'}
-                      </Badge>
-                      {canEdit && a.isActive && (
-                        <Button size="sm" variant="outline"
-                          className="text-xs text-red-600 border-red-200 hover:bg-red-50"
-                          onClick={() => setClosingAssignment(a)}>
-                          <X size={11} className="mr-1" /> Close
-                        </Button>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Division row */}
-                  <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <Building2 size={12} />
-                      {a.divisionName
-                        ? <span className="font-medium text-feros-navy">{a.divisionName}</span>
-                        : <span className="text-gray-400 italic">No division assigned</span>
-                      }
-                    </div>
-                    {canEdit && a.isActive && (
-                      <Button size="sm" variant="ghost"
-                        className="text-xs h-6 px-2 text-feros-navy"
-                        onClick={() => setAssigningDivisionFor(a)}>
-                        {a.divisionName ? 'Change' : 'Assign Division'}
-                      </Button>
+                    {/* Active session indicator */}
+                    {activeSession && (
+                      <div className={cn('mt-2 px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-xs', SESSION_COLORS[activeSession.status].pill)}>
+                        <span className={cn('inline-block w-2 h-2 rounded-full shrink-0', SESSION_COLORS[activeSession.status].dot)} />
+                        <span className="font-semibold">{activeSession.status}</span>
+                        {activeSession.divisionName && <span>in {activeSession.divisionName}</span>}
+                        {activeSession.driverName
+                          ? <><span className="opacity-50">·</span><User size={10} /><span>{activeSession.driverName}</span></>
+                          : <><span className="opacity-50">·</span><span className="opacity-70">Client's driver</span></>
+                        }
+                        <span className="opacity-50 ml-auto">since {new Date(activeSession.startTime).toLocaleTimeString('en-IN', { timeStyle: 'short' })}</span>
+                      </div>
                     )}
-                  </div>
 
-                  {/* Driver row */}
-                  <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
-                    <User size={12} />
-                    {a.driverName
-                      ? <span className="font-medium text-gray-700">{a.driverName}</span>
-                      : <span className="text-gray-400 italic">Client's driver</span>
-                    }
-                    {a.odometerAtStart != null && (
+                    {/* Session action buttons */}
+                    {canEdit && a.isActive && (
+                      <div className="mt-2 pt-2 border-t border-gray-50 flex items-center gap-2">
+                        <Button size="sm" variant="outline"
+                          className="text-xs text-green-700 border-green-200 hover:bg-green-50 gap-1"
+                          onClick={() => setStartingSessionFor(a)}>
+                          <Play size={10} /> {activeSession ? 'Change Session' : 'Start Session'}
+                        </Button>
+                        {activeSession && (
+                          <Button size="sm" variant="outline"
+                            className="text-xs text-red-600 border-red-200 hover:bg-red-50 gap-1"
+                            onClick={() => setEndingSessionFor(a)}>
+                            <Square size={10} /> End Session
+                          </Button>
+                        )}
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 ml-auto">
+                          <Building2 size={12} />
+                          {a.divisionName
+                            ? <span className="font-medium text-feros-navy">{a.divisionName}</span>
+                            : <span className="text-gray-400 italic">No division</span>
+                          }
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Driver row (when not canEdit or not active) */}
+                    {(!canEdit || !a.isActive) && (
                       <>
-                        <span className="text-gray-300 mx-1">·</span>
-                        <Gauge size={12} />
-                        <span>{a.odometerAtStart} km{a.odometerAtEnd != null ? ` → ${a.odometerAtEnd} km` : ''}</span>
+                        <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <Building2 size={12} />
+                            {a.divisionName
+                              ? <span className="font-medium text-feros-navy">{a.divisionName}</span>
+                              : <span className="text-gray-400 italic">No division assigned</span>
+                            }
+                          </div>
+                        </div>
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+                          <User size={12} />
+                          {a.driverName
+                            ? <span className="font-medium text-gray-700">{a.driverName}</span>
+                            : <span className="text-gray-400 italic">Client's driver</span>
+                          }
+                          {a.odometerAtStart != null && (
+                            <>
+                              <span className="text-gray-300 mx-1">·</span>
+                              <Gauge size={12} />
+                              <span>{a.odometerAtStart} km{a.odometerAtEnd != null ? ` → ${a.odometerAtEnd} km` : ''}</span>
+                            </>
+                          )}
+                        </div>
                       </>
                     )}
+
+                    {/* Odometer row when canEdit and active */}
+                    {canEdit && a.isActive && a.odometerAtStart != null && (
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+                        <Gauge size={12} />
+                        <span>{a.odometerAtStart} km{a.odometerAtEnd != null ? ` → ${a.odometerAtEnd} km` : ''}</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
           <AddVehicleDialog leaseId={leaseId} open={showAddVehicle} onClose={() => setShowAddVehicle(false)} />
+        </div>
+      )}
+
+      {/* ── Sessions Tab ── */}
+      {activeTab === 'sessions' && (
+        <div className="space-y-4">
+          {sessions.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
+              No sessions recorded yet. Start a session from the Vehicles tab.
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Vehicle</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Driver</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Division</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Start</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">End</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessions.map(s => (
+                    <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{s.registrationNumber}</td>
+                      <td className="px-4 py-3">
+                        <span className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border', SESSION_COLORS[s.status].pill)}>
+                          <span className={cn('w-1.5 h-1.5 rounded-full', SESSION_COLORS[s.status].dot)} />
+                          {s.status}
+                        </span>
+                        {s.isActive && (
+                          <span className="ml-1.5 text-xs text-green-600 font-medium">● Live</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {s.driverName ?? <span className="italic text-gray-400">Client</span>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {s.divisionName ?? <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{fmtDateTime(s.startTime)}</td>
+                      <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
+                        {s.endTime ? fmtDateTime(s.endTime) : <span className="text-green-600 font-medium">Active</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700 font-medium text-xs">
+                        {s.hoursWorked != null ? `${s.hoursWorked} hrs` : <span className="text-gray-300">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -600,6 +942,20 @@ export default function LeaseDetailPage() {
         assignment={assigningDivisionFor}
         open={!!assigningDivisionFor}
         onClose={() => setAssigningDivisionFor(null)}
+      />
+      <StartSessionDialog
+        leaseId={leaseId}
+        clientId={lease.clientId}
+        assignment={startingSessionFor}
+        open={!!startingSessionFor}
+        onClose={() => setStartingSessionFor(null)}
+      />
+      <EndSessionDialog
+        leaseId={leaseId}
+        assignment={endingSessionFor}
+        activeSession={endingSessionFor ? (activeSessionMap.get(endingSessionFor.id) ?? null) : null}
+        open={!!endingSessionFor}
+        onClose={() => setEndingSessionFor(null)}
       />
     </div>
   )
