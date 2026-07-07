@@ -1949,12 +1949,22 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
 
 type TyresSubTab = 'Current' | 'Rotation History' | 'Fitting History'
 
-function TyresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerReading?: number; tyreRotationIntervalKm?: number } }) {
+function TyresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerReading?: number; tyreRotationIntervalKm?: number; vehicleTypeName?: string } }) {
   const [subTab, setSubTab] = useState<TyresSubTab>('Current')
   const [fitDialog, setFitDialog] = useState<{ positionId: number } | null>(null)
   const [removeDialog, setRemoveDialog] = useState<TyreFitting | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
   const [rotateOpen, setRotateOpen] = useState(false)
+  const qc = useQueryClient()
+
+  const generateMutation = useMutation({
+    mutationFn: () => tyresApi.generatePositions(vehicle.id),
+    onSuccess: () => {
+      toast.success('Tyre positions generated')
+      qc.invalidateQueries({ queryKey: ['tyre-positions-current', vehicle.id] })
+    },
+    onError: () => toast.error('Failed to generate positions'),
+  })
 
   const { data: posRes } = useQuery({
     queryKey: ['tyre-positions-current', vehicle.id],
@@ -2011,9 +2021,19 @@ function TyresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
             <Button size="sm" variant="outline" onClick={() => setRotateOpen(true)}>Rotate</Button>
           </div>
           {positions.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 text-sm">
-              No positions configured.
-              <button className="ml-1 text-feros-navy underline" onClick={() => setManageOpen(true)}>Add positions</button>
+            <div className="text-center py-8 text-gray-400 text-sm space-y-3">
+              <p>No positions configured.</p>
+              {vehicle.vehicleTypeName ? (
+                <Button
+                  size="sm"
+                  onClick={() => generateMutation.mutate()}
+                  disabled={generateMutation.isPending}
+                >
+                  {generateMutation.isPending ? 'Generating…' : 'Generate Positions'}
+                </Button>
+              ) : (
+                <p className="text-xs">Set a vehicle type to enable auto-generation, or <button className="text-feros-navy underline" onClick={() => setManageOpen(true)}>add positions manually</button>.</p>
+              )}
             </div>
           ) : (
             POSITION_TYPE_ORDER.map(type => {
