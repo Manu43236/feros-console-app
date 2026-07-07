@@ -100,7 +100,7 @@ export interface LeaseVehicleAssignment {
   driverStaffId?: number; driverName?: string
   ratePerVehicle: number
   startDate: string; endDate?: string
-  odometerAtStart?: number; odometerAtEnd?: number
+  odometerAtStart?: number; odometerAtEnd?: number; vehicleCurrentOdometer?: number
   divisionId?: number | null; divisionName?: string | null
   isActive: boolean; notes?: string
   createdAt: string

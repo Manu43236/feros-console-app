@@ -531,12 +531,13 @@ export default function LeaseDetailPage() {
     sessions.filter(s => s.isActive).map(s => [s.assignmentId, s])
   )
 
-  // Last known odometer per assignment (most recent odometerEnd from completed sessions)
-  function lastOdometerFor(assignmentId: number, fallback: number | null): number | null {
+  // Last known odometer: last session's odometerEnd → assignment odometerAtStart → vehicle current odometer
+  function lastOdometerFor(a: typeof assignments[0]): number | null {
     const completed = sessions
-      .filter(s => s.assignmentId === assignmentId && !s.isActive && s.odometerEnd != null)
-      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-    return completed.length > 0 ? completed[0].odometerEnd : fallback
+      .filter(s => s.assignmentId === a.id && !s.isActive && s.odometerEnd != null)
+      .sort((x, y) => new Date(y.startTime).getTime() - new Date(x.startTime).getTime())
+    if (completed.length > 0) return completed[0].odometerEnd
+    return a.odometerAtStart ?? a.vehicleCurrentOdometer ?? null
   }
 
   // Total working hours across all sessions
@@ -973,9 +974,7 @@ export default function LeaseDetailPage() {
         leaseId={leaseId}
         clientId={lease.clientId}
         assignment={startingSessionFor}
-        lastOdometer={startingSessionFor
-          ? lastOdometerFor(startingSessionFor.id, startingSessionFor.odometerAtStart ?? null)
-          : null}
+        lastOdometer={startingSessionFor ? lastOdometerFor(startingSessionFor) : null}
         open={!!startingSessionFor}
         onClose={() => setStartingSessionFor(null)}
       />
