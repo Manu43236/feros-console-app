@@ -725,34 +725,45 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
 
-          {/* Module toggle — inactive icon left, active icon + label right */}
+          {/* Module toggle — swap animation: circle grows into pill and slides right */}
           {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (() => {
-            const isVehicles   = currentMode === 'VEHICLES'
-            const activeBg     = isVehicles ? 'bg-feros-navy'          : 'bg-feros-equip-sidebar'
-            const inactiveBg   = isVehicles ? 'bg-feros-equip-sidebar' : 'bg-feros-navy'
-            const activeIcon   = isVehicles ? lorryIcon     : equipmentIcon
-            const inactiveIcon = isVehicles ? equipmentIcon : lorryIcon
-            const activeLabel  = isVehicles ? 'Vehicles'   : 'Equipment'
-            const onActivate   = isVehicles
-              ? () => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }
-              : () => { setCurrentMode('VEHICLES');  navigate('/dashboard') }
+            const isVehicles = currentMode === 'VEHICLES'
+            // inactive: w-9 (36px) at translateX(0) — left slot
+            // active:   w-[116px] at translateX(11) (44px) — right slot
+            const lorryClass = cn(
+              'absolute top-0.5 left-1 h-9 rounded-full flex items-center overflow-hidden transition-all duration-300 ease-in-out bg-feros-navy',
+              isVehicles
+                ? 'w-[116px] translate-x-11 opacity-100 shadow-md pl-1.5 pr-3 z-10'
+                : 'w-9 translate-x-0 opacity-40 justify-center z-0 cursor-pointer hover:opacity-60'
+            )
+            const equipClass = cn(
+              'absolute top-0.5 left-1 h-9 rounded-full flex items-center overflow-hidden transition-all duration-300 ease-in-out bg-feros-equip-sidebar',
+              !isVehicles
+                ? 'w-[116px] translate-x-11 opacity-100 shadow-md pl-1.5 pr-3 z-10'
+                : 'w-9 translate-x-0 opacity-40 justify-center z-0 cursor-pointer hover:opacity-60'
+            )
             return (
-              <div className="flex items-center gap-1.5 bg-gray-100 rounded-full p-1">
-                {/* Inactive — left, icon only */}
-                <button
-                  onClick={onActivate}
-                  title={isVehicles ? 'Equipment' : 'Vehicles'}
-                  className={cn('w-8 h-8 rounded-full flex items-center justify-center opacity-40 hover:opacity-70 transition-all duration-200', inactiveBg)}
-                >
-                  <img src={inactiveIcon} alt="" className="w-4 h-4 brightness-0 invert" />
-                </button>
-                {/* Active — right, icon + label */}
-                <div className={cn('flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 transition-all duration-200', activeBg)}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center">
-                    <img src={activeIcon} alt={activeLabel} className="w-4 h-4 brightness-0 invert" />
+              <div className="relative" style={{ width: '164px', height: '40px' }}>
+                {/* Vehicles / lorry */}
+                <button onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }} className={lorryClass} title="Vehicles">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0">
+                    <img src={lorryIcon} alt="" className="w-[18px] h-[18px] brightness-0 invert" />
                   </div>
-                  <span className="text-white text-xs font-semibold">{activeLabel}</span>
-                </div>
+                  <span className={cn(
+                    'text-white text-xs font-semibold ml-1.5 whitespace-nowrap transition-opacity duration-200',
+                    isVehicles ? 'opacity-100' : 'opacity-0'
+                  )}>Vehicles</span>
+                </button>
+                {/* Equipment */}
+                <button onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }} className={equipClass} title="Equipment">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0">
+                    <img src={equipmentIcon} alt="" className="w-[18px] h-[18px] brightness-0 invert" />
+                  </div>
+                  <span className={cn(
+                    'text-white text-xs font-semibold ml-1.5 whitespace-nowrap transition-opacity duration-200',
+                    !isVehicles ? 'opacity-100' : 'opacity-0'
+                  )}>Equipment</span>
+                </button>
               </div>
             )
           })()}
