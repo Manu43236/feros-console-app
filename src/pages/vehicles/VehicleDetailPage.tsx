@@ -3241,7 +3241,7 @@ export function VehicleDetailPage() {
                                 if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
                                 if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
                                 if (isSupervisor) return s.statusType === 'BREAKDOWN'
-                                return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR' && s.statusType !== 'ON_LEASE'
+                                return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
                               })
                               .map(s => ({
                                 value: String(s.id),
