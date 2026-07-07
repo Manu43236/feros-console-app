@@ -733,29 +733,52 @@ export default function LeaseDetailPage() {
                       </div>
                     )}
 
-                    {/* Session action buttons */}
+                    {/* Session action buttons + division + driver */}
                     {canEdit && a.isActive && (
-                      <div className="mt-2 pt-2 border-t border-gray-50 flex items-center gap-2">
-                        <Button size="sm" variant="outline"
-                          className="text-xs text-green-700 border-green-200 hover:bg-green-50 gap-1"
-                          onClick={() => setStartingSessionFor(a)}>
-                          <Play size={10} /> {activeSession ? 'Change Session' : 'Start Session'}
-                        </Button>
-                        {activeSession && (
+                      <>
+                        <div className="mt-2 pt-2 border-t border-gray-50 flex items-center gap-2 flex-wrap">
                           <Button size="sm" variant="outline"
-                            className="text-xs text-red-600 border-red-200 hover:bg-red-50 gap-1"
-                            onClick={() => setEndingSessionFor(a)}>
-                            <Square size={10} /> End Session
+                            className="text-xs text-green-700 border-green-200 hover:bg-green-50 gap-1"
+                            onClick={() => setStartingSessionFor(a)}>
+                            <Play size={10} /> {activeSession ? 'Change Session' : 'Start Session'}
                           </Button>
-                        )}
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 ml-auto">
-                          <Building2 size={12} />
-                          {a.divisionName
-                            ? <span className="font-medium text-feros-navy">{a.divisionName}</span>
-                            : <span className="text-gray-400 italic">No division</span>
-                          }
+                          {activeSession && (
+                            <Button size="sm" variant="outline"
+                              className="text-xs text-red-600 border-red-200 hover:bg-red-50 gap-1"
+                              onClick={() => setEndingSessionFor(a)}>
+                              <Square size={10} /> End Session
+                            </Button>
+                          )}
                         </div>
-                      </div>
+                        <div className="mt-1 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <Building2 size={12} />
+                            {a.divisionName
+                              ? <span className="font-medium text-feros-navy">{a.divisionName}</span>
+                              : <span className="text-gray-400 italic">No division assigned</span>
+                            }
+                          </div>
+                          <Button size="sm" variant="ghost"
+                            className="text-xs h-6 px-2 text-feros-navy"
+                            onClick={() => setAssigningDivisionFor(a)}>
+                            {a.divisionName ? 'Change' : 'Assign Division'}
+                          </Button>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500">
+                          <User size={12} />
+                          {a.driverName
+                            ? <span className="font-medium text-gray-700">{a.driverName}</span>
+                            : <span className="text-gray-400 italic">Client's driver</span>
+                          }
+                          {a.odometerAtStart != null && (
+                            <>
+                              <span className="text-gray-300 mx-1">·</span>
+                              <Gauge size={12} />
+                              <span>{a.odometerAtStart} km{a.odometerAtEnd != null ? ` → ${a.odometerAtEnd} km` : ''}</span>
+                            </>
+                          )}
+                        </div>
+                      </>
                     )}
 
                     {/* Driver row (when not canEdit or not active) */}
@@ -787,13 +810,6 @@ export default function LeaseDetailPage() {
                       </>
                     )}
 
-                    {/* Odometer row when canEdit and active */}
-                    {canEdit && a.isActive && a.odometerAtStart != null && (
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
-                        <Gauge size={12} />
-                        <span>{a.odometerAtStart} km{a.odometerAtEnd != null ? ` → ${a.odometerAtEnd} km` : ''}</span>
-                      </div>
-                    )}
                   </div>
                 )
               })}
