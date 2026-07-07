@@ -725,39 +725,37 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
 
-          {/* Module toggle — overlapping circle icons */}
-          {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (
-            <div className="relative flex items-center" style={{ width: '68px', height: '40px' }}>
-              {/* Vehicles — left circle */}
-              <button
-                onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }}
-                title="Vehicles"
-                style={{ zIndex: currentMode === 'VEHICLES' ? 10 : 1 }}
-                className={cn(
-                  'absolute left-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 bg-feros-navy',
-                  currentMode === 'VEHICLES'
-                    ? 'shadow-md scale-100 opacity-100'
-                    : 'opacity-50 scale-90'
-                )}
-              >
-                <img src={lorryIcon} alt="Vehicles" className="w-6 h-6 brightness-0 invert" />
-              </button>
-              {/* Equipment — right circle, overlapping */}
-              <button
-                onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }}
-                title="Equipment"
-                style={{ zIndex: currentMode === 'EQUIPMENT' ? 10 : 1 }}
-                className={cn(
-                  'absolute right-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 bg-feros-equip-sidebar',
-                  currentMode === 'EQUIPMENT'
-                    ? 'shadow-md scale-100 opacity-100'
-                    : 'opacity-50 scale-90'
-                )}
-              >
-                <img src={equipmentIcon} alt="Equipment" className="w-6 h-6 brightness-0 invert" />
-              </button>
-            </div>
-          )}
+          {/* Module toggle — inactive icon left, active icon + label right */}
+          {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (() => {
+            const isVehicles   = currentMode === 'VEHICLES'
+            const activeBg     = isVehicles ? 'bg-feros-navy'          : 'bg-feros-equip-sidebar'
+            const inactiveBg   = isVehicles ? 'bg-feros-equip-sidebar' : 'bg-feros-navy'
+            const activeIcon   = isVehicles ? lorryIcon     : equipmentIcon
+            const inactiveIcon = isVehicles ? equipmentIcon : lorryIcon
+            const activeLabel  = isVehicles ? 'Vehicles'   : 'Equipment'
+            const onActivate   = isVehicles
+              ? () => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }
+              : () => { setCurrentMode('VEHICLES');  navigate('/dashboard') }
+            return (
+              <div className="flex items-center gap-1.5 bg-gray-100 rounded-full p-1">
+                {/* Inactive — left, icon only */}
+                <button
+                  onClick={onActivate}
+                  title={isVehicles ? 'Equipment' : 'Vehicles'}
+                  className={cn('w-8 h-8 rounded-full flex items-center justify-center opacity-40 hover:opacity-70 transition-all duration-200', inactiveBg)}
+                >
+                  <img src={inactiveIcon} alt="" className="w-4 h-4 brightness-0 invert" />
+                </button>
+                {/* Active — right, icon + label */}
+                <div className={cn('flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 transition-all duration-200', activeBg)}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center">
+                    <img src={activeIcon} alt={activeLabel} className="w-4 h-4 brightness-0 invert" />
+                  </div>
+                  <span className="text-white text-xs font-semibold">{activeLabel}</span>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Spacer */}
           <div className="flex-1" />
