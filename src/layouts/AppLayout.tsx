@@ -725,44 +725,31 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
 
-          {/* Module toggle — swap animation: circle grows into pill and slides right */}
+          {/* Module toggle — segmented control with sliding pill */}
           {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (() => {
             const isVehicles = currentMode === 'VEHICLES'
-            // inactive: w-9 (36px) at translateX(0) — left slot
-            // active:   w-[116px] at translateX(11) (44px) — right slot
-            const lorryClass = cn(
-              'absolute top-0.5 left-1 h-9 rounded-full flex items-center overflow-hidden transition-all duration-300 ease-in-out bg-feros-navy',
-              isVehicles
-                ? 'w-[116px] translate-x-11 opacity-100 shadow-md pl-1.5 pr-3 z-10'
-                : 'w-9 translate-x-0 opacity-40 justify-center z-0 cursor-pointer hover:opacity-60'
-            )
-            const equipClass = cn(
-              'absolute top-0.5 left-1 h-9 rounded-full flex items-center overflow-hidden transition-all duration-300 ease-in-out bg-feros-equip-sidebar',
-              !isVehicles
-                ? 'w-[116px] translate-x-11 opacity-100 shadow-md pl-1.5 pr-3 z-10'
-                : 'w-9 translate-x-0 opacity-40 justify-center z-0 cursor-pointer hover:opacity-60'
-            )
             return (
-              <div className="relative" style={{ width: '164px', height: '40px' }}>
-                {/* Vehicles / lorry */}
-                <button onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }} className={lorryClass} title="Vehicles">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0">
-                    <img src={lorryIcon} alt="" className="w-[18px] h-[18px] brightness-0 invert" />
-                  </div>
-                  <span className={cn(
-                    'text-white text-xs font-semibold ml-1.5 whitespace-nowrap transition-opacity duration-200',
-                    isVehicles ? 'opacity-100' : 'opacity-0'
-                  )}>Vehicles</span>
+              <div className="relative flex items-center bg-gray-100 border border-gray-200 rounded-full p-1 h-10 w-[200px] shrink-0">
+                {/* Sliding background pill */}
+                <div className={cn(
+                  'absolute top-1 h-8 w-[96px] rounded-full transition-transform duration-300 ease-in-out shadow-sm',
+                  isVehicles ? 'bg-feros-navy translate-x-0' : 'bg-feros-equip-sidebar translate-x-[96px]'
+                )} />
+                {/* Vehicles */}
+                <button
+                  onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }}
+                  className="relative z-10 flex items-center justify-center gap-1.5 w-[100px] h-8 text-xs font-semibold transition-colors duration-300"
+                >
+                  <img src={lorryIcon} alt="" className={cn('w-[15px] h-[15px] shrink-0 transition-all duration-300', isVehicles ? 'brightness-0 invert' : 'opacity-35')} />
+                  <span className={cn('transition-colors duration-300', isVehicles ? 'text-white' : 'text-gray-400')}>Vehicles</span>
                 </button>
                 {/* Equipment */}
-                <button onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }} className={equipClass} title="Equipment">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0">
-                    <img src={equipmentIcon} alt="" className="w-[18px] h-[18px] brightness-0 invert" />
-                  </div>
-                  <span className={cn(
-                    'text-white text-xs font-semibold ml-1.5 whitespace-nowrap transition-opacity duration-200',
-                    !isVehicles ? 'opacity-100' : 'opacity-0'
-                  )}>Equipment</span>
+                <button
+                  onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }}
+                  className="relative z-10 flex items-center justify-center gap-1.5 w-[100px] h-8 text-xs font-semibold transition-colors duration-300"
+                >
+                  <img src={equipmentIcon} alt="" className={cn('w-[15px] h-[15px] shrink-0 transition-all duration-300', !isVehicles ? 'brightness-0 invert' : 'opacity-35')} />
+                  <span className={cn('transition-colors duration-300', !isVehicles ? 'text-white' : 'text-gray-400')}>Equipment</span>
                 </button>
               </div>
             )
