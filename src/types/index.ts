@@ -131,6 +131,9 @@ export interface LeaseVehicleSession {
   divisionName?: string      // null = client has no divisions
   startTime: string          // ISO datetime
   endTime: string | null     // null while active
+  odometerStart: number | null
+  odometerEnd: number | null
+  kmDriven: number | null
   hoursWorked: number | null
   isActive: boolean
   notes?: string

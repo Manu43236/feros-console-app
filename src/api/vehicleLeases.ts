@@ -45,13 +45,14 @@ export const vehicleLeasesApi = {
     startTime?: string
     driverStaffId?: number | null
     divisionId?: number | null
+    odometerStart?: number | null
     notes?: string
   }) =>
     apiClient.post<ApiResponse<LeaseVehicleSession>>(
       `/vehicle-leases/${leaseId}/vehicles/${assignmentId}/sessions`, data
     ).then(r => r.data),
 
-  endSession: (leaseId: number, assignmentId: number, data?: { endTime?: string; notes?: string }) =>
+  endSession: (leaseId: number, assignmentId: number, data?: { endTime?: string; odometerEnd?: number | null; notes?: string }) =>
     apiClient.put<ApiResponse<LeaseVehicleSession>>(
       `/vehicle-leases/${leaseId}/vehicles/${assignmentId}/sessions/end`, data ?? {}
     ).then(r => r.data),

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vehicleLeasesApi } from '@/api/vehicleLeases'
@@ -242,18 +242,31 @@ function AssignDivisionDialog({ leaseId, clientId, assignment, open, onClose }: 
 }
 
 // ── Start Session Dialog ────────────────────────────────────────────────────────
-function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
-  leaseId: number; clientId: number; assignment: LeaseVehicleAssignment | null; open: boolean; onClose: () => void
+function StartSessionDialog({ leaseId, clientId, assignment, lastOdometer, open, onClose }: {
+  leaseId: number; clientId: number; assignment: LeaseVehicleAssignment | null
+  lastOdometer: number | null; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
   const [clientDriver, setClientDriver] = useState(true)
   const [driverStaffId, setDriverStaffId] = useState('')
   const [divisionId, setDivisionId] = useState('')
+  const [odometerStart, setOdometerStart] = useState('')
   const [startTime, setStartTime] = useState(nowLocal())
   const [notes, setNotes] = useState('')
 
+  // Pre-fill division + odometer when dialog opens
+  useEffect(() => {
+    if (open) {
+      setDivisionId(assignment?.divisionId ? String(assignment.divisionId) : '')
+      setOdometerStart(lastOdometer != null ? String(lastOdometer) : '')
+      setStartTime(nowLocal())
+    }
+  }, [open, assignment?.divisionId, lastOdometer])
+
   function reset() {
-    setClientDriver(true); setDriverStaffId(''); setDivisionId('')
+    setClientDriver(true); setDriverStaffId('')
+    setDivisionId(assignment?.divisionId ? String(assignment.divisionId) : '')
+    setOdometerStart(lastOdometer != null ? String(lastOdometer) : '')
     setStartTime(nowLocal()); setNotes('')
   }
 
@@ -281,6 +294,7 @@ function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
       startTime,
       driverStaffId: clientDriver ? null : (driverStaffId ? Number(driverStaffId) : null),
       divisionId: divisionId ? Number(divisionId) : null,
+      odometerStart: odometerStart ? Number(odometerStart) : null,
       notes: notes || undefined,
     }),
     onSuccess: () => {
@@ -348,6 +362,17 @@ function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
             )}
           </div>
 
+          {/* Odometer start */}
+          <div>
+            <Label>Odometer Start (km) <span className="text-gray-400 font-normal">— optional</span></Label>
+            <Input type="number" value={odometerStart}
+              onChange={e => setOdometerStart(e.target.value)}
+              placeholder="e.g. 45200" className="mt-1" />
+            {lastOdometer != null && (
+              <p className="text-xs text-gray-400 mt-1">Pre-filled from last reading: {lastOdometer.toLocaleString('en-IN')} km</p>
+            )}
+          </div>
+
           {/* Start time */}
           <div>
             <Label>Start Time *</Label>
@@ -382,13 +407,23 @@ function EndSessionDialog({ leaseId, assignment, activeSession, open, onClose }:
 }) {
   const qc = useQueryClient()
   const [endTime, setEndTime] = useState(nowLocal())
+  const [odometerEnd, setOdometerEnd] = useState('')
   const [notes, setNotes] = useState('')
 
-  function reset() { setEndTime(nowLocal()); setNotes('') }
+  // Pre-fill odometer end from session's odometerStart
+  useEffect(() => {
+    if (open) {
+      setOdometerEnd(activeSession?.odometerStart != null ? String(activeSession.odometerStart) : '')
+      setEndTime(nowLocal())
+    }
+  }, [open, activeSession?.odometerStart])
+
+  function reset() { setEndTime(nowLocal()); setOdometerEnd(''); setNotes('') }
 
   const mutation = useMutation({
     mutationFn: () => vehicleLeasesApi.endSession(leaseId, assignment!.id, {
       endTime,
+      odometerEnd: odometerEnd ? Number(odometerEnd) : null,
       notes: notes || undefined,
     }),
     onSuccess: () => {
@@ -422,6 +457,17 @@ function EndSessionDialog({ leaseId, assignment, activeSession, open, onClose }:
             <Input type="datetime-local" value={endTime} max={nowLocal()}
               onChange={e => setEndTime(e.target.value)} className="mt-1" />
             <p className="text-xs text-gray-400 mt-1">Cannot be a future time.</p>
+          </div>
+          <div>
+            <Label>Odometer End (km) <span className="text-gray-400 font-normal">— optional</span></Label>
+            <Input type="number" value={odometerEnd}
+              onChange={e => setOdometerEnd(e.target.value)}
+              placeholder="e.g. 45400" className="mt-1" />
+            {activeSession?.odometerStart != null && odometerEnd && Number(odometerEnd) > activeSession.odometerStart && (
+              <p className="text-xs text-green-600 mt-1">
+                {(Number(odometerEnd) - activeSession.odometerStart).toLocaleString('en-IN')} km this session
+              </p>
+            )}
           </div>
           <div>
             <Label>Notes (optional)</Label>
@@ -484,6 +530,14 @@ export default function LeaseDetailPage() {
   const activeSessionMap = new Map<number, LeaseVehicleSession>(
     sessions.filter(s => s.isActive).map(s => [s.assignmentId, s])
   )
+
+  // Last known odometer per assignment (most recent odometerEnd from completed sessions)
+  function lastOdometerFor(assignmentId: number, fallback: number | null): number | null {
+    const completed = sessions
+      .filter(s => s.assignmentId === assignmentId && !s.isActive && s.odometerEnd != null)
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+    return completed.length > 0 ? completed[0].odometerEnd : fallback
+  }
 
   // Total working hours across all sessions
   const totalHours = sessions
@@ -779,6 +833,7 @@ export default function LeaseDetailPage() {
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Division</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Start</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">End</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Km</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Hours</th>
                   </tr>
                 </thead>
@@ -802,6 +857,12 @@ export default function LeaseDetailPage() {
                             </span>
                         }
                       </td>
+                      <td className="px-4 py-3 text-right text-xs text-gray-600">
+                        {s.kmDriven != null
+                          ? `${Number(s.kmDriven).toLocaleString('en-IN')} km`
+                          : <span className="text-gray-300">—</span>
+                        }
+                      </td>
                       <td className="px-4 py-3 text-right font-medium text-xs">
                         {s.hoursWorked != null
                           ? <span className="text-gray-700">{Number(s.hoursWorked).toFixed(2)} hrs</span>
@@ -814,7 +875,7 @@ export default function LeaseDetailPage() {
                 {totalHours > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-gray-200 bg-gray-50">
-                      <td colSpan={5} className="px-4 py-3 font-semibold text-gray-700 text-right">Total Working Hours</td>
+                      <td colSpan={6} className="px-4 py-3 font-semibold text-gray-700 text-right">Total Working Hours</td>
                       <td className="px-4 py-3 text-right font-bold text-feros-navy">{totalHours.toFixed(2)} hrs</td>
                     </tr>
                   </tfoot>
@@ -912,6 +973,9 @@ export default function LeaseDetailPage() {
         leaseId={leaseId}
         clientId={lease.clientId}
         assignment={startingSessionFor}
+        lastOdometer={startingSessionFor
+          ? lastOdometerFor(startingSessionFor.id, startingSessionFor.odometerAtStart ?? null)
+          : null}
         open={!!startingSessionFor}
         onClose={() => setStartingSessionFor(null)}
       />
