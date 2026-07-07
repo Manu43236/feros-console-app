@@ -268,7 +268,7 @@ function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
     enabled: open && !clientDriver,
   })
 
-  const divisions = (divRes?.data ?? []).filter(d => d.isActive !== false)
+  const divisions = divRes?.data ?? []
   const hasDivisions = divisions.length > 0
   const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
 
