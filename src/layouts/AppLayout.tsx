@@ -38,6 +38,7 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/assignments', label: 'Assignments',  icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
         { to: '/lrs',             label: 'LR Register',    icon: FileText,  moduleKey: 'LR_REGISTER' },
         { to: '/trip-expenses',   label: 'Trip Expenses',  icon: Wallet,    moduleKey: 'LR_REGISTER' },
+        { to: '/vehicles/leases',  label: 'Leases',         icon: KeyRound },
       ],
     },
     {
@@ -57,7 +58,6 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/gps',              label: 'GPS Tracker',    icon: MapPin },
         { to: '/fuel-logs',        label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',   label: 'Meter Readings', icon: Gauge },
-        { to: '/vehicles/leases',  label: 'Leases',         icon: KeyRound },
       ],
     },
     {
@@ -118,6 +118,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/assignments',     label: 'Assignments',   icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
         { to: '/lrs',             label: 'LR Register',   icon: FileText,       moduleKey: 'LR_REGISTER' },
         { to: '/trip-expenses',   label: 'Trip Expenses', icon: Wallet,         moduleKey: 'LR_REGISTER' },
+        { to: '/vehicles/leases', label: 'Leases',        icon: KeyRound },
       ],
     },
     {
@@ -137,7 +138,6 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/gps',             label: 'GPS Tracker',    icon: MapPin },
         { to: '/fuel-logs',       label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',  label: 'Meter Readings', icon: Gauge },
-        { to: '/vehicles/leases', label: 'Leases',         icon: KeyRound },
       ],
     },
     {
@@ -194,6 +194,7 @@ const SUPERVISOR_NAV: SectionedNav = {
         { to: '/assignments',     label: 'Assignments',   icon: ClipboardCheck, moduleKey: 'ASSIGNMENTS' },
         { to: '/lrs',             label: 'LR Register',   icon: FileText,       moduleKey: 'LR_REGISTER' },
         { to: '/trip-expenses',   label: 'Trip Expenses', icon: Wallet,         moduleKey: 'LR_REGISTER' },
+        { to: '/vehicles/leases', label: 'Leases',        icon: KeyRound },
       ],
     },
     {
@@ -204,7 +205,6 @@ const SUPERVISOR_NAV: SectionedNav = {
         { to: '/gps',             label: 'GPS Tracker',    icon: MapPin },
         { to: '/fuel-logs',       label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',  label: 'Meter Readings', icon: Gauge },
-        { to: '/vehicles/leases', label: 'Leases',         icon: KeyRound },
       ],
     },
     {
