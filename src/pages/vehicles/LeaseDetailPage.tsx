@@ -42,6 +42,11 @@ function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+function fmtTime(hours: number) {
+  if (hours < 1) return `${Math.round(hours * 60)} min`
+  return `${hours.toFixed(2)} hrs`
+}
+
 // ── Add Vehicle Dialog ──────────────────────────────────────────────────────────
 function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
@@ -835,7 +840,7 @@ export default function LeaseDetailPage() {
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Start</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">End</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Km</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Hours</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Time</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -866,7 +871,7 @@ export default function LeaseDetailPage() {
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-xs">
                         {s.hoursWorked != null
-                          ? <span className="text-gray-700">{Number(s.hoursWorked).toFixed(2)} hrs</span>
+                          ? <span className="text-gray-700">{fmtTime(Number(s.hoursWorked))}</span>
                           : <span className="text-gray-300">—</span>
                         }
                       </td>
@@ -876,8 +881,8 @@ export default function LeaseDetailPage() {
                 {totalHours > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-gray-200 bg-gray-50">
-                      <td colSpan={6} className="px-4 py-3 font-semibold text-gray-700 text-right">Total Working Hours</td>
-                      <td className="px-4 py-3 text-right font-bold text-feros-navy">{totalHours.toFixed(2)} hrs</td>
+                      <td colSpan={6} className="px-4 py-3 font-semibold text-gray-700 text-right">Total Working Time</td>
+                      <td className="px-4 py-3 text-right font-bold text-feros-navy">{fmtTime(totalHours)}</td>
                     </tr>
                   </tfoot>
                 )}

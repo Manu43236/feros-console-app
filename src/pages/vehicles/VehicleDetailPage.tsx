@@ -391,6 +391,7 @@ const vehicleStatusOptionColor: Partial<Record<VehicleStatusType, string>> = {
   ON_TRIP:   'text-orange-600 font-medium',
   IN_REPAIR: 'text-yellow-600 font-medium',
   BREAKDOWN: 'text-red-600 font-medium',
+  ON_LEASE:  'text-purple-400 font-medium',
 }
 
 // ── service display status helpers ────────────────────────────────────────────
@@ -3240,7 +3241,7 @@ export function VehicleDetailPage() {
                                 if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
                                 if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
                                 if (isSupervisor) return s.statusType === 'BREAKDOWN'
-                                return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
+                                return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR' && s.statusType !== 'ON_LEASE'
                               })
                               .map(s => ({
                                 value: String(s.id),
