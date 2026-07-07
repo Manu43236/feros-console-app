@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
-import type { LeaseStatus, LeaseVehicleAssignment, LeaseVehicleSession, LeaseSessionStatus } from '@/types'
+import type { LeaseStatus, LeaseVehicleAssignment, LeaseVehicleSession } from '@/types'
 import { cn } from '@/lib/utils'
 
 const STATUS_COLORS: Record<LeaseStatus, string> = {
@@ -31,11 +31,6 @@ const STATUS_LABELS: Record<LeaseStatus, string> = {
 const NEXT_STATUSES: Partial<Record<LeaseStatus, LeaseStatus[]>> = {
   DRAFT:  ['ACTIVE'],
   ACTIVE: ['CLOSED'],
-}
-const SESSION_COLORS: Record<LeaseSessionStatus, { dot: string; text: string; pill: string; tabBtn: string }> = {
-  WORKING:   { dot: 'bg-green-500',  text: 'text-green-700',  pill: 'bg-green-50 border border-green-200 text-green-700',  tabBtn: 'border-green-200 text-green-700 hover:bg-green-50' },
-  IDLE:      { dot: 'bg-yellow-400', text: 'text-yellow-600', pill: 'bg-yellow-50 border border-yellow-200 text-yellow-700', tabBtn: 'border-yellow-200 text-yellow-700 hover:bg-yellow-50' },
-  BREAKDOWN: { dot: 'bg-red-500',    text: 'text-red-700',    pill: 'bg-red-50 border border-red-200 text-red-700',         tabBtn: 'border-red-200 text-red-700 hover:bg-red-50' },
 }
 
 function nowLocal() {
@@ -51,13 +46,12 @@ function fmtDateTime(iso: string) {
 function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const [vehicleId, setVehicleId] = useState('')
-  const [driverStaffId, setDriverStaffId] = useState('')
   const [ratePerVehicle, setRatePerVehicle] = useState('')
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10))
   const [odometerAtStart, setOdometerAtStart] = useState('')
 
   function reset() {
-    setVehicleId(''); setDriverStaffId(''); setRatePerVehicle('')
+    setVehicleId(''); setRatePerVehicle('')
     setStartDate(new Date().toISOString().slice(0, 10)); setOdometerAtStart('')
   }
 
@@ -66,19 +60,12 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
     queryFn: () => vehiclesApi.getAll(),
     enabled: open,
   })
-  const { data: staffRes } = useQuery({
-    queryKey: ['staff'],
-    queryFn: () => staffApi.getAll(),
-    enabled: open,
-  })
 
   const vehicles = vehiclesRes?.data ?? []
-  const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
 
   const mutation = useMutation({
     mutationFn: () => vehicleLeasesApi.addVehicle(leaseId, {
       vehicleId: Number(vehicleId),
-      driverStaffId: driverStaffId ? Number(driverStaffId) : undefined,
       ratePerVehicle: Number(ratePerVehicle),
       startDate,
       odometerAtStart: odometerAtStart ? Number(odometerAtStart) : undefined,
@@ -112,15 +99,6 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
               value={vehicleId}
               onValueChange={setVehicleId}
               placeholder="Search by reg. number"
-            />
-          </div>
-          <div>
-            <Label>Driver (optional — leave blank if client provides driver)</Label>
-            <SearchableSelect
-              options={drivers.map(d => ({ value: String(d.userId), label: d.userName }))}
-              value={driverStaffId}
-              onValueChange={setDriverStaffId}
-              placeholder="Select driver"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -181,7 +159,7 @@ function CloseVehicleDialog({
         <DialogHeader><DialogTitle>Close Vehicle Assignment</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-2">
           <p className="text-sm text-gray-600">
-            Closing <strong>{assignment.registrationNumber}</strong> from this lease. Any active session will be auto-closed.
+            Closing <strong>{assignment.registrationNumber}</strong>. Any active session will be auto-closed.
           </p>
           <div>
             <Label>Odometer at Return (km)</Label>
@@ -268,16 +246,15 @@ function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
   leaseId: number; clientId: number; assignment: LeaseVehicleAssignment | null; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
-  const [status, setStatus] = useState<LeaseSessionStatus>('WORKING')
-  const [divisionId, setDivisionId] = useState('')
   const [clientDriver, setClientDriver] = useState(true)
   const [driverStaffId, setDriverStaffId] = useState('')
+  const [divisionId, setDivisionId] = useState('')
   const [startTime, setStartTime] = useState(nowLocal())
   const [notes, setNotes] = useState('')
 
   function reset() {
-    setStatus('WORKING'); setDivisionId(''); setClientDriver(true)
-    setDriverStaffId(''); setStartTime(nowLocal()); setNotes('')
+    setClientDriver(true); setDriverStaffId(''); setDivisionId('')
+    setStartTime(nowLocal()); setNotes('')
   }
 
   const { data: divRes } = useQuery({
@@ -291,15 +268,19 @@ function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
     enabled: open && !clientDriver,
   })
 
-  const divisions = (divRes?.data ?? []).map(d => ({ value: String(d.id), label: d.name }))
+  const divisions = (divRes?.data ?? []).filter(d => d.isActive !== false)
+  const hasDivisions = divisions.length > 0
   const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
+
+  const driverOk = clientDriver || !!driverStaffId
+  const divisionOk = !hasDivisions || !!divisionId
+  const canSubmit = driverOk && divisionOk
 
   const mutation = useMutation({
     mutationFn: () => vehicleLeasesApi.startSession(leaseId, assignment!.id, {
-      status,
       startTime,
       driverStaffId: clientDriver ? null : (driverStaffId ? Number(driverStaffId) : null),
-      divisionId: status === 'WORKING' && divisionId ? Number(divisionId) : null,
+      divisionId: divisionId ? Number(divisionId) : null,
       notes: notes || undefined,
     }),
     onSuccess: () => {
@@ -313,8 +294,6 @@ function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
     },
   })
 
-  const canSubmit = status !== 'WORKING' || !!divisionId
-
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) { reset(); onClose() } }}>
       <DialogContent className="max-w-md">
@@ -323,42 +302,9 @@ function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
         </DialogHeader>
         <div className="space-y-4 mt-2">
 
-          {/* Status selector */}
+          {/* Driver — required */}
           <div>
-            <Label>Status *</Label>
-            <div className="flex gap-2 mt-1.5">
-              {(['WORKING', 'IDLE', 'BREAKDOWN'] as LeaseSessionStatus[]).map(s => (
-                <button key={s}
-                  onClick={() => { setStatus(s); if (s !== 'WORKING') setDivisionId('') }}
-                  className={cn(
-                    'flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors',
-                    status === s ? SESSION_COLORS[s].pill : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                  )}>
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Division — required for WORKING */}
-          {status === 'WORKING' && (
-            <div>
-              <Label>Division *</Label>
-              {divisions.length === 0 ? (
-                <p className="text-xs text-red-500 mt-1">No divisions set up for this client.</p>
-              ) : (
-                <select className="w-full border rounded-md px-3 py-2 text-sm mt-1"
-                  value={divisionId} onChange={e => setDivisionId(e.target.value)}>
-                  <option value="">— Select division —</option>
-                  {divisions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                </select>
-              )}
-            </div>
-          )}
-
-          {/* Driver */}
-          <div>
-            <Label>Driver</Label>
+            <Label>Driver *</Label>
             <div className="flex gap-2 mt-1.5">
               <button
                 onClick={() => { setClientDriver(true); setDriverStaffId('') }}
@@ -379,9 +325,26 @@ function StartSessionDialog({ leaseId, clientId, assignment, open, onClose }: {
                   options={drivers.map(d => ({ value: String(d.userId), label: d.userName }))}
                   value={driverStaffId}
                   onValueChange={setDriverStaffId}
-                  placeholder="Select driver"
+                  placeholder="Select driver *"
                 />
+                {!driverStaffId && (
+                  <p className="text-xs text-red-500 mt-1">Select a driver from staff.</p>
+                )}
               </div>
+            )}
+          </div>
+
+          {/* Division — required if client has divisions */}
+          <div>
+            <Label>Division {hasDivisions ? '*' : '(client has no divisions)'}</Label>
+            {hasDivisions ? (
+              <select className="w-full border rounded-md px-3 py-2 text-sm mt-1"
+                value={divisionId} onChange={e => setDivisionId(e.target.value)}>
+                <option value="">— Select division —</option>
+                {divisions.map(d => <option key={d.id} value={String(d.id)}>{d.name}</option>)}
+              </select>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1 italic">Session will be recorded without a division.</p>
             )}
           </div>
 
@@ -447,12 +410,11 @@ function EndSessionDialog({ leaseId, assignment, activeSession, open, onClose }:
         </DialogHeader>
         <div className="space-y-4 mt-2">
           {activeSession && (
-            <div className={cn('rounded-lg p-3 text-xs', SESSION_COLORS[activeSession.status].pill)}>
-              <span className="font-semibold">{activeSession.status}</span>
-              {activeSession.divisionName && <span> in {activeSession.divisionName}</span>}
-              {activeSession.driverName && <span> · {activeSession.driverName}</span>}
-              <br />
-              <span className="opacity-80">Active since {fmtDateTime(activeSession.startTime)}</span>
+            <div className="rounded-lg p-3 text-xs bg-green-50 border border-green-200 text-green-700 space-y-0.5">
+              <p className="font-semibold">Working session active</p>
+              {activeSession.divisionName && <p>Division: {activeSession.divisionName}</p>}
+              <p>Driver: {activeSession.driverName ?? "Client's driver"}</p>
+              <p className="opacity-75">Started: {fmtDateTime(activeSession.startTime)}</p>
             </div>
           )}
           <div>
@@ -522,6 +484,11 @@ export default function LeaseDetailPage() {
   const activeSessionMap = new Map<number, LeaseVehicleSession>(
     sessions.filter(s => s.isActive).map(s => [s.assignmentId, s])
   )
+
+  // Total working hours across all sessions
+  const totalHours = sessions
+    .filter(s => s.hoursWorked != null)
+    .reduce((sum, s) => sum + (s.hoursWorked ?? 0), 0)
 
   const statusMutation = useMutation({
     mutationFn: (status: LeaseStatus) => vehicleLeasesApi.updateStatus(leaseId, status),
@@ -691,6 +658,7 @@ export default function LeaseDetailPage() {
                 const activeSession = activeSessionMap.get(a.id) ?? null
                 return (
                   <div key={a.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3">
+
                     {/* Main row */}
                     <div className="flex items-center justify-between">
                       <div>
@@ -721,95 +689,69 @@ export default function LeaseDetailPage() {
 
                     {/* Active session indicator */}
                     {activeSession && (
-                      <div className={cn('mt-2 px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-xs', SESSION_COLORS[activeSession.status].pill)}>
-                        <span className={cn('inline-block w-2 h-2 rounded-full shrink-0', SESSION_COLORS[activeSession.status].dot)} />
-                        <span className="font-semibold">{activeSession.status}</span>
-                        {activeSession.divisionName && <span>in {activeSession.divisionName}</span>}
-                        {activeSession.driverName
-                          ? <><span className="opacity-50">·</span><User size={10} /><span>{activeSession.driverName}</span></>
-                          : <><span className="opacity-50">·</span><span className="opacity-70">Client's driver</span></>
-                        }
-                        <span className="opacity-50 ml-auto">since {new Date(activeSession.startTime).toLocaleTimeString('en-IN', { timeStyle: 'short' })}</span>
+                      <div className="mt-2 px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-xs bg-green-50 border border-green-200 text-green-700">
+                        <span className="inline-block w-2 h-2 rounded-full bg-green-500 shrink-0 animate-pulse" />
+                        <span className="font-semibold">Working</span>
+                        {activeSession.divisionName && <span>· {activeSession.divisionName}</span>}
+                        <span className="opacity-60">·</span>
+                        <User size={10} />
+                        <span>{activeSession.driverName ?? "Client's driver"}</span>
+                        <span className="ml-auto opacity-60">
+                          since {new Date(activeSession.startTime).toLocaleTimeString('en-IN', { timeStyle: 'short' })}
+                        </span>
                       </div>
                     )}
 
-                    {/* Session action buttons + division + driver */}
+                    {/* Division + driver info row */}
+                    <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Building2 size={12} />
+                          {a.divisionName
+                            ? <span className="font-medium text-feros-navy">{a.divisionName}</span>
+                            : <span className="text-gray-400 italic">No division</span>
+                          }
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <User size={12} />
+                          {a.driverName
+                            ? <span className="font-medium text-gray-700">{a.driverName}</span>
+                            : <span className="text-gray-400 italic">Client's driver</span>
+                          }
+                        </span>
+                        {a.odometerAtStart != null && (
+                          <span className="flex items-center gap-1">
+                            <Gauge size={12} />
+                            <span>{a.odometerAtStart} km{a.odometerAtEnd != null ? ` → ${a.odometerAtEnd} km` : ''}</span>
+                          </span>
+                        )}
+                      </div>
+                      {canEdit && a.isActive && (
+                        <Button size="sm" variant="ghost"
+                          className="text-xs h-6 px-2 text-feros-navy"
+                          onClick={() => setAssigningDivisionFor(a)}>
+                          {a.divisionName ? 'Change Division' : 'Assign Division'}
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Session action buttons */}
                     {canEdit && a.isActive && (
-                      <>
-                        <div className="mt-2 pt-2 border-t border-gray-50 flex items-center gap-2 flex-wrap">
+                      <div className="mt-2 flex items-center gap-2">
+                        <Button size="sm" variant="outline"
+                          className="text-xs text-green-700 border-green-200 hover:bg-green-50 gap-1"
+                          onClick={() => setStartingSessionFor(a)}>
+                          <Play size={10} /> {activeSession ? 'New Session' : 'Start Session'}
+                        </Button>
+                        {activeSession && (
                           <Button size="sm" variant="outline"
-                            className="text-xs text-green-700 border-green-200 hover:bg-green-50 gap-1"
-                            onClick={() => setStartingSessionFor(a)}>
-                            <Play size={10} /> {activeSession ? 'Change Session' : 'Start Session'}
+                            className="text-xs text-red-600 border-red-200 hover:bg-red-50 gap-1"
+                            onClick={() => setEndingSessionFor(a)}>
+                            <Square size={10} /> End Session
                           </Button>
-                          {activeSession && (
-                            <Button size="sm" variant="outline"
-                              className="text-xs text-red-600 border-red-200 hover:bg-red-50 gap-1"
-                              onClick={() => setEndingSessionFor(a)}>
-                              <Square size={10} /> End Session
-                            </Button>
-                          )}
-                        </div>
-                        <div className="mt-1 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                            <Building2 size={12} />
-                            {a.divisionName
-                              ? <span className="font-medium text-feros-navy">{a.divisionName}</span>
-                              : <span className="text-gray-400 italic">No division assigned</span>
-                            }
-                          </div>
-                          <Button size="sm" variant="ghost"
-                            className="text-xs h-6 px-2 text-feros-navy"
-                            onClick={() => setAssigningDivisionFor(a)}>
-                            {a.divisionName ? 'Change' : 'Assign Division'}
-                          </Button>
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500">
-                          <User size={12} />
-                          {a.driverName
-                            ? <span className="font-medium text-gray-700">{a.driverName}</span>
-                            : <span className="text-gray-400 italic">Client's driver</span>
-                          }
-                          {a.odometerAtStart != null && (
-                            <>
-                              <span className="text-gray-300 mx-1">·</span>
-                              <Gauge size={12} />
-                              <span>{a.odometerAtStart} km{a.odometerAtEnd != null ? ` → ${a.odometerAtEnd} km` : ''}</span>
-                            </>
-                          )}
-                        </div>
-                      </>
+                        )}
+                      </div>
                     )}
-
-                    {/* Driver row (when not canEdit or not active) */}
-                    {(!canEdit || !a.isActive) && (
-                      <>
-                        <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                            <Building2 size={12} />
-                            {a.divisionName
-                              ? <span className="font-medium text-feros-navy">{a.divisionName}</span>
-                              : <span className="text-gray-400 italic">No division assigned</span>
-                            }
-                          </div>
-                        </div>
-                        <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
-                          <User size={12} />
-                          {a.driverName
-                            ? <span className="font-medium text-gray-700">{a.driverName}</span>
-                            : <span className="text-gray-400 italic">Client's driver</span>
-                          }
-                          {a.odometerAtStart != null && (
-                            <>
-                              <span className="text-gray-300 mx-1">·</span>
-                              <Gauge size={12} />
-                              <span>{a.odometerAtStart} km{a.odometerAtEnd != null ? ` → ${a.odometerAtEnd} km` : ''}</span>
-                            </>
-                          )}
-                        </div>
-                      </>
-                    )}
-
                   </div>
                 )
               })}
@@ -833,7 +775,6 @@ export default function LeaseDetailPage() {
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Vehicle</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Driver</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Division</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Start</th>
@@ -845,31 +786,39 @@ export default function LeaseDetailPage() {
                   {sessions.map(s => (
                     <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{s.registrationNumber}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border', SESSION_COLORS[s.status].pill)}>
-                          <span className={cn('w-1.5 h-1.5 rounded-full', SESSION_COLORS[s.status].dot)} />
-                          {s.status}
-                        </span>
-                        {s.isActive && (
-                          <span className="ml-1.5 text-xs text-green-600 font-medium">● Live</span>
-                        )}
-                      </td>
                       <td className="px-4 py-3 text-gray-600 text-xs">
-                        {s.driverName ?? <span className="italic text-gray-400">Client</span>}
+                        {s.driverName ?? <span className="italic text-gray-400">Client's driver</span>}
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-xs">
                         {s.divisionName ?? <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{fmtDateTime(s.startTime)}</td>
-                      <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                        {s.endTime ? fmtDateTime(s.endTime) : <span className="text-green-600 font-medium">Active</span>}
+                      <td className="px-4 py-3 text-xs whitespace-nowrap">
+                        {s.endTime
+                          ? <span className="text-gray-600">{fmtDateTime(s.endTime)}</span>
+                          : <span className="inline-flex items-center gap-1 text-green-600 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+                              Active
+                            </span>
+                        }
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-700 font-medium text-xs">
-                        {s.hoursWorked != null ? `${s.hoursWorked} hrs` : <span className="text-gray-300">—</span>}
+                      <td className="px-4 py-3 text-right font-medium text-xs">
+                        {s.hoursWorked != null
+                          ? <span className="text-gray-700">{Number(s.hoursWorked).toFixed(2)} hrs</span>
+                          : <span className="text-gray-300">—</span>
+                        }
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                {totalHours > 0 && (
+                  <tfoot>
+                    <tr className="border-t-2 border-gray-200 bg-gray-50">
+                      <td colSpan={5} className="px-4 py-3 font-semibold text-gray-700 text-right">Total Working Hours</td>
+                      <td className="px-4 py-3 text-right font-bold text-feros-navy">{totalHours.toFixed(2)} hrs</td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           )}

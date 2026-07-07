@@ -120,20 +120,17 @@ export interface LeaseBilling {
   totalAmount: number
 }
 
-export type LeaseSessionStatus = 'WORKING' | 'IDLE' | 'BREAKDOWN'
-
 export interface LeaseVehicleSession {
   id: number
   assignmentId: number
   vehicleId: number
   registrationNumber: string
   driverStaffId?: number
-  driverName?: string
+  driverName?: string        // null = client's driver
   divisionId?: number
-  divisionName?: string
-  status: LeaseSessionStatus
-  startTime: string        // ISO datetime
-  endTime: string | null   // null while active
+  divisionName?: string      // null = client has no divisions
+  startTime: string          // ISO datetime
+  endTime: string | null     // null while active
   hoursWorked: number | null
   isActive: boolean
   notes?: string

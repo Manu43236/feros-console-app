@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, PageResponse, VehicleLease, LeaseVehicleAssignment, LeaseBilling, LeaseStatus, LeaseVehicleSession, LeaseSessionStatus } from '@/types'
+import type { ApiResponse, PageResponse, VehicleLease, LeaseVehicleAssignment, LeaseBilling, LeaseStatus, LeaseVehicleSession } from '@/types'
 
 export const vehicleLeasesApi = {
   getAll: (params?: { page?: number; size?: number; status?: LeaseStatus; clientId?: number }) =>
@@ -42,7 +42,6 @@ export const vehicleLeasesApi = {
     apiClient.get<ApiResponse<LeaseBilling>>(`/vehicle-leases/${leaseId}/billing`).then(r => r.data),
 
   startSession: (leaseId: number, assignmentId: number, data: {
-    status: LeaseSessionStatus
     startTime?: string
     driverStaffId?: number | null
     divisionId?: number | null
