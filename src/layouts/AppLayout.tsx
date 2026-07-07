@@ -725,32 +725,32 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
 
-          {/* Module toggle — segmented control with sliding pill */}
+          {/* Module toggle — inactive icon left, active pill right overlapping */}
           {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (() => {
             const isVehicles = currentMode === 'VEHICLES'
+            const inactiveBg  = isVehicles ? 'bg-feros-equip-sidebar' : 'bg-feros-navy'
+            const activeBg    = isVehicles ? 'bg-feros-navy' : 'bg-feros-equip-sidebar'
+            const inactiveIcon = isVehicles ? equipmentIcon : lorryIcon
+            const activeIcon   = isVehicles ? lorryIcon : equipmentIcon
+            const activeLabel  = isVehicles ? 'Vehicles' : 'Equipment'
             return (
-              <div className="relative flex items-center bg-gray-100 border border-gray-200 rounded-full p-1 h-10 w-[200px] shrink-0">
-                {/* Sliding background pill */}
-                <div className={cn(
-                  'absolute top-1 h-8 w-[96px] rounded-full transition-transform duration-300 ease-in-out shadow-sm',
-                  isVehicles ? 'bg-feros-navy translate-x-0' : 'bg-feros-equip-sidebar translate-x-[96px]'
-                )} />
-                {/* Vehicles */}
+              <div className="relative shrink-0 h-10 w-[160px]">
+                {/* Inactive circle — left, behind */}
                 <button
-                  onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }}
-                  className="relative z-10 flex items-center justify-center gap-1.5 w-[100px] h-8 text-xs font-semibold transition-colors duration-300"
+                  onClick={() => {
+                    if (isVehicles) { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }
+                    else { setCurrentMode('VEHICLES'); navigate('/dashboard') }
+                  }}
+                  className={cn('absolute top-0.5 left-0 w-9 h-9 rounded-full flex items-center justify-center z-0 opacity-50 hover:opacity-75 transition-opacity duration-200', inactiveBg)}
+                  title={isVehicles ? 'Switch to Equipment' : 'Switch to Vehicles'}
                 >
-                  <img src={lorryIcon} alt="" className={cn('w-[15px] h-[15px] shrink-0 transition-all duration-300', isVehicles ? 'brightness-0 invert' : 'opacity-35')} />
-                  <span className={cn('transition-colors duration-300', isVehicles ? 'text-white' : 'text-gray-400')}>Vehicles</span>
+                  <img src={inactiveIcon} alt="" className="w-[17px] h-[17px] brightness-0 invert" />
                 </button>
-                {/* Equipment */}
-                <button
-                  onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }}
-                  className="relative z-10 flex items-center justify-center gap-1.5 w-[100px] h-8 text-xs font-semibold transition-colors duration-300"
-                >
-                  <img src={equipmentIcon} alt="" className={cn('w-[15px] h-[15px] shrink-0 transition-all duration-300', !isVehicles ? 'brightness-0 invert' : 'opacity-35')} />
-                  <span className={cn('transition-colors duration-300', !isVehicles ? 'text-white' : 'text-gray-400')}>Equipment</span>
-                </button>
+                {/* Active pill — overlaps circle, right side */}
+                <div className={cn('absolute top-0.5 left-6 h-9 w-[130px] rounded-full flex items-center gap-2 pl-2.5 pr-4 z-10 shadow-md', activeBg)}>
+                  <img src={activeIcon} alt="" className="w-[17px] h-[17px] brightness-0 invert shrink-0" />
+                  <span className="text-white text-xs font-semibold whitespace-nowrap">{activeLabel}</span>
+                </div>
               </div>
             )
           })()}
