@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import leftMenuLogo from '@/assets/left_menu_logo.png'
+import lorryIcon from '@/assets/lorry.svg'
+import equipmentIcon from '@/assets/equipments.svg'
 import { useAuthStore } from '@/store/authStore'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi, subscriptionsApi, demoRequestsApi } from '@/api/superadmin'
@@ -723,30 +725,36 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
 
-          {/* Module toggle — only for BOTH tenants with access to both modules */}
+          {/* Module toggle — overlapping circle icons */}
           {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (
-            <div className="flex items-center bg-gray-100 rounded-full p-1 gap-1">
+            <div className="relative flex items-center" style={{ width: '68px', height: '40px' }}>
+              {/* Vehicles — left circle */}
               <button
                 onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }}
+                title="Vehicles"
+                style={{ zIndex: currentMode === 'VEHICLES' ? 10 : 1 }}
                 className={cn(
-                  'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
+                  'absolute left-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 bg-feros-navy',
                   currentMode === 'VEHICLES'
-                    ? 'bg-feros-navy text-white shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'shadow-md scale-100 opacity-100'
+                    : 'opacity-50 scale-90'
                 )}
               >
-                Vehicles
+                <img src={lorryIcon} alt="Vehicles" className="w-6 h-6 brightness-0 invert" />
               </button>
+              {/* Equipment — right circle, overlapping */}
               <button
                 onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }}
+                title="Equipment"
+                style={{ zIndex: currentMode === 'EQUIPMENT' ? 10 : 1 }}
                 className={cn(
-                  'text-sm font-medium px-4 py-1.5 rounded-full transition-colors',
+                  'absolute right-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 bg-feros-equip-sidebar',
                   currentMode === 'EQUIPMENT'
-                    ? 'bg-feros-equip-sidebar text-white shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'shadow-md scale-100 opacity-100'
+                    : 'opacity-50 scale-90'
                 )}
               >
-                Equipment
+                <img src={equipmentIcon} alt="Equipment" className="w-6 h-6 brightness-0 invert" />
               </button>
             </div>
           )}
