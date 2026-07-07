@@ -709,8 +709,8 @@ export function StaffDetailPage() {
             )}
           </div>}
 
-          {/* Module Access — BOTH tenants, SUPERVISOR role only */}
-          {moduleType === 'BOTH' && user?.role === 'SUPERVISOR' && !isSupervisor && (
+          {/* Module Access — BOTH tenants, staff roles that can log in */}
+          {moduleType === 'BOTH' && ['ADMIN', 'OFFICE_STAFF', 'SUPERVISOR'].includes(user?.role ?? '') && !isSupervisor && (
             <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
               <p className="text-sm font-semibold text-gray-700">Module Access</p>
               <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
