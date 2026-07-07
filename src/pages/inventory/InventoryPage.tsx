@@ -3,6 +3,7 @@ import { useState, useRef } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockApi, sparePartsApi, servicePartsApi, inventoryTransactionsApi } from '@/api/inventory'
+import { globalMastersApi } from '@/api/masters'
 import type { BulkInvoiceStockInResponse } from '@/api/inventory'
 import type { ServicePart, StockTransactionType, BulkUploadResult, SparePart } from '@/types'
 import { toast } from 'sonner'
@@ -615,11 +616,6 @@ function TransactionsTab() {
 }
 
 // ─── Part Catalog Tab ─────────────────────────────────────────────────────────
-const PART_CATEGORIES = [
-  'Engine', 'Brakes', 'Tyres & Wheels', 'Electrical',
-  'Filters', 'Transmission', 'Suspension', 'Cooling System',
-  'Fuel System', 'Exhaust', 'Lights & Indicators', 'Body & Frame', 'Others',
-]
 
 const SPARE_PARTS_TEMPLATE = [
   'name,category,unit,minStockLevel',
@@ -713,6 +709,9 @@ function PartCatalogTab() {
   const { data, isLoading } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
   const parts = data?.data ?? []
 
+  const { data: catData } = useQuery({ queryKey: ['partCategories'], queryFn: globalMastersApi.getPartCategories })
+  const partCategories = (catData?.data ?? []).map((c: { name: string }) => c.name)
+
   const save = useMutation({
     mutationFn: () => editing ? sparePartsApi.update(editing.id, form) : sparePartsApi.create(form),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['spare-parts'] }); toast.success(editing ? 'Updated' : 'Added'); setOpen(false) },
@@ -780,7 +779,7 @@ function PartCatalogTab() {
               <Label>Category</Label>
               <select className="mt-1 w-full border rounded-md px-3 py-2 text-sm" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 <option value="">Select category…</option>
-                {PART_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                {partCategories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
