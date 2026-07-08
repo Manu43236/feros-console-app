@@ -1365,6 +1365,7 @@ export interface ServicePart {
   approvedById?: number; approvedByName?: string
   approvedAt?: string; createdAt: string
   taskId?: number; taskDisplayName?: string
+  availableStock?: number
 }
 
 // ─── Service Manager ──────────────────────────────────────────────────────────

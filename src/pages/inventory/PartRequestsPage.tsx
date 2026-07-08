@@ -13,8 +13,10 @@ import { Input } from '@/components/ui/input'
 function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => void }) {
   const qc = useQueryClient()
   const [action, setAction] = useState<'APPROVED' | 'REJECTED'>('APPROVED')
-  const [qtyApproved, setQtyApproved] = useState(part.quantityRequested)
+  const available = part.availableStock ?? 0
+  const [qtyApproved, setQtyApproved] = useState(Math.min(part.quantityRequested, available))
   const [rejectionReason, setRejectionReason] = useState('')
+  const isShortfall = part.quantityRequested > available
 
   const mutation = useMutation({
     mutationFn: () => servicePartsApi.approve(part.id, {
@@ -46,7 +48,18 @@ function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => v
             <p><span className="text-gray-500">Vehicle:</span> {part.vehicleRegistrationNumber}</p>
             <p><span className="text-gray-500">Requested by:</span> {part.requestedByName}</p>
             <p><span className="text-gray-500">Qty Requested:</span> <strong>{part.quantityRequested} {part.unit}</strong></p>
+            <p>
+              <span className="text-gray-500">In Stock:</span>{' '}
+              <strong className={isShortfall ? 'text-red-600' : 'text-green-700'}>
+                {available} {part.unit}
+              </strong>
+            </p>
           </div>
+          {isShortfall && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs text-orange-700">
+              ⚠️ Requested quantity ({part.quantityRequested}) exceeds available stock ({available}). You can approve up to {available} or reject this request.
+            </div>
+          )}
 
           <div className="flex gap-3">
             {(['APPROVED', 'REJECTED'] as const).map(a => (
@@ -68,10 +81,11 @@ function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => v
             <div>
               <Label>Quantity to Approve *</Label>
               <Input
-                type="number" min={1} max={part.quantityRequested}
+                type="number" min={1} max={available}
                 value={qtyApproved}
-                onChange={e => setQtyApproved(Number(e.target.value))}
+                onChange={e => setQtyApproved(Math.min(Number(e.target.value), available))}
               />
+              <p className="text-xs text-gray-500 mt-1">Max: {available} {part.unit} available in stock</p>
             </div>
           )}
 
@@ -145,7 +159,8 @@ export default function PartRequestsPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Service</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Vehicle</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Requested By</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Qty</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Requested</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">In Stock</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -161,6 +176,11 @@ export default function PartRequestsPage() {
                   <td className="px-4 py-3 text-gray-700">{r.requestedByName}</td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">
                     {r.quantityRequested} {r.unit}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold">
+                    <span className={(r.availableStock ?? 0) < r.quantityRequested ? 'text-red-600' : 'text-green-700'}>
+                      {r.availableStock ?? 0} {r.unit}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
