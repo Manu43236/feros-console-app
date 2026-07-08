@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import {
   Truck, Users, Tag, CreditCard, MapPin, Settings, Wifi,
   Plus, Pencil, Trash2, ChevronRight, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Loader2, Link, Link2Off, Target,
+  CheckCircle, XCircle, Loader2, Link, Link2Off,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -628,24 +628,6 @@ const RBAC_ROLES = [
   { key: 'SERVICE_MANAGER', label: 'Service Manager' },
 ]
 
-// Module rows — keys match backend ModuleKey enum, roles = which roles can configure this module
-const RBAC_MODULE_ROWS: { key: string; label: string; section: string; roles: string[] }[] = [
-  { key: 'CLIENTS',          label: 'Clients',          section: 'Operations', roles: ['OFFICE_STAFF'] },
-  { key: 'ORDERS',           label: 'Orders',           section: 'Operations', roles: ['OFFICE_STAFF', 'SUPERVISOR'] },
-  { key: 'ASSIGNMENTS',      label: 'Assignments',      section: 'Operations', roles: ['SUPERVISOR'] },
-  { key: 'LR_REGISTER',      label: 'LR Register',      section: 'Operations', roles: ['OFFICE_STAFF', 'SUPERVISOR'] },
-  { key: 'INVOICES',         label: 'Invoices',         section: 'Finance',    roles: ['OFFICE_STAFF'] },
-  { key: 'CREDIT_NOTES',     label: 'Credit Notes',     section: 'Finance',    roles: ['OFFICE_STAFF'] },
-  { key: 'SERVICE_INVOICES', label: 'Service Invoices', section: 'Finance',    roles: ['OFFICE_STAFF'] },
-  { key: 'ATTENDANCE',       label: 'Attendance',       section: 'HR',         roles: ['OFFICE_STAFF'] },
-  { key: 'SPARE_PARTS',      label: 'Spare Parts',      section: 'Inventory',  roles: ['STORE_KEEPER'] },
-  { key: 'TYRES',            label: 'Tyres',            section: 'Inventory',  roles: ['STORE_KEEPER'] },
-  { key: 'PART_REQUESTS',    label: 'Part Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },
-  { key: 'TYRE_REQUESTS',    label: 'Tyre Requests',    section: 'Inventory',  roles: ['STORE_KEEPER'] },
-  { key: 'VEHICLE_SERVICES', label: 'Vehicle Services', section: 'Fleet',      roles: ['SERVICE_MANAGER'] },
-]
-
-const RBAC_MODULE_SECTIONS = ['Operations', 'Finance', 'HR', 'Analytics', 'Inventory', 'Fleet']
 
 type CheckMap = Record<string, Record<string, boolean>>
 
