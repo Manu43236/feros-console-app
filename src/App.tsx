@@ -41,7 +41,6 @@ import { AttendancePage }           from '@/pages/attendance/AttendancePage'
 import { SupervisorAttendancePage } from '@/pages/attendance/SupervisorAttendancePage'
 import { PayrollPage }    from '@/pages/payroll/PayrollPage'
 import { MastersPage }    from '@/pages/masters/MastersPage'
-import { SettingsPage }   from '@/pages/settings/SettingsPage'
 import InventoryPage      from '@/pages/inventory/InventoryPage'
 import VehicleReportsPage    from '@/pages/reports/VehicleReportsPage'
 import AttendanceReportsPage from '@/pages/reports/AttendanceReportsPage'
@@ -178,10 +177,7 @@ export default function App() {
           {/* Masters — admin + office only */}
           <Route path="masters"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><MastersPage /></ProtectedRoute>} />
 
-          {/* Settings — admin only */}
-          <Route path="settings"   element={<ProtectedRoute allowedRoles={['ADMIN']}><SettingsPage /></ProtectedRoute>} />
-
-          {/* SUPER_ADMIN */}
+{/* SUPER_ADMIN */}
           <Route path="sa/dashboard"      element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SADashboardPage /></ProtectedRoute>} />
           <Route path="sa/tenants"        element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><TenantsPage /></ProtectedRoute>} />
           <Route path="sa/subscriptions"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SubscriptionsPage /></ProtectedRoute>} />

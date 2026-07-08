@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import {
   Truck, Users, Tag, CreditCard, MapPin, Settings, Wifi,
   Plus, Pencil, Trash2, ChevronRight, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Loader2, Link, Link2Off,
+  CheckCircle, XCircle, Loader2, Link, Link2Off, Target,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,8 +17,7 @@ import { tenantMastersApi, globalMastersApi, rbacApi } from '@/api/masters'
 import { gpsApi } from '@/api/gps'
 import type { GpsProviderConfig, GpsProviderVehicle, GpsProviderConfigRequest, GpsProviderType, VehicleGpsMappingRequest } from '@/types'
 import type { RbacEntry } from '@/api/masters'
-import { moduleAccessApi } from '@/api/moduleAccess'
-import type { ModuleAccessEntry, ModuleKey } from '@/types'
+import { targetsApi } from '@/api/targets'
 import { useSubscription } from '@/context/SubscriptionContext'
 import type { TenantMasterItem, DesignationItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
 
@@ -629,14 +628,6 @@ const RBAC_ROLES = [
   { key: 'SERVICE_MANAGER', label: 'Service Manager' },
 ]
 
-// Roles shown in Module Access tab (DRIVER/CLEANER have nothing configurable)
-const MODULE_ACCESS_ROLES = [
-  { key: 'OFFICE_STAFF',    label: 'Office Staff' },
-  { key: 'SUPERVISOR',      label: 'Supervisor' },
-  { key: 'STORE_KEEPER',    label: 'Store Keeper' },
-  { key: 'SERVICE_MANAGER', label: 'Service Manager' },
-]
-
 // Module rows — keys match backend ModuleKey enum, roles = which roles can configure this module
 const RBAC_MODULE_ROWS: { key: string; label: string; section: string; roles: string[] }[] = [
   { key: 'CLIENTS',          label: 'Clients',          section: 'Operations', roles: ['OFFICE_STAFF'] },
@@ -657,8 +648,6 @@ const RBAC_MODULE_ROWS: { key: string; label: string; section: string; roles: st
 const RBAC_MODULE_SECTIONS = ['Operations', 'Finance', 'HR', 'Analytics', 'Inventory', 'Fleet']
 
 type CheckMap = Record<string, Record<string, boolean>>
-// [role][moduleKey] = enabled
-type ModuleMap = Record<string, Record<string, boolean>>
 
 function defaultLoginAccess(): CheckMap {
   const map: CheckMap = {}
@@ -707,21 +696,15 @@ function RbacRoleHeader({ label, allChecked, onToggleAll }: {
   )
 }
 
-type RbacSubTab = 'login' | 'modules'
-
 function RbacTab() {
-  const { isEquipmentMode } = useSubscription()
   const qc = useQueryClient()
-  const [subTab, setSubTab] = useState<RbacSubTab>('login')
   const [loginAccess, setLoginAccess] = useState<CheckMap>(defaultLoginAccess)
-  const [moduleMap, setModuleMap]     = useState<ModuleMap>({})
 
   const platforms = [
     { key: 'web',    label: 'Web Platform', icon: '🖥' },
     { key: 'mobile', label: 'Mobile App',   icon: '📱' },
   ]
 
-  // ── Load login access from API ───────────────────────────────────────────
   const { data: loginAccessData } = useQuery({
     queryKey: ['rbac-login-access'],
     queryFn: rbacApi.getLoginAccess,
@@ -729,9 +712,9 @@ function RbacTab() {
 
   const [loginInitialized, setLoginInitialized] = useState(false)
   useEffect(() => {
-    if (!loginAccessData) return  // wait for data to actually load
+    if (!loginAccessData) return
     const entries: RbacEntry[] = loginAccessData?.data?.entries ?? []
-    if (loginInitialized) return  // don't overwrite user edits after initial load
+    if (loginInitialized) return
     const map = defaultLoginAccess()
     for (const e of entries) {
       const p = e.platform.toLowerCase()
@@ -741,7 +724,6 @@ function RbacTab() {
     setLoginInitialized(true)
   }, [loginAccessData])
 
-  // ── Save login access ────────────────────────────────────────────────────
   const saveLogin = useMutation({
     mutationFn: () => {
       const entries: RbacEntry[] = []
@@ -756,45 +738,6 @@ function RbacTab() {
     onError: () => toast.error('Failed to save login access'),
   })
 
-  // ── Load module access from API ──────────────────────────────────────────
-  const { data: moduleAccessData } = useQuery({
-    queryKey: ['module-access'],
-    queryFn: moduleAccessApi.getAll,
-  })
-
-  const [moduleInitialized, setModuleInitialized] = useState(false)
-  useEffect(() => {
-    if (!moduleAccessData) return  // wait for data to actually load
-    const entries: ModuleAccessEntry[] = moduleAccessData?.data?.data?.entries ?? []
-    if (moduleInitialized) return
-    if (!entries.length) return
-    const map: ModuleMap = {}
-    for (const e of entries) {
-      if (!map[e.role]) map[e.role] = {}
-      map[e.role][e.moduleKey] = e.enabled
-    }
-    setModuleMap(map)
-    setModuleInitialized(true)
-  }, [moduleAccessData])
-
-  // ── Save module access ───────────────────────────────────────────────────
-  const saveModules = useMutation({
-    mutationFn: () => {
-      const entries: ModuleAccessEntry[] = []
-      for (const m of RBAC_MODULE_ROWS) {
-        for (const role of m.roles) {
-          entries.push({ role, moduleKey: m.key as ModuleKey, enabled: moduleMap[role]?.[m.key] ?? true })
-        }
-      }
-      return moduleAccessApi.saveAll({ entries })
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['module-access'] }); toast.success('Module access saved') },
-    onError: (err: any) => {
-      if (!err?.isSubscriptionBlock) toast.error(err?.response?.data?.message ?? 'Failed to save module access')
-    },
-  })
-
-  // ── Login access helpers ─────────────────────────────────────────────────
   function toggleLogin(platform: string, role: string, val: boolean) {
     setLoginAccess(prev => ({ ...prev, [platform]: { ...prev[platform], [role]: val } }))
   }
@@ -806,165 +749,99 @@ function RbacTab() {
       return next
     })
   }
-  // ── Module access helpers ────────────────────────────────────────────────
-  function toggleModule(mod: string, role: string, val: boolean) {
-    setModuleMap(prev => ({ ...prev, [role]: { ...(prev[role] ?? {}), [mod]: val } }))
-  }
-  function toggleModuleCol(role: string) {
-    const applicableMods = RBAC_MODULE_ROWS.filter(m => m.roles.includes(role))
-    const all = applicableMods.every(m => moduleMap[role]?.[m.key] ?? true)
-    setModuleMap(prev => {
-      const next = { ...prev, [role]: { ...(prev[role] ?? {}) } }
-      for (const m of applicableMods) next[role][m.key] = !all
-      return next
-    })
-  }
 
   return (
     <div className="space-y-4">
-      {/* Sub-tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
-        {(['login', 'modules'] as RbacSubTab[]).map(t => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setSubTab(t)}
-            className={cn(
-              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-              subTab === t ? `bg-white ${isEquipmentMode ? 'text-feros-equip-sidebar' : 'text-feros-navy'} shadow-sm` : 'text-gray-500 hover:text-gray-700'
-            )}
-          >
-            {t === 'login' ? 'Login Access' : 'Module Access'}
-          </button>
-        ))}
-      </div>
-
       <p className="text-xs text-gray-500">
-        {subTab === 'login'
-          ? 'Control which roles can log in on each platform. Admin always has full access.'
-          : 'Control which modules each role can access. Admin always has full access.'}
+        Control which roles can log in on each platform. Admin always has full access.
       </p>
 
-      {/* ── Login Access ── */}
-      {subTab === 'login' && (
-        <div className="border border-gray-200 rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 w-36">Platform</th>
-                  {RBAC_ROLES.map(r => (
-                    <RbacRoleHeader
-                      key={r.key} label={r.label}
-                      allChecked={platforms.every(p => loginAccess[p.key]?.[r.key])}
-                      onToggleAll={() => toggleLoginCol(r.key)}
-                    />
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {platforms.map(p => (
-                  <tr key={p.key} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-gray-800">{p.icon} {p.label}</span>
-                    </td>
-                    {RBAC_ROLES.map(r => (
-                      <td key={r.key} className="px-3 py-3">
-                        <RbacCheckbox
-                          checked={loginAccess[p.key]?.[r.key] ?? false}
-                          onChange={v => toggleLogin(p.key, r.key, v)}
-                        />
-                      </td>
-                    ))}
-                  </tr>
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 w-36">Platform</th>
+                {RBAC_ROLES.map(r => (
+                  <RbacRoleHeader
+                    key={r.key} label={r.label}
+                    allChecked={platforms.every(p => loginAccess[p.key]?.[r.key])}
+                    onToggleAll={() => toggleLoginCol(r.key)}
+                  />
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── Module Access ── */}
-      {subTab === 'modules' && (
-        <div className="border border-gray-200 rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 w-44">Module</th>
-                  {MODULE_ACCESS_ROLES.map(r => (
-                    <RbacRoleHeader
-                      key={r.key} label={r.label}
-                      allChecked={RBAC_MODULE_ROWS.filter(m => m.roles.includes(r.key)).every(m => moduleMap[r.key]?.[m.key] ?? true)}
-                      onToggleAll={() => toggleModuleCol(r.key)}
-                    />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {platforms.map(p => (
+                <tr key={p.key} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <span className="font-medium text-gray-800">{p.icon} {p.label}</span>
+                  </td>
+                  {RBAC_ROLES.map(r => (
+                    <td key={r.key} className="px-3 py-3">
+                      <RbacCheckbox
+                        checked={loginAccess[p.key]?.[r.key] ?? false}
+                        onChange={v => toggleLogin(p.key, r.key, v)}
+                      />
+                    </td>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {RBAC_MODULE_SECTIONS.map(section => {
-                  const mods = RBAC_MODULE_ROWS.filter(m => m.section === section)
-                  return (
-                    <>
-                      <tr key={`sec-${section}`} className="bg-gray-50 border-y border-gray-200">
-                        <td className="px-4 py-1.5">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{section}</span>
-                        </td>
-                        {MODULE_ACCESS_ROLES.map(r => <td key={r.key} />)}
-                      </tr>
-                      {mods.map(m => (
-                        <tr key={m.key} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
-                          <td className="px-4 py-3 pl-7">
-                            <span className="text-gray-700">{m.label}</span>
-                          </td>
-                          {MODULE_ACCESS_ROLES.map(r => (
-                            <td key={r.key} className="px-3 py-3">
-                              {m.roles.includes(r.key) ? (
-                                <RbacCheckbox
-                                  checked={moduleMap[r.key]?.[m.key] ?? true}
-                                  onChange={v => toggleModule(m.key, r.key, v)}
-                                />
-                              ) : (
-                                <div className="flex justify-center text-gray-300 text-xs">—</div>
-                              )}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
-      {subTab === 'login' && (
-        <div className="flex justify-end">
-          <Button type="button" onClick={() => saveLogin.mutate()} disabled={saveLogin.isPending}>
-            {saveLogin.isPending ? 'Saving…' : 'Save Changes'}
-          </Button>
-        </div>
-      )}
-      {subTab === 'modules' && (
-        <div className="flex justify-end">
-          <Button type="button" onClick={() => saveModules.mutate()} disabled={saveModules.isPending}>
-            {saveModules.isPending ? 'Saving…' : 'Save Changes'}
-          </Button>
-        </div>
-      )}
+      <div className="flex justify-end">
+        <Button type="button" onClick={() => saveLogin.mutate()} disabled={saveLogin.isPending}>
+          {saveLogin.isPending ? 'Saving…' : 'Save Changes'}
+        </Button>
+      </div>
     </div>
   )
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────
-const SETTINGS_TABS = ['General', 'RBAC'] as const
+const SETTINGS_TABS = ['General', 'Targets', 'RBAC'] as const
 type SettingsTab = typeof SETTINGS_TABS[number]
 
 function SettingsSection() {
   const [tab, setTab] = useState<SettingsTab>('General')
   const qc = useQueryClient()
+
+  // ── Monthly Targets state ──────────────────────────────────────────────────
+  const now = new Date()
+  const [tripTarget, setTripTarget] = useState<string>('')
+  const [tonTarget, setTonTarget]   = useState<string>('')
+
+  const { data: targetData } = useQuery({
+    queryKey: ['monthly-targets'],
+    queryFn: () => targetsApi.getCurrent(),
+  })
+
+  useEffect(() => {
+    if (targetData?.data) {
+      setTripTarget(targetData.data.targetTrips?.toString() ?? '')
+      setTonTarget(targetData.data.targetTons?.toString() ?? '')
+    }
+  }, [targetData])
+
+  const targetMutation = useMutation({
+    mutationFn: () => targetsApi.set({
+      year:        now.getFullYear(),
+      month:       now.getMonth() + 1,
+      targetTrips: tripTarget ? Number(tripTarget) : undefined,
+      targetTons:  tonTarget  ? Number(tonTarget)  : undefined,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['monthly-targets'] })
+      toast.success('Monthly targets saved')
+    },
+    onError: (err: any) => {
+      if (!err?.isSubscriptionBlock)
+        toast.error(err?.response?.data?.message ?? 'Failed to save targets')
+    },
+  })
   const [payCycle, setPayCycle] = useState('MONTHLY')
   const [attendanceEnforced, setAttendanceEnforced] = useState(false)
   const [attendanceDeadlineTime, setAttendanceDeadlineTime] = useState('08:00')
@@ -1056,6 +933,43 @@ function SettingsSection() {
       </div>
 
       {tab === 'RBAC' && <RbacTab />}
+
+      {tab === 'Targets' && (
+        <div className="space-y-5 max-w-lg">
+          <p className="text-xs text-gray-500">
+            Set targets for {now.toLocaleString('default', { month: 'long' })} {now.getFullYear()} — carries forward automatically each month.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Number of Trips Target</Label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="e.g. 1000"
+                value={tripTarget}
+                onChange={e => setTripTarget(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Number of Tons Target</Label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="e.g. 50000"
+                value={tonTarget}
+                onChange={e => setTonTarget(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button type="button" onClick={() => targetMutation.mutate()} disabled={targetMutation.isPending}>
+              {targetMutation.isPending ? 'Saving…' : 'Save Targets'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {tab === 'General' && <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-w-lg">
         <div>

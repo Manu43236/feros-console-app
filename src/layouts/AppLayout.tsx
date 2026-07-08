@@ -100,7 +100,6 @@ const ADMIN_NAV: SectionedNav = {
       section: '',
       items: [
         { to: '/masters',       label: 'Masters',      icon: Settings },
-        { to: '/settings',      label: 'Settings',     icon: UserCog },
         { to: '/subscription',  label: 'Subscription', icon: BadgeCheck },
       ],
     },
@@ -286,7 +285,6 @@ const EQUIPMENT_ADMIN_NAV: SectionedNav = {
       items: [
         { to: '/equipment/invoices', label: 'Invoices', icon: Receipt },
         { to: '/masters',            label: 'Masters',  icon: Settings },
-        { to: '/settings',           label: 'Settings', icon: UserCog },
         { to: '/equipment/reports',  label: 'Reports',  icon: BarChart2 },
       ],
     },
