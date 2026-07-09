@@ -2,6 +2,9 @@ import apiClient from './client'
 import type { ApiResponse, LeaseInvoice, LeaseInvoicePrefill, LeaseInvoiceStatus } from '@/types'
 
 export const leaseInvoicesApi = {
+  getAll: () =>
+    apiClient.get<ApiResponse<LeaseInvoice[]>>('/vehicle-leases/invoices').then(r => r.data),
+
   prefill: (leaseId: number, from: string, to: string) =>
     apiClient.get<ApiResponse<LeaseInvoicePrefill[]>>(
       `/vehicle-leases/${leaseId}/invoices/prefill`, { params: { from, to } }

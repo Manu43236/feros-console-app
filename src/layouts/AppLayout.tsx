@@ -47,9 +47,10 @@ const ADMIN_NAV: SectionedNav = {
       section: 'Finance',
       icon: Banknote,
       items: [
-        { to: '/invoices',          label: 'Invoices',          icon: Receipt,   moduleKey: 'INVOICES' },
-        { to: '/credit-notes',      label: 'Credit Notes',      icon: FileMinus, moduleKey: 'CREDIT_NOTES' },
-        { to: '/service-invoices',  label: 'Service Invoices',  icon: Wrench,    moduleKey: 'SERVICE_INVOICES' },
+        { to: '/invoices',                label: 'Invoices',          icon: Receipt,     moduleKey: 'INVOICES' },
+        { to: '/credit-notes',            label: 'Credit Notes',      icon: FileMinus,   moduleKey: 'CREDIT_NOTES' },
+        { to: '/service-invoices',        label: 'Service Invoices',  icon: Wrench,      moduleKey: 'SERVICE_INVOICES' },
+        { to: '/vehicles/lease-invoices', label: 'Lease Invoices',    icon: ScrollText },
       ],
     },
     {
@@ -126,9 +127,10 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       section: 'Finance',
       icon: Banknote,
       items: [
-        { to: '/invoices',         label: 'Invoices',         icon: Receipt,   moduleKey: 'INVOICES' },
-        { to: '/credit-notes',     label: 'Credit Notes',     icon: FileMinus, moduleKey: 'CREDIT_NOTES' },
-        { to: '/service-invoices', label: 'Service Invoices', icon: Wrench,    moduleKey: 'SERVICE_INVOICES' },
+        { to: '/invoices',                label: 'Invoices',          icon: Receipt,     moduleKey: 'INVOICES' },
+        { to: '/credit-notes',            label: 'Credit Notes',      icon: FileMinus,   moduleKey: 'CREDIT_NOTES' },
+        { to: '/service-invoices',        label: 'Service Invoices',  icon: Wrench,      moduleKey: 'SERVICE_INVOICES' },
+        { to: '/vehicles/lease-invoices', label: 'Lease Invoices',    icon: ScrollText },
       ],
     },
     {
