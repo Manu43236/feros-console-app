@@ -140,6 +140,20 @@ export interface LeaseVehicleSession {
   createdAt: string
 }
 
+export interface LeaseDailyLog {
+  id: number
+  assignmentId: number
+  leaseId: number
+  logDate: string        // LocalDate — "YYYY-MM-DD"
+  registrationNumber: string
+  totalHours: number | null
+  kmDriven: number | null
+  sessionCount: number
+  source: 'AUTO' | 'MANUAL'
+  notes?: string
+  createdAt: string
+}
+
 // Global vehicle status (no tenantId)
 export interface VehicleStatusItem extends MasterItem {
   statusType: VehicleStatusType

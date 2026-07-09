@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
-import type { LeaseStatus, LeaseVehicleAssignment, LeaseVehicleSession } from '@/types'
+import type { LeaseDailyLog, LeaseStatus, LeaseVehicleAssignment, LeaseVehicleSession } from '@/types'
 import { cn } from '@/lib/utils'
 
 const STATUS_COLORS: Record<LeaseStatus, string> = {
@@ -498,7 +498,7 @@ export default function LeaseDetailPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const role = useAuthStore(s => s.role)
-  const [activeTab, setActiveTab] = useState<'vehicles' | 'sessions' | 'billing'>('vehicles')
+  const [activeTab, setActiveTab] = useState<'vehicles' | 'sessions' | 'daily-logs' | 'billing'>('vehicles')
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [extendDate, setExtendDate] = useState('')
   const [showExtend, setShowExtend] = useState(false)
@@ -524,12 +524,38 @@ export default function LeaseDetailPage() {
     queryFn: () => vehicleLeasesApi.getBilling(leaseId),
     enabled: activeTab === 'billing',
   })
+  const { data: dailyLogsRes } = useQuery({
+    queryKey: ['lease-daily-logs', leaseId],
+    queryFn: () => vehicleLeasesApi.getDailyLogs(leaseId),
+    enabled: activeTab === 'daily-logs',
+  })
 
   const lease = leaseRes?.data
   const assignments = vehiclesRes?.data ?? []
   const sessions = sessionsRes?.data ?? []
   const billing = billingRes?.data
+  const dailyLogs = dailyLogsRes?.data ?? []
   const activeAssignments = assignments.filter(a => a.isActive)
+
+  const [showAddLog, setShowAddLog] = useState(false)
+  const [addLogAssignmentId, setAddLogAssignmentId] = useState('')
+  const [addLogDate, setAddLogDate] = useState(new Date().toISOString().slice(0, 10))
+  const qcRef = qc
+
+  const createLogMutation = useMutation({
+    mutationFn: () => vehicleLeasesApi.createDailyLog(leaseId, Number(addLogAssignmentId), addLogDate),
+    onSuccess: () => {
+      toast.success('Daily log created')
+      qcRef.invalidateQueries({ queryKey: ['lease-daily-logs', leaseId] })
+      setShowAddLog(false)
+      setAddLogAssignmentId('')
+      setAddLogDate(new Date().toISOString().slice(0, 10))
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to create daily log')
+    },
+  })
 
   // Map of assignmentId → active session (for vehicle card indicators)
   const activeSessionMap = new Map<number, LeaseVehicleSession>(
@@ -680,8 +706,9 @@ export default function LeaseDetailPage() {
         {([
           { key: 'vehicles', label: 'Vehicles', icon: <Truck size={14} /> },
           { key: 'sessions', label: 'Sessions', icon: <Clock size={14} /> },
+          { key: 'daily-logs', label: 'Daily Logs', icon: <CalendarDays size={14} /> },
           ...(role !== 'SUPERVISOR' ? [{ key: 'billing', label: 'Billing', icon: <Receipt size={14} /> }] : []),
-        ] as { key: 'vehicles' | 'sessions' | 'billing'; label: string; icon: React.ReactNode }[]).map(t => (
+        ] as { key: 'vehicles' | 'sessions' | 'daily-logs' | 'billing'; label: string; icon: React.ReactNode }[]).map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
               activeTab === t.key
@@ -889,6 +916,111 @@ export default function LeaseDetailPage() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Daily Logs Tab ── */}
+      {activeTab === 'daily-logs' && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500">{dailyLogs.length} log{dailyLogs.length !== 1 ? 's' : ''}</p>
+            {role !== 'SUPERVISOR' && (
+              <Button size="sm" onClick={() => setShowAddLog(true)}
+                className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
+                <Plus size={14} /> Add Log
+              </Button>
+            )}
+          </div>
+
+          {dailyLogs.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
+              No daily logs yet. Logs are auto-generated at 11:59 PM from sessions.
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Vehicle</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Sessions</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Hours</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">KM</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dailyLogs.map((log: LeaseDailyLog) => (
+                    <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                        {new Date(log.logDate + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700 font-medium">{log.registrationNumber}</td>
+                      <td className="px-4 py-3 text-right text-gray-600">{log.sessionCount}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">
+                        {log.totalHours != null ? fmtTime(Number(log.totalHours)) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600">
+                        {log.kmDriven != null
+                          ? `${Number(log.kmDriven).toLocaleString('en-IN')} km`
+                          : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                          log.source === 'AUTO'
+                            ? 'bg-blue-50 text-blue-600'
+                            : 'bg-amber-50 text-amber-700')}>
+                          {log.source}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Add Log Dialog */}
+          <Dialog open={showAddLog} onOpenChange={v => !v && setShowAddLog(false)}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Add Daily Log</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-2">
+                <div>
+                  <Label>Vehicle *</Label>
+                  <select
+                    value={addLogAssignmentId}
+                    onChange={e => setAddLogAssignmentId(e.target.value)}
+                    className="w-full mt-1 border border-gray-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-feros-navy/30">
+                    <option value="">Select vehicle…</option>
+                    {assignments.map(a => (
+                      <option key={a.id} value={a.id}>{a.registrationNumber}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label>Date *</Label>
+                  <Input
+                    type="date"
+                    value={addLogDate}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={e => setAddLogDate(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowAddLog(false)}>Cancel</Button>
+                  <Button size="sm"
+                    disabled={!addLogAssignmentId || !addLogDate || createLogMutation.isPending}
+                    onClick={() => createLogMutation.mutate()}
+                    className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+                    {createLogMutation.isPending ? 'Creating…' : 'Create Log'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 

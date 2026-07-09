@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, PageResponse, VehicleLease, LeaseVehicleAssignment, LeaseBilling, LeaseStatus, LeaseVehicleSession } from '@/types'
+import type { ApiResponse, PageResponse, VehicleLease, LeaseVehicleAssignment, LeaseBilling, LeaseDailyLog, LeaseStatus, LeaseVehicleSession } from '@/types'
 
 export const vehicleLeasesApi = {
   getAll: (params?: { page?: number; size?: number; status?: LeaseStatus; clientId?: number }) =>
@@ -61,4 +61,12 @@ export const vehicleLeasesApi = {
     apiClient.get<ApiResponse<LeaseVehicleSession[]>>(`/vehicle-leases/${leaseId}/sessions`, {
       params: assignmentId ? { assignmentId } : undefined,
     }).then(r => r.data),
+
+  getDailyLogs: (leaseId: number) =>
+    apiClient.get<ApiResponse<LeaseDailyLog[]>>(`/vehicle-leases/${leaseId}/daily-logs`).then(r => r.data),
+
+  createDailyLog: (leaseId: number, assignmentId: number, date: string) =>
+    apiClient.post<ApiResponse<LeaseDailyLog>>(
+      `/vehicle-leases/${leaseId}/vehicles/${assignmentId}/daily-logs`, { date }
+    ).then(r => r.data),
 }
