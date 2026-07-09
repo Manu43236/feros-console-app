@@ -601,8 +601,12 @@ export function AppLayout() {
     moduleType === 'EQUIPMENT_ONLY' ||
     (moduleType === 'BOTH' && currentMode === 'EQUIPMENT')
 
-  // Service managers service assets — add Equipment Services only when the tenant has equipment.
-  const serviceManagerNav: FlatNav = canAccessEquipment
+  // Service managers service assets — add Equipment Services when the tenant has equipment
+  // and the user isn't explicitly blocked. canAccessEquipment is null unless a staff profile
+  // sets it, so gate on tenant moduleType (same semantics as the module toggle).
+  const smHasEquipment =
+    (moduleType === 'BOTH' || moduleType === 'EQUIPMENT_ONLY') && canAccessEquipment !== false
+  const serviceManagerNav: FlatNav = smHasEquipment
     ? SERVICE_MANAGER_NAV.flatMap(item =>
         item.to === '/vehicle-services'
           ? [item, { to: '/equipment/machines', label: 'Equipment Services', icon: Construction }]
