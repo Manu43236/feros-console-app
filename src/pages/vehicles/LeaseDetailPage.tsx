@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vehicleLeasesApi } from '@/api/vehicleLeases'
+import { leaseInvoicesApi } from '@/api/leaseInvoices'
 import { vehiclesApi } from '@/api/vehicles'
 import { staffApi } from '@/api/staff'
 import { clientsApi } from '@/api/clients'
@@ -17,8 +18,25 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
-import type { LeaseDailyLog, LeaseStatus, LeaseVehicleAssignment, LeaseVehicleSession } from '@/types'
+import type { LeaseDailyLog, LeaseInvoice, LeaseInvoiceStatus, LeaseStatus, LeaseVehicleAssignment, LeaseVehicleSession } from '@/types'
 import { cn } from '@/lib/utils'
+import { GenerateLeaseInvoiceDialog } from './GenerateLeaseInvoiceDialog'
+
+const INV_STATUS_COLORS: Record<LeaseInvoiceStatus, string> = {
+  DRAFT: 'bg-gray-100 text-gray-600',
+  SENT: 'bg-blue-100 text-blue-700',
+  PARTIALLY_PAID: 'bg-amber-100 text-amber-700',
+  PAID: 'bg-green-100 text-green-700',
+  CANCELLED: 'bg-red-100 text-red-600',
+}
+const INV_NEXT_STATUS: Partial<Record<LeaseInvoiceStatus, LeaseInvoiceStatus[]>> = {
+  DRAFT: ['SENT', 'CANCELLED'],
+  SENT: ['PARTIALLY_PAID', 'PAID', 'CANCELLED'],
+  PARTIALLY_PAID: ['PAID', 'CANCELLED'],
+}
+const INV_STATUS_LABELS: Record<LeaseInvoiceStatus, string> = {
+  DRAFT: 'Draft', SENT: 'Sent', PARTIALLY_PAID: 'Partially Paid', PAID: 'Paid', CANCELLED: 'Cancelled',
+}
 
 const STATUS_COLORS: Record<LeaseStatus, string> = {
   DRAFT:  'bg-gray-200/80 text-gray-700',
@@ -519,9 +537,9 @@ export default function LeaseDetailPage() {
     queryKey: ['lease-sessions', leaseId],
     queryFn: () => vehicleLeasesApi.getSessions(leaseId),
   })
-  const { data: billingRes } = useQuery({
-    queryKey: ['lease-billing', leaseId],
-    queryFn: () => vehicleLeasesApi.getBilling(leaseId),
+  const { data: invoicesRes } = useQuery({
+    queryKey: ['lease-invoices', leaseId],
+    queryFn: () => leaseInvoicesApi.getByLease(leaseId),
     enabled: activeTab === 'billing',
   })
   const { data: dailyLogsRes } = useQuery({
@@ -533,13 +551,14 @@ export default function LeaseDetailPage() {
   const lease = leaseRes?.data
   const assignments = vehiclesRes?.data ?? []
   const sessions = sessionsRes?.data ?? []
-  const billing = billingRes?.data
+  const invoices = invoicesRes?.data ?? []
   const dailyLogs = dailyLogsRes?.data ?? []
   const activeAssignments = assignments.filter(a => a.isActive)
 
   const [showAddLog, setShowAddLog] = useState(false)
   const [addLogAssignmentId, setAddLogAssignmentId] = useState('')
   const [addLogDate, setAddLogDate] = useState(new Date().toISOString().slice(0, 10))
+  const [showGenerateInvoice, setShowGenerateInvoice] = useState(false)
   const qcRef = qc
 
   const createLogMutation = useMutation({
@@ -555,6 +574,25 @@ export default function LeaseDetailPage() {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
       toast.error(msg ?? 'Failed to create daily log')
     },
+  })
+
+  const invoiceStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: LeaseInvoiceStatus }) =>
+      leaseInvoicesApi.updateStatus(id, status),
+    onSuccess: () => {
+      toast.success('Invoice updated')
+      qc.invalidateQueries({ queryKey: ['lease-invoices', leaseId] })
+    },
+    onError: () => toast.error('Failed to update invoice'),
+  })
+
+  const invoiceDeleteMutation = useMutation({
+    mutationFn: (id: number) => leaseInvoicesApi.delete(id),
+    onSuccess: () => {
+      toast.success('Invoice deleted')
+      qc.invalidateQueries({ queryKey: ['lease-invoices', leaseId] })
+    },
+    onError: () => toast.error('Failed to delete invoice'),
   })
 
   // Map of assignmentId → active session (for vehicle card indicators)
@@ -1025,45 +1063,98 @@ export default function LeaseDetailPage() {
       )}
 
       {/* ── Billing Tab ── */}
-      {activeTab === 'billing' && (
+      {activeTab === 'billing' && lease && (
         <div className="space-y-4">
-          {!billing ? (
-            <div className="text-sm text-gray-400 py-8 text-center">Loading billing…</div>
-          ) : billing.lines.length === 0 ? (
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</p>
+            <Button size="sm" onClick={() => setShowGenerateInvoice(true)}
+              className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
+              <Plus size={13} /> Generate Invoice
+            </Button>
+          </div>
+
+          {invoices.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
-              No vehicles — no billing to show
+              No invoices yet. Click "Generate Invoice" to create one.
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Vehicle</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Rate</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Days</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Amount</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Invoice #</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Period</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Total</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {billing.lines.map(line => (
-                    <tr key={line.assignmentId} className="border-b border-gray-50 hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-medium text-gray-900">{line.registrationNumber}</td>
-                      <td className="px-4 py-3 text-right text-gray-600">₹{line.ratePerVehicle.toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-3 text-right text-gray-600">{line.days}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">₹{line.amount.toLocaleString('en-IN')}</td>
-                    </tr>
-                  ))}
+                  {invoices.map((inv: LeaseInvoice) => {
+                    const next = INV_NEXT_STATUS[inv.status] ?? []
+                    return (
+                      <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                        <td className="px-4 py-3 font-medium text-feros-navy">{inv.invoiceNumber}</td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {inv.billingPeriodStart} → {inv.billingPeriodEnd}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{inv.invoiceDate}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', INV_STATUS_COLORS[inv.status])}>
+                            {INV_STATUS_LABELS[inv.status]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                          ₹{Number(inv.totalAmount).toLocaleString('en-IN')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <button
+                              onClick={() => window.open(`/vehicle-leases/invoices/${inv.id}/print`, '_blank')}
+                              className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">
+                              Print
+                            </button>
+                            {next.filter(s => s !== 'CANCELLED').map(s => (
+                              <button key={s}
+                                disabled={invoiceStatusMutation.isPending}
+                                onClick={() => invoiceStatusMutation.mutate({ id: inv.id, status: s })}
+                                className="text-xs px-2 py-1 rounded border border-blue-200 text-blue-700 hover:bg-blue-50">
+                                → {INV_STATUS_LABELS[s]}
+                              </button>
+                            ))}
+                            {next.includes('CANCELLED') && (
+                              <button
+                                disabled={invoiceStatusMutation.isPending}
+                                onClick={() => invoiceStatusMutation.mutate({ id: inv.id, status: 'CANCELLED' })}
+                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50">
+                                Cancel
+                              </button>
+                            )}
+                            {inv.status === 'DRAFT' && (
+                              <button
+                                disabled={invoiceDeleteMutation.isPending}
+                                onClick={() => invoiceDeleteMutation.mutate(inv.id)}
+                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50">
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-gray-200 bg-gray-50">
-                    <td colSpan={3} className="px-4 py-3 font-semibold text-gray-700 text-right">Total</td>
-                    <td className="px-4 py-3 text-right font-bold text-feros-navy text-base">
-                      ₹{billing.totalAmount.toLocaleString('en-IN')}
-                    </td>
-                  </tr>
-                </tfoot>
               </table>
             </div>
+          )}
+
+          {showGenerateInvoice && (
+            <GenerateLeaseInvoiceDialog
+              open={showGenerateInvoice}
+              onClose={() => setShowGenerateInvoice(false)}
+              lease={lease}
+            />
           )}
         </div>
       )}

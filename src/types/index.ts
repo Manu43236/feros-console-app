@@ -140,6 +140,65 @@ export interface LeaseVehicleSession {
   createdAt: string
 }
 
+export type LeaseInvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED'
+
+export interface LeaseInvoiceItem {
+  id: number
+  leaseVehicleAssignmentId?: number
+  registrationNumber?: string
+  description?: string
+  days?: number
+  rate?: number
+  amount: number
+  sortOrder?: number
+}
+
+export interface LeaseInvoice {
+  id: number
+  invoiceNumber: string
+  leaseId: number
+  leaseNumber: string
+  clientId: number
+  clientName: string
+  invoiceDate: string
+  dueDate?: string
+  billingPeriodStart?: string
+  billingPeriodEnd?: string
+  status: LeaseInvoiceStatus
+  subtotal: number
+  cgstPercentage: number
+  sgstPercentage: number
+  igstPercentage: number
+  cgstAmount: number
+  sgstAmount: number
+  igstAmount: number
+  taxAmount: number
+  totalAmount: number
+  notes?: string
+  items: LeaseInvoiceItem[]
+  tenantName?: string
+  tenantGstin?: string
+  tenantAddress?: string
+  tenantState?: string
+  clientGstin?: string
+  clientAddress?: string
+  clientStateName?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface LeaseInvoicePrefill {
+  assignmentId: number
+  registrationNumber: string
+  vehicleType?: string
+  assignmentStart: string
+  assignmentEnd?: string
+  daysInPeriod: number
+  rate: number
+  suggestedAmount: number
+  rateType: string
+}
+
 export interface LeaseDailyLog {
   id: number
   assignmentId: number
