@@ -22,6 +22,7 @@ import MeterReadingsPage       from '@/pages/vehicles/MeterReadingsPage'
 import LeasesPage             from '@/pages/vehicles/LeasesPage'
 import LeaseDetailPage        from '@/pages/vehicles/LeaseDetailPage'
 import { LeaseInvoicePrintPage } from '@/pages/vehicles/LeaseInvoicePrintPage'
+import { LeaseInvoiceDetailPage } from '@/pages/vehicles/LeaseInvoiceDetailPage'
 import TyreInventoryPage       from '@/pages/inventory/TyreInventoryPage'
 import TyreRequestsPage        from '@/pages/inventory/TyreRequestsPage'
 import { OrdersPage }       from '@/pages/orders/OrdersPage'
@@ -142,6 +143,7 @@ export default function App() {
           <Route path="meter-readings"      element={<MeterReadingsPage />} />
           <Route path="vehicles/leases"     element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><LeasesPage /></ProtectedRoute>} />
           <Route path="vehicles/leases/:id" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><LeaseDetailPage /></ProtectedRoute>} />
+          <Route path="vehicles/leases/invoices/:id" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><LeaseInvoiceDetailPage /></ProtectedRoute>} />
           <Route path="vehicle-leases/invoices/:id/print" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><LeaseInvoicePrintPage /></ProtectedRoute>} />
 
           {/* Inventory */}

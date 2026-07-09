@@ -29,11 +29,6 @@ const INV_STATUS_COLORS: Record<LeaseInvoiceStatus, string> = {
   PAID: 'bg-green-100 text-green-700',
   CANCELLED: 'bg-red-100 text-red-600',
 }
-const INV_NEXT_STATUS: Partial<Record<LeaseInvoiceStatus, LeaseInvoiceStatus[]>> = {
-  DRAFT: ['SENT', 'CANCELLED'],
-  SENT: ['PARTIALLY_PAID', 'PAID', 'CANCELLED'],
-  PARTIALLY_PAID: ['PAID', 'CANCELLED'],
-}
 const INV_STATUS_LABELS: Record<LeaseInvoiceStatus, string> = {
   DRAFT: 'Draft', SENT: 'Sent', PARTIALLY_PAID: 'Partially Paid', PAID: 'Paid', CANCELLED: 'Cancelled',
 }
@@ -576,25 +571,6 @@ export default function LeaseDetailPage() {
     },
   })
 
-  const invoiceStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: LeaseInvoiceStatus }) =>
-      leaseInvoicesApi.updateStatus(id, status),
-    onSuccess: () => {
-      toast.success('Invoice updated')
-      qc.invalidateQueries({ queryKey: ['lease-invoices', leaseId] })
-    },
-    onError: () => toast.error('Failed to update invoice'),
-  })
-
-  const invoiceDeleteMutation = useMutation({
-    mutationFn: (id: number) => leaseInvoicesApi.delete(id),
-    onSuccess: () => {
-      toast.success('Invoice deleted')
-      qc.invalidateQueries({ queryKey: ['lease-invoices', leaseId] })
-    },
-    onError: () => toast.error('Failed to delete invoice'),
-  })
-
   // Map of assignmentId → active session (for vehicle card indicators)
   const activeSessionMap = new Map<number, LeaseVehicleSession>(
     sessions.filter(s => s.isActive).map(s => [s.assignmentId, s])
@@ -1087,63 +1063,28 @@ export default function LeaseDetailPage() {
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Total</th>
-                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {invoices.map((inv: LeaseInvoice) => {
-                    const next = INV_NEXT_STATUS[inv.status] ?? []
-                    return (
-                      <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                        <td className="px-4 py-3 font-medium text-feros-navy">{inv.invoiceNumber}</td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">
-                          {inv.billingPeriodStart} → {inv.billingPeriodEnd}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{inv.invoiceDate}</td>
-                        <td className="px-4 py-3">
-                          <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', INV_STATUS_COLORS[inv.status])}>
-                            {INV_STATUS_LABELS[inv.status]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                          ₹{Number(inv.totalAmount).toLocaleString('en-IN')}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <button
-                              onClick={() => window.open(`/vehicle-leases/invoices/${inv.id}/print`, '_blank')}
-                              className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50">
-                              Print
-                            </button>
-                            {next.filter(s => s !== 'CANCELLED').map(s => (
-                              <button key={s}
-                                disabled={invoiceStatusMutation.isPending}
-                                onClick={() => invoiceStatusMutation.mutate({ id: inv.id, status: s })}
-                                className="text-xs px-2 py-1 rounded border border-blue-200 text-blue-700 hover:bg-blue-50">
-                                → {INV_STATUS_LABELS[s]}
-                              </button>
-                            ))}
-                            {next.includes('CANCELLED') && (
-                              <button
-                                disabled={invoiceStatusMutation.isPending}
-                                onClick={() => invoiceStatusMutation.mutate({ id: inv.id, status: 'CANCELLED' })}
-                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50">
-                                Cancel
-                              </button>
-                            )}
-                            {inv.status === 'DRAFT' && (
-                              <button
-                                disabled={invoiceDeleteMutation.isPending}
-                                onClick={() => invoiceDeleteMutation.mutate(inv.id)}
-                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50">
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {invoices.map((inv: LeaseInvoice) => (
+                    <tr key={inv.id}
+                      onClick={() => navigate(`/vehicles/leases/invoices/${inv.id}`)}
+                      className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer">
+                      <td className="px-4 py-3 font-medium text-feros-navy">{inv.invoiceNumber}</td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {inv.billingPeriodStart} → {inv.billingPeriodEnd}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{inv.invoiceDate}</td>
+                      <td className="px-4 py-3">
+                        <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', INV_STATUS_COLORS[inv.status])}>
+                          {INV_STATUS_LABELS[inv.status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                        ₹{Number(inv.totalAmount).toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
