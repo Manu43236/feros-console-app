@@ -1463,7 +1463,9 @@ export function MachineDetailPage() {
   const id = Number(equipmentId)
   const role = useAuthStore(s => s.role)
 
-  const visibleTabs = TABS.filter(t => !(t === 'Billings' && role === 'SUPERVISOR'))
+  // Supervisors and service managers don't see billing/invoice data.
+  const hideBillings = role === 'SUPERVISOR' || role === 'SERVICE_MANAGER'
+  const visibleTabs = TABS.filter(t => !(t === 'Billings' && hideBillings))
 
   const [activeTab, setActiveTab] = useState<Tab>('Basic Info')
 
@@ -1485,7 +1487,7 @@ export function MachineDetailPage() {
   const { data: invoiceItemsData } = useQuery({
     queryKey: ['machine-invoice-items', id],
     queryFn: () => machinesApi.getInvoiceItems(id),
-    enabled: !!id && role !== 'SUPERVISOR',
+    enabled: !!id && !hideBillings,
   })
 
   const machine  = eqData?.data as Equipment | undefined

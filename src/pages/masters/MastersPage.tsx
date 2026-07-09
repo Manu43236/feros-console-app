@@ -34,6 +34,9 @@ const SECTIONS = [
 ] as const
 type SectionKey = typeof SECTIONS[number]['key']
 
+// Sections that only make sense for the Vehicles module — hidden in equipment mode.
+const VEHICLE_ONLY_SECTIONS: SectionKey[] = ['vehicleStatuses', 'routes', 'gpsProviders']
+
 
 const PAY_CYCLES = ['DAILY', 'WEEKLY', 'MONTHLY']
 
@@ -1392,6 +1395,14 @@ export function MastersPage() {
   const [activeSection, setActiveSection] = useState<SectionKey>('vehicleStatuses')
   const qc = useQueryClient()
 
+  const visibleSections = isEquipmentMode
+    ? SECTIONS.filter(s => !VEHICLE_ONLY_SECTIONS.includes(s.key))
+    : SECTIONS
+  // If the selected tab is hidden in the current mode, fall back to the first visible one.
+  const effectiveSection: SectionKey = visibleSections.some(s => s.key === activeSection)
+    ? activeSection
+    : visibleSections[0].key
+
   const { data: vsData, isLoading: vsLoading } = useQuery({ queryKey: ['vehicleStatuses'], queryFn: tenantMastersApi.getVehicleStatuses })
   const vsItems: VehicleStatusItem[] = vsData?.data ?? []
   const vsCreate = useMutation({
@@ -1447,7 +1458,7 @@ export function MastersPage() {
   })
 
   function renderContent() {
-    switch (activeSection) {
+    switch (effectiveSection) {
       case 'vehicleStatuses':
         return (
           <VehicleStatusSection
@@ -1495,7 +1506,7 @@ export function MastersPage() {
         {/* Sidebar */}
         <div className="w-56 shrink-0">
           <div className="border rounded-lg overflow-hidden">
-            {SECTIONS.map(s => {
+            {visibleSections.map(s => {
               const Icon = s.icon
               return (
                 <button
@@ -1503,7 +1514,7 @@ export function MastersPage() {
                   onClick={() => setActiveSection(s.key)}
                   className={cn(
                     'w-full flex items-center justify-between px-4 py-3 text-sm transition-colors border-b last:border-b-0',
-                    activeSection === s.key
+                    effectiveSection === s.key
                       ? (isEquipmentMode ? 'bg-feros-equip-sidebar text-white font-medium' : 'bg-feros-navy text-white font-medium')
                       : 'text-gray-700 hover:bg-gray-50'
                   )}
@@ -1512,7 +1523,7 @@ export function MastersPage() {
                     <Icon size={15} />
                     {s.label}
                   </span>
-                  {activeSection !== s.key && <ChevronRight size={13} className="text-gray-400" />}
+                  {effectiveSection !== s.key && <ChevronRight size={13} className="text-gray-400" />}
                 </button>
               )
             })}
