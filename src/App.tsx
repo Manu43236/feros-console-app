@@ -87,7 +87,6 @@ import { WorkOrdersListPage }     from '@/pages/equipment/WorkOrdersListPage'
 import { WorkOrderDetailPage }    from '@/pages/equipment/WorkOrderDetailPage'
 import { EquipmentInvoicesPage }       from '@/pages/equipment/EquipmentInvoicesPage'
 import { EquipmentInvoiceDetailPage } from '@/pages/equipment/EquipmentInvoiceDetailPage'
-import { EquipmentServiceManagerPage } from '@/pages/equipment/EquipmentServiceManagerPage'
 
 // GPS
 import GpsTrackerPage from '@/pages/gps/GpsTrackerPage'
@@ -208,7 +207,6 @@ export default function App() {
           <Route path="equipment/dashboard"          element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><EquipmentDashboardPage /></ProtectedRoute>} />
           <Route path="equipment/machines"              element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><EquipmentListPage /></ProtectedRoute>} />
           <Route path="equipment/machines/:equipmentId" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><MachineDetailPage /></ProtectedRoute>} />
-          <Route path="equipment/service"               element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SERVICE_MANAGER']}><EquipmentServiceManagerPage /></ProtectedRoute>} />
           <Route path="equipment/work-orders"        element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><WorkOrdersListPage /></ProtectedRoute>} />
           <Route path="equipment/work-orders/:id"    element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><WorkOrderDetailPage /></ProtectedRoute>} />
           <Route path="equipment/invoices"           element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentInvoicesPage /></ProtectedRoute>} />

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Wrench, AlertTriangle, CheckCircle2, Clock, User, ChevronDown, ChevronUp, Plus, UserCheck } from 'lucide-react'
+import { Wrench, AlertTriangle, CheckCircle2, Clock, User, ChevronDown, ChevronUp, Plus, UserCheck, Truck, Construction } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
+import { EquipmentServiceManagerPage } from '@/pages/equipment/EquipmentServiceManagerPage'
 import { serviceManagerApi } from '@/api/serviceManager'
 import { vehicleServicesApi } from '@/api/vehicles'
 import { servicePartsApi, sparePartsApi } from '@/api/inventory'
@@ -613,7 +615,7 @@ function BreakdownCard({ breakdown, technicians }: { breakdown: SmBreakdownItem;
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function ServiceManagerPage() {
+function VehicleServiceManagerView() {
   const [tab, setTab] = useState<'breakdowns' | 'services'>('breakdowns')
 
   const { data: dashRes, isLoading } = useQuery({
@@ -723,6 +725,45 @@ function EmptyState({ icon: Icon, message }: { icon: React.ElementType; message:
     <div className="flex flex-col items-center justify-center py-16 text-gray-400">
       <Icon size={36} className="mb-3 opacity-30" />
       <p className="text-sm">{message}</p>
+    </div>
+  )
+}
+
+// ── Wrapper: one Service Manager for both vehicles and equipment ────────────────
+export default function ServiceManagerPage() {
+  const moduleType         = useAuthStore(s => s.moduleType)
+  const canAccessVehicles  = useAuthStore(s => s.canAccessVehicles)
+  const canAccessEquipment = useAuthStore(s => s.canAccessEquipment)
+
+  const hasEquipment = (moduleType === 'BOTH' || moduleType === 'EQUIPMENT_ONLY') && canAccessEquipment !== false
+  const hasVehicles  = moduleType !== 'EQUIPMENT_ONLY' && canAccessVehicles !== false
+
+  const [asset, setAsset] = useState<'vehicle' | 'equipment'>(hasVehicles ? 'vehicle' : 'equipment')
+
+  // Only show the switch when the tenant actually has both.
+  const showSwitch = hasVehicles && hasEquipment
+
+  return (
+    <div className="space-y-5">
+      {showSwitch && (
+        <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
+          {([
+            { key: 'vehicle',   label: 'Vehicles',  icon: Truck },
+            { key: 'equipment', label: 'Equipment', icon: Construction },
+          ] as const).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setAsset(key)}
+              className={cn('flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+                asset === key ? 'bg-white shadow-sm text-feros-navy' : 'text-gray-500 hover:text-gray-700')}
+            >
+              <Icon size={14} /> {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {asset === 'equipment' ? <EquipmentServiceManagerPage /> : <VehicleServiceManagerView />}
     </div>
   )
 }
