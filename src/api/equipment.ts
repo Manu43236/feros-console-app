@@ -134,6 +134,26 @@ export type ServiceStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
 export type ServiceDisplayStatus = 'OPEN' | 'DUE_SOON' | 'OVERDUE' | 'IN_PROGRESS' | 'COMPLETED'
 export type ServiceTaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
 
+export type EquipmentServicePartStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED'
+
+export interface EquipmentServicePart {
+  id: number
+  taskId: number | null
+  sparePartId: number
+  sparePartName: string
+  partNumber: string | null
+  unit: string | null
+  quantityRequested: number
+  quantityApproved: number | null
+  status: EquipmentServicePartStatus
+  rejectionReason: string | null
+  requestedByName: string | null
+  createdAt: string | null
+  availableStock: number | null
+  serviceNumber: string | null
+  equipmentName: string | null
+}
+
 export interface EquipmentServiceTask {
   id: number
   taskTypeId: number | null
@@ -146,6 +166,11 @@ export interface EquipmentServiceTask {
   status: ServiceTaskStatus
   startedAt: string | null
   completedAt: string | null
+  assignedMechanicId: number | null
+  assignedMechanicName: string | null
+  mechanicStartedAt: string | null
+  mechanicClosedAt: string | null
+  parts: EquipmentServicePart[] | null
 }
 
 export interface EquipmentServiceRecord {
@@ -258,6 +283,20 @@ export const equipmentApi = {
   startService: (id: number, serviceId: number) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/start`, {}).then(r => r.data),
   completeService: (id: number, serviceId: number, data: { completedHmr?: number | null; completedDate?: string | null }) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/complete`, data).then(r => r.data),
   deleteService: (id: number, serviceId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/services/${serviceId}`).then(r => r.data),
+
+  // Service tasks — technician + add task + parts (parity with vehicles)
+  assignTaskTechnician: (id: number, serviceId: number, taskId: number, mechanicId: number) =>
+    apiClient.put<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/tasks/${taskId}/assign`, { mechanicId }).then(r => r.data),
+  addTask: (id: number, serviceId: number, body: { taskTypeId?: number; customName?: string; cost?: number }) =>
+    apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/tasks`, body).then(r => r.data),
+  requestPart: (id: number, serviceId: number, body: { sparePartId: number; quantityRequested: number; taskId?: number }) =>
+    apiClient.post<ApiResponse<EquipmentServicePart>>(`/equipment/${id}/services/${serviceId}/parts`, body).then(r => r.data),
+  getServiceParts: (id: number, serviceId: number) =>
+    apiClient.get<ApiResponse<EquipmentServicePart[]>>(`/equipment/${id}/services/${serviceId}/parts`).then(r => r.data),
+  removePart: (partId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/service-parts/${partId}`).then(r => r.data),
+  getPendingParts: () => apiClient.get<ApiResponse<EquipmentServicePart[]>>('/equipment/service-parts/pending').then(r => r.data),
+  approvePart: (partId: number, data: { status: string; quantityApproved?: number; rejectionReason?: string }) =>
+    apiClient.put<ApiResponse<EquipmentServicePart>>(`/equipment/service-parts/${partId}/approve`, data).then(r => r.data),
 
   // Breakdowns
   getAllBreakdowns: () => apiClient.get<ApiResponse<EquipmentBreakdown[]>>('/equipment/breakdowns').then(r => r.data),

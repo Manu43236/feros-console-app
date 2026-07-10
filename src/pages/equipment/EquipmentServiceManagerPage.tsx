@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { AlertTriangle, Wrench, Plus, Calendar, MapPin, CheckCircle2, Clock, Play } from 'lucide-react'
+import { AlertTriangle, Wrench, Plus, Calendar, MapPin, CheckCircle2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -11,6 +11,7 @@ import { equipmentApi } from '@/api/equipment'
 import type { Equipment, EquipmentBreakdown, EquipmentServiceRecord } from '@/api/equipment'
 import { ServiceDialog } from './MachineDetailPage'
 import { ReportBreakdownDialog } from './BreakdownTab'
+import { EquipmentServiceCard } from './EquipmentServiceCard'
 
 function fmtDate(s?: string | null) {
   if (!s) return '—'
@@ -22,13 +23,6 @@ const BD_PILL: Record<string, { label: string; cls: string }> = {
   REPORTED:  { label: '⚠ Open',       cls: 'bg-red-50 text-red-600 border-red-200' },
   IN_REPAIR: { label: '🔧 In Repair', cls: 'bg-orange-50 text-orange-700 border-orange-200' },
   RESOLVED:  { label: '✓ Resolved',   cls: 'bg-green-50 text-green-700 border-green-200' },
-}
-const SVC_PILL: Record<string, { label: string; cls: string }> = {
-  OPEN:        { label: 'Open',        cls: 'bg-gray-100 text-gray-600' },
-  DUE_SOON:    { label: 'Due Soon',    cls: 'bg-blue-50 text-blue-700' },
-  OVERDUE:     { label: 'Overdue',     cls: 'bg-red-50 text-red-600' },
-  IN_PROGRESS: { label: 'In Progress', cls: 'bg-amber-100 text-amber-700' },
-  COMPLETED:   { label: 'Completed',   cls: 'bg-green-100 text-green-700' },
 }
 
 type ServiceTarget = { equipmentId: number; currentHmr: number | null; editing: EquipmentServiceRecord | null }
@@ -73,22 +67,6 @@ export function EquipmentServiceManagerPage() {
       toast.success('Breakdown resolved')
     },
     onError: () => toast.error('Failed to resolve'),
-  })
-  const startMut = useMutation({
-    mutationFn: (s: EquipmentServiceRecord) => equipmentApi.startService(s.equipmentId, s.id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['eq-services'] }); qc.invalidateQueries({ queryKey: ['eq-breakdowns'] }); qc.invalidateQueries({ queryKey: ['equipment'] })
-      toast.success('Service started — machine In Repair')
-    },
-    onError: () => toast.error('Failed to start'),
-  })
-  const completeMut = useMutation({
-    mutationFn: (s: EquipmentServiceRecord) => equipmentApi.completeService(s.equipmentId, s.id, {}),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['eq-services'] }); qc.invalidateQueries({ queryKey: ['eq-breakdowns'] }); qc.invalidateQueries({ queryKey: ['equipment'] })
-      toast.success('Service completed')
-    },
-    onError: () => toast.error('Failed to complete'),
   })
 
   function logServiceFor(equipmentId: number) {
@@ -150,30 +128,36 @@ export function EquipmentServiceManagerPage() {
           ) : breakdowns.map(b => {
             const pill = BD_PILL[b.status] ?? { label: b.status, cls: 'bg-gray-50 text-gray-600 border-gray-200' }
             const isOpen = b.status !== 'RESOLVED'
+            const openService = isOpen ? services.find(s => s.equipmentId === b.equipmentId && s.status !== 'COMPLETED') : undefined
             return (
-              <div key={b.id} className="border border-gray-100 rounded-xl p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-800">{b.equipmentName ?? b.equipmentIdentifier ?? 'Machine'}</span>
-                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', pill.cls)}>{pill.label}</span>
+              <div key={b.id} className="space-y-2">
+                <div className="border border-gray-100 rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-gray-800">{b.equipmentName ?? b.equipmentIdentifier ?? 'Machine'}</span>
+                        <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', pill.cls)}>{pill.label}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 mt-1.5">{b.reason}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+                        <span><Calendar size={11} className="inline mr-1" />{fmtDate(b.breakdownDate)}</span>
+                        {b.location && <span><MapPin size={11} className="inline mr-1" />{b.location}</span>}
+                        {b.reportedByName && <span>By {b.reportedByName}</span>}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-700 mt-1.5">{b.reason}</p>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
-                      <span><Calendar size={11} className="inline mr-1" />{fmtDate(b.breakdownDate)}</span>
-                      {b.location && <span><MapPin size={11} className="inline mr-1" />{b.location}</span>}
-                      {b.reportedByName && <span>By {b.reportedByName}</span>}
-                    </div>
+                    {isOpen && (
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        {!openService && (
+                          <Button size="sm" onClick={() => logServiceFor(b.equipmentId)}
+                            className="h-7 text-xs bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1"><Wrench size={12} /> Log Service</Button>
+                        )}
+                        <Button size="sm" variant="outline" disabled={resolveMut.isPending}
+                          onClick={() => resolveMut.mutate(b)} className="h-7 text-xs">Resolve</Button>
+                      </div>
+                    )}
                   </div>
-                  {isOpen && (
-                    <div className="flex flex-col gap-1.5 shrink-0">
-                      <Button size="sm" onClick={() => logServiceFor(b.equipmentId)}
-                        className="h-7 text-xs bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1"><Wrench size={12} /> Log Service</Button>
-                      <Button size="sm" variant="outline" disabled={resolveMut.isPending}
-                        onClick={() => resolveMut.mutate(b)} className="h-7 text-xs">Resolve</Button>
-                    </div>
-                  )}
                 </div>
+                {openService && <EquipmentServiceCard service={openService} />}
               </div>
             )
           })}
@@ -193,37 +177,7 @@ export function EquipmentServiceManagerPage() {
             <div className="flex items-center justify-center h-32 text-gray-400 text-sm gap-2"><Clock size={15} /> Loading…</div>
           ) : services.length === 0 ? (
             <div className="py-12 text-center text-gray-400"><Wrench size={32} className="mx-auto mb-3 text-gray-200" /><p className="text-sm font-medium text-gray-500">No services</p></div>
-          ) : services.map(s => {
-            const pill = SVC_PILL[s.displayStatus] ?? { label: s.displayStatus, cls: 'bg-gray-100 text-gray-600' }
-            return (
-              <div key={s.id} className="border border-gray-100 rounded-xl p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <button className="flex-1 min-w-0 text-left"
-                    onClick={() => setServiceTarget({ equipmentId: s.equipmentId, currentHmr: machineHmr(s.equipmentId), editing: s })}>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-800">{s.equipmentName ?? s.equipmentIdentifier ?? 'Machine'}</span>
-                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', pill.cls)}>{pill.label}</span>
-                      {s.serviceNumber && <span className="text-xs text-gray-400 font-mono">{s.serviceNumber}</span>}
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
-                      <span><Calendar size={11} className="inline mr-1" />{fmtDate(s.serviceDate)}</span>
-                      {s.totalCost != null && <span>₹{s.totalCost}</span>}
-                    </div>
-                  </button>
-                  <div className="flex flex-col gap-1.5 shrink-0">
-                    {s.status === 'OPEN' && (
-                      <Button size="sm" disabled={startMut.isPending} onClick={() => startMut.mutate(s)}
-                        className="h-7 text-xs bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1"><Play size={12} /> Start</Button>
-                    )}
-                    {s.status === 'IN_PROGRESS' && (
-                      <Button size="sm" disabled={completeMut.isPending} onClick={() => completeMut.mutate(s)}
-                        className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1"><CheckCircle2 size={12} /> Complete</Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+          ) : services.map(s => <EquipmentServiceCard key={s.id} service={s} />)}
         </div>
       )}
 

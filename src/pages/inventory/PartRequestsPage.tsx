@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { servicePartsApi } from '@/api/inventory'
+import { equipmentApi } from '@/api/equipment'
+import type { EquipmentServicePart } from '@/api/equipment'
 import type { ServicePart } from '@/types'
 import { toast } from 'sonner'
 import { CheckCircle2, ClipboardList } from 'lucide-react'
@@ -8,6 +10,90 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+
+// ── Equipment Approve/Reject Dialog ─────────────────────────────────────────────
+function EquipmentApprovalDialog({ part, onClose }: { part: EquipmentServicePart; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [action, setAction] = useState<'APPROVED' | 'REJECTED'>('APPROVED')
+  const available = part.availableStock ?? 0
+  const unit = part.unit ?? ''
+  const [qtyApproved, setQtyApproved] = useState(Math.min(part.quantityRequested, available))
+  const [rejectionReason, setRejectionReason] = useState('')
+  const isShortfall = part.quantityRequested > available
+
+  const mutation = useMutation({
+    mutationFn: () => equipmentApi.approvePart(part.id, {
+      status: action,
+      quantityApproved: action === 'APPROVED' ? qtyApproved : undefined,
+      rejectionReason: action === 'REJECTED' ? rejectionReason : undefined,
+    }),
+    onSuccess: () => {
+      toast.success(action === 'APPROVED' ? 'Part approved, stock deducted' : 'Part request rejected')
+      qc.invalidateQueries({ queryKey: ['equipment-part-requests'] })
+      qc.invalidateQueries({ queryKey: ['stock'] })
+      qc.invalidateQueries({ queryKey: ['eq-services'] })
+      onClose()
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to process'),
+  })
+
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Process Part Request</DialogTitle></DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+            <p><span className="text-gray-500">Part:</span> <strong>{part.sparePartName}</strong>{part.partNumber ? ` (${part.partNumber})` : ''}</p>
+            <p><span className="text-gray-500">Service:</span> {part.serviceNumber}</p>
+            <p><span className="text-gray-500">Machine:</span> {part.equipmentName}</p>
+            <p><span className="text-gray-500">Requested by:</span> {part.requestedByName}</p>
+            <p><span className="text-gray-500">Qty Requested:</span> <strong>{part.quantityRequested} {unit}</strong></p>
+            <p><span className="text-gray-500">In Stock:</span>{' '}
+              <strong className={isShortfall ? 'text-red-600' : 'text-green-700'}>{available} {unit}</strong></p>
+          </div>
+          {isShortfall && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs text-orange-700">
+              ⚠️ Requested ({part.quantityRequested}) exceeds stock ({available}). Approve up to {available} or reject.
+            </div>
+          )}
+          <div className="flex gap-3">
+            {(['APPROVED', 'REJECTED'] as const).map(a => (
+              <button key={a} onClick={() => setAction(a)}
+                className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  action === a
+                    ? a === 'APPROVED' ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600'
+                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                {a === 'APPROVED' ? '✓ Approve' : '✗ Reject'}
+              </button>
+            ))}
+          </div>
+          {action === 'APPROVED' && (
+            <div>
+              <Label>Quantity to Approve *</Label>
+              <Input type="number" min={1} max={available} value={qtyApproved}
+                onChange={e => setQtyApproved(Math.min(Number(e.target.value), available))} />
+              <p className="text-xs text-gray-500 mt-1">Max: {available} {unit} in stock</p>
+            </div>
+          )}
+          {action === 'REJECTED' && (
+            <div>
+              <Label>Rejection Reason *</Label>
+              <Input value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder="Reason…" />
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={mutation.isPending || (action === 'REJECTED' && !rejectionReason.trim())}
+            className={action === 'APPROVED' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+            onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Processing…' : action === 'APPROVED' ? 'Approve & Deduct Stock' : 'Reject Request'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // ── Approve/Reject Dialog ──────────────────────────────────────────────────────
 function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => void }) {
@@ -119,6 +205,7 @@ function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => v
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function PartRequestsPage() {
   const [selected, setSelected] = useState<ServicePart | null>(null)
+  const [eqSelected, setEqSelected] = useState<EquipmentServicePart | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['part-requests'],
@@ -126,6 +213,13 @@ export default function PartRequestsPage() {
     refetchInterval: 30_000,
   })
   const requests = data?.data ?? []
+
+  const { data: eqData } = useQuery({
+    queryKey: ['equipment-part-requests'],
+    queryFn: equipmentApi.getPendingParts,
+    refetchInterval: 30_000,
+  })
+  const eqRequests = eqData?.data ?? []
 
   return (
     <div className="p-6 space-y-5">
@@ -199,7 +293,62 @@ export default function PartRequestsPage() {
         )}
       </div>
 
+      {/* Equipment part requests */}
+      <div>
+        <h2 className="text-base font-semibold text-gray-900 mb-2">Equipment Part Requests</h2>
+        <div className="bg-white rounded-xl border overflow-hidden">
+          {eqRequests.length === 0 ? (
+            <div className="p-10 flex flex-col items-center gap-2 text-gray-400">
+              <ClipboardList size={36} />
+              <p className="text-sm">No pending equipment part requests</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Part</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Service</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Machine</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Requested By</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">Requested</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">In Stock</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {eqRequests.map(r => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{r.sparePartName}</p>
+                      {r.partNumber && <p className="text-xs text-gray-400">{r.partNumber}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{r.serviceNumber}</td>
+                    <td className="px-4 py-3 text-gray-700">{r.equipmentName}</td>
+                    <td className="px-4 py-3 text-gray-700">{r.requestedByName}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-gray-900">{r.quantityRequested} {r.unit}</td>
+                    <td className="px-4 py-3 text-right font-semibold">
+                      <span className={(r.availableStock ?? 0) < r.quantityRequested ? 'text-red-600' : 'text-green-700'}>
+                        {r.availableStock ?? 0} {r.unit}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 justify-end">
+                        <button onClick={() => setEqSelected(r)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100">
+                          <CheckCircle2 size={13} /> Process
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
       {selected && <ApprovalDialog part={selected} onClose={() => setSelected(null)} />}
+      {eqSelected && <EquipmentApprovalDialog part={eqSelected} onClose={() => setEqSelected(null)} />}
     </div>
   )
 }
