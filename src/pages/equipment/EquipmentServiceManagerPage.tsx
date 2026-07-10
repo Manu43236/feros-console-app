@@ -4,7 +4,7 @@ import { Search, Wrench } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { equipmentApi } from '@/api/equipment'
-import type { Equipment, EquipmentWorkStatus } from '@/types'
+import type { Equipment, EquipmentWorkStatus } from '@/api/equipment'
 import { ServiceTab } from './MachineDetailPage'
 
 // Compact status badge — service-desk view only needs a quick visual cue.
