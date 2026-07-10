@@ -66,7 +66,7 @@ const WORK_STATUS: Record<EquipmentWorkStatus, { label: string; cls: string }> =
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Utilization', 'HMR', 'Fuel', 'Service', 'Breakdown', 'WO History', 'Billings'] as const
+const TABS = ['Basic Info', 'Utilization', 'HMR', 'Fuel', 'Service', 'WO History', 'Billings'] as const
 type Tab = typeof TABS[number]
 
 function tabIcon(t: Tab) {
@@ -77,7 +77,6 @@ function tabIcon(t: Tab) {
   if (t === 'WO History')  return <ClipboardList size={14} />
   if (t === 'Billings')    return <FileText size={14} />
   if (t === 'Service')     return <Wrench size={14} />
-  if (t === 'Breakdown')   return <AlertTriangle size={14} />
 }
 
 // ── Date filter bar ───────────────────────────────────────────────────────────
@@ -1470,6 +1469,7 @@ export function MachineDetailPage() {
   const visibleTabs = TABS.filter(t => !(t === 'Billings' && hideBillings))
 
   const [activeTab, setActiveTab] = useState<Tab>('Basic Info')
+  const [serviceSubTab, setServiceSubTab] = useState<'general' | 'breakdown'>('general')
 
   const { data: eqData, isLoading } = useQuery({
     queryKey: ['equipment', id],
@@ -1584,8 +1584,25 @@ export function MachineDetailPage() {
           {activeTab === 'Utilization' && <UtilizationTab logs={logs} from="" to="" onFrom={() => {}} onTo={() => {}} />}
           {activeTab === 'HMR'         && <HmrTab equipmentId={id} logs={logs} />}
           {activeTab === 'Fuel'        && <FuelTab equipmentId={id} />}
-          {activeTab === 'Service'      && <ServiceTab equipmentId={id} currentHmr={machine.currentMeterReading != null ? Number(machine.currentMeterReading) : null} />}
-          {activeTab === 'Breakdown'   && <BreakdownTab equipmentId={id} currentHmr={machine.currentMeterReading != null ? Number(machine.currentMeterReading) : null} />}
+          {activeTab === 'Service' && (
+            <div className="space-y-4">
+              <div className="flex gap-1">
+                {(['general', 'breakdown'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setServiceSubTab(t)}
+                    className={cn('px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                      serviceSubTab === t ? 'bg-[#1C1400] text-white' : 'text-gray-600 hover:bg-gray-100')}
+                  >
+                    {t === 'general' ? 'General' : 'Breakdowns'}
+                  </button>
+                ))}
+              </div>
+              {serviceSubTab === 'general'
+                ? <ServiceTab equipmentId={id} currentHmr={machine.currentMeterReading != null ? Number(machine.currentMeterReading) : null} />
+                : <BreakdownTab equipmentId={id} currentHmr={machine.currentMeterReading != null ? Number(machine.currentMeterReading) : null} />}
+            </div>
+          )}
           {activeTab === 'WO History'  && <WoHistoryTab history={history} navigate={navigate} />}
           {activeTab === 'Billings'    && <BillingsTab items={invItems} navigate={navigate} />}
         </div>
