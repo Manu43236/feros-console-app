@@ -609,7 +609,7 @@ export function AppLayout() {
   const serviceManagerNav: FlatNav = smHasEquipment
     ? SERVICE_MANAGER_NAV.flatMap(item =>
         item.to === '/vehicle-services'
-          ? [item, { to: '/equipment/machines', label: 'Equipment Services', icon: Construction }]
+          ? [item, { to: '/equipment/service', label: 'Equipment Services', icon: Construction }]
           : [item])
     : SERVICE_MANAGER_NAV
 
@@ -738,7 +738,7 @@ export function AppLayout() {
           </button>
 
           {/* Module toggle — two overlapping circles, swap with text expand/collapse */}
-          {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && (() => {
+          {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && role !== 'SERVICE_MANAGER' && (() => {
             const isVehicles = currentMode === 'VEHICLES'
             // active:   left-7 (28px), w-[128px] pill, z-10, shadow
             // inactive: left-0, w-9 circle, opacity-50, z-0

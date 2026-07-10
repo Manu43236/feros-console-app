@@ -1026,7 +1026,7 @@ function CompleteServiceDialog({
   )
 }
 
-function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentHmr?: number | null }) {
+export function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; currentHmr?: number | null }) {
   const qc = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<EquipmentServiceRecord | null>(null)
