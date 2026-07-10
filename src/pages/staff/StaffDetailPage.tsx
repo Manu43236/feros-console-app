@@ -43,6 +43,13 @@ const profileSchema = z.object({
   accountNumber:         z.string().optional(),
   ifscCode:              z.string().optional(),
   accountHolderName:     z.string().optional(),
+  bankBranchName:        z.string().optional(),
+  aadharNumber:          z.string().optional(),
+  aadharName:            z.string().optional(),
+  nomineeName:           z.string().optional(),
+  nomineeRelation:       z.string().optional(),
+  nomineeDateOfBirth:    z.string().optional(),
+  nomineeAadharNumber:   z.string().optional(),
   licenseNumber:         z.string().optional(),
   licenseExpiryDate:     z.string().optional(),
   salaryType:            z.enum(['DAILY', 'MONTHLY']).optional(),
@@ -365,6 +372,13 @@ export function StaffDetailPage() {
         accountNumber:         profile.accountNumber ?? '',
         ifscCode:              profile.ifscCode ?? '',
         accountHolderName:     profile.accountHolderName ?? '',
+        bankBranchName:        profile.bankBranchName ?? '',
+        aadharNumber:          profile.aadharNumber ?? '',
+        aadharName:            profile.aadharName ?? '',
+        nomineeName:           profile.nomineeName ?? '',
+        nomineeRelation:       profile.nomineeRelation ?? '',
+        nomineeDateOfBirth:    profile.nomineeDateOfBirth?.split('T')[0] ?? '',
+        nomineeAadharNumber:   profile.nomineeAadharNumber ?? '',
         licenseNumber:         profile.licenseNumber ?? '',
         licenseExpiryDate:     profile.licenseExpiryDate?.split('T')[0] ?? '',
         salaryType:            profile.salaryType ?? 'DAILY',
@@ -656,6 +670,41 @@ export function StaffDetailPage() {
               <div className="space-y-1.5">
                 <Label>IFSC Code</Label>
                 <Input placeholder="SBIN0001234" {...register('ifscCode')} disabled={isSupervisor} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Branch Name</Label>
+                <Input placeholder="Hyderabad Main" {...register('bankBranchName')} disabled={isSupervisor} />
+              </div>
+            </div>
+          </div>
+
+          {/* Aadhar & Nominee */}
+          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+            <p className="text-sm font-semibold text-gray-700">Aadhar &amp; Nominee</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Aadhar Number</Label>
+                <Input placeholder="1234 5678 9012" {...register('aadharNumber')} disabled={isSupervisor} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Name as per Aadhar</Label>
+                <Input {...register('aadharName')} disabled={isSupervisor} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nominee Name</Label>
+                <Input {...register('nomineeName')} disabled={isSupervisor} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nominee Relation</Label>
+                <Input placeholder="Spouse" {...register('nomineeRelation')} disabled={isSupervisor} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nominee Date of Birth</Label>
+                <Input type="date" max={new Date().toISOString().split('T')[0]} {...register('nomineeDateOfBirth')} disabled={isSupervisor} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nominee Aadhar Number</Label>
+                <Input placeholder="1234 5678 9012" {...register('nomineeAadharNumber')} disabled={isSupervisor} />
               </div>
             </div>
           </div>

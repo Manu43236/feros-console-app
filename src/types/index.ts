@@ -691,6 +691,9 @@ export interface StaffProfile {
   address?: string; cityId?: number; cityName?: string; stateId?: number; stateName?: string; pincode?: string
   emergencyContactName?: string; emergencyContactPhone?: string
   bankName?: string; accountNumber?: string; ifscCode?: string; accountHolderName?: string
+  bankBranchName?: string
+  aadharNumber?: string; aadharName?: string
+  nomineeName?: string; nomineeRelation?: string; nomineeDateOfBirth?: string; nomineeAadharNumber?: string
   licenseNumber?: string; licenseExpiryDate?: string
   profilePhotoUrl?: string
   salaryType?: 'DAILY' | 'MONTHLY'; monthlySalary?: number
