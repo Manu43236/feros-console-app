@@ -151,6 +151,7 @@ export interface EquipmentServiceTask {
 export interface EquipmentServiceRecord {
   id: number
   equipmentId: number
+  equipmentName?: string | null
   equipmentIdentifier: string | null
   serviceNumber: string
   triggeredBy: ServiceTriggeredBy
@@ -210,6 +211,7 @@ export type EquipmentBreakdownStatus = 'REPORTED' | 'IN_REPAIR' | 'RESOLVED'
 export interface EquipmentBreakdown {
   id: number
   equipmentId: number
+  equipmentName?: string | null
   equipmentIdentifier?: string | null
   breakdownDate: string
   location?: string | null
@@ -258,6 +260,8 @@ export const equipmentApi = {
   deleteService: (id: number, serviceId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/services/${serviceId}`).then(r => r.data),
 
   // Breakdowns
+  getAllBreakdowns: () => apiClient.get<ApiResponse<EquipmentBreakdown[]>>('/equipment/breakdowns').then(r => r.data),
+  getAllServices: () => apiClient.get<ApiResponse<EquipmentServiceRecord[]>>('/equipment/services').then(r => r.data),
   getBreakdowns: (id: number) => apiClient.get<ApiResponse<EquipmentBreakdown[]>>(`/equipment/${id}/breakdowns`).then(r => r.data),
   reportBreakdown: (id: number, data: EquipmentBreakdownRequest) => apiClient.post<ApiResponse<EquipmentBreakdown>>(`/equipment/${id}/breakdowns`, data).then(r => r.data),
   resolveBreakdown: (id: number, breakdownId: number) => apiClient.post<ApiResponse<EquipmentBreakdown>>(`/equipment/${id}/breakdowns/${breakdownId}/resolve`, {}).then(r => r.data),

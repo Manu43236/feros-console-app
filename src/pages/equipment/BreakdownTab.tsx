@@ -5,6 +5,7 @@ import { AlertTriangle, Plus, Wrench, Calendar, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { equipmentApi } from '@/api/equipment'
@@ -23,25 +24,33 @@ const STATUS_PILL: Record<string, { label: string; cls: string }> = {
   RESOLVED:  { label: '✓ Resolved',   cls: 'bg-green-50 text-green-700 border-green-200' },
 }
 
-function ReportBreakdownDialog({ open, onClose, equipmentId }: { open: boolean; onClose: () => void; equipmentId: number }) {
+export function ReportBreakdownDialog({ open, onClose, equipmentId, machines }: {
+  open: boolean; onClose: () => void
+  equipmentId?: number
+  machines?: { id: number; label: string }[]
+}) {
   const qc = useQueryClient()
+  const [machineId, setMachineId] = useState<number | null>(equipmentId ?? null)
   const [reason, setReason] = useState('')
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
 
+  const targetId = equipmentId ?? machineId
+
   const mut = useMutation({
-    mutationFn: () => equipmentApi.reportBreakdown(equipmentId, { reason, location: location || null, notes: notes || null }),
+    mutationFn: () => equipmentApi.reportBreakdown(targetId!, { reason, location: location || null, notes: notes || null }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['eq-breakdowns', equipmentId] })
-      qc.invalidateQueries({ queryKey: ['equipment', equipmentId] })
+      qc.invalidateQueries({ queryKey: ['eq-breakdowns'] })
       qc.invalidateQueries({ queryKey: ['equipment'] })
       toast.success('Breakdown reported — machine marked Breakdown')
+      setReason(''); setLocation(''); setNotes(''); if (!equipmentId) setMachineId(null)
       onClose()
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to report breakdown'),
   })
 
   function submit() {
+    if (!targetId) { toast.error('Select a machine'); return }
     if (!reason.trim()) { toast.error('Reason is required'); return }
     mut.mutate()
   }
@@ -51,6 +60,17 @@ function ReportBreakdownDialog({ open, onClose, equipmentId }: { open: boolean; 
       <DialogContent>
         <DialogHeader><DialogTitle>Report Breakdown</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          {machines && (
+            <div>
+              <Label>Machine <span className="text-red-500">*</span></Label>
+              <SearchableSelect
+                value={machineId != null ? String(machineId) : ''}
+                onValueChange={v => setMachineId(Number(v))}
+                options={machines.map(m => ({ value: String(m.id), label: m.label }))}
+                placeholder="Select machine"
+              />
+            </div>
+          )}
           <div>
             <Label>Reason <span className="text-red-500">*</span></Label>
             <textarea
@@ -94,8 +114,7 @@ export function BreakdownTab({ equipmentId, currentHmr }: { equipmentId: number;
   const resolveMut = useMutation({
     mutationFn: (id: number) => equipmentApi.resolveBreakdown(equipmentId, id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['eq-breakdowns', equipmentId] })
-      qc.invalidateQueries({ queryKey: ['equipment', equipmentId] })
+      qc.invalidateQueries({ queryKey: ['eq-breakdowns'] })
       qc.invalidateQueries({ queryKey: ['equipment'] })
       toast.success('Breakdown resolved')
     },

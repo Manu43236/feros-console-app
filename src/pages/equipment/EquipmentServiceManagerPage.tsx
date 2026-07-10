@@ -1,137 +1,263 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Search, Wrench } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { AlertTriangle, Wrench, Plus, Calendar, MapPin, CheckCircle2, Clock, Play } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { equipmentApi } from '@/api/equipment'
-import type { Equipment, EquipmentWorkStatus } from '@/api/equipment'
-import { ServiceTab } from './MachineDetailPage'
-import { BreakdownTab } from './BreakdownTab'
+import type { Equipment, EquipmentBreakdown, EquipmentServiceRecord } from '@/api/equipment'
+import { ServiceDialog } from './MachineDetailPage'
+import { ReportBreakdownDialog } from './BreakdownTab'
 
-// Compact status badge — service-desk view only needs a quick visual cue.
-const WORK_STATUS: Record<EquipmentWorkStatus, { label: string; cls: string }> = {
-  AVAILABLE: { label: 'Available',  cls: 'bg-green-100 text-green-700' },
-  ASSIGNED:  { label: 'Assigned',   cls: 'bg-blue-100 text-blue-700' },
-  BUSY:      { label: 'Busy',       cls: 'bg-orange-100 text-orange-700' },
-  BREAKDOWN: { label: 'Breakdown',  cls: 'bg-red-100 text-red-700' },
-  IN_REPAIR: { label: 'In Repair',  cls: 'bg-yellow-100 text-yellow-700' },
+function fmtDate(s?: string | null) {
+  if (!s) return '—'
+  const d = new Date(s)
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+const BD_PILL: Record<string, { label: string; cls: string }> = {
+  REPORTED:  { label: '⚠ Open',       cls: 'bg-red-50 text-red-600 border-red-200' },
+  IN_REPAIR: { label: '🔧 In Repair', cls: 'bg-orange-50 text-orange-700 border-orange-200' },
+  RESOLVED:  { label: '✓ Resolved',   cls: 'bg-green-50 text-green-700 border-green-200' },
+}
+const SVC_PILL: Record<string, { label: string; cls: string }> = {
+  OPEN:        { label: 'Open',        cls: 'bg-gray-100 text-gray-600' },
+  DUE_SOON:    { label: 'Due Soon',    cls: 'bg-blue-50 text-blue-700' },
+  OVERDUE:     { label: 'Overdue',     cls: 'bg-red-50 text-red-600' },
+  IN_PROGRESS: { label: 'In Progress', cls: 'bg-amber-100 text-amber-700' },
+  COMPLETED:   { label: 'Completed',   cls: 'bg-green-100 text-green-700' },
+}
+
+type ServiceTarget = { equipmentId: number; currentHmr: number | null; editing: EquipmentServiceRecord | null }
+
 export function EquipmentServiceManagerPage() {
-  const [search, setSearch] = useState('')
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [subTab, setSubTab] = useState<'service' | 'breakdown'>('service')
+  const qc = useQueryClient()
+  const [tab, setTab] = useState<'breakdowns' | 'services'>('breakdowns')
+  const [reportOpen, setReportOpen] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickMachine, setPickMachine] = useState<number | null>(null)
+  const [serviceTarget, setServiceTarget] = useState<ServiceTarget | null>(null)
 
-  const { data, isLoading } = useQuery({ queryKey: ['equipment'], queryFn: equipmentApi.getAll })
-  const machines: Equipment[] = (data?.data ?? []) as Equipment[]
+  const { data: machinesRes } = useQuery({ queryKey: ['equipment'], queryFn: equipmentApi.getAll })
+  const machines: Equipment[] = (machinesRes?.data ?? []) as Equipment[]
 
-  const filtered = machines.filter(m => {
-    const q = search.toLowerCase()
-    return (
-      m.makeName.toLowerCase().includes(q) ||
-      m.modelName.toLowerCase().includes(q) ||
-      m.equipmentTypeName.toLowerCase().includes(q) ||
-      (m.serialNumber ?? '').toLowerCase().includes(q) ||
-      (m.registrationNumber ?? '').toLowerCase().includes(q)
-    )
+  const { data: bdRes, isLoading: bdLoading } = useQuery({
+    queryKey: ['eq-breakdowns', 'all'], queryFn: equipmentApi.getAllBreakdowns,
+  })
+  const breakdowns: EquipmentBreakdown[] = (bdRes?.data ?? []) as EquipmentBreakdown[]
+
+  const { data: svcRes, isLoading: svcLoading } = useQuery({
+    queryKey: ['eq-services', 'all'], queryFn: equipmentApi.getAllServices,
+  })
+  const services: EquipmentServiceRecord[] = (svcRes?.data ?? []) as EquipmentServiceRecord[]
+
+  const openBreakdowns = breakdowns.filter(b => b.status !== 'RESOLVED').length
+  const activeServices = services.filter(s => s.status !== 'COMPLETED').length
+
+  const machineHmr = (id: number) => {
+    const m = machines.find(x => x.id === id)
+    return m?.currentMeterReading != null ? Number(m.currentMeterReading) : null
+  }
+  const machineOptions = machines.map(m => ({
+    id: m.id,
+    label: `${m.makeName} ${m.modelName}${m.serialNumber ? ` · ${m.serialNumber}` : ''}`,
+  }))
+
+  const resolveMut = useMutation({
+    mutationFn: (b: EquipmentBreakdown) => equipmentApi.resolveBreakdown(b.equipmentId, b.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eq-breakdowns'] }); qc.invalidateQueries({ queryKey: ['equipment'] })
+      toast.success('Breakdown resolved')
+    },
+    onError: () => toast.error('Failed to resolve'),
+  })
+  const startMut = useMutation({
+    mutationFn: (s: EquipmentServiceRecord) => equipmentApi.startService(s.equipmentId, s.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eq-services'] }); qc.invalidateQueries({ queryKey: ['eq-breakdowns'] }); qc.invalidateQueries({ queryKey: ['equipment'] })
+      toast.success('Service started — machine In Repair')
+    },
+    onError: () => toast.error('Failed to start'),
+  })
+  const completeMut = useMutation({
+    mutationFn: (s: EquipmentServiceRecord) => equipmentApi.completeService(s.equipmentId, s.id, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eq-services'] }); qc.invalidateQueries({ queryKey: ['eq-breakdowns'] }); qc.invalidateQueries({ queryKey: ['equipment'] })
+      toast.success('Service completed')
+    },
+    onError: () => toast.error('Failed to complete'),
   })
 
-  // Default to the first machine once loaded.
-  const selected = machines.find(m => m.id === selectedId)
-    ?? (selectedId === null ? filtered[0] : undefined)
+  function logServiceFor(equipmentId: number) {
+    setServiceTarget({ equipmentId, currentHmr: machineHmr(equipmentId), editing: null })
+  }
+  function confirmNewService() {
+    if (!pickMachine) { toast.error('Select a machine'); return }
+    const id = pickMachine
+    setPickerOpen(false); setPickMachine(null)
+    setServiceTarget({ equipmentId: id, currentHmr: machineHmr(id), editing: null })
+  }
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Equipment Services</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Log and track machine service records</p>
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Equipment Services</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Examine breakdowns and log machine services</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg font-medium">
+            <AlertTriangle size={13} /> {openBreakdowns} breakdowns
+          </span>
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-medium">
+            <Wrench size={13} /> {activeServices} services
+          </span>
+        </div>
       </div>
 
-      <div className="flex gap-6">
-        {/* Machine list */}
-        <div className="w-72 shrink-0 space-y-3">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Search machines…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9"
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        {([
+          { key: 'breakdowns', label: 'Breakdowns',       count: openBreakdowns, icon: AlertTriangle },
+          { key: 'services',   label: 'General Services', count: activeServices, icon: Wrench },
+        ] as const).map(({ key, label, count, icon: Icon }) => (
+          <button key={key} onClick={() => setTab(key)}
+            className={cn('flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors',
+              tab === key ? 'border-feros-equip-sidebar text-feros-equip-sidebar' : 'border-transparent text-gray-500 hover:text-gray-700')}>
+            <Icon size={14} /> {label}
+            <span className={cn('inline-flex items-center justify-center min-w-[20px] h-5 rounded-full text-xs font-bold px-1',
+              tab === key ? 'bg-feros-equip-sidebar text-white' : 'bg-gray-100 text-gray-600')}>{count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Breakdowns */}
+      {tab === 'breakdowns' && (
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setReportOpen(true)}
+              className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1.5">
+              <Plus size={14} /> Report Breakdown
+            </Button>
+          </div>
+          {bdLoading ? (
+            <div className="flex items-center justify-center h-32 text-gray-400 text-sm gap-2"><Clock size={15} /> Loading…</div>
+          ) : breakdowns.length === 0 ? (
+            <div className="py-12 text-center text-gray-400"><CheckCircle2 size={32} className="mx-auto mb-3 text-gray-200" /><p className="text-sm font-medium text-gray-500">No breakdowns</p></div>
+          ) : breakdowns.map(b => {
+            const pill = BD_PILL[b.status] ?? { label: b.status, cls: 'bg-gray-50 text-gray-600 border-gray-200' }
+            const isOpen = b.status !== 'RESOLVED'
+            return (
+              <div key={b.id} className="border border-gray-100 rounded-xl p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-800">{b.equipmentName ?? b.equipmentIdentifier ?? 'Machine'}</span>
+                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border', pill.cls)}>{pill.label}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 mt-1.5">{b.reason}</p>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+                      <span><Calendar size={11} className="inline mr-1" />{fmtDate(b.breakdownDate)}</span>
+                      {b.location && <span><MapPin size={11} className="inline mr-1" />{b.location}</span>}
+                      {b.reportedByName && <span>By {b.reportedByName}</span>}
+                    </div>
+                  </div>
+                  {isOpen && (
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      <Button size="sm" onClick={() => logServiceFor(b.equipmentId)}
+                        className="h-7 text-xs bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1"><Wrench size={12} /> Log Service</Button>
+                      <Button size="sm" variant="outline" disabled={resolveMut.isPending}
+                        onClick={() => resolveMut.mutate(b)} className="h-7 text-xs">Resolve</Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* General Services */}
+      {tab === 'services' && (
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setPickerOpen(true)}
+              className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1.5">
+              <Plus size={14} /> New Service
+            </Button>
+          </div>
+          {svcLoading ? (
+            <div className="flex items-center justify-center h-32 text-gray-400 text-sm gap-2"><Clock size={15} /> Loading…</div>
+          ) : services.length === 0 ? (
+            <div className="py-12 text-center text-gray-400"><Wrench size={32} className="mx-auto mb-3 text-gray-200" /><p className="text-sm font-medium text-gray-500">No services</p></div>
+          ) : services.map(s => {
+            const pill = SVC_PILL[s.displayStatus] ?? { label: s.displayStatus, cls: 'bg-gray-100 text-gray-600' }
+            return (
+              <div key={s.id} className="border border-gray-100 rounded-xl p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <button className="flex-1 min-w-0 text-left"
+                    onClick={() => setServiceTarget({ equipmentId: s.equipmentId, currentHmr: machineHmr(s.equipmentId), editing: s })}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-800">{s.equipmentName ?? s.equipmentIdentifier ?? 'Machine'}</span>
+                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', pill.cls)}>{pill.label}</span>
+                      {s.serviceNumber && <span className="text-xs text-gray-400 font-mono">{s.serviceNumber}</span>}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+                      <span><Calendar size={11} className="inline mr-1" />{fmtDate(s.serviceDate)}</span>
+                      {s.totalCost != null && <span>₹{s.totalCost}</span>}
+                    </div>
+                  </button>
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    {s.status === 'OPEN' && (
+                      <Button size="sm" disabled={startMut.isPending} onClick={() => startMut.mutate(s)}
+                        className="h-7 text-xs bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1"><Play size={12} /> Start</Button>
+                    )}
+                    {s.status === 'IN_PROGRESS' && (
+                      <Button size="sm" disabled={completeMut.isPending} onClick={() => completeMut.mutate(s)}
+                        className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1"><CheckCircle2 size={12} /> Complete</Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Dialogs */}
+      <ReportBreakdownDialog open={reportOpen} onClose={() => setReportOpen(false)} machines={machineOptions} />
+
+      <Dialog open={pickerOpen} onOpenChange={o => !o && setPickerOpen(false)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>New Service — Select Machine</DialogTitle></DialogHeader>
+          <div>
+            <Label>Machine <span className="text-red-500">*</span></Label>
+            <SearchableSelect
+              value={pickMachine != null ? String(pickMachine) : ''}
+              onValueChange={v => setPickMachine(Number(v))}
+              options={machineOptions.map(m => ({ value: String(m.id), label: m.label }))}
+              placeholder="Select machine"
             />
           </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setPickerOpen(false); setPickMachine(null) }}>Cancel</Button>
+            <Button size="sm" onClick={confirmNewService} className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white">Continue</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <div className="border rounded-lg overflow-hidden divide-y max-h-[70vh] overflow-y-auto">
-            {isLoading ? (
-              <div className="px-4 py-8 text-center text-gray-400 text-sm">Loading…</div>
-            ) : filtered.length === 0 ? (
-              <div className="px-4 py-8 text-center text-gray-400 text-sm">
-                {search ? 'No machines match' : 'No machines yet'}
-              </div>
-            ) : filtered.map(m => {
-              const ws = WORK_STATUS[m.workStatus] ?? { label: m.workStatus, cls: 'bg-gray-100 text-gray-600' }
-              const active = selected?.id === m.id
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => setSelectedId(m.id)}
-                  className={cn(
-                    'w-full text-left px-4 py-3 transition-colors',
-                    active ? 'bg-feros-equip-sidebar text-white' : 'hover:bg-gray-50'
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-sm truncate">{m.makeName} {m.modelName}</span>
-                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0',
-                      active ? 'bg-white/20 text-white' : ws.cls)}>
-                      {ws.label}
-                    </span>
-                  </div>
-                  <p className={cn('text-xs mt-0.5 truncate', active ? 'text-white/70' : 'text-gray-500')}>
-                    {m.equipmentTypeName}{m.serialNumber && ` · ${m.serialNumber}`}
-                  </p>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Selected machine's services */}
-        <div className="flex-1 min-w-0">
-          {selected ? (
-            <div className="border rounded-lg p-6 bg-white">
-              <div className="mb-4 pb-4 border-b">
-                <h2 className="text-lg font-semibold text-gray-900">{selected.makeName} {selected.modelName}</h2>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {selected.equipmentTypeName}
-                  {selected.serialNumber && <span className="ml-2 font-mono">S/N {selected.serialNumber}</span>}
-                </p>
-              </div>
-
-              <div className="flex gap-1 mb-4">
-                {(['service', 'breakdown'] as const).map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setSubTab(t)}
-                    className={cn('px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                      subTab === t ? 'bg-feros-equip-sidebar text-white' : 'text-gray-600 hover:bg-gray-100')}
-                  >
-                    {t === 'service' ? 'Service' : 'Breakdowns'}
-                  </button>
-                ))}
-              </div>
-
-              {subTab === 'service'
-                ? <ServiceTab equipmentId={selected.id} currentHmr={selected.currentMeterReading} />
-                : <BreakdownTab equipmentId={selected.id} currentHmr={selected.currentMeterReading} />}
-            </div>
-          ) : (
-            <div className="border rounded-lg p-12 bg-white text-center text-gray-400">
-              <Wrench size={32} className="mx-auto mb-3 text-gray-200" />
-              <p className="text-sm">Select a machine to view or log services</p>
-            </div>
-          )}
-        </div>
-      </div>
+      {serviceTarget && (
+        <ServiceDialog
+          open={!!serviceTarget}
+          onClose={() => { setServiceTarget(null); qc.invalidateQueries({ queryKey: ['eq-services'] }) }}
+          equipmentId={serviceTarget.equipmentId}
+          editing={serviceTarget.editing}
+          currentHmr={serviceTarget.currentHmr}
+        />
+      )}
     </div>
   )
 }
