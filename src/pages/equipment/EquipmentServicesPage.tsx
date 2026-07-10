@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Search, Wrench, IndianRupee, AlertTriangle, Trash2, Calendar } from 'lucide-react'
+import { Search, Wrench, IndianRupee, AlertTriangle, Trash2, Info, ChevronDown, ChevronUp } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -64,6 +64,64 @@ function DeleteDialog({ record, onClose }: { record: EquipmentServiceRecord | nu
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function serviceTypeLabel(s: string, vendorName?: string | null) {
+  if (s === 'INTERNAL') return 'Internal (Self)'
+  if (s === 'OEM_CENTER') return `OEM: ${vendorName ?? 'Service Center'}`
+  return vendorName ?? '3rd Party'
+}
+
+function ServiceRow({ record, onDelete, onDetail }: { record: EquipmentServiceRecord; onDelete: () => void; onDetail: () => void }) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <div className="bg-white rounded-xl border hover:border-gray-300 transition-colors">
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-gray-900 text-sm">{record.equipmentName ?? record.equipmentIdentifier ?? 'Machine'}</span>
+              <span className="text-xs text-gray-400">{record.serviceNumber}</span>
+              {statusChip(record.displayStatus)}
+              {triggeredByChip(record.triggeredBy)}
+            </div>
+            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
+              <span className="text-gray-700">{serviceTypeLabel(record.serviceType, record.vendorName)}</span>
+              {record.serviceDate && <span>Date: <span className="text-gray-700">{fmtDate(record.serviceDate)}</span></span>}
+              {record.hmrAtService != null && <span>HMR: <span className="text-gray-700">{record.hmrAtService.toLocaleString('en-IN')} hrs</span></span>}
+              {record.completedDate && <span>Completed: <span className="text-gray-700">{fmtDate(record.completedDate)}</span></span>}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {record.totalCost != null && record.totalCost > 0 && <span className="text-sm font-semibold text-gray-900">{fmt(record.totalCost)}</span>}
+            <button onClick={onDetail} className="p-1.5 text-gray-400 hover:text-feros-navy rounded transition-colors" title="View details"><Info size={15} /></button>
+            <button onClick={() => setExpanded(v => !v)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded transition-colors" title={expanded ? 'Collapse' : 'Expand tasks'}>{expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</button>
+            {record.status === 'OPEN' && <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 rounded transition-colors" title="Delete"><Trash2 size={15} /></button>}
+          </div>
+        </div>
+      </div>
+      {expanded && record.tasks && record.tasks.length > 0 && (
+        <div className="border-t px-4 py-3">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Tasks</p>
+          <div className="space-y-1.5">
+            {record.tasks.map(t => (
+              <div key={t.id} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.status === 'COMPLETED' ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <span className="text-gray-700">{t.displayName}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {t.cost != null && <span className="text-gray-500 text-xs">{fmt(t.cost)}</span>}
+                  <span className={`text-xs ${t.status === 'COMPLETED' ? 'text-green-600' : 'text-gray-400'}`}>{t.status === 'COMPLETED' ? 'Done' : 'Pending'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {record.notes && <p className="text-xs text-gray-500 mt-2 border-t pt-2">{record.notes}</p>}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -160,26 +218,7 @@ export function EquipmentServicesPage() {
           ) : (
             <div className="space-y-3">
               {filtered.map(r => (
-                <div key={r.id} className="bg-white rounded-xl border p-4 hover:border-gray-300 transition-colors">
-                  <div className="flex items-start justify-between gap-3">
-                    <button className="flex-1 min-w-0 text-left" onClick={() => setDetail(r)}>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-gray-900">{r.equipmentName ?? r.equipmentIdentifier ?? 'Machine'}</span>
-                        {statusChip(r.displayStatus)}
-                        {triggeredByChip(r.triggeredBy)}
-                        {r.serviceNumber && <span className="text-xs text-gray-400 font-mono">{r.serviceNumber}</span>}
-                      </div>
-                      <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500 flex-wrap">
-                        <span><Calendar size={11} className="inline mr-1" />{fmtDate(r.serviceDate)}</span>
-                        {r.vendorName && <span>{r.vendorName}</span>}
-                        {r.totalCost != null && <span className="font-medium text-gray-700">{fmt(r.totalCost)}</span>}
-                      </div>
-                    </button>
-                    {r.status === 'OPEN' && (
-                      <button onClick={() => setToDelete(r)} className="text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={15} /></button>
-                    )}
-                  </div>
-                </div>
+                <ServiceRow key={r.id} record={r} onDelete={() => setToDelete(r)} onDetail={() => setDetail(r)} />
               ))}
             </div>
           )}
