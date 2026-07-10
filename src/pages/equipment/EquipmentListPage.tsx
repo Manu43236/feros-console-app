@@ -376,7 +376,9 @@ function EquipmentFormDialog({
                 <SearchableSelect
                   value={form.workStatus ?? ''}
                   onValueChange={v => set('workStatus', v as EquipmentWorkStatus)}
-                  options={Object.entries(WORK_STATUS_BADGE).map(([v, { label }]) => ({ value: v, label }))}
+                  options={Object.entries(WORK_STATUS_BADGE)
+                    .filter(([v]) => v !== 'BREAKDOWN' && v !== 'IN_REPAIR')
+                    .map(([v, { label }]) => ({ value: v, label }))}
                   placeholder="Select"
                   showSearch={false}
                 />

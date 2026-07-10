@@ -205,6 +205,29 @@ export interface EquipmentServiceRequest {
   tasks: EquipmentServiceTaskRequest[]
 }
 
+export type EquipmentBreakdownStatus = 'REPORTED' | 'IN_REPAIR' | 'RESOLVED'
+
+export interface EquipmentBreakdown {
+  id: number
+  equipmentId: number
+  equipmentIdentifier?: string | null
+  breakdownDate: string
+  location?: string | null
+  reason: string
+  notes?: string | null
+  status: EquipmentBreakdownStatus
+  reportedByName?: string | null
+  resolvedAt?: string | null
+  createdAt: string
+}
+
+export interface EquipmentBreakdownRequest {
+  reason: string
+  breakdownDate?: string | null
+  location?: string | null
+  notes?: string | null
+}
+
 export const equipmentApi = {
   getDashboard: () => apiClient.get<ApiResponse<EquipmentDashboardResponse>>('/equipment/dashboard').then(r => r.data),
   getAll: () => apiClient.get<ApiResponse<Equipment[]>>('/equipment').then(r => r.data),
@@ -233,4 +256,9 @@ export const equipmentApi = {
   startService: (id: number, serviceId: number) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/start`, {}).then(r => r.data),
   completeService: (id: number, serviceId: number, data: { completedHmr?: number | null; completedDate?: string | null }) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/complete`, data).then(r => r.data),
   deleteService: (id: number, serviceId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/services/${serviceId}`).then(r => r.data),
+
+  // Breakdowns
+  getBreakdowns: (id: number) => apiClient.get<ApiResponse<EquipmentBreakdown[]>>(`/equipment/${id}/breakdowns`).then(r => r.data),
+  reportBreakdown: (id: number, data: EquipmentBreakdownRequest) => apiClient.post<ApiResponse<EquipmentBreakdown>>(`/equipment/${id}/breakdowns`, data).then(r => r.data),
+  resolveBreakdown: (id: number, breakdownId: number) => apiClient.post<ApiResponse<EquipmentBreakdown>>(`/equipment/${id}/breakdowns/${breakdownId}/resolve`, {}).then(r => r.data),
 }

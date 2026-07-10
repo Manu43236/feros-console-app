@@ -20,6 +20,7 @@ import { machinesApi } from '@/api/machines'
 import type { Equipment, EquipmentWorkStatus, EquipmentFuelLog, EquipmentFuelLogRequest, EquipmentMeterReading, EquipmentMeterReadingRequest, EquipmentServiceRecord, EquipmentServiceRequest, ServiceTriggeredBy, EquipmentServiceType, ServicePayerType } from '@/api/equipment'
 import type { MasterItem } from '@/types'
 import type { MachineAssignmentHistory, MachineDailyLog, MachineInvoiceItem } from '@/api/machines'
+import { BreakdownTab } from './BreakdownTab'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function fmtDate(d?: string | null) {
@@ -65,7 +66,7 @@ const WORK_STATUS: Record<EquipmentWorkStatus, { label: string; cls: string }> =
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Utilization', 'HMR', 'Fuel', 'Service', 'WO History', 'Billings'] as const
+const TABS = ['Basic Info', 'Utilization', 'HMR', 'Fuel', 'Service', 'Breakdown', 'WO History', 'Billings'] as const
 type Tab = typeof TABS[number]
 
 function tabIcon(t: Tab) {
@@ -76,6 +77,7 @@ function tabIcon(t: Tab) {
   if (t === 'WO History')  return <ClipboardList size={14} />
   if (t === 'Billings')    return <FileText size={14} />
   if (t === 'Service')     return <Wrench size={14} />
+  if (t === 'Breakdown')   return <AlertTriangle size={14} />
 }
 
 // ── Date filter bar ───────────────────────────────────────────────────────────
@@ -642,7 +644,7 @@ function defaultDraft(currentHmr?: number | null): ServiceDraft {
   }
 }
 
-function ServiceDialog({
+export function ServiceDialog({
   open, onClose, equipmentId, editing, currentHmr,
 }: { open: boolean; onClose: () => void; equipmentId: number; editing: EquipmentServiceRecord | null; currentHmr?: number | null }) {
   const qc = useQueryClient()
@@ -1583,6 +1585,7 @@ export function MachineDetailPage() {
           {activeTab === 'HMR'         && <HmrTab equipmentId={id} logs={logs} />}
           {activeTab === 'Fuel'        && <FuelTab equipmentId={id} />}
           {activeTab === 'Service'      && <ServiceTab equipmentId={id} currentHmr={machine.currentMeterReading != null ? Number(machine.currentMeterReading) : null} />}
+          {activeTab === 'Breakdown'   && <BreakdownTab equipmentId={id} currentHmr={machine.currentMeterReading != null ? Number(machine.currentMeterReading) : null} />}
           {activeTab === 'WO History'  && <WoHistoryTab history={history} navigate={navigate} />}
           {activeTab === 'Billings'    && <BillingsTab items={invItems} navigate={navigate} />}
         </div>

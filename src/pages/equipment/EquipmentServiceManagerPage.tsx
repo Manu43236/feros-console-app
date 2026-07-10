@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { equipmentApi } from '@/api/equipment'
 import type { Equipment, EquipmentWorkStatus } from '@/api/equipment'
 import { ServiceTab } from './MachineDetailPage'
+import { BreakdownTab } from './BreakdownTab'
 
 // Compact status badge — service-desk view only needs a quick visual cue.
 const WORK_STATUS: Record<EquipmentWorkStatus, { label: string; cls: string }> = {
@@ -19,6 +20,7 @@ const WORK_STATUS: Record<EquipmentWorkStatus, { label: string; cls: string }> =
 export function EquipmentServiceManagerPage() {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [subTab, setSubTab] = useState<'service' | 'breakdown'>('service')
 
   const { data, isLoading } = useQuery({ queryKey: ['equipment'], queryFn: equipmentApi.getAll })
   const machines: Equipment[] = (data?.data ?? []) as Equipment[]
@@ -104,7 +106,23 @@ export function EquipmentServiceManagerPage() {
                   {selected.serialNumber && <span className="ml-2 font-mono">S/N {selected.serialNumber}</span>}
                 </p>
               </div>
-              <ServiceTab equipmentId={selected.id} currentHmr={selected.currentMeterReading} />
+
+              <div className="flex gap-1 mb-4">
+                {(['service', 'breakdown'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setSubTab(t)}
+                    className={cn('px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                      subTab === t ? 'bg-feros-equip-sidebar text-white' : 'text-gray-600 hover:bg-gray-100')}
+                  >
+                    {t === 'service' ? 'Service' : 'Breakdowns'}
+                  </button>
+                ))}
+              </div>
+
+              {subTab === 'service'
+                ? <ServiceTab equipmentId={selected.id} currentHmr={selected.currentMeterReading} />
+                : <BreakdownTab equipmentId={selected.id} currentHmr={selected.currentMeterReading} />}
             </div>
           ) : (
             <div className="border rounded-lg p-12 bg-white text-center text-gray-400">
