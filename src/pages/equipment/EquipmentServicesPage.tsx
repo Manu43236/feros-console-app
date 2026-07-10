@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { cn } from '@/lib/utils'
 import { equipmentApi } from '@/api/equipment'
 import type { EquipmentServiceRecord, ServiceDisplayStatus } from '@/api/equipment'
-import { ServiceDialog } from './MachineDetailPage'
+import { EquipmentServiceDetailModal } from './EquipmentServiceDetailModal'
 
 const EQUIP = '#1C1400'
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
@@ -71,7 +71,7 @@ export function EquipmentServicesPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterType>('ALL')
   const [toDelete, setToDelete] = useState<EquipmentServiceRecord | null>(null)
-  const [editing, setEditing] = useState<EquipmentServiceRecord | null>(null)
+  const [detail, setDetail] = useState<EquipmentServiceRecord | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['eq-services', 'all'], queryFn: equipmentApi.getAllServices })
   const records = [...((data?.data ?? []) as EquipmentServiceRecord[])].sort((a, b) => b.id - a.id)
@@ -162,7 +162,7 @@ export function EquipmentServicesPage() {
               {filtered.map(r => (
                 <div key={r.id} className="bg-white rounded-xl border p-4 hover:border-gray-300 transition-colors">
                   <div className="flex items-start justify-between gap-3">
-                    <button className="flex-1 min-w-0 text-left" onClick={() => setEditing(r)}>
+                    <button className="flex-1 min-w-0 text-left" onClick={() => setDetail(r)}>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-gray-900">{r.equipmentName ?? r.equipmentIdentifier ?? 'Machine'}</span>
                         {statusChip(r.displayStatus)}
@@ -187,9 +187,8 @@ export function EquipmentServicesPage() {
       </div>
 
       <DeleteDialog record={toDelete} onClose={() => setToDelete(null)} />
-      {editing && (
-        <ServiceDialog open={!!editing} onClose={() => setEditing(null)} equipmentId={editing.equipmentId} editing={editing} currentHmr={null} />
-      )}
+      <EquipmentServiceDetailModal service={detail} open={!!detail} onClose={() => setDetail(null)} />
+
     </div>
   )
 }

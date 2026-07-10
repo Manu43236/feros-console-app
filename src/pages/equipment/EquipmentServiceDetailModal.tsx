@@ -1,0 +1,195 @@
+import { format, parseISO, isValid } from 'date-fns'
+import {
+  Wrench, MapPin, Calendar, IndianRupee, FileText,
+  CheckCircle, Clock, Circle, Package, User, Play, CheckCircle2,
+} from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import type { EquipmentServiceRecord } from '@/api/equipment'
+import { cn } from '@/lib/utils'
+
+function calcDuration(start?: string | null, end?: string | null): string | null {
+  if (!start || !end) return null
+  try {
+    const mins = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000)
+    if (mins < 1) return null
+    if (mins < 60) return `${mins}m`
+    const h = Math.floor(mins / 60), m = mins % 60
+    return m > 0 ? `${h}h ${m}m` : `${h}h`
+  } catch { return null }
+}
+function fmtDt(d?: string | null) {
+  if (!d) return null
+  try { const p = parseISO(d); return isValid(p) ? format(p, 'dd MMM yyyy, hh:mm a') : null } catch { return null }
+}
+function fmtDate(d?: string | null) {
+  if (!d) return null
+  try { const p = parseISO(d); return isValid(p) ? format(p, 'dd MMM yyyy') : null } catch { return null }
+}
+
+interface TimelineEvent { label: string; sub?: string | null; done: boolean; active?: boolean }
+function Timeline({ events }: { events: TimelineEvent[] }) {
+  return (
+    <div className="relative pl-6">
+      <div className="absolute left-2.5 top-2 bottom-2 w-px bg-gray-200" />
+      <div className="space-y-5">
+        {events.map((e, i) => (
+          <div key={i} className="relative flex items-start gap-3">
+            <div className={cn('absolute -left-6 w-5 h-5 rounded-full border-2 flex items-center justify-center bg-white shrink-0 mt-0.5',
+              e.done && !e.active ? 'border-green-500' : e.active ? 'border-orange-400' : 'border-gray-200')}>
+              {e.done && !e.active ? <CheckCircle size={12} className="text-green-500" />
+                : e.active ? <Clock size={12} className="text-orange-400" /> : <Circle size={12} className="text-gray-200" />}
+            </div>
+            <div className="min-w-0">
+              <p className={cn('text-sm font-medium', e.done ? 'text-gray-800' : 'text-gray-400')}>{e.label}</p>
+              {e.sub && <p className="text-xs text-gray-400 mt-0.5">{e.sub}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function partChip(s: string) {
+  const map: Record<string, string> = { REQUESTED: 'bg-yellow-50 text-yellow-700', APPROVED: 'bg-green-50 text-green-700', REJECTED: 'bg-red-50 text-red-700' }
+  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${map[s] ?? 'bg-gray-100 text-gray-600'}`}>{s}</span>
+}
+
+export function EquipmentServiceDetailModal({ service, open, onClose }: { service: EquipmentServiceRecord | null; open: boolean; onClose: () => void }) {
+  if (!service) return null
+  const parts = (service.tasks ?? []).flatMap(t => t.parts ?? [])
+
+  const isCompleted = service.status === 'COMPLETED'
+  const isInProgress = service.status === 'IN_PROGRESS'
+
+  const timelineEvents: TimelineEvent[] = [
+    { label: 'Service Created', sub: fmtDt(service.createdAt), done: true },
+    { label: 'Work Started', sub: service.startedAt ? fmtDt(service.startedAt) : (isInProgress || isCompleted) ? 'Started' : null, done: isInProgress || isCompleted, active: isInProgress },
+    { label: 'Completed', sub: service.completedDate ? fmtDate(service.completedDate) : null, done: isCompleted },
+  ]
+  const totalTaskCost = (service.tasks ?? []).reduce((sum, t) => sum + (t.cost ?? 0), 0)
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wrench size={16} className="text-feros-navy" />
+            {service.serviceNumber}
+          </DialogTitle>
+          <p className="text-xs text-gray-400 mt-0.5">{service.equipmentName ?? service.equipmentIdentifier}</p>
+        </DialogHeader>
+
+        <div className="space-y-5 pt-1">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center gap-2 text-gray-600">
+              <User size={13} className="text-gray-400 shrink-0" />
+              <span>{service.serviceType === 'INTERNAL' ? 'Internal (Self)' : service.serviceType === 'OEM_CENTER' ? `OEM: ${service.vendorName ?? 'Service Center'}` : service.vendorName ?? '3rd Party'}</span>
+            </div>
+            {service.payerType && service.payerType !== 'OWN_EXPENSE' && (
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                  {service.payerType === 'WARRANTY_OEM' ? 'OEM Warranty' : service.payerType === 'WARRANTY_ANC' ? 'ANC Warranty' : service.payerType === 'INSURANCE' ? 'Insurance' : service.payerType === 'AMC' ? 'AMC Contract' : service.payerType}
+                </span>
+              </div>
+            )}
+            {service.isEscalated && (
+              <div className="col-span-2"><span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">⚠ Escalated from internal to 3rd party</span></div>
+            )}
+            {service.location && <div className="flex items-center gap-2 text-gray-600"><MapPin size={13} className="text-gray-400 shrink-0" /><span>{service.location}</span></div>}
+            {service.serviceDate && <div className="flex items-center gap-2 text-gray-600"><Calendar size={13} className="text-gray-400 shrink-0" /><span>{fmtDate(service.serviceDate)}</span></div>}
+            {service.hmrAtService != null && <div className="flex items-center gap-2 text-gray-600"><span className="text-gray-400 text-xs shrink-0">HMR</span><span>{service.hmrAtService.toLocaleString('en-IN')} hrs</span></div>}
+            {service.dueAtHmr != null && <div className="flex items-center gap-2 text-gray-600"><span className="text-gray-400 text-xs shrink-0">Due at</span><span>{service.dueAtHmr.toLocaleString('en-IN')} hrs</span></div>}
+          </div>
+
+          {service.payerType === 'INSURANCE' && (service.insuranceClaimNo || service.insuranceClaimAmt) && (
+            <div className="bg-blue-50 rounded-lg px-3 py-2.5 text-sm space-y-1">
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Insurance Claim</p>
+              {service.insuranceClaimNo && <p className="text-gray-700">Claim No: <span className="font-medium">{service.insuranceClaimNo}</span></p>}
+              {service.insuranceClaimAmt != null && <p className="text-gray-700">Claim Amount: <span className="font-medium inline-flex items-center gap-0.5"><IndianRupee size={11} />{service.insuranceClaimAmt.toLocaleString('en-IN')}</span></p>}
+            </div>
+          )}
+          {service.triggeredBy === 'COMPLIANCE' && (service.certificateNumber || service.certificateValidUntil) && (
+            <div className="bg-purple-50 rounded-lg px-3 py-2.5 text-sm space-y-1">
+              <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Compliance Certificate</p>
+              {service.certificateNumber && <p className="text-gray-700">Certificate No: <span className="font-medium">{service.certificateNumber}</span></p>}
+              {service.certificateValidUntil && <p className="text-gray-700">Valid Until: <span className="font-medium">{fmtDate(service.certificateValidUntil)}</span></p>}
+            </div>
+          )}
+
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Timeline</p>
+            <Timeline events={timelineEvents} />
+          </div>
+
+          {service.tasks.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Tasks</p>
+              <div className="space-y-2">
+                {service.tasks.map(t => {
+                  const duration = calcDuration(t.mechanicStartedAt, t.mechanicClosedAt)
+                  return (
+                    <div key={t.id} className="py-1.5 border-b border-gray-50 last:border-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', t.status === 'COMPLETED' ? 'bg-green-500' : t.status === 'MECHANIC_CLOSED' ? 'bg-purple-400' : 'bg-gray-300')} />
+                          <span className="text-sm text-gray-700">{t.displayName}</span>
+                          {t.isRecurring && t.frequencyHmr && <span className="text-xs text-gray-400">🔄 {t.frequencyHmr.toLocaleString('en-IN')} hrs</span>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                          {duration && <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{duration}</span>}
+                          {(t.cost ?? 0) > 0 && <span className="text-sm text-gray-600 flex items-center gap-0.5"><IndianRupee size={11} />{t.cost?.toLocaleString('en-IN')}</span>}
+                        </div>
+                      </div>
+                      {(t.assignedMechanicName || t.mechanicStartedAt || t.mechanicClosedAt) && (
+                        <div className="mt-1 ml-3.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                          {t.assignedMechanicName && <span className="flex items-center gap-1 text-xs text-gray-500"><User size={10} className="text-gray-400" /> {t.assignedMechanicName}</span>}
+                          {t.mechanicStartedAt && <span className="flex items-center gap-1 text-xs text-blue-500"><Play size={9} /> {fmtDt(t.mechanicStartedAt)}</span>}
+                          {t.mechanicClosedAt && <span className="flex items-center gap-1 text-xs text-purple-500"><CheckCircle2 size={9} /> {fmtDt(t.mechanicClosedAt)}</span>}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                {totalTaskCost > 0 && (
+                  <div className="flex justify-between pt-1 text-sm font-semibold text-gray-800">
+                    <span>Total Cost</span>
+                    <span className="flex items-center gap-0.5 text-green-700"><IndianRupee size={12} />{totalTaskCost.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <Package size={12} /> Parts Used
+              {parts.length > 0 && <span className="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold">{parts.length}</span>}
+            </p>
+            {parts.length === 0 ? <p className="text-xs text-gray-400">No parts used</p> : (
+              <div className="space-y-1.5">
+                {parts.map(p => (
+                  <div key={p.id} className="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-700">{p.sparePartName}</span>
+                      <span className="text-xs text-gray-400">{p.quantityRequested} {p.unit ?? ''}</span>
+                      {partChip(p.status)}
+                    </div>
+                    {p.status === 'REJECTED' && p.rejectionReason && <span className="text-xs text-red-500 max-w-[150px] truncate">{p.rejectionReason}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {service.notes && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1 flex items-center gap-1.5"><FileText size={12} /> Notes</p>
+              <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">{service.notes}</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

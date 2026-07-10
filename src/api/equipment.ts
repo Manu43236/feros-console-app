@@ -132,7 +132,7 @@ export type EquipmentServiceType = 'INTERNAL' | 'THIRD_PARTY' | 'OEM_CENTER'
 export type ServicePayerType = 'OWN_EXPENSE' | 'WARRANTY_OEM' | 'WARRANTY_ANC' | 'INSURANCE' | 'AMC'
 export type ServiceStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
 export type ServiceDisplayStatus = 'OPEN' | 'DUE_SOON' | 'OVERDUE' | 'IN_PROGRESS' | 'COMPLETED'
-export type ServiceTaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
+export type ServiceTaskStatus = 'PENDING' | 'ASSIGNED' | 'IN_PROGRESS' | 'MECHANIC_CLOSED' | 'COMPLETED'
 
 export type EquipmentServicePartStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED'
 
