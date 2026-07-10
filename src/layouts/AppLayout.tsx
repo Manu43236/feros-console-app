@@ -601,6 +601,17 @@ export function AppLayout() {
     moduleType === 'EQUIPMENT_ONLY' ||
     (moduleType === 'BOTH' && currentMode === 'EQUIPMENT')
 
+  // Service managers get a visible Equipment Services item when the tenant has equipment.
+  // canAccessEquipment is null unless a staff profile sets it, so gate on tenant moduleType.
+  const smHasEquipment =
+    (moduleType === 'BOTH' || moduleType === 'EQUIPMENT_ONLY') && canAccessEquipment !== false
+  const serviceManagerNav: FlatNav = smHasEquipment
+    ? SERVICE_MANAGER_NAV.flatMap(item =>
+        item.to === '/vehicle-services'
+          ? [item, { to: '/equipment/services', label: 'Equipment Services', icon: Construction }]
+          : [item])
+    : SERVICE_MANAGER_NAV
+
   const nav: SectionedNav | FlatNav =
     role === 'SUPER_ADMIN'  ? SUPER_ADMIN_NAV :
     role === 'OFFICE_STAFF' ? (isEquipmentMode ? EQUIPMENT_ADMIN_NAV : OFFICE_STAFF_NAV) :
@@ -608,7 +619,7 @@ export function AppLayout() {
     role === 'DRIVER'       ? DRIVER_CLEANER_NAV :
     role === 'CLEANER'      ? DRIVER_CLEANER_NAV :
     role === 'STORE_KEEPER'    ? STORE_KEEPER_NAV :
-    role === 'SERVICE_MANAGER' ? SERVICE_MANAGER_NAV :
+    role === 'SERVICE_MANAGER' ? serviceManagerNav :
     isEquipmentMode ? EQUIPMENT_ADMIN_NAV : ADMIN_NAV
 
   const location = useLocation()
