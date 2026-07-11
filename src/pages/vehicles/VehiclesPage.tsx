@@ -1051,7 +1051,7 @@ export function VehiclesPage() {
   const [ownerFilter, setOwnerFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [assignFilter, setAssignFilter] = useState('')
-  const [iotFilter, setIotFilter]     = useState('')
+  const [scopeFilter, setScopeFilter] = useState('')
   const [staffDialogVehicle, setStaffDialogVehicle] = useState<Vehicle | null>(null)
   const [staffDialogRole, setStaffDialogRole]       = useState<'DRIVER' | 'CLEANER'>('DRIVER')
 
@@ -1073,8 +1073,8 @@ export function VehiclesPage() {
     const matchOwner  = !ownerFilter || String(v.ownershipTypeId) === ownerFilter
     const matchStatus = !statusFilter || (statusFilter === 'active' ? v.isActive : !v.isActive)
     const matchAssign = !assignFilter || v.currentStatusType === assignFilter
-    const matchIot    = !iotFilter || (iotFilter === 'iot' ? !!v.isIot : !v.isIot)
-    return matchSearch && matchType && matchOwner && matchStatus && matchAssign && matchIot
+    const matchScope  = !scopeFilter || v.tripScope === scopeFilter
+    return matchSearch && matchType && matchOwner && matchStatus && matchAssign && matchScope
   })
   const totalPages = Math.max(1, Math.ceil(vehicles.length / PAGE_SIZE))
   const pageRows   = vehicles.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -1165,12 +1165,12 @@ export function VehiclesPage() {
           className="h-10 w-36"
         />
         <SearchableSelect
-          value={iotFilter}
-          onValueChange={v => { setIotFilter(v); setPage(0) }}
+          value={scopeFilter}
+          onValueChange={v => { setScopeFilter(v); setPage(0) }}
           options={[
-            { value: '',      label: 'All Vehicles' },
-            { value: 'iot',   label: 'IoT Only' },
-            { value: 'non-iot', label: 'Non-IoT' },
+            { value: '',            label: 'All Scope' },
+            { value: 'INTER_STATE', label: 'Market' },
+            { value: 'INTRA_STATE', label: 'Local' },
           ]}
           className="h-10 w-36"
         />
