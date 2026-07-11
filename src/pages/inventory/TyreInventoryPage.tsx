@@ -49,6 +49,16 @@ const PURCHASE_CONDITIONS: { value: TyrePurchaseCondition; label: string }[] = [
   { value: 'RETREADED',  label: 'Retreaded (Pre-used)' },
 ]
 
+// Short labels + badge colors for the list column / filter
+const CONDITION_LABELS: Record<TyrePurchaseCondition, string> = {
+  NEW: 'New', SECOND_HAND: 'Second Hand', RETREADED: 'Retreaded',
+}
+const CONDITION_COLORS: Record<TyrePurchaseCondition, string> = {
+  NEW:         'bg-green-50 text-green-700',
+  SECOND_HAND: 'bg-amber-50 text-amber-700',
+  RETREADED:   'bg-violet-50 text-violet-700',
+}
+
 const REMOVAL_REASONS: { value: TyreRemovalReason; label: string }[] = [
   { value: 'WORN',     label: 'Worn Out' },
   { value: 'PUNCTURE', label: 'Puncture' },
@@ -1014,6 +1024,7 @@ export default function TyreInventoryPage() {
   const { locked } = useSubscription()
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<ActiveFilter>('ALL')
+  const [conditionFilter, setConditionFilter] = useState<TyrePurchaseCondition | 'ALL'>('ALL')
   const [addOpen, setAddOpen]           = useState(false)
   const [bulkAddOpen, setBulkAddOpen]   = useState(false)
   const [detailTyre, setDetailTyre]     = useState<Tyre | null>(null)
@@ -1028,6 +1039,7 @@ export default function TyreInventoryPage() {
 
   const filtered = tyres.filter(t => {
     const matchStatus = statusFilter === 'ALL' || t.status === statusFilter
+    const matchCondition = conditionFilter === 'ALL' || t.purchaseCondition === conditionFilter
     const q = search.toLowerCase()
     const matchSearch = !q ||
       t.serialNumber.toLowerCase().includes(q) ||
@@ -1036,7 +1048,7 @@ export default function TyreInventoryPage() {
       (t.currentVehicleRegistrationNumber ?? '').toLowerCase().includes(q) ||
       (t.supplierName ?? '').toLowerCase().includes(q) ||
       (t.invoiceNumber ?? '').toLowerCase().includes(q)
-    return matchStatus && matchSearch
+    return matchStatus && matchCondition && matchSearch
   })
 
   const stats = {
@@ -1094,15 +1106,27 @@ export default function TyreInventoryPage() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <Input
-          className="pl-8 h-9"
-          placeholder="Search serial, brand, size, vehicle, supplier, invoice…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+      {/* Search + condition filter */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Input
+            className="pl-8 h-9"
+            placeholder="Search serial, brand, size, vehicle, supplier, invoice…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <select
+          className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-feros-orange"
+          value={conditionFilter}
+          onChange={e => setConditionFilter(e.target.value as TyrePurchaseCondition | 'ALL')}
+        >
+          <option value="ALL">All conditions</option>
+          {PURCHASE_CONDITIONS.map(c => (
+            <option key={c.value} value={c.value}>{CONDITION_LABELS[c.value]}</option>
+          ))}
+        </select>
       </div>
 
       {/* Table */}
@@ -1113,11 +1137,12 @@ export default function TyreInventoryPage() {
           <div className="py-12 text-center text-sm text-gray-400">No tyres found</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[820px]">
+            <table className="w-full text-sm min-w-[920px]">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Serial No.</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Brand & Size</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Condition</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle / Retreader</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Lifetime KM</th>
@@ -1143,6 +1168,15 @@ export default function TyreInventoryPage() {
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-800">{tyre.brand}</p>
                       <p className="text-xs text-gray-400">{tyre.size}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      {tyre.purchaseCondition ? (
+                        <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', CONDITION_COLORS[tyre.purchaseCondition])}>
+                          {CONDITION_LABELS[tyre.purchaseCondition]}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', STATUS_COLORS[tyre.status])}>
