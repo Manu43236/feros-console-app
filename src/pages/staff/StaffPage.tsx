@@ -55,7 +55,7 @@ function PinCell({ pin }: { pin: string | null }) {
 
 // ── add staff form ────────────────────────────────────────────────────────────
 const DAILY_ROLES = ['DRIVER', 'CLEANER']
-const STAFF_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OPERATOR']
+const EQUIP_TOGGLE_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OPERATOR']
 const EQUIP_HIDDEN_ROLES = ['DRIVER', 'CLEANER']
 const VEHICLES_HIDDEN_ROLES = ['OPERATOR']
 
@@ -106,7 +106,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
   const selectedRole    = watch('role') ?? ''
   const isDailyRole     = DAILY_ROLES.includes(selectedRole)
   const isMonthly       = watch('salaryType') === 'MONTHLY'
-  const showEquipToggle    = moduleType === 'BOTH' && STAFF_ROLES.includes(selectedRole) && selectedRole !== 'OPERATOR'
+  const showEquipToggle    = moduleType === 'BOTH' && EQUIP_TOGGLE_ROLES.includes(selectedRole) && selectedRole !== 'OPERATOR'
   const showVehicleToggle  = moduleType === 'BOTH' && selectedRole === 'SUPERVISOR'
 
   const mutation = useMutation({

@@ -24,7 +24,7 @@ import type { Attendance } from '@/types'
 
 type StaffUser = { id: number; name: string; phone: string; role: string; isActive: boolean }
 
-const STAFF_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MANAGER', 'STORE_KEEPER']
+const ATTENDANCE_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MANAGER', 'STORE_KEEPER', 'TECHNICIAN']
 const PAGE_SIZE = 20
 function todayStr() { return format(new Date(), 'yyyy-MM-dd') }
 
@@ -1119,7 +1119,7 @@ export function AttendancePage() {
   const records = [...(attendanceData?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const { data: usersData } = useQuery({ queryKey: ['staff-users'], queryFn: () => staffApi.getUsers() })
-  const allUsers: StaffUser[] = ((usersData?.data ?? []) as StaffUser[]).filter(u => STAFF_ROLES.includes(u.role ?? ''))
+  const allUsers: StaffUser[] = ((usersData?.data ?? []) as StaffUser[]).filter(u => ATTENDANCE_ROLES.includes(u.role ?? ''))
 
   const { data: attTypesData } = useQuery({ queryKey: ['attendance-types'], queryFn: globalMastersApi.getAttendanceTypes })
   const attendanceTypes = (attTypesData?.data ?? []) as { id: number; name: string }[]
