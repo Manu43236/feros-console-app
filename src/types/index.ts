@@ -372,6 +372,8 @@ export interface MachineAssignment {
   activeWorkEntry?: WorkEntry | null
   divisionId?: number | null; divisionName?: string | null
   rateType?: RateType; rateAmount?: number
+  attachmentId?: number | null; attachmentName?: string | null
+  attachmentType?: string | null; attachmentRate?: number | null; attachmentRateUnit?: string | null
 }
 
 export interface DailyLogDivision {

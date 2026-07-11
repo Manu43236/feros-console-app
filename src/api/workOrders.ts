@@ -30,6 +30,9 @@ export const workOrdersApi = {
   assignOperator: (woId: number, assignmentId: number, data: { operatorType?: string; operatorStaffId?: number; hiredOperatorName?: string; hiredOperatorPhone?: string }) =>
     apiClient.put<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/operator`, data).then(r => r.data),
 
+  setAttachment: (woId: number, assignmentId: number, attachmentId: number | null) =>
+    apiClient.put<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/attachment`, { attachmentId }).then(r => r.data),
+
   addLog: (woId: number, data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<DailyLog>>(`/work-orders/${woId}/logs`, data).then(r => r.data),
 
