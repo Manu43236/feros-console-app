@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useSubscription } from '@/context/SubscriptionContext'
+import { useAuthStore } from '@/store/authStore'
 import { equipmentApi } from '@/api/equipment'
 import { equipmentMastersApi } from '@/api/equipmentMasters'
 import { getApiError } from '@/lib/apiError'
@@ -420,7 +421,10 @@ function EquipmentFormDialog({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function EquipmentListPage() {
-  const { isEquipmentMode } = useSubscription()
+  const { isEquipmentMode, locked } = useSubscription()
+  const role = useAuthStore(s => s.role)
+  // Machine master is admin-level, same as vehicles — supervisors can't create/edit/delete.
+  const canManageMachines = !locked && (role === 'ADMIN' || role === 'OFFICE_STAFF')
   const navigate = useNavigate()
   const btnPrimary = isEquipmentMode
     ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white'
@@ -445,6 +449,8 @@ export function EquipmentListPage() {
   })
 
   function openAdd() { setEditing(null); setDlgOpen(true) }
+  function openEdit(m: Equipment) { setEditing(m); setDlgOpen(true) }
+  const colCount = canManageMachines ? 9 : 8
 
   return (
     <div className="space-y-5">
@@ -454,9 +460,11 @@ export function EquipmentListPage() {
           <h1 className="text-2xl font-bold text-gray-900">Machines</h1>
           <p className="text-gray-500 text-sm mt-0.5">{machines.length} total</p>
         </div>
-        <Button onClick={openAdd} className={`${btnPrimary} gap-2`}>
-          <Plus size={16} /> Add Machine
-        </Button>
+        {canManageMachines && (
+          <Button onClick={openAdd} className={`${btnPrimary} gap-2`}>
+            <Plus size={16} /> Add Machine
+          </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -478,13 +486,14 @@ export function EquipmentListPage() {
               {['Make', 'Model', 'Type', 'Serial No.', 'Reg. No.', 'Ownership', 'Status', 'Work Status'].map(h => (
                 <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
               ))}
+              {canManageMachines && <th className="px-3 py-2" />}
             </tr>
           </thead>
           <tbody className="divide-y">
             {isLoading ? (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-400 text-sm">Loading…</td></tr>
+              <tr><td colSpan={colCount} className="px-3 py-8 text-center text-gray-400 text-sm">Loading…</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-400 text-sm">{search ? 'No machines match your search' : 'No machines yet. Click "Add Machine" to get started.'}</td></tr>
+              <tr><td colSpan={colCount} className="px-3 py-8 text-center text-gray-400 text-sm">{search ? 'No machines match your search' : 'No machines yet. Click "Add Machine" to get started.'}</td></tr>
             ) : filtered.map(m => (
               <tr key={m.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/equipment/machines/${m.id}`)}>
                 <td className="px-3 py-2 font-medium text-gray-800">{m.makeName}</td>
@@ -503,6 +512,13 @@ export function EquipmentListPage() {
                   </span>
                 </td>
                 <td className="px-3 py-2"><WorkStatusBadge status={m.workStatus} /></td>
+                {canManageMachines && (
+                  <td className="px-3 py-2 text-right" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => openEdit(m)} className="p-1.5 text-gray-400 hover:text-[#1C1400] rounded transition-colors" title="Edit machine">
+                      <Pencil size={14} />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
