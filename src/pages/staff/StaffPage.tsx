@@ -338,16 +338,21 @@ Suresh Yadav,9876543211,CLEANER,2024-02-01,,
 Priya Sharma,9876543212,OFFICE_STAFF,2024-03-10,,
 `
 
+const DETAILS_TEMPLATE = `name,role,bankName,branchName,accountNumber,ifscCode,aadharNumber,aadharName,dateOfBirth,nomineeName,nomineeRelation,nomineeDateOfBirth,nomineeAadharNumber,phone
+Ramesh Kumar,DRIVER,UNION BANK OF INDIA,VISAKHAPATNAM,328902010140999,UBIN0532894,809523084601,Ramesh Kumar,1995-08-27,Lakshmi,WIFE,1992-02-05,273571706998,9876543210
+`
+
 function StaffBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<BulkUploadResult | null>(null)
+  const [mode, setMode] = useState<'basic' | 'details'>('basic')
 
-  function handleClose() { setFile(null); setResult(null); onClose() }
+  function handleClose() { setFile(null); setResult(null); setMode('basic'); onClose() }
 
   const mutation = useMutation({
-    mutationFn: (f: File) => staffApi.staffBulkUpload(f),
+    mutationFn: (f: File) => mode === 'details' ? staffApi.staffDetailsImport(f) : staffApi.staffBulkUpload(f),
     onSuccess: (res) => {
       setResult(res.data)
       qc.invalidateQueries({ queryKey: ['staff'] })
@@ -364,11 +369,11 @@ function StaffBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () =
   })
 
   function downloadTemplate() {
-    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' })
+    const blob = new Blob([mode === 'details' ? DETAILS_TEMPLATE : CSV_TEMPLATE], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'staff_template.csv'
+    a.download = mode === 'details' ? 'staff_details_template.csv' : 'staff_template.csv'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -381,13 +386,38 @@ function StaffBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () =
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Instructions */}
-          <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-1">
-            <p className="font-medium">CSV Format</p>
-            <p>Required: <code className="bg-blue-100 px-1 rounded">name</code>, <code className="bg-blue-100 px-1 rounded">phone</code>, <code className="bg-blue-100 px-1 rounded">role</code></p>
-            <p>Optional: <code className="bg-blue-100 px-1 rounded">joiningDate</code>, <code className="bg-blue-100 px-1 rounded">licenseNumber</code>, <code className="bg-blue-100 px-1 rounded">licenseExpiryDate</code></p>
-            <p className="text-blue-600 text-xs mt-1">Roles: DRIVER, CLEANER, SUPERVISOR, OFFICE_STAFF, SERVICE_MANAGER, STORE_KEEPER · Dates: YYYY-MM-DD</p>
+          {/* Mode toggle */}
+          <div className="flex gap-2">
+            {([['basic', 'Basic'], ['details', 'Full details (upsert)']] as const).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setMode(m); setFile(null); setResult(null) }}
+                className={cn(
+                  'flex-1 h-9 rounded-md border text-sm font-medium transition-colors',
+                  mode === m ? 'border-feros-orange bg-orange-50 text-feros-orange' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
+
+          {/* Instructions */}
+          {mode === 'basic' ? (
+            <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 space-y-1">
+              <p className="font-medium">CSV Format</p>
+              <p>Required: <code className="bg-blue-100 px-1 rounded">name</code>, <code className="bg-blue-100 px-1 rounded">phone</code>, <code className="bg-blue-100 px-1 rounded">role</code></p>
+              <p>Optional: <code className="bg-blue-100 px-1 rounded">joiningDate</code>, <code className="bg-blue-100 px-1 rounded">licenseNumber</code>, <code className="bg-blue-100 px-1 rounded">licenseExpiryDate</code></p>
+              <p className="text-blue-600 text-xs mt-1">Roles: DRIVER, CLEANER, SUPERVISOR, OFFICE_STAFF, SERVICE_MANAGER, STORE_KEEPER · Dates: YYYY-MM-DD · New phones only (existing = error)</p>
+            </div>
+          ) : (
+            <div className="bg-emerald-50 rounded-lg p-4 text-sm text-emerald-800 space-y-1">
+              <p className="font-medium">Full details — upsert by phone</p>
+              <p>Existing phone → <b>updates</b> name + bank / aadhar / nominee (blank cells never overwrite). New phone → <b>inserts</b>.</p>
+              <p className="text-emerald-600 text-xs mt-1">Columns: name, role, bankName, branchName, accountNumber, ifscCode, aadharNumber, aadharName, dateOfBirth, nomineeName, nomineeRelation, nomineeDateOfBirth, nomineeAadharNumber, phone · Dates: YYYY-MM-DD</p>
+            </div>
+          )}
 
           <Button variant="outline" size="sm" className="w-full gap-2" onClick={downloadTemplate}>
             <Download size={14} /> Download Template

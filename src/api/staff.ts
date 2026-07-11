@@ -11,6 +11,13 @@ export const staffApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },
+  staffDetailsImport: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<ApiResponse<import('@/types').BulkUploadResult>>('/users/staff-details-import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
   resetPin:       (userId: number) => apiClient.put<ApiResponse<{ userId: number; name: string; phone: string; pin: string }>>(`/users/${userId}/reset-pin`).then(r => r.data),
   toggleStatus:   (userId: number, isActive: boolean) => apiClient.put<ApiResponse<unknown>>(`/users/${userId}/status`, { isActive }).then(r => r.data),
   getAll:         (params?: { equipmentOnly?: boolean }) => apiClient.get<ApiResponse<StaffProfile[]>>('/staff/profiles', { params }).then(r => r.data),
