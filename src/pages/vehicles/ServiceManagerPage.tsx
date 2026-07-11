@@ -56,6 +56,8 @@ function VehicleServiceManagerView() {
     date: b.breakdownDate,
     location: b.location,
     typeLabel: b.breakdownType,
+    reason: b.reason,
+    notes: b.notes,
     status: b.status,
     service: b.service ? svcToBoard(b.service) : undefined,
   }))

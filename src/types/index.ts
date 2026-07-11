@@ -1488,6 +1488,8 @@ export interface SmBreakdownItem {
   breakdownDate: string
   location?: string
   breakdownType: BreakdownType
+  reason?: string
+  notes?: string
   status: BreakdownStatus
   service?: SmServiceItem
 }

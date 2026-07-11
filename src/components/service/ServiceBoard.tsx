@@ -31,6 +31,7 @@ export interface BoardService {
 export interface BoardBreakdown {
   id: number; assetId: number; assetName: string
   date?: string; location?: string; typeLabel?: string; status?: string
+  reason?: string; notes?: string
   service?: BoardService
 }
 
@@ -338,6 +339,16 @@ function BreakdownCard({ breakdown, cfg }: { breakdown: BoardBreakdown; cfg: Ser
             <p className="text-xs text-gray-500 mt-0.5">
               {breakdown.typeLabel}{breakdown.typeLabel && ' · '}{fmtDate(breakdown.date)}{breakdown.location && ` · ${breakdown.location}`}
             </p>
+            {breakdown.reason && (
+              <p className="text-xs text-gray-700 mt-1 whitespace-pre-wrap">
+                <span className="font-medium text-gray-500">Description: </span>{breakdown.reason}
+              </p>
+            )}
+            {breakdown.notes && (
+              <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap">
+                <span className="font-medium">Notes: </span>{breakdown.notes}
+              </p>
+            )}
           </div>
         </div>
         {!breakdown.service && (
