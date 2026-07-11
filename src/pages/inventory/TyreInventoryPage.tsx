@@ -7,7 +7,7 @@ import { vehiclesApi } from '@/api/vehicles'
 import { meterReadingsApi } from '@/api/meterReadings'
 import type { Tyre, TyreStatus, TyreType, TyreFitting, TyrePosition, TyreRemovalReason, TyrePurchaseCondition, TyreRetreadLog } from '@/types'
 import { toast } from 'sonner'
-import { Plus, Search, RefreshCw, Layers, X } from 'lucide-react'
+import { Plus, Search, RefreshCw, Layers, X, Truck, Unplug, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -1033,7 +1033,9 @@ export default function TyreInventoryPage() {
       t.serialNumber.toLowerCase().includes(q) ||
       t.brand.toLowerCase().includes(q) ||
       t.size.toLowerCase().includes(q) ||
-      (t.currentVehicleRegistrationNumber ?? '').toLowerCase().includes(q)
+      (t.currentVehicleRegistrationNumber ?? '').toLowerCase().includes(q) ||
+      (t.supplierName ?? '').toLowerCase().includes(q) ||
+      (t.invoiceNumber ?? '').toLowerCase().includes(q)
     return matchStatus && matchSearch
   })
 
@@ -1097,7 +1099,7 @@ export default function TyreInventoryPage() {
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <Input
           className="pl-8 h-9"
-          placeholder="Search serial, brand, size, vehicle…"
+          placeholder="Search serial, brand, size, vehicle, supplier, invoice…"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -1111,7 +1113,7 @@ export default function TyreInventoryPage() {
           <div className="py-12 text-center text-sm text-gray-400">No tyres found</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
+            <table className="w-full text-sm min-w-[820px]">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Serial No.</th>
@@ -1120,6 +1122,7 @@ export default function TyreInventoryPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle / Retreader</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Lifetime KM</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Retreads</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Supplier / Invoice</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -1165,39 +1168,38 @@ export default function TyreInventoryPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">{Number(tyre.totalLifetimeKm).toLocaleString('en-IN')} km</td>
                     <td className="px-4 py-3 text-gray-600">{tyre.retreadCount}x</td>
+                    <td className="px-4 py-3">
+                      {tyre.supplierName || tyre.invoiceNumber ? (
+                        <div>
+                          <p className="font-medium text-gray-700">{tyre.supplierName || '—'}</p>
+                          {tyre.invoiceNumber && <p className="text-xs text-gray-400">{tyre.invoiceNumber}</p>}
+                        </div>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center gap-1 justify-end flex-wrap">
+                      <div className="flex items-center gap-1 justify-end">
                         {tyre.status === 'IN_STOCK' && (
-                          <>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTyre(tyre)}>Edit</Button>
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50"
-                              onClick={() => setScrapTyre(tyre)}>
-                              Scrap
-                            </Button>
-                            <Button size="sm" className="h-7 text-xs bg-feros-navy hover:bg-feros-navy/90 text-white"
-                              onClick={() => setFitTyre(tyre)}>
-                              Fit to Vehicle
-                            </Button>
-                          </>
+                          <Button size="icon" variant="ghost" title="Fit to Vehicle"
+                            className="h-8 w-8 text-feros-navy hover:bg-feros-navy/10"
+                            onClick={() => setFitTyre(tyre)}>
+                            <Truck size={16} />
+                          </Button>
                         )}
                         {tyre.status === 'FITTED' && (
-                          <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                          <Button size="icon" variant="ghost" title="Remove from Vehicle"
+                            className="h-8 w-8 text-red-600 hover:bg-red-50"
                             onClick={() => setRemoveTyre(tyre)}>
-                            Remove
+                            <Unplug size={16} />
                           </Button>
                         )}
                         {tyre.status === 'RETREADING' && (
-                          <>
-                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditTyre(tyre)}>Edit</Button>
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50"
-                              onClick={() => setScrapTyre(tyre)}>
-                              Scrap
-                            </Button>
-                            <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-                              onClick={() => setBackToStock(tyre)}>
-                              Back to Stock
-                            </Button>
-                          </>
+                          <Button size="icon" variant="ghost" title="Back to Stock"
+                            className="h-8 w-8 text-green-600 hover:bg-green-50"
+                            onClick={() => setBackToStock(tyre)}>
+                            <Undo2 size={16} />
+                          </Button>
                         )}
                         {tyre.status === 'SCRAPPED' && (
                           <span className="text-xs text-gray-400 px-2">Scrapped</span>
