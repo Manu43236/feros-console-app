@@ -201,6 +201,12 @@ export interface EquipmentServiceRecord {
   notes: string | null
   invoiceId: number | null
   tasks: EquipmentServiceTask[]
+  // E5 KAN-27/28
+  breakdownLogId?: number | null
+  breakdownLogDate?: string | null
+  breakdownHoursOnLog?: number | null
+  downtimeHours?: number | null
+  penaltyTriggered?: boolean | null
   createdAt: string
   updatedAt: string
 }
@@ -228,6 +234,8 @@ export interface EquipmentServiceRequest {
   certificateNumber?: string | null
   certificateValidUntil?: string | null
   isEscalated?: boolean
+  // E5 KAN-27
+  breakdownLogId?: number | null
   tasks: EquipmentServiceTaskRequest[]
 }
 
@@ -283,6 +291,8 @@ export const equipmentApi = {
   startService: (id: number, serviceId: number) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/start`, {}).then(r => r.data),
   completeService: (id: number, serviceId: number, data: { completedHmr?: number | null; completedDate?: string | null }) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/complete`, data).then(r => r.data),
   deleteService: (id: number, serviceId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/services/${serviceId}`).then(r => r.data),
+  // E5 KAN-27 — daily logs for breakdown log picker
+  getMachineDailyLogs: (id: number) => apiClient.get<ApiResponse<import('@/types').DailyLog[]>>(`/equipment/${id}/daily-logs`).then(r => r.data),
 
   // Service tasks — technician + add task + parts (parity with vehicles)
   assignTaskTechnician: (id: number, serviceId: number, taskId: number, mechanicId: number) =>

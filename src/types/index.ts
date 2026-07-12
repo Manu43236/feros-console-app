@@ -363,6 +363,8 @@ export interface WorkOrder {
   overtimeRateMultiplier?: number
   escalationClause?: string
   penaltyClause?: string
+  // E5 KAN-28
+  breakdownPenaltyThresholdHours?: number
 }
 
 export interface WoAmendment {

@@ -1198,6 +1198,7 @@ function EditTermsDialog({ woId, wo, open, onClose }: {
     penaltyClause: wo.penaltyClause ?? '',
     mobilizationCharge: wo.mobilizationCharge?.toString() ?? '',
     demobilizationCharge: wo.demobilizationCharge?.toString() ?? '',
+    breakdownPenaltyThresholdHours: wo.breakdownPenaltyThresholdHours?.toString() ?? '',
   })
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -1221,6 +1222,7 @@ function EditTermsDialog({ woId, wo, open, onClose }: {
       overtimeRateMultiplier: form.overtimeRateMultiplier ? Number(form.overtimeRateMultiplier) : undefined,
       escalationClause: form.escalationClause || undefined,
       penaltyClause: form.penaltyClause || undefined,
+      breakdownPenaltyThresholdHours: form.breakdownPenaltyThresholdHours ? Number(form.breakdownPenaltyThresholdHours) : undefined,
     }),
     onSuccess: () => { toast.success('Terms updated'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); onClose() },
     onError: () => toast.error('Failed to update'),
@@ -1287,6 +1289,13 @@ function EditTermsDialog({ woId, wo, open, onClose }: {
             <div className="space-y-1.5">
               <Label>Penalty / LD Clause</Label>
               <Input placeholder="e.g. ₹500/hr beyond 8hr downtime" value={form.penaltyClause} onChange={e => set('penaltyClause', e.target.value)} />
+            </div>
+          </div>
+          <div className="border-t pt-3">
+            <div className="space-y-1.5">
+              <Label>Breakdown Penalty Threshold (hrs)</Label>
+              <Input type="number" placeholder="e.g. 8" value={form.breakdownPenaltyThresholdHours} onChange={e => set('breakdownPenaltyThresholdHours', e.target.value)} />
+              <p className="text-xs text-gray-400">Downtime beyond this threshold auto-flags the service record for penalty review.</p>
             </div>
           </div>
         </div>
@@ -1854,6 +1863,7 @@ export function WorkOrderDetailPage() {
             ['OT Rate', wo.overtimeRateMultiplier != null ? `${wo.overtimeRateMultiplier}×` : '—'],
             ['Escalation', wo.escalationClause ?? '—'],
             ['Penalty / LD', wo.penaltyClause ?? '—'],
+            ['BD Penalty Threshold', wo.breakdownPenaltyThresholdHours != null ? `${wo.breakdownPenaltyThresholdHours} hrs` : '—'],
           ].map(([label, value]) => (
             <div key={label}>
               <span className="text-gray-400 block">{label}</span>

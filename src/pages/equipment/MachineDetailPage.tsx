@@ -656,12 +656,20 @@ export function ServiceDialog({
   const [customTasks, setCustomTasks] = useState<TaskDraft[]>([])
   const [customName, setCustomName] = useState('')
   const [showCustom, setShowCustom] = useState(false)
+  const [breakdownLogId, setBreakdownLogId] = useState<number | null>(editing?.breakdownLogId ?? null)
 
   const { data: taskTypesRes } = useQuery({
     queryKey: ['equipment-service-task-types'],
     queryFn: globalMastersApi.getEquipmentServiceTaskTypes,
     enabled: open,
   })
+
+  const { data: machineLogsRes } = useQuery({
+    queryKey: ['eq-machine-logs', equipmentId],
+    queryFn: () => equipmentApi.getMachineDailyLogs(equipmentId),
+    enabled: open && form.triggeredBy === 'BREAKDOWN',
+  })
+  const breakdownLogs = (machineLogsRes?.data ?? []).filter(l => (l.breakdownHours ?? 0) > 0)
   const taskTypes: MasterItem[] = taskTypesRes?.data ?? []
 
   // Populate form when editing
@@ -679,6 +687,7 @@ export function ServiceDialog({
         certificateValidUntil: editing.certificateValidUntil ?? '',
         isEscalated: editing.isEscalated ?? false,
       })
+      setBreakdownLogId(editing.breakdownLogId ?? null)
       // Rebuild tasks
       const ids = new Set<number>()
       const drafts: Record<number, TaskDraft> = {}
@@ -713,7 +722,7 @@ export function ServiceDialog({
   function handleClose() {
     setForm(defaultDraft(currentHmr))
     setSelectedTaskIds(new Set()); setTaskDrafts({}); setCustomTasks([])
-    setCustomName(''); setShowCustom(false)
+    setCustomName(''); setShowCustom(false); setBreakdownLogId(null)
     onClose()
   }
 
@@ -762,6 +771,7 @@ export function ServiceDialog({
       certificateNumber: form.triggeredBy === 'COMPLIANCE' ? form.certificateNumber || null : null,
       certificateValidUntil: form.triggeredBy === 'COMPLIANCE' ? form.certificateValidUntil || null : null,
       isEscalated: form.isEscalated,
+      breakdownLogId: form.triggeredBy === 'BREAKDOWN' ? breakdownLogId : null,
       tasks,
     })
   }
@@ -791,6 +801,26 @@ export function ServiceDialog({
               ))}
             </div>
           </div>
+
+          {/* E5 KAN-27 — Link to breakdown log */}
+          {form.triggeredBy === 'BREAKDOWN' && (
+            <div className="space-y-1.5">
+              <Label>Breakdown Log (optional)</Label>
+              <Select value={breakdownLogId?.toString() ?? ''} onValueChange={v => setBreakdownLogId(v ? Number(v) : null)}>
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder={breakdownLogs.length === 0 ? 'No breakdown logs found' : 'Select breakdown log date…'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {breakdownLogs.map(l => (
+                    <SelectItem key={l.id} value={String(l.id)}>
+                      {l.logDate} — BD: {l.breakdownHours}h
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Service Type */}
           <div className="space-y-1.5">
@@ -1183,6 +1213,9 @@ export function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; c
                       )}
                       {s.serviceDate && <span>📅 {fmtDate(s.serviceDate)}</span>}
                       {s.location && <span>📍 {s.location}</span>}
+                      {s.breakdownLogDate && <span>⚡ BD log: {fmtDate(s.breakdownLogDate)}{s.breakdownHoursOnLog != null ? ` (${s.breakdownHoursOnLog}h)` : ''}</span>}
+                      {s.downtimeHours != null && <span>⏱ Downtime: <span className="text-gray-600 font-medium">{s.downtimeHours}h</span></span>}
+                      {s.penaltyTriggered && <span className="text-red-600 font-semibold bg-red-50 border border-red-200 rounded px-1.5 py-0.5">PENALTY TRIGGERED</span>}
                       {(s.totalCost ?? 0) > 0 && (
                         <span className="text-green-600 font-medium">₹{Number(s.totalCost).toLocaleString('en-IN')}</span>
                       )}
