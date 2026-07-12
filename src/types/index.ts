@@ -2686,3 +2686,83 @@ export interface AttendanceLocationRequest {
   longitude: number
   radiusMeters: number
 }
+
+// ─── Equipment Receivables ─────────────────────────────────────────────────────
+export interface EquipmentPayment {
+  id: number
+  invoiceId: number
+  invoiceNumber?: string
+  workOrderId: number
+  amount: number
+  paymentDate: string
+  paymentMode: PaymentMode
+  utrReference?: string
+  notes?: string
+  createdAt: string
+}
+
+export interface EquipmentPaymentRequest {
+  amount: number
+  paymentDate: string
+  paymentMode: PaymentMode
+  utrReference?: string
+  notes?: string
+}
+
+export interface EquipmentAdvance {
+  id: number
+  workOrderId: number
+  amount: number
+  paymentDate: string
+  paymentMode: PaymentMode
+  utrReference?: string
+  notes?: string
+  createdAt: string
+}
+
+export interface EquipmentAdvanceRequest {
+  amount: number
+  paymentDate: string
+  paymentMode: PaymentMode
+  utrReference?: string
+  notes?: string
+}
+
+export interface EquipmentRetentionRelease {
+  id: number
+  workOrderId: number
+  amount: number
+  releaseDate: string
+  notes?: string
+  createdAt: string
+}
+
+export interface EquipmentRetentionReleaseRequest {
+  amount: number
+  releaseDate: string
+  notes?: string
+}
+
+export interface InvoiceReceivableRow {
+  invoiceId: number
+  invoiceNumber?: string
+  invoiceDate?: string
+  totalAmount: number
+  retentionOnInvoice: number
+  totalReceived: number
+  balanceDue: number
+  status: string
+  payments: EquipmentPayment[]
+}
+
+export interface WoReceivablesSummary {
+  grossBilled: number
+  totalReceived: number
+  retentionHeld: number
+  totalRetentionReleased: number
+  totalAdvances: number
+  balanceDue: number
+  invoices: InvoiceReceivableRow[]
+  advances: EquipmentAdvance[]
+  retentionReleases: EquipmentRetentionRelease[]
+}

@@ -1,17 +1,16 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ArrowLeft, FileText, X, Download, DollarSign, Receipt, Percent } from 'lucide-react'
+import { ArrowLeft, FileText, X, Download, DollarSign, Receipt, Percent, CreditCard, Trash2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
+import { equipmentReceivablesApi } from '@/api/equipmentReceivables'
 import { workOrdersApi } from '@/api/workOrders'
 import { useAuthStore } from '@/store/authStore'
-import type { DailyLog, DailyLogStatus } from '@/types'
-import { useState } from 'react'
-import type { EquipmentInvoiceStatus } from '@/types'
+import type { DailyLog, DailyLogStatus, EquipmentInvoiceStatus, PaymentMode, EquipmentPaymentRequest } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -304,6 +303,11 @@ export function EquipmentInvoiceDetailPage() {
   const qc = useQueryClient()
   const companyName = useAuthStore(s => s.companyName) ?? ''
   const [showPreview, setShowPreview] = useState(false)
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
+  const [paymentForm, setPaymentForm] = useState<EquipmentPaymentRequest>({
+    amount: 0, paymentDate: new Date().toISOString().slice(0, 10),
+    paymentMode: 'NEFT', utrReference: '', notes: '',
+  })
   const invoiceRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading } = useQuery({
@@ -347,6 +351,38 @@ export function EquipmentInvoiceDetailPage() {
     onError: () => toast.error('Failed to delete invoice'),
   })
 
+  const { data: paymentsData, refetch: refetchPayments } = useQuery({
+    queryKey: ['equip-invoice-payments', Number(id)],
+    queryFn: () => equipmentReceivablesApi.listPayments(invoice!.workOrderId!, Number(id)),
+    enabled: !!invoice?.workOrderId,
+  })
+  const payments = paymentsData?.data ?? []
+  const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0)
+
+  const recordPaymentMutation = useMutation({
+    mutationFn: (req: EquipmentPaymentRequest) =>
+      equipmentReceivablesApi.recordPayment(invoice!.workOrderId!, Number(id), req),
+    onSuccess: () => {
+      toast.success('Payment recorded')
+      setShowPaymentDialog(false)
+      setPaymentForm({ amount: 0, paymentDate: new Date().toISOString().slice(0, 10), paymentMode: 'NEFT', utrReference: '', notes: '' })
+      refetchPayments()
+      qc.invalidateQueries({ queryKey: ['equip-invoice', Number(id)] })
+    },
+    onError: () => toast.error('Failed to record payment'),
+  })
+
+  const deletePaymentMutation = useMutation({
+    mutationFn: (payId: number) =>
+      equipmentReceivablesApi.deletePayment(invoice!.workOrderId!, Number(id), payId),
+    onSuccess: () => {
+      toast.success('Payment deleted')
+      refetchPayments()
+      qc.invalidateQueries({ queryKey: ['equip-invoice', Number(id)] })
+    },
+    onError: () => toast.error('Failed to delete payment'),
+  })
+
   async function handleDownloadPdf() {
     if (!invoiceRef.current) return
     const html2pdf = (await import('html2pdf.js')).default
@@ -368,6 +404,7 @@ export function EquipmentInvoiceDetailPage() {
   const subtotal  = Number(invoice.subtotal  ?? 0)
   const taxAmount = Number(invoice.taxAmount ?? 0)
   const total     = Number(invoice.totalAmount ?? 0)
+  const balanceOutstanding = total - totalPaid
 
   return (
     <div className="space-y-5">
@@ -534,6 +571,137 @@ export function EquipmentInvoiceDetailPage() {
           <p className="text-sm text-gray-700">{invoice.notes}</p>
         </div>
       )}
+
+      {/* ── Payments ── */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-green-600" />
+            <span className="font-semibold text-gray-800">Payments Received</span>
+          </div>
+          {invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (
+            <Button size="sm" onClick={() => setShowPaymentDialog(true)} className="h-7 text-xs gap-1.5">
+              <Plus className="h-3.5 w-3.5" /> Record Payment
+            </Button>
+          )}
+        </div>
+
+        {/* Summary row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
+            <p className="text-xs text-gray-500">Invoice Total</p>
+            <p className="text-sm font-bold text-gray-800">₹{fmt(total)}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg px-3 py-2 text-center">
+            <p className="text-xs text-gray-500">Received</p>
+            <p className="text-sm font-bold text-green-700">₹{fmt(totalPaid)}</p>
+          </div>
+          <div className={cn('rounded-lg px-3 py-2 text-center', balanceOutstanding > 0 ? 'bg-amber-50' : 'bg-green-50')}>
+            <p className="text-xs text-gray-500">Balance</p>
+            <p className={cn('text-sm font-bold', balanceOutstanding > 0 ? 'text-amber-700' : 'text-green-700')}>
+              ₹{fmt(balanceOutstanding)}
+            </p>
+          </div>
+        </div>
+
+        {/* Payment list */}
+        {payments.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-2">No payments recorded yet</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {payments.map(p => (
+              <div key={p.id} className="flex items-center justify-between py-2">
+                <div>
+                  <span className="text-sm font-medium text-gray-800">₹{fmt(p.amount)}</span>
+                  <span className="text-xs text-gray-400 ml-2">{p.paymentMode}</span>
+                  {p.utrReference && <span className="text-xs text-gray-400 ml-2">UTR: {p.utrReference}</span>}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500">{fmtDate(p.paymentDate)}</span>
+                  <button
+                    onClick={() => deletePaymentMutation.mutate(p.id)}
+                    className="text-red-400 hover:text-red-600 p-1"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Record Payment Dialog ── */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Amount (₹)</label>
+              <input
+                type="number" min="0" step="0.01"
+                value={paymentForm.amount || ''}
+                onChange={e => setPaymentForm(f => ({ ...f, amount: Number(e.target.value) }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Payment Date</label>
+              <input
+                type="date"
+                value={paymentForm.paymentDate}
+                onChange={e => setPaymentForm(f => ({ ...f, paymentDate: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Mode</label>
+              <select
+                value={paymentForm.paymentMode}
+                onChange={e => setPaymentForm(f => ({ ...f, paymentMode: e.target.value as PaymentMode }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {(['NEFT', 'RTGS', 'CHEQUE', 'CASH', 'UPI', 'OTHER'] as PaymentMode[]).map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">UTR / Cheque No.</label>
+              <input
+                type="text"
+                value={paymentForm.utrReference ?? ''}
+                onChange={e => setPaymentForm(f => ({ ...f, utrReference: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Optional"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Notes</label>
+              <textarea
+                value={paymentForm.notes ?? ''}
+                onChange={e => setPaymentForm(f => ({ ...f, notes: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                rows={2}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                disabled={!paymentForm.amount || !paymentForm.paymentDate || recordPaymentMutation.isPending}
+                onClick={() => recordPaymentMutation.mutate(paymentForm)}
+              >
+                {recordPaymentMutation.isPending ? 'Saving…' : 'Save Payment'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Invoice Preview Dialog ── */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>

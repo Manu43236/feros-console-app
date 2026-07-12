@@ -10,7 +10,7 @@ import {
   ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
   Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2, Receipt, Boxes,
-  FileText, Camera, RefreshCw, Upload, Fuel,
+  FileText, Camera, RefreshCw, Upload, Fuel, CreditCard, Landmark,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +23,8 @@ import { clientsApi } from '@/api/clients'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide, IdleAttribution } from '@/types'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
+import { equipmentReceivablesApi } from '@/api/equipmentReceivables'
+import type { EquipmentAdvanceRequest, EquipmentRetentionReleaseRequest, PaymentMode } from '@/types'
 import { equipmentAttachmentsApi } from '@/api/machines'
 import type { EquipmentAttachment } from '@/api/machines'
 import { CreateEquipmentInvoiceDialog } from './CreateEquipmentInvoiceDialog'
@@ -1662,7 +1664,7 @@ export function WorkOrderDetailPage() {
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
 
-  const [tab, setTab] = useState<'machines' | 'sessions' | 'logs' | 'invoices' | 'diesel'>('machines')
+  const [tab, setTab] = useState<'machines' | 'sessions' | 'logs' | 'invoices' | 'diesel' | 'receivables'>('machines')
   const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false)
   const [addMachineOpen, setAddMachineOpen] = useState(false)
   const [closingAssignment, setClosingAssignment] = useState<MachineAssignment | null>(null)
@@ -1756,6 +1758,43 @@ export function WorkOrderDetailPage() {
     enabled: !!id && tab === 'diesel',
   })
   const dieselSummary = dieselSummaryRes?.data ?? []
+
+  const { data: receivablesSummaryRes, refetch: refetchReceivables } = useQuery({
+    queryKey: ['receivables-summary', Number(id)],
+    queryFn: () => equipmentReceivablesApi.getSummary(Number(id)),
+    enabled: !!id && tab === 'receivables',
+  })
+  const receivablesSummary = receivablesSummaryRes?.data
+
+  const [advanceForm, setAdvanceForm] = useState<EquipmentAdvanceRequest>({
+    amount: 0, paymentDate: new Date().toISOString().slice(0, 10), paymentMode: 'NEFT',
+  })
+  const [releaseForm, setReleaseForm] = useState<EquipmentRetentionReleaseRequest>({
+    amount: 0, releaseDate: new Date().toISOString().slice(0, 10),
+  })
+  const [showAdvanceDialog, setShowAdvanceDialog] = useState(false)
+  const [showReleaseDialog, setShowReleaseDialog] = useState(false)
+
+  const recordAdvanceMutation = useMutation({
+    mutationFn: (req: EquipmentAdvanceRequest) => equipmentReceivablesApi.recordAdvance(Number(id), req),
+    onSuccess: () => { toast.success('Advance recorded'); setShowAdvanceDialog(false); refetchReceivables() },
+    onError: () => toast.error('Failed to record advance'),
+  })
+  const deleteAdvanceMutation = useMutation({
+    mutationFn: (advId: number) => equipmentReceivablesApi.deleteAdvance(Number(id), advId),
+    onSuccess: () => { toast.success('Advance deleted'); refetchReceivables() },
+    onError: () => toast.error('Failed to delete advance'),
+  })
+  const recordReleaseMutation = useMutation({
+    mutationFn: (req: EquipmentRetentionReleaseRequest) => equipmentReceivablesApi.recordRetentionRelease(Number(id), req),
+    onSuccess: () => { toast.success('Retention released'); setShowReleaseDialog(false); refetchReceivables() },
+    onError: () => toast.error('Failed to record release'),
+  })
+  const deleteReleaseMutation = useMutation({
+    mutationFn: (relId: number) => equipmentReceivablesApi.deleteRetentionRelease(Number(id), relId),
+    onSuccess: () => { toast.success('Release deleted'); refetchReceivables() },
+    onError: () => toast.error('Failed to delete release'),
+  })
 
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading…</div>
   if (!res?.data) return <div className="p-12 text-center text-gray-400">Work order not found</div>
@@ -1904,8 +1943,9 @@ export function WorkOrderDetailPage() {
           { key: 'machines',  label: 'Machines', icon: <Wrench size={14} /> },
           { key: 'sessions',  label: 'Work Hours History', icon: <Timer size={14} /> },
           { key: 'logs',      label: 'Daily Logs', icon: <Activity size={14} /> },
-          { key: 'diesel',    label: 'Diesel', icon: <Fuel size={14} /> },
-          { key: 'invoices',  label: 'Invoices', icon: <Receipt size={14} /> },
+          { key: 'diesel',      label: 'Diesel', icon: <Fuel size={14} /> },
+          { key: 'invoices',    label: 'Invoices', icon: <Receipt size={14} /> },
+          { key: 'receivables', label: 'Receivables', icon: <CreditCard size={14} /> },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
@@ -2373,6 +2413,192 @@ export function WorkOrderDetailPage() {
           onDelete={invId => deleteInvoiceMutation.mutate(invId)}
         />
       )}
+
+      {/* Tab: Receivables */}
+      {tab === 'receivables' && (
+        <div className="space-y-4">
+          {/* Summary card */}
+          {receivablesSummary ? (
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Landmark className="h-4 w-4 text-feros-equip-sidebar" />
+                <span className="font-semibold text-gray-800">Reconciliation Summary</span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {[
+                  { label: 'Gross Billed', value: receivablesSummary.grossBilled, color: 'text-gray-800' },
+                  { label: 'Received', value: receivablesSummary.totalReceived, color: 'text-green-700' },
+                  { label: 'Retention Held', value: receivablesSummary.retentionHeld, color: 'text-amber-700' },
+                  { label: 'Advances', value: receivablesSummary.totalAdvances, color: 'text-blue-700' },
+                  { label: 'Balance Due', value: receivablesSummary.balanceDue, color: receivablesSummary.balanceDue > 0 ? 'text-red-700' : 'text-green-700' },
+                ].map(item => (
+                  <div key={item.label} className="bg-gray-50 rounded-lg px-3 py-2.5 text-center">
+                    <p className="text-xs text-gray-400 mb-0.5">{item.label}</p>
+                    <p className={`text-sm font-bold ${item.color}`}>
+                      ₹{Number(item.value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Invoice breakdown */}
+              {receivablesSummary.invoices.length > 0 && (
+                <div className="mt-3 border-t pt-3">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Invoice Breakdown</p>
+                  <div className="space-y-1">
+                    {receivablesSummary.invoices.map(inv => (
+                      <div key={inv.invoiceId} className="flex items-center justify-between text-xs py-1">
+                        <span className="text-gray-600">{inv.invoiceNumber ?? `Invoice #${inv.invoiceId}`}</span>
+                        <div className="flex items-center gap-4 text-gray-500">
+                          <span>Billed: ₹{Number(inv.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-green-600">Recd: ₹{Number(inv.totalReceived).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          <span className={inv.balanceDue > 0 ? 'text-amber-600 font-medium' : 'text-green-600'}>
+                            Bal: ₹{Number(inv.balanceDue).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </span>
+                          <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{inv.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm">Loading…</div>
+          )}
+
+          {/* Advances */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-gray-800 text-sm">Advances</span>
+              <Button size="sm" onClick={() => setShowAdvanceDialog(true)} className="h-7 text-xs gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> Record Advance
+              </Button>
+            </div>
+            {(receivablesSummary?.advances ?? []).length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-1">No advances recorded</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {(receivablesSummary?.advances ?? []).map(a => (
+                  <div key={a.id} className="flex items-center justify-between py-2 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-800">₹{Number(a.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-gray-400 text-xs ml-2">{a.paymentMode}</span>
+                      {a.utrReference && <span className="text-gray-400 text-xs ml-2">UTR: {a.utrReference}</span>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-400">{a.paymentDate}</span>
+                      <button onClick={() => deleteAdvanceMutation.mutate(a.id)} className="text-red-400 hover:text-red-600">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Retention Releases */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-gray-800 text-sm">Retention Releases</span>
+              <Button size="sm" onClick={() => setShowReleaseDialog(true)} className="h-7 text-xs gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> Release Retention
+              </Button>
+            </div>
+            {(receivablesSummary?.retentionReleases ?? []).length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-1">No releases recorded</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {(receivablesSummary?.retentionReleases ?? []).map(r => (
+                  <div key={r.id} className="flex items-center justify-between py-2 text-sm">
+                    <span className="font-medium text-gray-800">₹{Number(r.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-400">{r.releaseDate}</span>
+                      {r.notes && <span className="text-xs text-gray-400">{r.notes}</span>}
+                      <button onClick={() => deleteReleaseMutation.mutate(r.id)} className="text-red-400 hover:text-red-600">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Record Advance Dialog */}
+      <Dialog open={showAdvanceDialog} onOpenChange={setShowAdvanceDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Record Advance</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Amount (₹)</label>
+              <Input type="number" min="0" step="0.01" value={advanceForm.amount || ''}
+                onChange={e => setAdvanceForm(f => ({ ...f, amount: Number(e.target.value) }))} placeholder="0.00" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Date</label>
+              <Input type="date" value={advanceForm.paymentDate}
+                onChange={e => setAdvanceForm(f => ({ ...f, paymentDate: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Mode</label>
+              <select value={advanceForm.paymentMode}
+                onChange={e => setAdvanceForm(f => ({ ...f, paymentMode: e.target.value as PaymentMode }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                {(['NEFT', 'RTGS', 'CHEQUE', 'CASH', 'UPI', 'OTHER'] as PaymentMode[]).map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">UTR / Ref</label>
+              <Input value={advanceForm.utrReference ?? ''} placeholder="Optional"
+                onChange={e => setAdvanceForm(f => ({ ...f, utrReference: e.target.value }))} />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAdvanceDialog(false)}>Cancel</Button>
+              <Button className="flex-1" disabled={!advanceForm.amount || recordAdvanceMutation.isPending}
+                onClick={() => recordAdvanceMutation.mutate(advanceForm)}>
+                {recordAdvanceMutation.isPending ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Release Retention Dialog */}
+      <Dialog open={showReleaseDialog} onOpenChange={setShowReleaseDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Release Retention</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Amount (₹)</label>
+              <Input type="number" min="0" step="0.01" value={releaseForm.amount || ''}
+                onChange={e => setReleaseForm(f => ({ ...f, amount: Number(e.target.value) }))} placeholder="0.00" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Release Date</label>
+              <Input type="date" value={releaseForm.releaseDate}
+                onChange={e => setReleaseForm(f => ({ ...f, releaseDate: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Notes</label>
+              <Input value={releaseForm.notes ?? ''} placeholder="Optional"
+                onChange={e => setReleaseForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowReleaseDialog(false)}>Cancel</Button>
+              <Button className="flex-1" disabled={!releaseForm.amount || recordReleaseMutation.isPending}
+                onClick={() => recordReleaseMutation.mutate(releaseForm)}>
+                {recordReleaseMutation.isPending ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialogs */}
       <AddMachineDialog woId={Number(id)} open={addMachineOpen} onClose={() => setAddMachineOpen(false)} />
