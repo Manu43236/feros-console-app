@@ -6,6 +6,7 @@ import {
   ArrowLeft, Info, TrendingUp, Gauge, Droplets,
   ClipboardList, FileText, AlertTriangle, ChevronRight,
   Plus, Pencil, Trash2, Wrench, ChevronDown, Search, Check,
+  ShieldCheck, Shield, ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -19,7 +20,8 @@ import { globalMastersApi } from '@/api/masters'
 import { machinesApi } from '@/api/machines'
 import type { Equipment, EquipmentWorkStatus, EquipmentFuelLog, EquipmentFuelLogRequest, EquipmentMeterReading, EquipmentMeterReadingRequest, EquipmentServiceRecord, EquipmentServiceRequest, ServiceTriggeredBy, EquipmentServiceType, ServicePayerType } from '@/api/equipment'
 import type { MasterItem } from '@/types'
-import type { MachineAssignmentHistory, MachineDailyLog, MachineInvoiceItem } from '@/api/machines'
+import type { MachineAssignmentHistory, MachineDailyLog, MachineInvoiceItem, EquipmentDocument, EquipmentDocumentInput } from '@/api/machines'
+import type { DocumentTypeItem } from '@/types'
 import { BreakdownTab } from './BreakdownTab'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,7 +68,7 @@ const WORK_STATUS: Record<EquipmentWorkStatus, { label: string; cls: string }> =
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Utilization', 'HMR', 'Fuel', 'Service', 'WO History', 'Billings'] as const
+const TABS = ['Basic Info', 'Utilization', 'HMR', 'Fuel', 'Service', 'Documents', 'WO History', 'Billings'] as const
 type Tab = typeof TABS[number]
 
 function tabIcon(t: Tab) {
@@ -77,6 +79,7 @@ function tabIcon(t: Tab) {
   if (t === 'WO History')  return <ClipboardList size={14} />
   if (t === 'Billings')    return <FileText size={14} />
   if (t === 'Service')     return <Wrench size={14} />
+  if (t === 'Documents')   return <ShieldCheck size={14} />
 }
 
 // ── Date filter bar ───────────────────────────────────────────────────────────
@@ -1400,6 +1403,295 @@ function WoHistoryTab({ history, navigate }: { history: MachineAssignmentHistory
   )
 }
 
+// ── Documents Tab (KAN-14) ────────────────────────────────────────────────────
+function docExpiryBadge(expiryDate: string | null) {
+  if (!expiryDate) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const exp = new Date(expiryDate + 'T00:00:00')
+  const daysLeft = Math.round((exp.getTime() - today.getTime()) / 86400000)
+  if (daysLeft < 0)  return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Expired</span>
+  if (daysLeft <= 30) return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Exp in {daysLeft}d</span>
+  return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Valid</span>
+}
+
+function DocDialog({
+  open, onClose, equipmentId, editing, docTypes,
+}: {
+  open: boolean; onClose: () => void; equipmentId: number
+  editing: EquipmentDocument | null; docTypes: DocumentTypeItem[]
+}) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState<EquipmentDocumentInput>(() =>
+    editing ? {
+      documentTypeId: editing.documentTypeId ?? 0,
+      documentNumber: editing.documentNumber ?? undefined,
+      issueDate: editing.issueDate ?? undefined,
+      expiryDate: editing.expiryDate ?? undefined,
+      issuerName: editing.issuerName ?? undefined,
+      fileUrl: editing.fileUrl ?? undefined,
+      cost: editing.cost ?? undefined,
+      paidOn: editing.paidOn ?? undefined,
+      remarks: editing.remarks ?? undefined,
+      isVerified: editing.isVerified,
+    } : { documentTypeId: 0 }
+  )
+  const [uploading, setUploading] = useState(false)
+
+  const set = (patch: Partial<EquipmentDocumentInput>) => setForm(f => ({ ...f, ...patch }))
+
+  const isEdit = !!editing
+
+  const mut = useMutation({
+    mutationFn: (data: EquipmentDocumentInput) =>
+      isEdit
+        ? machinesApi.updateDocument(equipmentId, editing!.id, data)
+        : machinesApi.addDocument(equipmentId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eq-docs', equipmentId] })
+      toast.success(isEdit ? 'Document updated' : 'Document added')
+      onClose()
+    },
+    onError: () => toast.error('Failed to save document'),
+  })
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return
+    setUploading(true)
+    try {
+      const res = await machinesApi.uploadDocFile(equipmentId, file)
+      set({ fileUrl: res.data?.publicUrl ?? res.data?.url })
+    } catch { toast.error('Upload failed') }
+    finally { setUploading(false) }
+  }
+
+  // Populate form when editing
+  const prevEditing = editing
+  if (prevEditing && form.documentTypeId === 0 && !isEdit) {
+    // handled via useEffect below
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? 'Edit Document' : 'Add Document'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <Label>Document Type *</Label>
+            <Select
+              value={form.documentTypeId ? String(form.documentTypeId) : ''}
+              onValueChange={v => set({ documentTypeId: Number(v) })}
+            >
+              <SelectTrigger><SelectValue placeholder="Select type…" /></SelectTrigger>
+              <SelectContent>
+                {docTypes.map(dt => <SelectItem key={dt.id} value={String(dt.id)}>{dt.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Document Number</Label>
+              <Input placeholder="e.g. INS-2024-001" value={form.documentNumber ?? ''} onChange={e => set({ documentNumber: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Issuer</Label>
+              <Input placeholder="Issuing authority" value={form.issuerName ?? ''} onChange={e => set({ issuerName: e.target.value })} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Issue Date</Label>
+              <Input type="date" value={form.issueDate ?? ''} onChange={e => set({ issueDate: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Expiry Date</Label>
+              <Input type="date" value={form.expiryDate ?? ''} onChange={e => set({ expiryDate: e.target.value })} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Cost (₹)</Label>
+              <Input type="number" placeholder="0" value={form.cost ?? ''} onChange={e => set({ cost: e.target.value ? Number(e.target.value) : undefined })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Paid On</Label>
+              <Input type="date" value={form.paidOn ?? ''} onChange={e => set({ paidOn: e.target.value })} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>File / Document Scan</Label>
+            <div className="flex items-center gap-2">
+              <Input type="file" accept="image/*,.pdf" onChange={handleFile} className="text-xs" disabled={uploading} />
+              {uploading && <span className="text-xs text-gray-400">Uploading…</span>}
+            </div>
+            {form.fileUrl && (
+              <a href={form.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-1">
+                <ExternalLink size={11} /> View file
+              </a>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Remarks</Label>
+            <Input placeholder="Optional notes" value={form.remarks ?? ''} onChange={e => set({ remarks: e.target.value })} />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer pt-1">
+            <input type="checkbox" checked={!!form.isVerified} onChange={e => set({ isVerified: e.target.checked })} className="w-4 h-4 rounded" />
+            <span className="text-sm text-gray-700">Mark as verified</span>
+          </label>
+        </div>
+        <DialogFooter className="pt-2">
+          <Button variant="outline" onClick={onClose} disabled={mut.isPending || uploading}>Cancel</Button>
+          <Button
+            onClick={() => { if (!form.documentTypeId) { toast.error('Select a document type'); return }; mut.mutate(form) }}
+            disabled={mut.isPending || uploading}
+            className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white"
+          >
+            {mut.isPending ? 'Saving…' : isEdit ? 'Update' : 'Add Document'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function DocumentsTab({ equipmentId }: { equipmentId: number }) {
+  const qc = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<EquipmentDocument | null>(null)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+
+  const { data: docsData, isLoading } = useQuery({
+    queryKey: ['eq-docs', equipmentId],
+    queryFn: () => machinesApi.getDocuments(equipmentId),
+  })
+  const { data: dtData } = useQuery({
+    queryKey: ['doc-types-equipment'],
+    queryFn: () => globalMastersApi.getDocumentTypes(),
+    staleTime: 300_000,
+  })
+
+  const docs = (docsData?.data ?? []) as EquipmentDocument[]
+  const docTypes = ((dtData?.data ?? []) as DocumentTypeItem[]).filter(dt => dt.applicableFor === 'EQUIPMENT' && dt.isActive)
+
+  const verifyMut = useMutation({
+    mutationFn: ({ id, verified }: { id: number; verified: boolean }) =>
+      machinesApi.verifyDocument(equipmentId, id, verified),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['eq-docs', equipmentId] }),
+    onError: () => toast.error('Failed to update verification'),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (id: number) => machinesApi.deleteDocument(equipmentId, id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['eq-docs', equipmentId] }); toast.success('Deleted'); setDeleteId(null) },
+    onError: () => toast.error('Failed to delete'),
+  })
+
+  const openEdit = (doc: EquipmentDocument) => {
+    setEditing(doc)
+    setDialogOpen(true)
+  }
+
+  const openAdd = () => {
+    setEditing(null)
+    setDialogOpen(true)
+  }
+
+  if (isLoading) return <div className="py-10 text-center text-sm text-gray-400 animate-pulse">Loading…</div>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">{docs.length} document{docs.length !== 1 ? 's' : ''}</p>
+        <Button size="sm" onClick={openAdd} className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1.5 h-8 text-xs">
+          <Plus size={13} /> Add Document
+        </Button>
+      </div>
+
+      {docs.length === 0 ? (
+        <div className="py-14 text-center text-gray-400">
+          <ShieldCheck size={32} className="mx-auto mb-3 text-gray-200" />
+          <p className="text-sm">No documents yet</p>
+          <p className="text-xs text-gray-300 mt-1">Add insurance, fitness, PUC, or other certs</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {docs.map(doc => (
+            <div key={doc.id} className="border border-gray-100 rounded-xl px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors">
+              <div className="mt-0.5">
+                {doc.isVerified
+                  ? <ShieldCheck size={18} className="text-green-500" />
+                  : <Shield size={18} className="text-gray-300" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-gray-800">{doc.documentTypeName ?? '—'}</span>
+                  {docExpiryBadge(doc.expiryDate)}
+                  {doc.isVerified && (
+                    <span className="text-xs text-green-600 font-medium">Verified</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                  {doc.documentNumber && <span className="text-xs text-gray-500">#{doc.documentNumber}</span>}
+                  {doc.issueDate && <span className="text-xs text-gray-400">Issued {fmtDate(doc.issueDate)}</span>}
+                  {doc.expiryDate && <span className="text-xs text-gray-400">Expires {fmtDate(doc.expiryDate)}</span>}
+                  {doc.issuerName && <span className="text-xs text-gray-400">by {doc.issuerName}</span>}
+                  {doc.cost != null && <span className="text-xs text-gray-400">Cost {fmtMoney(doc.cost)}</span>}
+                </div>
+                {doc.remarks && <p className="text-xs text-gray-400 mt-0.5 truncate">{doc.remarks}</p>}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {doc.fileUrl && (
+                  <a href={doc.fileUrl} target="_blank" rel="noreferrer"
+                    className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors">
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+                <button
+                  onClick={() => verifyMut.mutate({ id: doc.id, verified: !doc.isVerified })}
+                  className={cn('p-1.5 rounded transition-colors', doc.isVerified ? 'text-green-500 hover:bg-green-50' : 'text-gray-300 hover:text-green-500 hover:bg-green-50')}
+                  title={doc.isVerified ? 'Unverify' : 'Mark verified'}
+                >
+                  <Check size={14} />
+                </button>
+                <button onClick={() => openEdit(doc)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => setDeleteId(doc.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <DocDialog
+        key={editing?.id ?? 'new'}
+        open={dialogOpen}
+        onClose={() => { setDialogOpen(false); setEditing(null) }}
+        equipmentId={equipmentId}
+        editing={editing}
+        docTypes={docTypes}
+      />
+
+      <Dialog open={deleteId !== null} onOpenChange={v => !v && setDeleteId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete Document?</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600">This will remove the document from this machine. This action cannot be undone.</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button onClick={() => deleteMut.mutate(deleteId!)} disabled={deleteMut.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white">
+              {deleteMut.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 // ── Billings Tab ──────────────────────────────────────────────────────────────
 const INV_STATUS_CLS: Record<string, string> = {
   PAID: 'bg-green-100 text-green-700', DRAFT: 'bg-gray-100 text-gray-500',
@@ -1603,6 +1895,7 @@ export function MachineDetailPage() {
                 : <BreakdownTab equipmentId={id} currentHmr={machine.currentMeterReading != null ? Number(machine.currentMeterReading) : null} />}
             </div>
           )}
+          {activeTab === 'Documents'   && <DocumentsTab equipmentId={id} />}
           {activeTab === 'WO History'  && <WoHistoryTab history={history} navigate={navigate} />}
           {activeTab === 'Billings'    && <BillingsTab items={invItems} navigate={navigate} />}
         </div>

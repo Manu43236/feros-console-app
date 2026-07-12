@@ -151,6 +151,15 @@ export const machinesApi = {
 
   getExpiringDocuments: (days = 30) =>
     apiClient.get<ApiResponse<EquipmentDocument[]>>(`/equipment/documents/expiring`, { params: { days } }).then(r => r.data),
+
+  uploadDocFile: (equipmentId: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('folder', `tenants/images/equipment/${equipmentId}/documents`)
+    return apiClient.post<ApiResponse<{ key: string; url: string; publicUrl: string }>>('/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
 }
 
 export const equipmentAttachmentsApi = {

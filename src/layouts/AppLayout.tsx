@@ -265,7 +265,8 @@ const EQUIPMENT_ADMIN_NAV: SectionedNav = {
       section: 'Equipment',
       icon: Construction,
       items: [
-        { to: '/equipment/machines',       label: 'Machines',       icon: Construction },
+        { to: '/equipment/machines',     label: 'Machines',     icon: Construction },
+        { to: '/equipment/attachments',  label: 'Attachments',  icon: Boxes },
       ],
     },
     {
@@ -307,7 +308,8 @@ const EQUIPMENT_SUPERVISOR_NAV: SectionedNav = {
       section: 'Equipment',
       icon: Construction,
       items: [
-        { to: '/equipment/machines', label: 'Machines', icon: Construction },
+        { to: '/equipment/machines',    label: 'Machines',    icon: Construction },
+        { to: '/equipment/attachments', label: 'Attachments', icon: Boxes },
       ],
     },
     {

@@ -399,7 +399,7 @@ function DocumentTypesSection() {
   const [open, setOpen]           = useState(false)
   const [editItem, setEditItem]   = useState<DocumentTypeItem | null>(null)
   const [name, setName]           = useState('')
-  const [applicableFor, setApplicableFor] = useState<'VEHICLE' | 'DRIVER' | 'BOTH'>('BOTH')
+  const [applicableFor, setApplicableFor] = useState<'VEHICLE' | 'DRIVER' | 'BOTH' | 'EQUIPMENT'>('BOTH')
   const [nameErr, setNameErr]     = useState('')
   const [dlg, setDlg]             = useState<{ name: string; id: number } | null>(null)
 
@@ -452,11 +452,12 @@ function DocumentTypesSection() {
               <Label>Applicable For <span className="text-red-500">*</span></Label>
               <SearchableSelect
                 value={applicableFor}
-                onValueChange={v => setApplicableFor(v as 'VEHICLE' | 'DRIVER' | 'BOTH')}
+                onValueChange={v => setApplicableFor(v as 'VEHICLE' | 'DRIVER' | 'BOTH' | 'EQUIPMENT')}
                 options={[
                   { value: 'VEHICLE', label: 'Vehicle' },
                   { value: 'DRIVER', label: 'Driver' },
                   { value: 'BOTH', label: 'Both' },
+                  { value: 'EQUIPMENT', label: 'Equipment' },
                 ]}
                 className="mt-1"
               />

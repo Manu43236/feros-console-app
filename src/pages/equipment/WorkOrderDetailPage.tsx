@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
-  Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2, Receipt,
+  Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2, Receipt, Boxes,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,8 @@ import { staffApi } from '@/api/staff'
 import { clientsApi } from '@/api/clients'
 import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus } from '@/types'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
+import { equipmentAttachmentsApi } from '@/api/machines'
+import type { EquipmentAttachment } from '@/api/machines'
 import { CreateEquipmentInvoiceDialog } from './CreateEquipmentInvoiceDialog'
 import { cn } from '@/lib/utils'
 
@@ -1009,6 +1011,56 @@ function InvoicesTab({
   )
 }
 
+// ── Assign Attachment Dialog (KAN-13) ─────────────────────────────────────────
+function AssignAttachmentDialog({ woId, assignment, open, onClose }: {
+  woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [attachmentId, setAttachmentId] = useState<string>('')
+
+  const { data } = useQuery({
+    queryKey: ['eq-attachments'],
+    queryFn: () => equipmentAttachmentsApi.getAll(),
+    enabled: open,
+  })
+  const attachments = ((data?.data ?? []) as EquipmentAttachment[]).filter(a => a.isActive)
+
+  const mut = useMutation({
+    mutationFn: () => workOrdersApi.setAttachment(woId, assignment!.id, attachmentId ? Number(attachmentId) : null),
+    onSuccess: () => { toast.success('Attachment updated'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); onClose() },
+    onError: () => toast.error('Failed to update attachment'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Link Attachment</DialogTitle></DialogHeader>
+        <div className="space-y-3 pt-1">
+          <p className="text-xs text-gray-500">Select an attachment to link to this machine line, or clear to unlink.</p>
+          <SearchableSelect
+            value={attachmentId || (assignment?.attachmentId ? String(assignment.attachmentId) : '')}
+            onValueChange={setAttachmentId}
+            options={[
+              { value: '', label: '— None —' },
+              ...attachments.map(a => ({
+                value: String(a.id),
+                label: `${a.name} · ${a.type}`,
+              })),
+            ]}
+          />
+        </div>
+        <div className="flex gap-2 pt-2">
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={mut.isPending}>Cancel</Button>
+          <Button className="flex-1 bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white"
+            onClick={() => mut.mutate()} disabled={mut.isPending}>
+            {mut.isPending ? 'Saving…' : 'Confirm'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Main Detail Page ──────────────────────────────────────────────────────────
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -1026,6 +1078,7 @@ export function WorkOrderDetailPage() {
   const [deletingLogId, setDeletingLogId] = useState<number | null>(null)
   const [extendOpen, setExtendOpen] = useState(false)
   const [assigningOperatorFor, setAssigningOperatorFor] = useState<MachineAssignment | null>(null)
+  const [assigningAttachmentFor, setAssigningAttachmentFor] = useState<MachineAssignment | null>(null)
   const [startingWorkFor, setStartingWorkFor] = useState<MachineAssignment | null>(null)
   const [stoppingWorkFor, setStoppingWorkFor] = useState<MachineAssignment | null>(null)
   const [assigningDivisionFor, setAssigningDivisionFor] = useState<MachineAssignment | null>(null)
@@ -1274,6 +1327,22 @@ export function WorkOrderDetailPage() {
                       <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
                         onClick={() => setAssigningDivisionFor(a)}>
                         {a.divisionName ? 'Change' : 'Assign Division'}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Attachment row */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <Boxes size={12} />
+                      {a.attachmentName
+                        ? <span className="font-medium text-gray-700">{a.attachmentName}{a.attachmentType ? ` · ${a.attachmentType}` : ''}</span>
+                        : <span className="text-gray-400 italic">No attachment</span>}
+                    </div>
+                    {a.isActive && (
+                      <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
+                        onClick={() => setAssigningAttachmentFor(a)}>
+                        {a.attachmentName ? 'Change' : 'Link Attachment'}
                       </Button>
                     )}
                   </div>
@@ -1557,6 +1626,7 @@ export function WorkOrderDetailPage() {
       <AddMachineDialog woId={Number(id)} open={addMachineOpen} onClose={() => setAddMachineOpen(false)} />
       <CloseMachineDialog woId={Number(id)} assignment={closingAssignment} open={!!closingAssignment} onClose={() => setClosingAssignment(null)} />
       <AssignOperatorDialog woId={Number(id)} assignment={assigningOperatorFor} open={!!assigningOperatorFor} onClose={() => setAssigningOperatorFor(null)} />
+      <AssignAttachmentDialog woId={Number(id)} assignment={assigningAttachmentFor} open={!!assigningAttachmentFor} onClose={() => setAssigningAttachmentFor(null)} />
       <AssignDivisionDialog woId={Number(id)} clientId={wo.clientId} assignment={assigningDivisionFor} open={!!assigningDivisionFor} onClose={() => setAssigningDivisionFor(null)} />
       <StartWorkDialog woId={Number(id)} assignment={startingWorkFor} open={!!startingWorkFor} onClose={() => setStartingWorkFor(null)} />
       <StopWorkDialog woId={Number(id)} assignment={stoppingWorkFor} open={!!stoppingWorkFor} onClose={() => setStoppingWorkFor(null)} />

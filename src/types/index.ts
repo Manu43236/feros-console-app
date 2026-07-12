@@ -72,7 +72,7 @@ export interface MasterItem {
 export interface StateItem extends MasterItem { code: string }
 export interface CityItem  extends MasterItem { stateId: number; stateName: string }
 export interface VehicleTypeItem extends MasterItem { capacityInTons: number; tyreCount: number }
-export interface DocumentTypeItem extends MasterItem { applicableFor: 'VEHICLE' | 'DRIVER' | 'BOTH'; applicableRoles: string[] | null; allowMultiple: boolean }
+export interface DocumentTypeItem extends MasterItem { applicableFor: 'VEHICLE' | 'DRIVER' | 'BOTH' | 'EQUIPMENT'; applicableRoles: string[] | null; allowMultiple: boolean }
 export interface TaxItem extends MasterItem { rate: number; taxType: string }
 
 // Vehicle status type enum
