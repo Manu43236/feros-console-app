@@ -1,6 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, PageResponse, WorkOrder, WorkOrderDetail, MachineAssignment, DailyLog, WorkEntry } from '@/types'
-
+import type { ApiResponse, PageResponse, WorkOrder, WorkOrderDetail, MachineAssignment, DailyLog, WorkEntry, WoAmendment, MachineConditionSurvey } from '@/types'
 
 export const workOrdersApi = {
   getAll: (params?: { page?: number; size?: number; status?: string; clientId?: number }) =>
@@ -21,7 +20,7 @@ export const workOrdersApi = {
   extend: (id: number, newEndDate: string) =>
     apiClient.put<ApiResponse<WorkOrder>>(`/work-orders/${id}/extend`, { newEndDate }).then(r => r.data),
 
-  addMachine: (woId: number, data: { equipmentId: number; startDate?: string; rateType?: string; rateAmount?: number }) =>
+  addMachine: (woId: number, data: Record<string, unknown>) =>
     apiClient.post<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines`, data).then(r => r.data),
 
   closeMachine: (woId: number, assignmentId: number, data: { endDate?: string; endReason: string }) =>
@@ -62,4 +61,22 @@ export const workOrdersApi = {
 
   getLogs: (woId: number, from?: string, to?: string) =>
     apiClient.get<ApiResponse<DailyLog[]>>(`/work-orders/${woId}/logs`, { params: { from, to } }).then(r => r.data),
+
+  // KAN-19 Amendments
+  getAmendments: (woId: number) =>
+    apiClient.get<ApiResponse<WoAmendment[]>>(`/work-orders/${woId}/amendments`).then(r => r.data),
+
+  createAmendment: (woId: number, data: { amendmentType: string; effectiveDate: string; oldValue?: string; newValue?: string; reason?: string }) =>
+    apiClient.post<ApiResponse<WoAmendment>>(`/work-orders/${woId}/amendments`, data).then(r => r.data),
+
+  // KAN-20 Machine swap
+  swapMachine: (woId: number, assignmentId: number, data: { newEquipmentId: number; effectiveDate: string; reason?: string }) =>
+    apiClient.post<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/swap`, data).then(r => r.data),
+
+  // KAN-21 Condition surveys
+  getSurveys: (woId: number, assignmentId: number) =>
+    apiClient.get<ApiResponse<MachineConditionSurvey[]>>(`/work-orders/${woId}/machines/${assignmentId}/surveys`).then(r => r.data),
+
+  createSurvey: (woId: number, assignmentId: number, data: { surveyType: string; surveyDate: string; hmrAtSurvey?: number; conditionNotes?: string; photos?: string[]; surveyedBy?: string }) =>
+    apiClient.post<ApiResponse<MachineConditionSurvey>>(`/work-orders/${woId}/machines/${assignmentId}/surveys`, data).then(r => r.data),
 }

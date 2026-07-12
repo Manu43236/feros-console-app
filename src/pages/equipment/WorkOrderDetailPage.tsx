@@ -10,6 +10,7 @@ import {
   ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
   Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2, Receipt, Boxes,
+  FileText, Camera, RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { staffApi } from '@/api/staff'
 import { clientsApi } from '@/api/clients'
-import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus } from '@/types'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide } from '@/types'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
 import { equipmentAttachmentsApi } from '@/api/machines'
 import type { EquipmentAttachment } from '@/api/machines'
@@ -1011,6 +1013,407 @@ function InvoicesTab({
   )
 }
 
+// ── Edit WO Terms Dialog (KAN-16) ────────────────────────────────────────────
+function EditTermsDialog({ woId, wo, open, onClose }: {
+  woId: number; wo: import('@/types').WorkOrder; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const { isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+
+  const [form, setForm] = useState({
+    gstPercent: wo.gstPercent?.toString() ?? '',
+    tdsPercent: wo.tdsPercent?.toString() ?? '',
+    retentionPercent: wo.retentionPercent?.toString() ?? '',
+    paymentTermsDays: wo.paymentTermsDays?.toString() ?? '',
+    billingCycleMonths: wo.billingCycleMonths?.toString() ?? '',
+    operatorByWhom: wo.operatorByWhom ?? '' as ProviderSide | '',
+    dieselByWhom: wo.dieselByWhom ?? '' as ProviderSide | '',
+    workingHoursPerDay: wo.workingHoursPerDay?.toString() ?? '',
+    overtimeRateMultiplier: wo.overtimeRateMultiplier?.toString() ?? '',
+    escalationClause: wo.escalationClause ?? '',
+    penaltyClause: wo.penaltyClause ?? '',
+    mobilizationCharge: wo.mobilizationCharge?.toString() ?? '',
+    demobilizationCharge: wo.demobilizationCharge?.toString() ?? '',
+  })
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const mut = useMutation({
+    mutationFn: () => workOrdersApi.update(woId, {
+      clientId: wo.clientId,
+      site: wo.site,
+      startDate: wo.startDate,
+      endDate: wo.endDate,
+      notes: wo.notes,
+      mobilizationCharge: form.mobilizationCharge ? Number(form.mobilizationCharge) : undefined,
+      demobilizationCharge: form.demobilizationCharge ? Number(form.demobilizationCharge) : undefined,
+      gstPercent: form.gstPercent ? Number(form.gstPercent) : undefined,
+      tdsPercent: form.tdsPercent ? Number(form.tdsPercent) : undefined,
+      retentionPercent: form.retentionPercent ? Number(form.retentionPercent) : undefined,
+      paymentTermsDays: form.paymentTermsDays ? Number(form.paymentTermsDays) : undefined,
+      billingCycleMonths: form.billingCycleMonths ? Number(form.billingCycleMonths) : undefined,
+      operatorByWhom: form.operatorByWhom || undefined,
+      dieselByWhom: form.dieselByWhom || undefined,
+      workingHoursPerDay: form.workingHoursPerDay ? Number(form.workingHoursPerDay) : undefined,
+      overtimeRateMultiplier: form.overtimeRateMultiplier ? Number(form.overtimeRateMultiplier) : undefined,
+      escalationClause: form.escalationClause || undefined,
+      penaltyClause: form.penaltyClause || undefined,
+    }),
+    onSuccess: () => { toast.success('Terms updated'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); onClose() },
+    onError: () => toast.error('Failed to update'),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Edit Commercial Terms</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="grid grid-cols-3 gap-3">
+            {[['GST %', 'gstPercent', '18'], ['TDS %', 'tdsPercent', '2'], ['Retention %', 'retentionPercent', '5']].map(([label, key, ph]) => (
+              <div key={key} className="space-y-1.5">
+                <Label>{label}</Label>
+                <Input type="number" step="0.01" placeholder={ph} value={form[key as keyof typeof form]} onChange={e => set(key as keyof typeof form, e.target.value)} />
+              </div>
+            ))}
+            {[['Payment Terms (days)', 'paymentTermsDays', '30'], ['Billing Cycle (months)', 'billingCycleMonths', '1'], ['Shift Hours / Day', 'workingHoursPerDay', '8']].map(([label, key, ph]) => (
+              <div key={key} className="space-y-1.5">
+                <Label>{label}</Label>
+                <Input type="number" placeholder={ph} value={form[key as keyof typeof form]} onChange={e => set(key as keyof typeof form, e.target.value)} />
+              </div>
+            ))}
+            <div className="space-y-1.5">
+              <Label>Operator By</Label>
+              <Select value={form.operatorByWhom} onValueChange={v => set('operatorByWhom', v)}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OUR">Our Side</SelectItem>
+                  <SelectItem value="CLIENT">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Diesel By</Label>
+              <Select value={form.dieselByWhom} onValueChange={v => set('dieselByWhom', v)}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OUR">Our Side</SelectItem>
+                  <SelectItem value="CLIENT">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>OT Rate Multiplier</Label>
+              <Input type="number" step="0.1" placeholder="1.5" value={form.overtimeRateMultiplier} onChange={e => set('overtimeRateMultiplier', e.target.value)} />
+            </div>
+          </div>
+          <div className="border-t pt-3 grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Mobilization (₹)</Label>
+              <Input type="number" step="0.01" placeholder="0" value={form.mobilizationCharge} onChange={e => set('mobilizationCharge', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Demobilization (₹)</Label>
+              <Input type="number" step="0.01" placeholder="0" value={form.demobilizationCharge} onChange={e => set('demobilizationCharge', e.target.value)} />
+            </div>
+          </div>
+          <div className="border-t pt-3 grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Escalation Clause</Label>
+              <Input placeholder="e.g. 10% p.a. after 12 months" value={form.escalationClause} onChange={e => set('escalationClause', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Penalty / LD Clause</Label>
+              <Input placeholder="e.g. ₹500/hr beyond 8hr downtime" value={form.penaltyClause} onChange={e => set('penaltyClause', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 pt-3 border-t">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending} className={btnPrimary}>
+            {mut.isPending ? 'Saving…' : 'Save Terms'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Machine Terms Dialog (KAN-17/18) ─────────────────────────────────────────
+function MachineTermsDialog({ woId, assignment, open, onClose }: {
+  woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const { isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+
+  const [form, setForm] = useState({
+    hireType: assignment?.hireType ?? '' as HireType | '',
+    guaranteedHours: assignment?.guaranteedHours?.toString() ?? '',
+    overtimeRate: assignment?.overtimeRate?.toString() ?? '',
+    dieselByWhom: assignment?.dieselByWhom ?? '' as ProviderSide | '',
+    onHireDate: assignment?.onHireDate ?? '',
+    offHireDate: assignment?.offHireDate ?? '',
+    rateType: assignment?.rateType ?? '' as import('@/types').RateType | '',
+    rateAmount: assignment?.rateAmount?.toString() ?? '',
+  })
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const mut = useMutation({
+    mutationFn: () => workOrdersApi.addMachine(woId, {
+      equipmentId: assignment!.equipmentId,
+      hireType: form.hireType || undefined,
+      guaranteedHours: form.guaranteedHours ? Number(form.guaranteedHours) : undefined,
+      overtimeRate: form.overtimeRate ? Number(form.overtimeRate) : undefined,
+      dieselByWhom: form.dieselByWhom || undefined,
+      onHireDate: form.onHireDate || undefined,
+      offHireDate: form.offHireDate || undefined,
+      rateType: form.rateType || undefined,
+      rateAmount: form.rateAmount ? Number(form.rateAmount) : undefined,
+    }),
+    onSuccess: () => { toast.success('Machine terms updated'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); onClose() },
+    onError: () => toast.error('Failed to update'),
+  })
+
+  if (!assignment) return null
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Machine Terms — {assignment.serialNumber ?? `#${assignment.equipmentId}`}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Hire Type</Label>
+              <Select value={form.hireType} onValueChange={v => set('hireType', v)}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WET">Wet Hire</SelectItem>
+                  <SelectItem value="DRY">Dry Hire</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Diesel By</Label>
+              <Select value={form.dieselByWhom} onValueChange={v => set('dieselByWhom', v)}>
+                <SelectTrigger><SelectValue placeholder="Inherit from WO" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OUR">Our Side</SelectItem>
+                  <SelectItem value="CLIENT">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Rate Type</Label>
+              <Select value={form.rateType} onValueChange={v => set('rateType', v)}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HOURLY">Hourly</SelectItem>
+                  <SelectItem value="DAILY_SHIFT">Daily Shift</SelectItem>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Rate Amount (₹)</Label>
+              <Input type="number" placeholder="0" value={form.rateAmount} onChange={e => set('rateAmount', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Guaranteed Hours / mo</Label>
+              <Input type="number" placeholder="200" value={form.guaranteedHours} onChange={e => set('guaranteedHours', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>OT Rate (₹/hr)</Label>
+              <Input type="number" placeholder="0" value={form.overtimeRate} onChange={e => set('overtimeRate', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>On-Hire Date</Label>
+              <Input type="date" value={form.onHireDate} onChange={e => set('onHireDate', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Off-Hire Date</Label>
+              <Input type="date" value={form.offHireDate} onChange={e => set('offHireDate', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 pt-3 border-t">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending} className={btnPrimary}>
+            {mut.isPending ? 'Saving…' : 'Update Terms'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Swap Machine Dialog (KAN-20) ───────────────────────────────────────────────
+function SwapMachineDialog({ woId, assignment, open, onClose }: {
+  woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const { isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+  const [newEquipmentId, setNewEquipmentId] = useState('')
+  const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().slice(0, 10))
+  const [reason, setReason] = useState('')
+
+  const { data: equipRes } = useQuery({
+    queryKey: ['equipment'],
+    queryFn: () => equipmentApi.getAll(),
+    enabled: open,
+  })
+  const allEquip = (equipRes?.data ?? []).filter(e => String(e.id) !== String(assignment?.equipmentId))
+  const options = allEquip.map(e => ({ value: String(e.id), label: eqLabel(e) }))
+
+  const mut = useMutation({
+    mutationFn: () => workOrdersApi.swapMachine(woId, assignment!.id, {
+      newEquipmentId: Number(newEquipmentId),
+      effectiveDate,
+      reason: reason || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Machine swapped — new assignment created')
+      qc.invalidateQueries({ queryKey: ['work-order', woId] })
+      qc.invalidateQueries({ queryKey: ['equipment'] })
+      setNewEquipmentId(''); setReason(''); onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to swap machine')
+    },
+  })
+
+  if (!assignment) return null
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Swap Machine</DialogTitle></DialogHeader>
+        <p className="text-xs text-gray-500">Closes <strong>{assignment.serialNumber ?? `#${assignment.equipmentId}`}</strong> and opens a new assignment with the same terms.</p>
+        <div className="space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <Label>Replacement Machine *</Label>
+            <SearchableSelect value={newEquipmentId} onValueChange={setNewEquipmentId} options={options} placeholder="Search available machines…" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Effective Date *</Label>
+            <Input type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Reason</Label>
+            <Input placeholder="e.g. Breakdown — hydraulic failure" value={reason} onChange={e => setReason(e.target.value)} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 pt-3 border-t">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={!newEquipmentId || mut.isPending} className={btnPrimary}>
+            {mut.isPending ? 'Swapping…' : 'Swap Machine'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Condition Survey Dialog (KAN-21) ──────────────────────────────────────────
+function ConditionSurveyDialog({ woId, assignment, open, onClose }: {
+  woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const { isEquipmentMode } = useSubscription()
+  const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
+  const [surveyType, setSurveyType] = useState<'IN_SURVEY' | 'OUT_SURVEY'>('IN_SURVEY')
+  const [surveyDate, setSurveyDate] = useState(new Date().toISOString().slice(0, 10))
+  const [hmr, setHmr] = useState('')
+  const [notes, setNotes] = useState('')
+  const [photoUrl, setPhotoUrl] = useState('')
+  const [photos, setPhotos] = useState<string[]>([])
+  const [surveyedBy, setSurveyedBy] = useState('')
+
+  const mut = useMutation({
+    mutationFn: () => workOrdersApi.createSurvey(woId, assignment!.id, {
+      surveyType, surveyDate,
+      hmrAtSurvey: hmr ? Number(hmr) : undefined,
+      conditionNotes: notes || undefined,
+      photos: photos.length > 0 ? photos : undefined,
+      surveyedBy: surveyedBy || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Survey saved')
+      qc.invalidateQueries({ queryKey: ['surveys', woId, assignment?.id] })
+      setSurveyType('IN_SURVEY'); setSurveyDate(new Date().toISOString().slice(0, 10))
+      setHmr(''); setNotes(''); setPhotos([]); setPhotoUrl(''); setSurveyedBy(''); onClose()
+    },
+    onError: () => toast.error('Failed to save survey'),
+  })
+
+  if (!assignment) return null
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Condition Survey — {assignment.serialNumber ?? `#${assignment.equipmentId}`}</DialogTitle></DialogHeader>
+        <div className="space-y-3 pt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Survey Type *</Label>
+              <Select value={surveyType} onValueChange={v => setSurveyType(v as typeof surveyType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IN_SURVEY">In-Survey (On-hire)</SelectItem>
+                  <SelectItem value="OUT_SURVEY">Out-Survey (Off-hire)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Survey Date *</Label>
+              <Input type="date" value={surveyDate} onChange={e => setSurveyDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>HMR at Survey</Label>
+              <Input type="number" step="0.1" placeholder="e.g. 5432.5" value={hmr} onChange={e => setHmr(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Surveyed By</Label>
+              <Input placeholder="Name" value={surveyedBy} onChange={e => setSurveyedBy(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Condition Notes</Label>
+            <Input placeholder="Describe machine condition…" value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Photo URLs <span className="text-gray-400 text-xs font-normal">(one at a time)</span></Label>
+            <div className="flex gap-2">
+              <Input placeholder="Paste uploaded photo URL" value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} className="flex-1" />
+              <Button type="button" variant="outline" onClick={() => { if (photoUrl.trim()) { setPhotos(p => [...p, photoUrl.trim()]); setPhotoUrl('') } }}>Add</Button>
+            </div>
+            {photos.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-1">
+                {photos.map((p, i) => (
+                  <div key={i} className="flex items-center gap-1 bg-gray-50 border rounded px-2 py-1 text-xs text-gray-600">
+                    <Camera size={10} />
+                    <span className="max-w-[120px] truncate">{p.split('/').pop()}</span>
+                    <button onClick={() => setPhotos(ps => ps.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 ml-1">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 pt-3 border-t">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending} className={btnPrimary}>
+            {mut.isPending ? 'Saving…' : 'Save Survey'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Assign Attachment Dialog (KAN-13) ─────────────────────────────────────────
 function AssignAttachmentDialog({ woId, assignment, open, onClose }: {
   woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
@@ -1086,6 +1489,11 @@ export function WorkOrderDetailPage() {
   const [logsTo, setLogsTo]             = useState('')
   const [sessionsFrom, setSessionsFrom] = useState('')
   const [sessionsTo, setSessionsTo]     = useState('')
+  // E2 dialog state
+  const [editTermsOpen, setEditTermsOpen] = useState(false)
+  const [machineTermsFor, setMachineTermsFor] = useState<MachineAssignment | null>(null)
+  const [swapMachineFor, setSwapMachineFor] = useState<MachineAssignment | null>(null)
+  const [surveyFor, setSurveyFor] = useState<MachineAssignment | null>(null)
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['work-order', Number(id)],
@@ -1144,6 +1552,12 @@ export function WorkOrderDetailPage() {
     mutationFn: (logId: number) => workOrdersApi.deleteLog(Number(id), logId),
     onSuccess: () => { toast.success('Log deleted'); qc.invalidateQueries({ queryKey: ['work-order', Number(id)] }) },
     onError: () => toast.error('Failed to delete log'),
+  })
+
+  const { data: amendmentsRes } = useQuery({
+    queryKey: ['amendments', Number(id)],
+    queryFn: () => workOrdersApi.getAmendments(Number(id)),
+    enabled: !!id && tab === 'machines',
   })
 
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading…</div>
@@ -1250,6 +1664,42 @@ export function WorkOrderDetailPage() {
         </div>
       </div>
 
+      {/* ── Commercial Terms Panel (KAN-16) ── */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 text-gray-600">
+            <FileText size={14} />
+            <span className="text-xs font-semibold uppercase tracking-wide">Commercial Terms</span>
+          </div>
+          {!['COMPLETED', 'CANCELLED'].includes(woStatus) && (
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-feros-equip-sidebar"
+              onClick={() => setEditTermsOpen(true)}>
+              Edit
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-2 text-xs">
+          {[
+            ['GST', wo.gstPercent != null ? `${wo.gstPercent}%` : '—'],
+            ['TDS', wo.tdsPercent != null ? `${wo.tdsPercent}%` : '—'],
+            ['Retention', wo.retentionPercent != null ? `${wo.retentionPercent}%` : '—'],
+            ['Payment Terms', wo.paymentTermsDays != null ? `${wo.paymentTermsDays} days` : '—'],
+            ['Billing Cycle', wo.billingCycleMonths != null ? `${wo.billingCycleMonths} mo` : '—'],
+            ['Shift', wo.workingHoursPerDay != null ? `${wo.workingHoursPerDay} hr/day` : '—'],
+            ['Operator', wo.operatorByWhom ?? '—'],
+            ['Diesel', wo.dieselByWhom ?? '—'],
+            ['OT Rate', wo.overtimeRateMultiplier != null ? `${wo.overtimeRateMultiplier}×` : '—'],
+            ['Escalation', wo.escalationClause ?? '—'],
+            ['Penalty / LD', wo.penaltyClause ?? '—'],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <span className="text-gray-400 block">{label}</span>
+              <span className="font-medium text-gray-700 truncate block">{value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
         {([
@@ -1301,16 +1751,44 @@ export function WorkOrderDetailPage() {
                           </span>
                         )}
                       </p>
+                      {(a.onHireDate || a.offHireDate || a.guaranteedHours || a.swappedFromAssignmentId) && (
+                        <p className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-2">
+                          {a.onHireDate && <span>On-hire: {a.onHireDate}</span>}
+                          {a.offHireDate && <span>Off-hire: {a.offHireDate}</span>}
+                          {a.guaranteedHours && <span>Gtd: {a.guaranteedHours} hrs</span>}
+                          {a.overtimeRate && <span>OT: ₹{a.overtimeRate}/hr</span>}
+                          {a.swappedFromAssignmentId && <span className="text-amber-600">↔ Swapped (#{a.swappedFromAssignmentId})</span>}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {a.hireType && (
+                        <Badge className={a.hireType === 'WET' ? 'bg-blue-50 text-blue-700 text-[10px]' : 'bg-amber-50 text-amber-700 text-[10px]'}>
+                          {a.hireType} Hire
+                        </Badge>
+                      )}
                       <Badge className={a.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}>
                         {a.isActive ? 'Active' : 'Closed'}
                       </Badge>
                       {a.isActive && (
-                        <Button size="sm" variant="outline" className="text-xs text-red-600 border-red-200 hover:bg-red-50"
-                          onClick={() => setClosingAssignment(a)}>
-                          Remove
-                        </Button>
+                        <>
+                          <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
+                            onClick={() => setMachineTermsFor(a)}>
+                            Terms
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
+                            onClick={() => setSwapMachineFor(a)}>
+                            <RefreshCw size={10} className="mr-0.5" /> Swap
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
+                            onClick={() => setSurveyFor(a)}>
+                            <Camera size={10} className="mr-0.5" /> Survey
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => setClosingAssignment(a)}>
+                            Remove
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -1410,6 +1888,24 @@ export function WorkOrderDetailPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Amendments list (KAN-19) */}
+          {amendmentsRes?.data && amendmentsRes.data.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Amendment Log</p>
+              <div className="space-y-1.5">
+                {amendmentsRes.data.map(am => (
+                  <div key={am.id} className="flex items-start gap-3 text-xs text-gray-600">
+                    <span className="mt-0.5 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium whitespace-nowrap">
+                      {am.amendmentType.replace(/_/g, ' ')}
+                    </span>
+                    <span className="text-gray-400">{am.effectiveDate}</span>
+                    <span className="flex-1">{am.reason ?? '—'}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1634,6 +2130,11 @@ export function WorkOrderDetailPage() {
       <EditLogDialog woId={Number(id)} clientId={wo.clientId} log={editingLog} open={!!editingLog} onClose={() => setEditingLog(null)} />
       <ExtendDialog woId={Number(id)} currentEndDate={res?.data?.workOrder.endDate} open={extendOpen} onClose={() => setExtendOpen(false)} />
       <CreateEquipmentInvoiceDialog defaultClientId={wo.clientId} defaultClientName={wo.clientName} open={createInvoiceOpen} onClose={() => setCreateInvoiceOpen(false)} />
+      {/* E2 dialogs */}
+      <EditTermsDialog woId={Number(id)} wo={wo} open={editTermsOpen} onClose={() => setEditTermsOpen(false)} />
+      <MachineTermsDialog woId={Number(id)} assignment={machineTermsFor} open={!!machineTermsFor} onClose={() => setMachineTermsFor(null)} />
+      <SwapMachineDialog woId={Number(id)} assignment={swapMachineFor} open={!!swapMachineFor} onClose={() => setSwapMachineFor(null)} />
+      <ConditionSurveyDialog woId={Number(id)} assignment={surveyFor} open={!!surveyFor} onClose={() => setSurveyFor(null)} />
 
       <Dialog open={deletingLogId !== null} onOpenChange={(open: boolean) => !open && setDeletingLogId(null)}>
         <DialogContent className="max-w-sm">

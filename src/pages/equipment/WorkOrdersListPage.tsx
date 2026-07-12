@@ -14,8 +14,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import type { WorkOrderStatus } from '@/types'
+import type { WorkOrderStatus, ProviderSide } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
@@ -33,12 +34,26 @@ const STATUS_LABELS: Record<WorkOrderStatus, string> = {
 }
 // ── WO Form schema ────────────────────────────────────────────────────────────
 const schema = z.object({
-  clientId:           z.coerce.number().min(1, 'Select client'),
-  site:               z.string().optional(),
-  mobilizationCharge: z.coerce.number().optional(),
-  startDate:          z.string().min(1, 'Start date is required'),
-  endDate:            z.string().optional(),
-  notes:              z.string().optional(),
+  clientId:              z.coerce.number().min(1, 'Select client'),
+  site:                  z.string().optional(),
+  mobilizationCharge:    z.coerce.number().optional(),
+  demobilizationCharge:  z.coerce.number().optional(),
+  startDate:             z.string().min(1, 'Start date is required'),
+  endDate:               z.string().optional(),
+  notes:                 z.string().optional(),
+  // KAN-16 commercial T&C
+  gstPercent:            z.coerce.number().optional(),
+  tdsPercent:            z.coerce.number().optional(),
+  retentionPercent:      z.coerce.number().optional(),
+  paymentTermsDays:      z.coerce.number().optional(),
+  billingCycleMonths:    z.coerce.number().optional(),
+  operatorByWhom:        z.enum(['OUR', 'CLIENT']).optional(),
+  dieselByWhom:          z.enum(['OUR', 'CLIENT']).optional(),
+  workingHoursPerDay:    z.coerce.number().optional(),
+  sundayWorking:         z.boolean().optional(),
+  overtimeRateMultiplier: z.coerce.number().optional(),
+  escalationClause:      z.string().optional(),
+  penaltyClause:         z.string().optional(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -61,8 +76,8 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
   const mutation = useMutation({
     mutationFn: (data: FormData) => workOrdersApi.create({
       ...data,
-      startDate: data.startDate,
       endDate: data.endDate || undefined,
+      billingCycleMonths: data.billingCycleMonths || undefined,
     }),
     onSuccess: () => {
       toast.success('Work order created')
@@ -119,6 +134,79 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
               <div className="space-y-1.5">
                 <Label>Mobilization Charge (₹)</Label>
                 <Input type="number" step="0.01" placeholder="0" {...register('mobilizationCharge')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Demobilization Charge (₹)</Label>
+                <Input type="number" step="0.01" placeholder="0" {...register('demobilizationCharge')} />
+              </div>
+            </div>
+          </div>
+
+          {/* Commercial T&C */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-gray-700 mb-3">Commercial Terms <span className="text-gray-400 font-normal text-xs">(all optional)</span></p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>GST %</Label>
+                <Input type="number" step="0.01" placeholder="18" {...register('gstPercent')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>TDS %</Label>
+                <Input type="number" step="0.01" placeholder="2" {...register('tdsPercent')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Retention %</Label>
+                <Input type="number" step="0.01" placeholder="5" {...register('retentionPercent')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Payment Terms (days)</Label>
+                <Input type="number" placeholder="30" {...register('paymentTermsDays')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Billing Cycle (months)</Label>
+                <Input type="number" placeholder="1" {...register('billingCycleMonths')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Shift Hours / Day</Label>
+                <Input type="number" placeholder="8" {...register('workingHoursPerDay')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Operator By</Label>
+                <Controller name="operatorByWhom" control={control} render={({ field }) => (
+                  <Select value={field.value ?? ''} onValueChange={v => field.onChange(v as ProviderSide || undefined)}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OUR">Our Side</SelectItem>
+                      <SelectItem value="CLIENT">Client</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Diesel By</Label>
+                <Controller name="dieselByWhom" control={control} render={({ field }) => (
+                  <Select value={field.value ?? ''} onValueChange={v => field.onChange(v as ProviderSide || undefined)}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OUR">Our Side</SelectItem>
+                      <SelectItem value="CLIENT">Client</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>OT Rate Multiplier</Label>
+                <Input type="number" step="0.1" placeholder="1.5" {...register('overtimeRateMultiplier')} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="space-y-1.5">
+                <Label>Escalation Clause</Label>
+                <Input placeholder="e.g. 10% p.a. after 12 months…" {...register('escalationClause')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Penalty / LD Clause</Label>
+                <Input placeholder="e.g. ₹500/hr beyond 8hr downtime…" {...register('penaltyClause')} />
               </div>
             </div>
           </div>

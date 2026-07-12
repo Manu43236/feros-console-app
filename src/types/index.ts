@@ -338,19 +338,50 @@ export type OperatorType = 'OWN_STAFF' | 'HIRED' | 'CLIENT_PROVIDED'
 export type OperatorBilling = 'INCLUDED_IN_RATE' | 'BILLED_SEPARATELY' | 'NOT_BILLED'
 export type DailyLogStatus = 'WORKING' | 'BREAKDOWN' | 'NO_MACHINE' | 'IDLE'
 export type AssignmentEndReason = 'COMPLETED' | 'BREAKDOWN_REPLACED' | 'BREAKDOWN_RETURNED'
+export type HireType = 'WET' | 'DRY'
+export type ProviderSide = 'OUR' | 'CLIENT'
+export type AmendmentType = 'RATE_REVISION' | 'MACHINE_SWAP' | 'EXTENSION' | 'MACHINE_ADDED' | 'OTHER'
+export type SurveyType = 'IN_SURVEY' | 'OUT_SURVEY'
 
 export interface WorkOrder {
   id: number; tenantId: number; woNumber: string
   clientId: number; clientName: string; site?: string
-  rateType: RateType; rateAmount: number
-  shiftHours?: number; overtimeRatePerHour?: number
-  operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string
-  hiredOperatorName?: string; hiredOperatorPhone?: string
-  operatorBilling: OperatorBilling; operatorRatePerDay?: number
   mobilizationCharge?: number; demobilizationCharge?: number
   startDate: string; endDate?: string
   status: WorkOrderStatus; parentWoId?: number; notes?: string
   machineCount: number; createdAt: string; updatedAt: string
+  // KAN-16 commercial T&C
+  paymentTermsDays?: number
+  gstPercent?: number
+  retentionPercent?: number
+  tdsPercent?: number
+  billingCycleMonths?: number
+  operatorByWhom?: ProviderSide
+  dieselByWhom?: ProviderSide
+  workingHoursPerDay?: number
+  sundayWorking?: boolean
+  overtimeRateMultiplier?: number
+  escalationClause?: string
+  penaltyClause?: string
+}
+
+export interface WoAmendment {
+  id: number; workOrderId: number
+  amendmentType: AmendmentType
+  effectiveDate: string
+  oldValue?: string; newValue?: string; reason?: string
+  createdBy?: string; createdAt: string
+}
+
+export interface MachineConditionSurvey {
+  id: number; machineAssignmentId: number
+  surveyType: SurveyType
+  surveyDate: string
+  hmrAtSurvey?: number
+  conditionNotes?: string
+  photos?: string[]
+  surveyedBy?: string
+  createdAt: string
 }
 
 export type WorkEntryStatus = 'ACTIVE' | 'COMPLETED'
@@ -374,6 +405,16 @@ export interface MachineAssignment {
   rateType?: RateType; rateAmount?: number
   attachmentId?: number | null; attachmentName?: string | null
   attachmentType?: string | null; attachmentRate?: number | null; attachmentRateUnit?: string | null
+  // KAN-17 per-machine billing terms
+  hireType?: HireType
+  guaranteedHours?: number
+  overtimeRate?: number
+  dieselByWhom?: ProviderSide
+  // KAN-18 on/off-hire dates
+  onHireDate?: string
+  offHireDate?: string
+  // KAN-20 swap back-link
+  swappedFromAssignmentId?: number
 }
 
 export interface DailyLogDivision {
