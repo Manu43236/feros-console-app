@@ -74,7 +74,7 @@ const cell = (style?: React.CSSProperties): React.CSSProperties => ({
 })
 
 const LOG_STATUS_LABEL: Record<DailyLogStatus, string> = {
-  WORKING: 'Working', IDLE: 'Idle', BREAKDOWN: 'Breakdown', NO_MACHINE: 'No Machine',
+  WORKING: 'Working', STANDBY: 'Standby', IDLE: 'Idle', BREAKDOWN: 'Breakdown', NO_MACHINE: 'No Machine',
 }
 
 export function EquipmentInvoiceDocument({ invoice, companyName, logs }: {

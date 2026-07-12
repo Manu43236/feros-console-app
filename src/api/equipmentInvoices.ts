@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, PageResponse, EquipmentInvoice, EquipmentInvoicePrefill, EquipmentInvoiceStatus } from '@/types'
+import type { ApiResponse, PageResponse, EquipmentInvoice, EquipmentInvoiceCalcResult, EquipmentInvoicePrefill, EquipmentInvoiceStatus } from '@/types'
 
 export const equipmentInvoicesApi = {
   create: (woId: number, data: Record<string, unknown>) =>
@@ -34,5 +34,10 @@ export const equipmentInvoicesApi = {
   prefillByClient: (clientId: number, params?: { from?: string; to?: string }) =>
     apiClient.get<ApiResponse<EquipmentInvoicePrefill[]>>(
       '/equipment-invoices/prefill', { params: { clientId, ...params } }
+    ).then(r => r.data),
+
+  calculate: (woId: number, params?: { from?: string; to?: string }) =>
+    apiClient.get<ApiResponse<EquipmentInvoiceCalcResult[]>>(
+      `/work-orders/${woId}/equipment-invoices/calculate`, { params }
     ).then(r => r.data),
 }

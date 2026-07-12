@@ -39,11 +39,13 @@ const STATUS_LABELS: Record<WorkOrderStatus, string> = {
   COMPLETED: 'Completed', INVOICED: 'Invoiced', CANCELLED: 'Cancelled',
 }
 const LOG_STATUS_COLORS: Record<DailyLogStatus, string> = {
-  WORKING: 'bg-green-50 text-green-700', BREAKDOWN: 'bg-red-50 text-red-700',
+  WORKING: 'bg-green-50 text-green-700', STANDBY: 'bg-blue-50 text-blue-600',
+  BREAKDOWN: 'bg-red-50 text-red-700',
   NO_MACHINE: 'bg-gray-100 text-gray-500', IDLE: 'bg-amber-50 text-amber-600',
 }
 const LOG_STATUS_ICONS: Record<DailyLogStatus, React.ReactNode> = {
-  WORKING: <CheckCircle2 size={12} />, BREAKDOWN: <XCircle size={12} />,
+  WORKING: <CheckCircle2 size={12} />, STANDBY: <Clock size={12} />,
+  BREAKDOWN: <XCircle size={12} />,
   NO_MACHINE: <AlertTriangle size={12} />, IDLE: <Clock size={12} />,
 }
 const NEXT_STATUSES: Partial<Record<WorkOrderStatus, WorkOrderStatus[]>> = {
@@ -390,7 +392,7 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
           <div className="space-y-1.5">
             <Label>Status</Label>
             <div className="flex gap-2 flex-wrap">
-              {(['WORKING', 'BREAKDOWN', 'NO_MACHINE', 'IDLE'] as DailyLogStatus[]).map(s => (
+              {(['WORKING', 'STANDBY', 'BREAKDOWN', 'NO_MACHINE', 'IDLE'] as DailyLogStatus[]).map(s => (
                 <button key={s} type="button"
                   onClick={() => setForm(f => ({ ...f, status: s }))}
                   className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
@@ -578,7 +580,7 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
           <div className="space-y-1.5">
             <Label>Status</Label>
             <div className="flex gap-2 flex-wrap">
-              {(['WORKING', 'BREAKDOWN', 'NO_MACHINE', 'IDLE'] as DailyLogStatus[]).map(s => (
+              {(['WORKING', 'STANDBY', 'BREAKDOWN', 'NO_MACHINE', 'IDLE'] as DailyLogStatus[]).map(s => (
                 <button key={s} type="button"
                   onClick={() => setForm(f => ({ ...f, status: s }))}
                   className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
@@ -2383,7 +2385,7 @@ export function WorkOrderDetailPage() {
       <AddLogDialog woId={Number(id)} clientId={wo.clientId} assignments={activeAssignments} open={addLogOpen} onClose={() => setAddLogOpen(false)} />
       <EditLogDialog woId={Number(id)} clientId={wo.clientId} log={editingLog} open={!!editingLog} onClose={() => setEditingLog(null)} />
       <ExtendDialog woId={Number(id)} currentEndDate={res?.data?.workOrder.endDate} open={extendOpen} onClose={() => setExtendOpen(false)} />
-      <CreateEquipmentInvoiceDialog defaultClientId={wo.clientId} defaultClientName={wo.clientName} open={createInvoiceOpen} onClose={() => setCreateInvoiceOpen(false)} />
+      <CreateEquipmentInvoiceDialog woId={Number(id)} defaultClientId={wo.clientId} defaultClientName={wo.clientName} retentionPercent={wo.retentionPercent} tdsPercent={wo.tdsPercent} open={createInvoiceOpen} onClose={() => setCreateInvoiceOpen(false)} />
       {/* E2 dialogs */}
       <EditTermsDialog woId={Number(id)} wo={wo} open={editTermsOpen} onClose={() => setEditTermsOpen(false)} />
       <MachineTermsDialog woId={Number(id)} assignment={machineTermsFor} open={!!machineTermsFor} onClose={() => setMachineTermsFor(null)} />

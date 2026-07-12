@@ -336,7 +336,8 @@ export type WorkOrderStatus = 'DRAFT' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED
 export type RateType = 'HOURLY' | 'DAILY_SHIFT' | 'MONTHLY'
 export type OperatorType = 'OWN_STAFF' | 'HIRED' | 'CLIENT_PROVIDED'
 export type OperatorBilling = 'INCLUDED_IN_RATE' | 'BILLED_SEPARATELY' | 'NOT_BILLED'
-export type DailyLogStatus = 'WORKING' | 'BREAKDOWN' | 'NO_MACHINE' | 'IDLE'
+export type DailyLogStatus = 'WORKING' | 'STANDBY' | 'BREAKDOWN' | 'NO_MACHINE' | 'IDLE'
+export type GstType = 'INTRA_STATE' | 'INTER_STATE'
 export type AssignmentEndReason = 'COMPLETED' | 'BREAKDOWN_REPLACED' | 'BREAKDOWN_RETURNED'
 export type HireType = 'WET' | 'DRY'
 export type ProviderSide = 'OUR' | 'CLIENT'
@@ -504,6 +505,9 @@ export interface EquipmentInvoice {
   taxPercent: number
   taxAmount: number
   totalAmount: number
+  gstType?: GstType
+  retentionPercent?: number
+  tdsPercent?: number
   notes?: string
   items: EquipmentInvoiceItem[]
   createdAt: string
@@ -522,6 +526,29 @@ export interface EquipmentInvoicePrefill {
   suggestedMonths: number
   woRate: number
   woRateType: string
+}
+
+export interface EquipmentInvoiceCalcResult {
+  machineAssignmentId: number
+  serialNumber?: string
+  equipmentTypeName: string
+  woNumber: string
+  rateType: 'HOURLY' | 'DAILY_SHIFT' | 'MONTHLY'
+  workingHours: number
+  standbyHours: number
+  idleClientHours: number
+  guaranteedHours?: number
+  billedBaseHours: number
+  otHours: number
+  workingDays: number
+  standbyDays: number
+  baseRate: number
+  baseAmount: number
+  otRate?: number
+  otAmount: number
+  standbyRate: number
+  standbyAmount: number
+  totalAmount: number
 }
 
 // ─── Vehicle ──────────────────────────────────────────────────────────────────
