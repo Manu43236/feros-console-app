@@ -10,7 +10,7 @@ import {
   ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
   Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2, Receipt, Boxes,
-  FileText, Camera, RefreshCw,
+  FileText, Camera, RefreshCw, Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +21,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { staffApi } from '@/api/staff'
 import { clientsApi } from '@/api/clients'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide } from '@/types'
+import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide, IdleAttribution } from '@/types'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
 import { equipmentAttachmentsApi } from '@/api/machines'
 import type { EquipmentAttachment } from '@/api/machines'
@@ -312,8 +312,13 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
     logDate: new Date().toISOString().slice(0, 10),
     status: 'WORKING' as DailyLogStatus,
     fuelConsumed: '', notes: '',
+    workingHours: '', idleHours: '', standbyHours: '', breakdownHours: '',
+    idleAttribution: '' as IdleAttribution | '',
+    idleReason: '',
+    signedSlipPhotoUrl: '',
   })
   const [divLines, setDivLines] = useState<DivLine[]>([emptyLine()])
+  const [slipUploading, setSlipUploading] = useState(false)
 
   const { data: divisionsRes } = useQuery({
     queryKey: ['client-divisions', clientId],
@@ -335,6 +340,13 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
         endHourMeter: l.endHm ? Number(l.endHm) : undefined,
         notes: l.notes || undefined,
       })) : [],
+      workingHours: form.workingHours ? Number(form.workingHours) : undefined,
+      idleHours: form.idleHours ? Number(form.idleHours) : undefined,
+      standbyHours: form.standbyHours ? Number(form.standbyHours) : undefined,
+      breakdownHours: form.breakdownHours ? Number(form.breakdownHours) : undefined,
+      idleAttribution: form.idleAttribution || undefined,
+      idleReason: form.idleReason || undefined,
+      signedSlipPhotoUrl: form.signedSlipPhotoUrl || undefined,
     }),
     onSuccess: () => {
       toast.success('Log added')
@@ -399,6 +411,71 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
               <DivisionLinesEditor lines={divLines} onChange={setDivLines} clientDivisions={clientDivisions} />
             </div>
           )}
+          {/* E4 — Hour Breakdown */}
+          <div className="border-t pt-3 space-y-2">
+            <Label className="text-xs text-gray-500 uppercase tracking-wide">Hour Breakdown (optional)</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {([['Working', 'workingHours'], ['Idle', 'idleHours'], ['Standby', 'standbyHours'], ['Breakdown', 'breakdownHours']] as const).map(([label, key]) => (
+                <div key={key} className="space-y-1">
+                  <Label className="text-xs">{label}</Label>
+                  <Input type="number" step="0.5" min="0" placeholder="0"
+                    value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* E4 — Idle Attribution (show when idleHours entered) */}
+          {form.idleHours && Number(form.idleHours) > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500 uppercase tracking-wide">Idle Attribution</Label>
+              <div className="flex gap-2">
+                {(['CLIENT_FAULT', 'OUR_BREAKDOWN'] as IdleAttribution[]).map(v => (
+                  <button key={v} type="button"
+                    onClick={() => setForm(f => ({ ...f, idleAttribution: f.idleAttribution === v ? '' : v }))}
+                    className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                      form.idleAttribution === v
+                        ? v === 'CLIENT_FAULT' ? 'bg-amber-500 text-white border-amber-500' : 'bg-red-500 text-white border-red-500'
+                        : 'bg-white text-gray-600 border-gray-200'
+                    )}>
+                    {v === 'CLIENT_FAULT' ? 'Client Fault (billed)' : 'Our Breakdown (not billed)'}
+                  </button>
+                ))}
+              </div>
+              {form.idleAttribution && (
+                <Input placeholder="Reason for idle time…" value={form.idleReason}
+                  onChange={e => setForm(f => ({ ...f, idleReason: e.target.value }))} />
+              )}
+            </div>
+          )}
+          {/* E4 — Signed Slip Photo */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-500 uppercase tracking-wide">Client-Signed Slip (optional)</Label>
+            {form.signedSlipPhotoUrl ? (
+              <div className="flex items-center gap-2">
+                <a href={form.signedSlipPhotoUrl} target="_blank" rel="noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline">
+                  <Camera size={13} /> View slip
+                </a>
+                <button type="button" onClick={() => setForm(f => ({ ...f, signedSlipPhotoUrl: '' }))}
+                  className="text-xs text-red-500 hover:underline">Remove</button>
+              </div>
+            ) : (
+              <label className={cn('flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 w-fit', slipUploading && 'opacity-50 pointer-events-none')}>
+                <Upload size={14} />
+                {slipUploading ? 'Uploading…' : 'Upload signed slip'}
+                <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setSlipUploading(true)
+                  try {
+                    const res = await workOrdersApi.uploadSlipPhoto(woId, form.logDate, file)
+                    if (res.data?.publicUrl) setForm(f => ({ ...f, signedSlipPhotoUrl: res.data!.publicUrl }))
+                  } catch { toast.error('Upload failed') }
+                  finally { setSlipUploading(false) }
+                }} />
+              </label>
+            )}
+          </div>
           <div className="flex justify-end gap-3 pt-1">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button disabled={mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
@@ -418,8 +495,15 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
   const qc = useQueryClient()
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
-  const [form, setForm] = useState({ status: 'WORKING' as DailyLogStatus, fuelConsumed: '', notes: '' })
+  const [form, setForm] = useState({
+    status: 'WORKING' as DailyLogStatus, fuelConsumed: '', notes: '',
+    workingHours: '', idleHours: '', standbyHours: '', breakdownHours: '',
+    idleAttribution: '' as IdleAttribution | '',
+    idleReason: '',
+    signedSlipPhotoUrl: '',
+  })
   const [divLines, setDivLines] = useState<DivLine[]>([])
+  const [slipUploading, setSlipUploading] = useState(false)
 
   const { data: divisionsRes } = useQuery({
     queryKey: ['client-divisions', clientId],
@@ -434,6 +518,13 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
       status: log.status,
       fuelConsumed: log.fuelConsumed != null ? String(log.fuelConsumed) : '',
       notes: log.notes ?? '',
+      workingHours: log.workingHours != null ? String(log.workingHours) : '',
+      idleHours: log.idleHours != null ? String(log.idleHours) : '',
+      standbyHours: log.standbyHours != null ? String(log.standbyHours) : '',
+      breakdownHours: log.breakdownHours != null ? String(log.breakdownHours) : '',
+      idleAttribution: log.idleAttribution ?? '',
+      idleReason: log.idleReason ?? '',
+      signedSlipPhotoUrl: log.signedSlipPhotoUrl ?? '',
     })
     // Pre-fill division lines — match name back to id where possible
     setDivLines((log.divisions ?? []).map(d => ({
@@ -457,6 +548,13 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
         endHourMeter: l.endHm ? Number(l.endHm) : undefined,
         notes: l.notes || undefined,
       })) : [],
+      workingHours: form.workingHours ? Number(form.workingHours) : undefined,
+      idleHours: form.idleHours ? Number(form.idleHours) : undefined,
+      standbyHours: form.standbyHours ? Number(form.standbyHours) : undefined,
+      breakdownHours: form.breakdownHours ? Number(form.breakdownHours) : undefined,
+      idleAttribution: form.idleAttribution || undefined,
+      idleReason: form.idleReason || undefined,
+      signedSlipPhotoUrl: form.signedSlipPhotoUrl || undefined,
     }),
     onSuccess: () => { toast.success('Log updated'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); onClose() },
     onError: (e: unknown) => {
@@ -501,6 +599,71 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
               <DivisionLinesEditor lines={divLines} onChange={setDivLines} clientDivisions={clientDivisions} />
             </div>
           )}
+          {/* E4 — Hour Breakdown */}
+          <div className="border-t pt-3 space-y-2">
+            <Label className="text-xs text-gray-500 uppercase tracking-wide">Hour Breakdown (optional)</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {([['Working', 'workingHours'], ['Idle', 'idleHours'], ['Standby', 'standbyHours'], ['Breakdown', 'breakdownHours']] as const).map(([label, key]) => (
+                <div key={key} className="space-y-1">
+                  <Label className="text-xs">{label}</Label>
+                  <Input type="number" step="0.5" min="0" placeholder="0"
+                    value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* E4 — Idle Attribution */}
+          {form.idleHours && Number(form.idleHours) > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-500 uppercase tracking-wide">Idle Attribution</Label>
+              <div className="flex gap-2">
+                {(['CLIENT_FAULT', 'OUR_BREAKDOWN'] as IdleAttribution[]).map(v => (
+                  <button key={v} type="button"
+                    onClick={() => setForm(f => ({ ...f, idleAttribution: f.idleAttribution === v ? '' : v }))}
+                    className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                      form.idleAttribution === v
+                        ? v === 'CLIENT_FAULT' ? 'bg-amber-500 text-white border-amber-500' : 'bg-red-500 text-white border-red-500'
+                        : 'bg-white text-gray-600 border-gray-200'
+                    )}>
+                    {v === 'CLIENT_FAULT' ? 'Client Fault (billed)' : 'Our Breakdown (not billed)'}
+                  </button>
+                ))}
+              </div>
+              {form.idleAttribution && (
+                <Input placeholder="Reason for idle time…" value={form.idleReason}
+                  onChange={e => setForm(f => ({ ...f, idleReason: e.target.value }))} />
+              )}
+            </div>
+          )}
+          {/* E4 — Signed Slip Photo */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-500 uppercase tracking-wide">Client-Signed Slip (optional)</Label>
+            {form.signedSlipPhotoUrl ? (
+              <div className="flex items-center gap-2">
+                <a href={form.signedSlipPhotoUrl} target="_blank" rel="noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline">
+                  <Camera size={13} /> View slip
+                </a>
+                <button type="button" onClick={() => setForm(f => ({ ...f, signedSlipPhotoUrl: '' }))}
+                  className="text-xs text-red-500 hover:underline">Remove</button>
+              </div>
+            ) : (
+              <label className={cn('flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 w-fit', slipUploading && 'opacity-50 pointer-events-none')}>
+                <Upload size={14} />
+                {slipUploading ? 'Uploading…' : 'Upload signed slip'}
+                <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setSlipUploading(true)
+                  try {
+                    const res = await workOrdersApi.uploadSlipPhoto(woId, log!.logDate, file)
+                    if (res.data?.publicUrl) setForm(f => ({ ...f, signedSlipPhotoUrl: res.data!.publicUrl }))
+                  } catch { toast.error('Upload failed') }
+                  finally { setSlipUploading(false) }
+                }} />
+              </label>
+            )}
+          </div>
           <div className="flex justify-end gap-3 pt-1">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button disabled={mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
@@ -1983,6 +2146,21 @@ export function WorkOrderDetailPage() {
                         <td className="py-2.5 px-4 text-right text-sm text-gray-600">{l.fuelConsumed ?? '—'}</td>
                         <td className="py-2.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {l.idleAttribution && (
+                              <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded',
+                                l.idleAttribution === 'CLIENT_FAULT'
+                                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                  : 'bg-red-50 text-red-700 border border-red-200'
+                              )}>
+                                {l.idleAttribution === 'CLIENT_FAULT' ? 'Client Fault' : 'Our Breakdown'}
+                              </span>
+                            )}
+                            {l.signedSlipPhotoUrl && (
+                              <a href={l.signedSlipPhotoUrl} target="_blank" rel="noreferrer"
+                                className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors" title="View signed slip">
+                                <Camera size={13} />
+                              </a>
+                            )}
                             <button onClick={() => setEditingLog(l)}
                               className="p-1 text-gray-400 hover:text-feros-equip-sidebar rounded transition-colors">
                               <Pencil size={13} />

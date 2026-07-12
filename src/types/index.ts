@@ -424,6 +424,8 @@ export interface DailyLogDivision {
   notes?: string
 }
 
+export type IdleAttribution = 'CLIENT_FAULT' | 'OUR_BREAKDOWN'
+
 export interface DailyLog {
   id: number; machineAssignmentId: number; workOrderId: number
   logDate: string; status: DailyLogStatus
@@ -432,6 +434,10 @@ export interface DailyLog {
   source?: string
   divisions: DailyLogDivision[]
   createdAt: string; updatedAt: string
+  // E4
+  workingHours?: number; idleHours?: number; standbyHours?: number; breakdownHours?: number
+  idleAttribution?: IdleAttribution; idleReason?: string
+  signedSlipPhotoUrl?: string
 }
 
 export interface BillingSummary {

@@ -79,4 +79,14 @@ export const workOrdersApi = {
 
   createSurvey: (woId: number, assignmentId: number, data: { surveyType: string; surveyDate: string; hmrAtSurvey?: number; conditionNotes?: string; photos?: string[]; surveyedBy?: string }) =>
     apiClient.post<ApiResponse<MachineConditionSurvey>>(`/work-orders/${woId}/machines/${assignmentId}/surveys`, data).then(r => r.data),
+
+  // E4 — upload client-signed slip photo
+  uploadSlipPhoto: (woId: number, logDate: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('folder', `tenants/images/equipment/work-orders/${woId}/slips/${logDate}`)
+    return apiClient.post<ApiResponse<{ key: string; url: string; publicUrl: string }>>('/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
 }
