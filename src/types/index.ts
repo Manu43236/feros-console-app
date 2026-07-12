@@ -340,6 +340,17 @@ export type DailyLogStatus = 'WORKING' | 'BREAKDOWN' | 'NO_MACHINE' | 'IDLE'
 export type AssignmentEndReason = 'COMPLETED' | 'BREAKDOWN_REPLACED' | 'BREAKDOWN_RETURNED'
 export type HireType = 'WET' | 'DRY'
 export type ProviderSide = 'OUR' | 'CLIENT'
+export type DieselBillingMode = 'INCLUDED_IN_RATE' | 'REIMBURSED_AT_ACTUALS' | 'BILLED_PER_LITRE'
+
+export interface DieselSummaryItem {
+  assignmentId: number
+  machineName: string
+  dieselBillingMode?: DieselBillingMode
+  dieselRatePerLitre?: number
+  totalLitres?: number
+  billableAmount?: number
+  reimbursable?: boolean
+}
 export type AmendmentType = 'RATE_REVISION' | 'MACHINE_SWAP' | 'EXTENSION' | 'MACHINE_ADDED' | 'OTHER'
 export type SurveyType = 'IN_SURVEY' | 'OUT_SURVEY'
 
@@ -411,12 +422,15 @@ export interface MachineAssignment {
   hireType?: HireType
   guaranteedHours?: number
   overtimeRate?: number
-  dieselByWhom?: ProviderSide
+  dieselBillingMode?: DieselBillingMode
+  dieselRatePerLitre?: number
   // KAN-18 on/off-hire dates
   onHireDate?: string
   offHireDate?: string
   // KAN-20 swap back-link
   swappedFromAssignmentId?: number
+  // E6 KAN-30 per-assignment last HMR hint
+  lastLogEndHourMeter?: number
 }
 
 export interface DailyLogDivision {

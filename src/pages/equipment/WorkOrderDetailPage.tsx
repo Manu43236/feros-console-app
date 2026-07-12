@@ -10,7 +10,7 @@ import {
   ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
   Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2, Receipt, Boxes,
-  FileText, Camera, RefreshCw, Upload,
+  FileText, Camera, RefreshCw, Upload, Fuel,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -375,6 +375,12 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
                   <option key={a.id} value={a.id}>{a.serialNumber ?? `Machine #${a.equipmentId}`} ({a.equipmentTypeName})</option>
                 ))}
               </select>
+              {(() => {
+                const sel = assignments.find(a => String(a.id) === form.machineAssignmentId)
+                return sel?.lastLogEndHourMeter != null
+                  ? <p className="text-xs text-gray-400 mt-1">Last log end: {sel.lastLogEndHourMeter} hrs</p>
+                  : <p className="text-xs text-gray-400 mt-1">No prior log — HMR continuity starts fresh</p>
+              })()}
             </div>
             <div className="space-y-1.5">
               <Label>Date</Label>
@@ -1322,7 +1328,8 @@ function MachineTermsDialog({ woId, assignment, open, onClose }: {
     hireType: assignment?.hireType ?? '' as HireType | '',
     guaranteedHours: assignment?.guaranteedHours?.toString() ?? '',
     overtimeRate: assignment?.overtimeRate?.toString() ?? '',
-    dieselByWhom: assignment?.dieselByWhom ?? '' as ProviderSide | '',
+    dieselBillingMode: assignment?.dieselBillingMode ?? '' as import('@/types').DieselBillingMode | '',
+    dieselRatePerLitre: assignment?.dieselRatePerLitre?.toString() ?? '',
     onHireDate: assignment?.onHireDate ?? '',
     offHireDate: assignment?.offHireDate ?? '',
     rateType: assignment?.rateType ?? '' as import('@/types').RateType | '',
@@ -1336,7 +1343,8 @@ function MachineTermsDialog({ woId, assignment, open, onClose }: {
       hireType: form.hireType || undefined,
       guaranteedHours: form.guaranteedHours ? Number(form.guaranteedHours) : undefined,
       overtimeRate: form.overtimeRate ? Number(form.overtimeRate) : undefined,
-      dieselByWhom: form.dieselByWhom || undefined,
+      dieselBillingMode: form.dieselBillingMode || undefined,
+      dieselRatePerLitre: form.dieselRatePerLitre ? Number(form.dieselRatePerLitre) : undefined,
       onHireDate: form.onHireDate || undefined,
       offHireDate: form.offHireDate || undefined,
       rateType: form.rateType || undefined,
@@ -1367,15 +1375,23 @@ function MachineTermsDialog({ woId, assignment, open, onClose }: {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Diesel By</Label>
-              <Select value={form.dieselByWhom} onValueChange={v => set('dieselByWhom', v)}>
-                <SelectTrigger><SelectValue placeholder="Inherit from WO" /></SelectTrigger>
+              <Label>Diesel Billing</Label>
+              <Select value={form.dieselBillingMode} onValueChange={v => set('dieselBillingMode', v)}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="OUR">Our Side</SelectItem>
-                  <SelectItem value="CLIENT">Client</SelectItem>
+                  <SelectItem value="INCLUDED_IN_RATE">Included in Rate</SelectItem>
+                  <SelectItem value="REIMBURSED_AT_ACTUALS">Reimburse at Actuals</SelectItem>
+                  <SelectItem value="BILLED_PER_LITRE">Billed per Litre</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {form.dieselBillingMode === 'BILLED_PER_LITRE' && (
+              <div className="space-y-1.5">
+                <Label>Rate (₹/litre)</Label>
+                <Input type="number" step="0.01" placeholder="0.00" value={form.dieselRatePerLitre}
+                  onChange={e => set('dieselRatePerLitre', e.target.value)} />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>Rate Type</Label>
               <Select value={form.rateType} onValueChange={v => set('rateType', v)}>
@@ -1644,7 +1660,7 @@ export function WorkOrderDetailPage() {
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
 
-  const [tab, setTab] = useState<'machines' | 'sessions' | 'logs' | 'invoices'>('machines')
+  const [tab, setTab] = useState<'machines' | 'sessions' | 'logs' | 'invoices' | 'diesel'>('machines')
   const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false)
   const [addMachineOpen, setAddMachineOpen] = useState(false)
   const [closingAssignment, setClosingAssignment] = useState<MachineAssignment | null>(null)
@@ -1731,6 +1747,13 @@ export function WorkOrderDetailPage() {
     queryFn: () => workOrdersApi.getAmendments(Number(id)),
     enabled: !!id && tab === 'machines',
   })
+
+  const { data: dieselSummaryRes } = useQuery({
+    queryKey: ['diesel-summary', Number(id)],
+    queryFn: () => workOrdersApi.getDieselSummary(Number(id)),
+    enabled: !!id && tab === 'diesel',
+  })
+  const dieselSummary = dieselSummaryRes?.data ?? []
 
   if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading…</div>
   if (!res?.data) return <div className="p-12 text-center text-gray-400">Work order not found</div>
@@ -1879,6 +1902,7 @@ export function WorkOrderDetailPage() {
           { key: 'machines',  label: 'Machines', icon: <Wrench size={14} /> },
           { key: 'sessions',  label: 'Work Hours History', icon: <Timer size={14} /> },
           { key: 'logs',      label: 'Daily Logs', icon: <Activity size={14} /> },
+          { key: 'diesel',    label: 'Diesel', icon: <Fuel size={14} /> },
           { key: 'invoices',  label: 'Invoices', icon: <Receipt size={14} /> },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
@@ -2295,6 +2319,48 @@ export function WorkOrderDetailPage() {
           </div>
         )
       })()}
+
+      {/* Tab: Diesel Summary (E6 KAN-32) */}
+      {tab === 'diesel' && (
+        <div className="space-y-3 pt-2">
+          <p className="text-xs text-gray-400">Per-machine diesel reconciliation based on logged fuel consumption.</p>
+          {dieselSummary.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No machine assignments found.</p>
+          ) : (
+            <table className="w-full text-sm border-separate border-spacing-0">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase rounded-tl-lg">Machine</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Diesel Mode</th>
+                  <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase">Total Litres</th>
+                  <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase rounded-tr-lg">Billable Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dieselSummary.map((d, i) => (
+                  <tr key={d.assignmentId} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                    <td className="py-2.5 px-4 font-medium text-gray-800">{d.machineName}</td>
+                    <td className="py-2.5 px-4 text-gray-600">
+                      {d.dieselBillingMode === 'BILLED_PER_LITRE' && <span className="text-blue-700 font-medium">₹{d.dieselRatePerLitre}/L</span>}
+                      {d.dieselBillingMode === 'REIMBURSED_AT_ACTUALS' && <span className="text-amber-700 font-medium">Reimburse</span>}
+                      {d.dieselBillingMode === 'INCLUDED_IN_RATE' && <span className="text-gray-400">Included</span>}
+                      {!d.dieselBillingMode && <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="py-2.5 px-4 text-right text-gray-700">{d.totalLitres != null ? `${d.totalLitres} L` : '—'}</td>
+                    <td className="py-2.5 px-4 text-right font-medium">
+                      {d.billableAmount != null
+                        ? <span className="text-green-700">₹{d.billableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        : d.reimbursable
+                          ? <span className="text-amber-600">Reimburse at actuals</span>
+                          : <span className="text-gray-300">—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {/* Tab: Invoices */}
       {tab === 'invoices' && (

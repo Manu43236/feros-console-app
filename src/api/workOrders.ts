@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, PageResponse, WorkOrder, WorkOrderDetail, MachineAssignment, DailyLog, WorkEntry, WoAmendment, MachineConditionSurvey } from '@/types'
+import type { ApiResponse, PageResponse, WorkOrder, WorkOrderDetail, MachineAssignment, DailyLog, WorkEntry, WoAmendment, MachineConditionSurvey, DieselSummaryItem } from '@/types'
 
 export const workOrdersApi = {
   getAll: (params?: { page?: number; size?: number; status?: string; clientId?: number }) =>
@@ -79,6 +79,10 @@ export const workOrdersApi = {
 
   createSurvey: (woId: number, assignmentId: number, data: { surveyType: string; surveyDate: string; hmrAtSurvey?: number; conditionNotes?: string; photos?: string[]; surveyedBy?: string }) =>
     apiClient.post<ApiResponse<MachineConditionSurvey>>(`/work-orders/${woId}/machines/${assignmentId}/surveys`, data).then(r => r.data),
+
+  // E6 KAN-32 Diesel reconciliation
+  getDieselSummary: (id: number) =>
+    apiClient.get<ApiResponse<DieselSummaryItem[]>>(`/work-orders/${id}/diesel-summary`).then(r => r.data),
 
   // E4 — upload client-signed slip photo
   uploadSlipPhoto: (woId: number, logDate: string, file: File) => {
