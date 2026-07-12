@@ -108,10 +108,11 @@ function EquipmentFormDialog({
         hireEndDate:         editing.hireEndDate ?? undefined,
         hireRate:            editing.hireRate ?? undefined,
         hireRateUnit:        editing.hireRateUnit ?? undefined,
-        currentMeterReading: editing.currentMeterReading ?? undefined,
-        workStatus:          editing.workStatus,
-        isActive:            editing.isActive,
-        notes:               editing.notes ?? undefined,
+        currentMeterReading:  editing.currentMeterReading ?? undefined,
+        workStatus:           editing.workStatus,
+        isActive:             editing.isActive,
+        monthlyDepreciation:  editing.monthlyDepreciation ?? undefined,
+        notes:                editing.notes ?? undefined,
       })
     } else {
       setSelectedMakeId('')
@@ -395,6 +396,15 @@ function EquipmentFormDialog({
               </div>
             </div>
           )}
+
+          <div>
+            <Label>Monthly Depreciation (₹)</Label>
+            <Input className="mt-1" type="number" min={0} step="any"
+              value={form.monthlyDepreciation ?? ''}
+              onChange={e => set('monthlyDepreciation', e.target.value ? Number(e.target.value) : undefined)}
+              placeholder="e.g. 15000" />
+            <p className="text-xs text-gray-500 mt-0.5">Used for profit analytics (depreciation per 30 days)</p>
+          </div>
 
           <div>
             <Label>Notes</Label>

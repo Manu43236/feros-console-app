@@ -286,9 +286,10 @@ const EQUIPMENT_ADMIN_NAV: SectionedNav = {
     {
       section: '',
       items: [
-        { to: '/equipment/invoices', label: 'Invoices', icon: Receipt },
-        { to: '/masters',            label: 'Masters',  icon: Settings },
-        { to: '/equipment/reports',  label: 'Reports',  icon: BarChart2 },
+        { to: '/equipment/invoices',   label: 'Invoices',   icon: Receipt },
+        { to: '/equipment/analytics',  label: 'Analytics',  icon: TrendingUp },
+        { to: '/masters',              label: 'Masters',    icon: Settings },
+        { to: '/equipment/reports',    label: 'Reports',    icon: BarChart2 },
       ],
     },
   ],

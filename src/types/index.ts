@@ -2766,3 +2766,30 @@ export interface WoReceivablesSummary {
   advances: EquipmentAdvance[]
   retentionReleases: EquipmentRetentionRelease[]
 }
+
+export interface MachineAnalyticsRow {
+  equipmentId: number
+  serialNumber?: string
+  equipmentTypeName?: string
+  makeName?: string
+  deployedDays: number
+  shiftHours: number
+  workingHours: number
+  breakdownHours: number
+  utilizationPct: number
+  availabilityPct: number
+  revenue: number
+  serviceCosts: number
+  depreciation: number
+  netProfit: number
+}
+
+export interface EquipmentAnalytics {
+  machines: MachineAnalyticsRow[]
+  totalRevenue: number
+  totalServiceCosts: number
+  totalDepreciation: number
+  totalNetProfit: number
+  avgUtilizationPct: number
+  avgAvailabilityPct: number
+}

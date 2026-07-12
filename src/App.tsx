@@ -89,6 +89,7 @@ import { EquipmentInvoicesPage }       from '@/pages/equipment/EquipmentInvoices
 import { EquipmentInvoiceDetailPage } from '@/pages/equipment/EquipmentInvoiceDetailPage'
 import { EquipmentServicesPage }    from '@/pages/equipment/EquipmentServicesPage'
 import { EquipmentAttachmentsPage } from '@/pages/equipment/EquipmentAttachmentsPage'
+import { EquipmentAnalyticsPage }   from '@/pages/equipment/EquipmentAnalyticsPage'
 
 // GPS
 import GpsTrackerPage from '@/pages/gps/GpsTrackerPage'
@@ -215,6 +216,7 @@ export default function App() {
           <Route path="equipment/invoices"           element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentInvoicesPage /></ProtectedRoute>} />
           <Route path="equipment/invoices/:id"      element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentInvoiceDetailPage /></ProtectedRoute>} />
           <Route path="equipment/attachments"       element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><EquipmentAttachmentsPage /></ProtectedRoute>} />
+          <Route path="equipment/analytics"        element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentAnalyticsPage /></ProtectedRoute>} />
 
           {/* Notifications */}
           <Route path="notifications" element={<NotificationsPage />} />

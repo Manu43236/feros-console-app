@@ -38,6 +38,7 @@ export interface Equipment {
   currentMeterReading: number | null
   workStatus: EquipmentWorkStatus
   isActive: boolean
+  monthlyDepreciation: number | null
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -66,6 +67,7 @@ export interface EquipmentRequest {
   currentMeterReading?: number
   workStatus?: EquipmentWorkStatus
   isActive?: boolean
+  monthlyDepreciation?: number
   notes?: string
 }
 
