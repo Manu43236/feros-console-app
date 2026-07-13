@@ -7,7 +7,7 @@ import type { MeterReading, MeterReadingType, Vehicle } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import {
-  Gauge, Search, Plus, Trash2, Upload, X, AlertTriangle, ChevronDown, ChevronUp, Edit2,
+  Gauge, Search, Plus, Trash2, Upload, X, AlertTriangle, Edit2,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -297,102 +297,73 @@ function AddReadingDialog({
   )
 }
 
-// ── Reading Card ──────────────────────────────────────────────────────────────
-function ReadingCard({
-  reading, onEdit, onDelete, isAdmin,
-}: {
-  reading: MeterReading
-  onEdit: () => void
-  onDelete: () => void
+// ── Reading Table ─────────────────────────────────────────────────────────────
+function ReadingTable({ readings, isAdmin, onEdit, onDelete }: {
+  readings: MeterReading[]
   isAdmin: boolean
+  onEdit: (r: MeterReading) => void
+  onDelete: (r: MeterReading) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
-  const hasAlerts = reading.serviceAlerts && reading.serviceAlerts.length > 0
-
   return (
-    <div className="bg-white rounded-xl border hover:border-gray-300 transition-colors">
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-gray-900 text-sm">{reading.vehicleRegistrationNumber}</span>
-              <TypeChip type={reading.readingType} />
-              {hasAlerts && (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700">
-                  <AlertTriangle size={11} />
-                  {reading.serviceAlerts.length} Service Alert{reading.serviceAlerts.length > 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
-              <span>Reading: <span className="text-gray-700 font-medium">{fmtKm(reading.readingKm)}</span></span>
-              <span>By: <span className="text-gray-700">{reading.recordedByName}</span></span>
-              <span>At: <span className="text-gray-700">{new Date(reading.recordedAt).toLocaleString('en-IN')}</span></span>
-              {reading.lrNumber && (
-                <span>LR: <span className="text-gray-700">{reading.lrNumber}</span></span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            {(reading.notes || reading.photoUrl || hasAlerts) && (
-              <button onClick={() => setExpanded(v => !v)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded transition-colors">
-                {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-              </button>
-            )}
-            {isAdmin && (
-              <button onClick={onEdit}
-                className="p-1.5 text-gray-400 hover:text-feros-navy rounded transition-colors" title="Edit">
-                <Edit2 size={15} />
-              </button>
-            )}
-            <button onClick={onDelete}
-              className="p-1.5 text-gray-400 hover:text-red-600 rounded transition-colors" title="Delete">
-              <Trash2 size={15} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="border-t px-4 py-3 space-y-2 text-xs">
-          {reading.notes && (
-            <div>
-              <p className="text-gray-400 mb-0.5">Notes</p>
-              <p className="text-gray-700">{reading.notes}</p>
-            </div>
-          )}
-          {reading.photoUrl && (
-            <div>
-              <a href={reading.photoUrl} target="_blank" rel="noreferrer"
-                className="text-blue-600 underline">
-                View odometer photo
-              </a>
-            </div>
-          )}
-          {hasAlerts && (
-            <div>
-              <p className="text-gray-400 mb-1">Service Alerts</p>
-              <div className="space-y-1">
-                {reading.serviceAlerts.map(a => (
-                  <div key={a.serviceId}
-                    className={`flex items-center gap-2 px-2 py-1 rounded text-xs ${
-                      a.status === 'OVERDUE' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'
-                    }`}>
-                    <AlertTriangle size={11} />
-                    <span>
-                      {a.status === 'OVERDUE' ? 'OVERDUE' : 'Due Soon'} —{' '}
-                      {a.serviceNumber ?? 'Service'} at {fmtKm(a.dueAtOdometer)}
-                      {a.serviceType && ` (${a.serviceType})`}
-                    </span>
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <thead className="bg-gray-50">
+          <tr>
+            {['Vehicle', 'Type', 'Reading', 'Recorded At', 'Recorded By', 'LR #', 'Alerts', ''].map(h => (
+              <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {readings.map(r => {
+            const hasAlerts = r.serviceAlerts && r.serviceAlerts.length > 0
+            return (
+              <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{r.vehicleRegistrationNumber}</td>
+                <td className="px-4 py-3 whitespace-nowrap"><TypeChip type={r.readingType} /></td>
+                <td className="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap">{fmtKm(r.readingKm)}</td>
+                <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{new Date(r.recordedAt).toLocaleString('en-IN')}</td>
+                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.recordedByName}</td>
+                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.lrNumber ?? <span className="text-gray-400">—</span>}</td>
+                <td className="px-4 py-3">
+                  {hasAlerts ? (
+                    <div className="space-y-1">
+                      {r.serviceAlerts.map(a => (
+                        <span key={a.serviceId} className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium w-fit ${
+                          a.status === 'OVERDUE' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'
+                        }`}>
+                          <AlertTriangle size={10} />
+                          {a.status === 'OVERDUE' ? 'Overdue' : 'Due Soon'} · {fmtKm(a.dueAtOdometer)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : <span className="text-gray-400">—</span>}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex items-center gap-1">
+                    {r.photoUrl && (
+                      <a href={r.photoUrl} target="_blank" rel="noreferrer"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 rounded transition-colors" title="Photo">
+                        <Upload size={14} />
+                      </a>
+                    )}
+                    {isAdmin && (
+                      <button onClick={() => onEdit(r)}
+                        className="p-1.5 text-gray-400 hover:text-feros-navy rounded transition-colors" title="Edit">
+                        <Edit2 size={14} />
+                      </button>
+                    )}
+                    <button onClick={() => onDelete(r)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 rounded transition-colors" title="Delete">
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -536,17 +507,12 @@ export default function MeterReadingsPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(r => (
-            <ReadingCard
-              key={r.id}
-              reading={r}
-              isAdmin={canEdit}
-              onEdit={() => setEditing(r)}
-              onDelete={() => setToDelete(r)}
-            />
-          ))}
-        </div>
+        <ReadingTable
+          readings={filtered}
+          isAdmin={canEdit}
+          onEdit={setEditing}
+          onDelete={setToDelete}
+        />
       )}
 
       {/* Dialogs */}

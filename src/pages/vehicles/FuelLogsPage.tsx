@@ -7,7 +7,7 @@ import type { FuelLog, FuelPaymentMode, Vehicle } from '@/types'
 import { toast } from 'sonner'
 import {
   Fuel, IndianRupee, Gauge, TrendingUp, Search, Plus, Trash2,
-  Edit2, Upload, X, ChevronDown, ChevronUp,
+  Edit2, Upload, X,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -398,97 +398,67 @@ function FuelLogDialog({
   )
 }
 
-// ── Fuel Log Card ─────────────────────────────────────────────────────────────
-function FuelLogCard({
-  log, onEdit, onDelete,
-}: {
-  log: FuelLog
-  onEdit: () => void
-  onDelete: () => void
+// ── Fuel Log Table ────────────────────────────────────────────────────────────
+function FuelLogTable({ logs, onEdit, onDelete }: {
+  logs: FuelLog[]
+  onEdit: (log: FuelLog) => void
+  onDelete: (log: FuelLog) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
-
   return (
-    <div className="bg-white rounded-xl border hover:border-gray-300 transition-colors">
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-gray-900 text-sm">{log.vehicleRegistrationNumber}</span>
-              {log.isFullTank && (
-                <span className="px-2 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-700">Full Tank</span>
-              )}
-              {paymentChip(log.paymentMode)}
-            </div>
-            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
-              <span>Date: <span className="text-gray-700">{log.fillDate}</span></span>
-              <span>Litres: <span className="text-gray-700">{fmtNum(log.litresFilled)} L</span></span>
-              <span>Odometer: <span className="text-gray-700">{fmtNum(log.odometerReading, 0)} km</span></span>
-              {log.fuelStationName && (
-                <span>Station: <span className="text-gray-700">{log.fuelStationName}{log.fuelStationCity ? `, ${log.fuelStationCity}` : ''}</span></span>
-              )}
-              {log.orderNumber && (
-                <span>Order: <span className="text-gray-700">{log.orderNumber}</span></span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm font-semibold text-gray-900">{fmt(log.totalCost)}</span>
-            <button onClick={() => setExpanded(v => !v)}
-              className="p-1.5 text-gray-400 hover:text-gray-600 rounded transition-colors">
-              {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-            </button>
-            <button onClick={onEdit}
-              className="p-1.5 text-gray-400 hover:text-feros-navy rounded transition-colors" title="Edit">
-              <Edit2 size={15} />
-            </button>
-            <button onClick={onDelete}
-              className="p-1.5 text-gray-400 hover:text-red-600 rounded transition-colors" title="Delete">
-              <Trash2 size={15} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="border-t px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div>
-            <p className="text-gray-400 mb-0.5">Cost / Litre</p>
-            <p className="font-medium text-gray-700">₹{fmtNum(log.costPerLitre)}</p>
-          </div>
-          {log.mileageKmPerLitre != null && (
-            <div>
-              <p className="text-gray-400 mb-0.5">Mileage</p>
-              <p className="font-medium text-gray-700">{fmtNum(log.mileageKmPerLitre)} km/L</p>
-            </div>
-          )}
-          {log.kmTravelled != null && (
-            <div>
-              <p className="text-gray-400 mb-0.5">KM Travelled</p>
-              <p className="font-medium text-gray-700">{fmtNum(log.kmTravelled, 0)} km</p>
-            </div>
-          )}
-          <div>
-            <p className="text-gray-400 mb-0.5">Filled By</p>
-            <p className="font-medium text-gray-700">{log.filledByName}</p>
-          </div>
-          {log.notes && (
-            <div className="col-span-2 sm:col-span-4">
-              <p className="text-gray-400 mb-0.5">Notes</p>
-              <p className="text-gray-700">{log.notes}</p>
-            </div>
-          )}
-          {log.receiptUrl && (
-            <div>
-              <a href={log.receiptUrl} target="_blank" rel="noreferrer"
-                className="text-blue-600 underline text-xs">
-                View Receipt
-              </a>
-            </div>
-          )}
-        </div>
-      )}
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <thead className="bg-gray-50">
+          <tr>
+            {['Vehicle', 'Date', 'Payment', 'Litres', 'Odometer', '₹/Litre', 'Mileage', 'Station', 'Total Cost', ''].map(h => (
+              <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {logs.map(l => (
+            <tr key={l.id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-4 py-3 whitespace-nowrap">
+                <div className="font-medium text-gray-900">{l.vehicleRegistrationNumber}</div>
+                {l.isFullTank && <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-700">Full Tank</span>}
+              </td>
+              <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">{l.fillDate}</td>
+              <td className="px-4 py-3 whitespace-nowrap">{paymentChip(l.paymentMode)}</td>
+              <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{fmtNum(l.litresFilled)} L</td>
+              <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{fmtNum(l.odometerReading, 0)} km</td>
+              <td className="px-4 py-3 text-gray-700 whitespace-nowrap">₹{fmtNum(l.costPerLitre)}</td>
+              <td className="px-4 py-3 whitespace-nowrap">
+                {l.mileageKmPerLitre != null
+                  ? <span className="text-gray-700">{fmtNum(l.mileageKmPerLitre)} km/L</span>
+                  : <span className="text-gray-400">—</span>}
+              </td>
+              <td className="px-4 py-3 text-gray-600 text-xs">
+                {l.fuelStationName
+                  ? <>{l.fuelStationName}{l.fuelStationCity ? <div className="text-gray-400">{l.fuelStationCity}</div> : null}</>
+                  : <span className="text-gray-400">—</span>}
+              </td>
+              <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{fmt(l.totalCost)}</td>
+              <td className="px-4 py-3 whitespace-nowrap">
+                <div className="flex items-center gap-1">
+                  {l.receiptUrl && (
+                    <a href={l.receiptUrl} target="_blank" rel="noreferrer"
+                      className="p-1.5 text-gray-400 hover:text-blue-600 rounded transition-colors" title="Receipt">
+                      <Upload size={14} />
+                    </a>
+                  )}
+                  <button onClick={() => onEdit(l)}
+                    className="p-1.5 text-gray-400 hover:text-feros-navy rounded transition-colors" title="Edit">
+                    <Edit2 size={14} />
+                  </button>
+                  <button onClick={() => onDelete(l)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 rounded transition-colors" title="Delete">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -658,16 +628,11 @@ export default function FuelLogsPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {logs.map(l => (
-            <FuelLogCard
-              key={l.id}
-              log={l}
-              onEdit={() => setEditing(l)}
-              onDelete={() => setToDelete(l)}
-            />
-          ))}
-        </div>
+        <FuelLogTable
+          logs={logs}
+          onEdit={setEditing}
+          onDelete={setToDelete}
+        />
       )}
 
       {/* Dialogs */}
