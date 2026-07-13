@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Receipt, ChevronRight, X, CheckCircle2, Clock, Banknote, ExternalLink, XCircle } from 'lucide-react'
+import { Receipt, X, CheckCircle2, Clock, Banknote, ExternalLink, XCircle } from 'lucide-react'
 import { tripExpensesApi } from '@/api/tripExpenses'
 import { useAuthStore } from '@/store/authStore'
 import type { TripExpense, TripExpenseStatus } from '@/types'
@@ -483,67 +483,62 @@ function ExpenseDetailPanel({ expense, onClose }: { expense: TripExpense; onClos
   )
 }
 
-// ─── Expense Card ─────────────────────────────────────────────────────────────
-function ExpenseCard({ expense, onSelect }: { expense: TripExpense; onSelect?: () => void }) {
+// ─── Expense Table ────────────────────────────────────────────────────────────
+function ExpenseTable({ expenses, isAdmin, onSelect }: {
+  expenses: TripExpense[]
+  isAdmin: boolean
+  onSelect: (id: number) => void
+}) {
   const navigate = useNavigate()
-  const isApproved = expense.status === 'APPROVED'
-  const isSettled  = expense.status === 'SETTLED'
-
   return (
-    <div
-      onClick={() => onSelect ? onSelect() : navigate(`/lrs/${expense.lrId}`)}
-      className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-gray-900">{expense.lrNumber}</span>
-            <StatusBadge status={expense.status} />
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-sm text-gray-500">
-            {expense.driverName  && <span>Driver: <span className="text-gray-700">{expense.driverName}</span></span>}
-            {expense.cleanerName && <span>Cleaner: <span className="text-gray-700">{expense.cleanerName}</span></span>}
-          </div>
-        </div>
-        <ChevronRight className="h-4 w-4 text-gray-300 shrink-0 mt-1" />
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-slate-50 rounded-lg px-3 py-2">
-          <p className="text-xs text-gray-400">Advance</p>
-          <p className="text-sm font-semibold text-gray-800">₹{expense.advanceAmount.toLocaleString()}</p>
-        </div>
-        <div className="bg-slate-50 rounded-lg px-3 py-2">
-          <p className="text-xs text-gray-400">Submitted</p>
-          <p className="text-sm font-semibold text-gray-800">₹{expense.totalSubmittedAmount.toLocaleString()}</p>
-        </div>
-        {(isApproved || isSettled) && (
-          <div className="bg-slate-50 rounded-lg px-3 py-2">
-            <p className="text-xs text-gray-400">Approved</p>
-            <p className="text-sm font-semibold text-green-700">₹{expense.totalApprovedAmount.toLocaleString()}</p>
-          </div>
-        )}
-        {(isApproved || isSettled) && (
-          <div className={cn(
-            'rounded-lg px-3 py-2',
-            expense.balanceAmount > 0 ? 'bg-blue-50' : expense.balanceAmount < 0 ? 'bg-orange-50' : 'bg-gray-50'
-          )}>
-            <p className="text-xs text-gray-400">{expense.balanceAmount > 0 ? 'Driver Returns' : 'Co. Pays'}</p>
-            <p className={cn(
-              'text-sm font-semibold',
-              expense.balanceAmount > 0 ? 'text-blue-700' : expense.balanceAmount < 0 ? 'text-orange-700' : 'text-gray-600'
-            )}>
-              ₹{Math.abs(expense.balanceAmount).toLocaleString()}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {expense.submittedAt && (
-        <p className="text-xs text-gray-400 mt-2">
-          Submitted {new Date(expense.submittedAt).toLocaleDateString()} by {expense.submittedByName}
-        </p>
-      )}
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <thead className="bg-gray-50">
+          <tr>
+            {['LR #', 'Status', 'Driver / Cleaner', 'Advance', 'Submitted', 'Approved', 'Balance', 'Submitted On'].map(h => (
+              <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {expenses.map(e => {
+            const hasBalance = e.status === 'APPROVED' || e.status === 'SETTLED'
+            return (
+              <tr
+                key={e.id}
+                onClick={() => isAdmin ? onSelect(e.id) : navigate(`/lrs/${e.lrId}`)}
+                className="hover:bg-gray-50 cursor-pointer transition-colors"
+              >
+                <td className="px-4 py-3 font-medium text-blue-700 whitespace-nowrap">{e.lrNumber}</td>
+                <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={e.status} /></td>
+                <td className="px-4 py-3 text-gray-700">
+                  <div>{e.driverName ?? '—'}</div>
+                  {e.cleanerName && <div className="text-xs text-gray-400">{e.cleanerName}</div>}
+                </td>
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">₹{e.advanceAmount.toLocaleString()}</td>
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">₹{e.totalSubmittedAmount.toLocaleString()}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {hasBalance
+                    ? <span className="font-medium text-green-700">₹{e.totalApprovedAmount.toLocaleString()}</span>
+                    : <span className="text-gray-400">—</span>}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {hasBalance ? (
+                    <span className={cn('font-medium', e.balanceAmount > 0 ? 'text-blue-700' : e.balanceAmount < 0 ? 'text-orange-700' : 'text-gray-600')}>
+                      {e.balanceAmount > 0 ? 'Returns ' : e.balanceAmount < 0 ? 'Pays ': ''}
+                      ₹{Math.abs(e.balanceAmount).toLocaleString()}
+                    </span>
+                  ) : <span className="text-gray-400">—</span>}
+                </td>
+                <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
+                  {e.submittedAt ? new Date(e.submittedAt).toLocaleDateString() : '—'}
+                  {e.submittedByName && <div className="text-gray-400">{e.submittedByName}</div>}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -608,15 +603,11 @@ export function TripExpensesPage() {
           <p className="text-gray-500 text-sm">No trip expenses found</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {sorted.map(e => (
-            <ExpenseCard
-              key={e.id}
-              expense={e}
-              onSelect={isAdmin ? () => setSelectedId(e.id) : undefined}
-            />
-          ))}
-        </div>
+        <ExpenseTable
+          expenses={sorted}
+          isAdmin={isAdmin}
+          onSelect={setSelectedId}
+        />
       )}
 
       {/* Detail panel (admin only) */}
