@@ -432,6 +432,10 @@ export interface MachineAssignment {
   swappedFromAssignmentId?: number
   // E6 KAN-30 per-assignment last HMR hint
   lastLogEndHourMeter?: number
+  // Live machine health — breakdown WO awareness
+  machineWorkStatus?: string
+  activeBreakdownSince?: string
+  activeBreakdownId?: number
 }
 
 export interface DailyLogDivision {

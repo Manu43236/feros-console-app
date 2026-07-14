@@ -381,9 +381,22 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
               </select>
               {(() => {
                 const sel = assignments.find(a => String(a.id) === form.machineAssignmentId)
-                return sel?.lastLogEndHourMeter != null
-                  ? <p className="text-xs text-gray-400 mt-1">Last log end: {sel.lastLogEndHourMeter} hrs</p>
-                  : <p className="text-xs text-gray-400 mt-1">No prior log — HMR continuity starts fresh</p>
+                return (
+                  <>
+                    {sel?.lastLogEndHourMeter != null
+                      ? <p className="text-xs text-gray-400 mt-1">Last log end: {sel.lastLogEndHourMeter} hrs</p>
+                      : <p className="text-xs text-gray-400 mt-1">No prior log — HMR continuity starts fresh</p>
+                    }
+                    {(sel?.machineWorkStatus === 'BREAKDOWN' || sel?.machineWorkStatus === 'IN_REPAIR') && (
+                      <div className="mt-1.5 flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                        <AlertTriangle size={12} className="text-amber-600 mt-0.5 shrink-0" />
+                        <p className="text-xs text-amber-700">
+                          Machine is under breakdown. Log breakdown hours and set attribution to <strong>OUR_BREAKDOWN</strong>.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )
               })()}
             </div>
             <div className="space-y-1.5">
@@ -1656,6 +1669,11 @@ function AssignAttachmentDialog({ woId, assignment, open, onClose }: {
   )
 }
 
+function hoursDown(since: string | undefined): number {
+  if (!since) return 0
+  return (Date.now() - new Date(since).getTime()) / 3_600_000
+}
+
 // ── Main Detail Page ──────────────────────────────────────────────────────────
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -1937,6 +1955,56 @@ export function WorkOrderDetailPage() {
         </div>
       </div>
 
+      {/* ── Breakdown Alert Banner ── */}
+      {(() => {
+        const broken = activeAssignments.filter(a =>
+          a.machineWorkStatus === 'BREAKDOWN' || a.machineWorkStatus === 'IN_REPAIR')
+        if (broken.length === 0) return null
+        return (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
+            <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-700">
+                {broken.length} machine{broken.length > 1 ? 's' : ''} under breakdown
+              </p>
+              <div className="mt-1.5 flex flex-col gap-1">
+                {broken.map(a => {
+                  const hrs = hoursDown(a.activeBreakdownSince)
+                  const threshold = wo.breakdownPenaltyThresholdHours
+                  const penaltyTriggered = threshold != null && hrs >= threshold
+                  return (
+                    <div key={a.id} className="flex items-center gap-3 flex-wrap text-xs">
+                      <span className="font-medium text-red-700">
+                        {a.serialNumber ?? `Machine #${a.equipmentId}`}
+                      </span>
+                      <span className="text-red-600">
+                        Down {hrs >= 1 ? `${hrs.toFixed(1)}h` : `${Math.round(hrs * 60)}m`}
+                      </span>
+                      {threshold != null && (penaltyTriggered
+                        ? <span className="font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
+                            ⚠ Penalty applies (threshold {threshold}h exceeded)
+                          </span>
+                        : <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                            {(threshold - hrs).toFixed(1)}h before penalty
+                          </span>
+                      )}
+                      {penaltyTriggered && (
+                        <button
+                          className="text-feros-equip-sidebar underline font-medium"
+                          onClick={() => setSwapMachineFor(a)}
+                        >
+                          Swap Machine →
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
         {([
@@ -2009,16 +2077,32 @@ export function WorkOrderDetailPage() {
                       <Badge className={a.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}>
                         {a.isActive ? 'Active' : 'Closed'}
                       </Badge>
+                      {a.machineWorkStatus === 'BREAKDOWN' && (
+                        <Badge className="bg-red-100 text-red-700 text-[10px]">Breakdown</Badge>
+                      )}
+                      {a.machineWorkStatus === 'IN_REPAIR' && (
+                        <Badge className="bg-amber-100 text-amber-700 text-[10px]">In Repair</Badge>
+                      )}
                       {a.isActive && (
                         <>
                           <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
                             onClick={() => setMachineTermsFor(a)}>
                             Terms
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
-                            onClick={() => setSwapMachineFor(a)}>
-                            <RefreshCw size={10} className="mr-0.5" /> Swap
-                          </Button>
+                          {(() => {
+                            const hrs = hoursDown(a.activeBreakdownSince)
+                            const threshold = wo.breakdownPenaltyThresholdHours
+                            const penaltyTriggered = a.machineWorkStatus === 'BREAKDOWN' && threshold != null && hrs >= threshold
+                            return penaltyTriggered
+                              ? <Button size="sm" className="text-xs h-6 px-2 bg-red-600 hover:bg-red-700 text-white gap-1"
+                                  onClick={() => setSwapMachineFor(a)}>
+                                  <RefreshCw size={10} /> Swap Now
+                                </Button>
+                              : <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
+                                  onClick={() => setSwapMachineFor(a)}>
+                                  <RefreshCw size={10} className="mr-0.5" /> Swap
+                                </Button>
+                          })()}
                           <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
                             onClick={() => setSurveyFor(a)}>
                             <Camera size={10} className="mr-0.5" /> Survey
@@ -2063,6 +2147,34 @@ export function WorkOrderDetailPage() {
                       </Button>
                     )}
                   </div>
+
+                  {/* Breakdown countdown row (Layer 2) */}
+                  {(a.machineWorkStatus === 'BREAKDOWN' || a.machineWorkStatus === 'IN_REPAIR') && a.activeBreakdownSince && (
+                    <div className="flex items-center gap-2 pt-1 text-xs flex-wrap">
+                      <AlertTriangle size={11} className="text-red-500 shrink-0" />
+                      <span className="text-red-600 font-medium">
+                        Down {(() => { const h = hoursDown(a.activeBreakdownSince); return h >= 1 ? `${h.toFixed(1)}h` : `${Math.round(h * 60)}m` })()}
+                      </span>
+                      {wo.breakdownPenaltyThresholdHours != null && (() => {
+                        const hrs = hoursDown(a.activeBreakdownSince)
+                        const threshold = wo.breakdownPenaltyThresholdHours!
+                        const pct = Math.min((hrs / threshold) * 100, 100)
+                        const triggered = hrs >= threshold
+                        return (
+                          <div className="flex items-center gap-2 flex-1 min-w-[140px]">
+                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className={cn('h-full rounded-full transition-all', triggered ? 'bg-red-500' : 'bg-amber-400')}
+                                style={{ width: `${pct}%` }} />
+                            </div>
+                            {triggered
+                              ? <span className="text-red-700 font-semibold whitespace-nowrap">Penalty applies</span>
+                              : <span className="text-gray-400 whitespace-nowrap">{(threshold - hrs).toFixed(1)}h to penalty</span>
+                            }
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )}
 
                   {/* Operator + work status row */}
                   <div className="space-y-2">
