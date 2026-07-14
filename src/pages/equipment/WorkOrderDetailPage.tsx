@@ -65,7 +65,8 @@ function eqLabel(e: Equipment) {
   return `${reg} — ${e.makeName} ${e.modelName} (${e.equipmentTypeName}${cap})`
 }
 
-function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean; onClose: () => void }) {
+function AddMachineDialog({ woId, open, onClose, workOrderType }: { woId: number; open: boolean; onClose: () => void; workOrderType?: string }) {
+  const isJobWo = workOrderType === 'JOB'
   const qc = useQueryClient()
   const { isEquipmentMode } = useSubscription()
   const btnPrimary = isEquipmentMode ? 'bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white' : 'bg-feros-navy hover:bg-feros-navy/90 text-white'
@@ -125,34 +126,36 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
             <Label>Start Date</Label>
             <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
           </div>
-          <div className="border-t border-gray-100 pt-3 space-y-3">
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Rate <span className="normal-case font-normal">(optional)</span></p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Rate Type</Label>
-                <select
-                  value={rateType}
-                  onChange={e => setRateType(e.target.value as typeof rateType)}
-                  className="w-full h-9 border border-gray-200 rounded-md px-2 text-sm bg-white"
-                >
-                  <option value="">— select —</option>
-                  <option value="HOURLY">Hourly</option>
-                  <option value="DAILY_SHIFT">Daily Shift</option>
-                  <option value="MONTHLY">Monthly</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Rate Amount (₹)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder="e.g. 500000"
-                  value={rateAmount}
-                  onChange={e => setRateAmount(e.target.value)}
-                />
+          {!isJobWo && (
+            <div className="border-t border-gray-100 pt-3 space-y-3">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Rate <span className="normal-case font-normal">(optional)</span></p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Rate Type</Label>
+                  <select
+                    value={rateType}
+                    onChange={e => setRateType(e.target.value as typeof rateType)}
+                    className="w-full h-9 border border-gray-200 rounded-md px-2 text-sm bg-white"
+                  >
+                    <option value="">— select —</option>
+                    <option value="HOURLY">Hourly</option>
+                    <option value="DAILY_SHIFT">Daily Shift</option>
+                    <option value="MONTHLY">Monthly</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Rate Amount (₹)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="e.g. 500000"
+                    value={rateAmount}
+                    onChange={e => setRateAmount(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => { reset(); onClose() }}>Cancel</Button>
             <Button disabled={!equipmentId || mutation.isPending} onClick={() => mutation.mutate()} className={btnPrimary}>
@@ -2716,7 +2719,7 @@ export function WorkOrderDetailPage() {
       </Dialog>
 
       {/* Dialogs */}
-      <AddMachineDialog woId={Number(id)} open={addMachineOpen} onClose={() => setAddMachineOpen(false)} />
+      <AddMachineDialog woId={Number(id)} open={addMachineOpen} onClose={() => setAddMachineOpen(false)} workOrderType={wo.workOrderType} />
       <CloseMachineDialog woId={Number(id)} assignment={closingAssignment} open={!!closingAssignment} onClose={() => setClosingAssignment(null)} />
       <AssignOperatorDialog woId={Number(id)} assignment={assigningOperatorFor} open={!!assigningOperatorFor} onClose={() => setAssigningOperatorFor(null)} />
       <AssignAttachmentDialog woId={Number(id)} assignment={assigningAttachmentFor} open={!!assigningAttachmentFor} onClose={() => setAssigningAttachmentFor(null)} />
