@@ -81,7 +81,7 @@ function AddMachineDialog({ woId, open, onClose }: { woId: number; open: boolean
     queryFn: () => equipmentApi.getAll(),
     enabled: open,
   })
-  const allEquip = equipRes?.data ?? []
+  const allEquip = (equipRes?.data ?? []).filter(e => e.workStatus === 'AVAILABLE')
   const options = allEquip.map(e => ({ value: String(e.id), label: eqLabel(e) }))
   const selectedEquip = equipmentId ? allEquip.find(e => String(e.id) === equipmentId) : null
 
@@ -1469,7 +1469,7 @@ function SwapMachineDialog({ woId, assignment, open, onClose }: {
     queryFn: () => equipmentApi.getAll(),
     enabled: open,
   })
-  const allEquip = (equipRes?.data ?? []).filter(e => String(e.id) !== String(assignment?.equipmentId))
+  const allEquip = (equipRes?.data ?? []).filter(e => e.workStatus === 'AVAILABLE' && String(e.id) !== String(assignment?.equipmentId))
   const options = allEquip.map(e => ({ value: String(e.id), label: eqLabel(e) }))
 
   const mut = useMutation({
