@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import type { WorkOrderStatus, ProviderSide } from '@/types'
+import type { WorkOrderStatus, WorkOrderType, ProviderSide } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
@@ -41,6 +41,9 @@ const schema = z.object({
   startDate:             z.string().min(1, 'Start date is required'),
   endDate:               z.string().optional(),
   notes:                 z.string().optional(),
+  workOrderType:         z.enum(['RENTAL', 'JOB']).default('RENTAL'),
+  agreedJobAmount:       z.coerce.number().optional(),
+  jobDescription:        z.string().optional(),
   // KAN-16 commercial T&C
   gstPercent:            z.coerce.number().optional(),
   tdsPercent:            z.coerce.number().optional(),
@@ -69,9 +72,11 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
     queryFn: () => clientsApi.getAll({ page: 0, size: 100 }),
   })
 
-  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, control, reset, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
+    defaultValues: { workOrderType: 'RENTAL' },
   })
+  const workOrderType = watch('workOrderType')
 
   const mutation = useMutation({
     mutationFn: (data: FormData) => workOrdersApi.create({
@@ -98,6 +103,41 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
         </DialogHeader>
 
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
+          {/* Work Order Type */}
+          <div className="space-y-1.5">
+            <Label>Work Order Type</Label>
+            <Controller name="workOrderType" control={control} render={({ field }) => (
+              <div className="flex gap-2">
+                {(['RENTAL', 'JOB'] as WorkOrderType[]).map(t => (
+                  <button key={t} type="button"
+                    onClick={() => field.onChange(t)}
+                    className={cn(
+                      'flex-1 py-2 rounded-md border text-sm font-medium transition-colors',
+                      field.value === t
+                        ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                    )}>
+                    {t === 'RENTAL' ? 'Rental (Hourly / Daily / Monthly)' : 'Job / Contract (Fixed Price)'}
+                  </button>
+                ))}
+              </div>
+            )} />
+          </div>
+
+          {/* JOB fields */}
+          {workOrderType === 'JOB' && (
+            <div className="grid grid-cols-2 gap-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <div className="space-y-1.5">
+                <Label>Agreed Job Amount (₹) *</Label>
+                <Input type="number" step="0.01" placeholder="50000" {...register('agreedJobAmount')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Job Description</Label>
+                <Input placeholder="Tree cutting + land clearing, Survey No. 45…" {...register('jobDescription')} />
+              </div>
+            </div>
+          )}
+
           {/* Client + Site */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">

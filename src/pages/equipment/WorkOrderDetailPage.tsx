@@ -1867,6 +1867,9 @@ export function WorkOrderDetailPage() {
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-3xl font-bold text-white">{wo.woNumber}</h1>
               <Badge className={cn('text-xs', STATUS_COLORS[woStatus])}>{STATUS_LABELS[woStatus]}</Badge>
+              {wo.workOrderType === 'JOB' && (
+                <Badge className="text-xs bg-amber-500 text-white">Job / Contract</Badge>
+              )}
             </div>
             <p className="text-[#c8a96e] text-sm mt-1.5">
               {wo.clientName}{wo.site ? ` · ${wo.site}` : ''}
@@ -2723,7 +2726,7 @@ export function WorkOrderDetailPage() {
       <AddLogDialog woId={Number(id)} clientId={wo.clientId} assignments={activeAssignments} open={addLogOpen} onClose={() => setAddLogOpen(false)} />
       <EditLogDialog woId={Number(id)} clientId={wo.clientId} log={editingLog} open={!!editingLog} onClose={() => setEditingLog(null)} />
       <ExtendDialog woId={Number(id)} currentEndDate={res?.data?.workOrder.endDate} open={extendOpen} onClose={() => setExtendOpen(false)} />
-      <CreateEquipmentInvoiceDialog woId={Number(id)} defaultClientId={wo.clientId} defaultClientName={wo.clientName} retentionPercent={wo.retentionPercent} tdsPercent={wo.tdsPercent} open={createInvoiceOpen} onClose={() => setCreateInvoiceOpen(false)} />
+      <CreateEquipmentInvoiceDialog woId={Number(id)} defaultClientId={wo.clientId} defaultClientName={wo.clientName} retentionPercent={wo.retentionPercent} tdsPercent={wo.tdsPercent} workOrderType={wo.workOrderType} agreedJobAmount={wo.agreedJobAmount} open={createInvoiceOpen} onClose={() => setCreateInvoiceOpen(false)} />
       {/* E2 dialogs */}
       <EditTermsDialog woId={Number(id)} wo={wo} open={editTermsOpen} onClose={() => setEditTermsOpen(false)} />
       <MachineTermsDialog woId={Number(id)} assignment={machineTermsFor} open={!!machineTermsFor} onClose={() => setMachineTermsFor(null)} />

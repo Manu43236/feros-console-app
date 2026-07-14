@@ -333,6 +333,7 @@ export interface Client {
 
 // ─── Work Orders ──────────────────────────────────────────────────────────────
 export type WorkOrderStatus = 'DRAFT' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'INVOICED' | 'CANCELLED'
+export type WorkOrderType = 'RENTAL' | 'JOB'
 export type RateType = 'HOURLY' | 'DAILY_SHIFT' | 'MONTHLY'
 export type OperatorType = 'OWN_STAFF' | 'HIRED' | 'CLIENT_PROVIDED'
 export type OperatorBilling = 'INCLUDED_IN_RATE' | 'BILLED_SEPARATELY' | 'NOT_BILLED'
@@ -377,6 +378,9 @@ export interface WorkOrder {
   penaltyClause?: string
   // E5 KAN-28
   breakdownPenaltyThresholdHours?: number
+  workOrderType?: WorkOrderType
+  agreedJobAmount?: number
+  jobDescription?: string
 }
 
 export interface WoAmendment {

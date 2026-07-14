@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
-import type { EquipmentBillingType, EquipmentInvoiceCalcResult, GstType } from '@/types'
+import type { EquipmentBillingType, EquipmentInvoiceCalcResult, GstType, WorkOrderType } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -87,11 +87,15 @@ interface Props {
   defaultClientName?: string
   retentionPercent?: number
   tdsPercent?: number
+  workOrderType?: WorkOrderType
+  agreedJobAmount?: number
 }
 
 export function CreateEquipmentInvoiceDialog({
   open, onClose, woId, defaultClientId, defaultClientName, retentionPercent: woRetention, tdsPercent: woTds,
+  workOrderType, agreedJobAmount,
 }: Props) {
+  const isJobWo = workOrderType === 'JOB'
   const qc = useQueryClient()
   const today = new Date().toISOString().slice(0, 10)
 
@@ -116,7 +120,20 @@ export function CreateEquipmentInvoiceDialog({
       setGstType('INTRA_STATE')
       setRetentionPct(String(woRetention ?? 0))
       setTdsPct(String(woTds ?? 0))
-      setNotes(''); setItems([]); setOverriddenKeys(new Set())
+      setNotes(''); setOverriddenKeys(new Set())
+      // JOB WO: prefill with agreed amount directly
+      if (isJobWo && agreedJobAmount) {
+        setItems([{
+          _key: nextKey(),
+          itemType: 'CHARGE',
+          description: 'Job Contract',
+          billingType: 'HOURLY',
+          quantity: '1',
+          rate: String(agreedJobAmount),
+        }])
+      } else {
+        setItems([])
+      }
     }
   }, [open])
 
@@ -243,22 +260,32 @@ export function CreateEquipmentInvoiceDialog({
             </div>
           </div>
 
-          {/* ── Calculate bar ── */}
-          <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-            <Calculator size={16} className="text-emerald-600 shrink-0" />
-            <p className="text-sm text-emerald-700 flex-1">
-              Auto-calculate billing from daily logs × WO terms (rates, guaranteed hours, OT, standby).
-            </p>
-            <Button
-              type="button" variant="outline" size="sm"
-              className="border-emerald-400 text-emerald-700 hover:bg-emerald-100 shrink-0"
-              onClick={runCalculate}
-              disabled={calculating}
-            >
-              {calculating ? <Loader2 size={14} className="animate-spin mr-1" /> : <Calculator size={14} className="mr-1" />}
-              Calculate
-            </Button>
-          </div>
+          {/* ── Calculate bar (RENTAL only) ── */}
+          {!isJobWo && (
+            <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <Calculator size={16} className="text-emerald-600 shrink-0" />
+              <p className="text-sm text-emerald-700 flex-1">
+                Auto-calculate billing from daily logs × WO terms (rates, guaranteed hours, OT, standby).
+              </p>
+              <Button
+                type="button" variant="outline" size="sm"
+                className="border-emerald-400 text-emerald-700 hover:bg-emerald-100 shrink-0"
+                onClick={runCalculate}
+                disabled={calculating}
+              >
+                {calculating ? <Loader2 size={14} className="animate-spin mr-1" /> : <Calculator size={14} className="mr-1" />}
+                Calculate
+              </Button>
+            </div>
+          )}
+          {/* ── JOB WO notice ── */}
+          {isJobWo && (
+            <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-700 flex-1">
+                Job / Contract WO — invoice prefilled with the agreed amount of <strong>₹{agreedJobAmount?.toLocaleString('en-IN')}</strong>. You can edit the amount or add extra charges below.
+              </p>
+            </div>
+          )}
 
           {/* ── Line items ── */}
           <div>
@@ -274,7 +301,7 @@ export function CreateEquipmentInvoiceDialog({
 
               {items.length === 0 ? (
                 <div className="px-3 py-8 text-center text-sm text-gray-400">
-                  Click "Calculate" to auto-fill from daily logs, or add a charge below.
+                  {isJobWo ? 'Add a charge below.' : 'Click "Calculate" to auto-fill from daily logs, or add a charge below.'}
                 </div>
               ) : (
                 items.map(item => {
