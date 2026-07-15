@@ -20,6 +20,7 @@ interface ApproveTripExpensePayload {
 interface SettleTripExpensePayload {
   settlementAmount: number
   settlementNote?: string
+  paymentMode?: 'CASH' | 'NEFT' | 'UPI'
 }
 
 export const tripExpensesApi = {

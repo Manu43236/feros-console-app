@@ -210,19 +210,30 @@ function AddItemDialog({ lrId, currentItems, open, onClose }: {
 }
 
 // ─── Settle Dialog ───────────────────────────────────────────────────────────
-function SettleDialog({ expenseId, balanceAmount, open, onClose }: {
+type SettlePaymentMode = 'CASH' | 'NEFT' | 'UPI'
+
+function SettleDialog({ expenseId, balanceAmount, driverBankName, driverAccountNumber, driverIfscCode, open, onClose }: {
   expenseId: number
   balanceAmount: number
+  driverBankName?: string
+  driverAccountNumber?: string
+  driverIfscCode?: string
   open: boolean
   onClose: () => void
 }) {
   const qc = useQueryClient()
   const [note, setNote] = useState('')
+  const [paymentMode, setPaymentMode] = useState<SettlePaymentMode>('CASH')
+
+  const driverReturns = balanceAmount > 0
+  const showBankDetails = !driverReturns && (paymentMode === 'NEFT' || paymentMode === 'UPI')
+  const hasBankDetails  = driverAccountNumber || driverIfscCode || driverBankName
 
   const mutation = useMutation({
     mutationFn: () => tripExpensesApi.settle(expenseId, {
       settlementAmount: Math.abs(balanceAmount),
       settlementNote:   note || undefined,
+      paymentMode,
     }),
     onSuccess: () => {
       toast.success('Settlement recorded')
@@ -233,13 +244,12 @@ function SettleDialog({ expenseId, balanceAmount, open, onClose }: {
     onError: (e) => toast.error(getApiError(e, 'Failed to record settlement')),
   })
 
-  const driverReturns = balanceAmount > 0
-
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Record Settlement</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
+          {/* Amount banner */}
           <div className={cn(
             'rounded-xl p-4 flex items-center justify-between',
             driverReturns ? 'bg-blue-50 border border-blue-200' : 'bg-orange-50 border border-orange-200'
@@ -254,6 +264,62 @@ function SettleDialog({ expenseId, balanceAmount, open, onClose }: {
             </div>
             <Banknote className={cn('h-8 w-8', driverReturns ? 'text-blue-400' : 'text-orange-400')} />
           </div>
+
+          {/* Payment mode — only when company pays driver */}
+          {!driverReturns && (
+            <div className="space-y-1.5">
+              <Label>Payment Mode</Label>
+              <div className="flex gap-2">
+                {(['CASH', 'NEFT', 'UPI'] as SettlePaymentMode[]).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setPaymentMode(mode)}
+                    className={cn(
+                      'flex-1 py-2 rounded-lg border text-sm font-medium transition-colors',
+                      paymentMode === mode
+                        ? 'bg-feros-navy text-white border-feros-navy'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-feros-navy/40'
+                    )}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bank details when NEFT or UPI */}
+          {showBankDetails && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Driver Bank Details</p>
+              {hasBankDetails ? (
+                <>
+                  {driverAccountNumber && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-slate-500">Account No.</span>
+                      <span className="text-sm font-mono font-semibold text-slate-800 select-all">{driverAccountNumber}</span>
+                    </div>
+                  )}
+                  {driverIfscCode && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-slate-500">IFSC</span>
+                      <span className="text-sm font-mono font-semibold text-slate-800 select-all">{driverIfscCode}</span>
+                    </div>
+                  )}
+                  {driverBankName && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-slate-500">Bank</span>
+                      <span className="text-sm text-slate-700">{driverBankName}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-amber-600">No bank details on file for this driver.</p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>Note (optional)</Label>
             <textarea
@@ -261,7 +327,7 @@ function SettleDialog({ expenseId, balanceAmount, open, onClose }: {
               onChange={e => setNote(e.target.value)}
               rows={2}
               className="w-full border border-input rounded-md px-3 py-2 text-sm resize-none bg-background"
-              placeholder="e.g. Cash received from Suresh on 15 Jan"
+              placeholder={paymentMode === 'CASH' ? 'e.g. Cash paid to driver on 15 Jan' : 'e.g. NEFT ref no. 12345'}
             />
           </div>
           <div className="flex gap-2 pt-1">
@@ -638,12 +704,19 @@ export function TripExpenseTab({ lrId, lrStatus }: { lrId: number; lrStatus: LrS
       </div>
 
       {/* ── Status banners ── */}
-      {isSettled && expense.settlementNote && (
+      {isSettled && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
           <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-green-800">Settlement Recorded</p>
-            <p className="text-sm text-green-700 mt-0.5">{expense.settlementNote}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-green-800">Settlement Recorded</p>
+              {expense.paymentMode && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+                  {expense.paymentMode}
+                </span>
+              )}
+            </div>
+            {expense.settlementNote && <p className="text-sm text-green-700 mt-0.5">{expense.settlementNote}</p>}
             {expense.settledByName && (
               <p className="text-xs text-green-500 mt-1">By {expense.settledByName} · {expense.settledAt ? new Date(expense.settledAt).toLocaleString() : ''}</p>
             )}
@@ -729,6 +802,9 @@ export function TripExpenseTab({ lrId, lrStatus }: { lrId: number; lrStatus: LrS
         <SettleDialog
           expenseId={expense.id}
           balanceAmount={expense.balanceAmount}
+          driverBankName={expense.driverBankName}
+          driverAccountNumber={expense.driverAccountNumber}
+          driverIfscCode={expense.driverIfscCode}
           open={showSettle}
           onClose={() => setShowSettle(false)}
         />

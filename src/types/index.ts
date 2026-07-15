@@ -301,8 +301,12 @@ export interface TripExpense {
   approvedAt?: string
   settlementAmount?: number
   settlementNote?: string
+  paymentMode?: 'CASH' | 'NEFT' | 'UPI'
   settledByName?: string
   settledAt?: string
+  driverBankName?: string
+  driverAccountNumber?: string
+  driverIfscCode?: string
   rejectedByName?: string
   rejectedAt?: string
   rejectionReason?: string
