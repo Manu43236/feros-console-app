@@ -22,7 +22,7 @@ import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, Pencil, Power, Camera,
-  ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Paperclip, Trash2,
+  ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge, Users,
   Clock, Wifi,
 } from 'lucide-react'
@@ -3667,10 +3667,16 @@ export function VehicleDetailPage() {
                   {complianceDocs.map((doc: VehicleDocument) => {
                     const level = expiryLevel(doc.expiryDate)
                     return (
-                      <div key={doc.id} className="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                      <div key={doc.id} className={cn('p-4 rounded-lg border transition-colors', {
+                        'bg-gradient-to-r from-red-50 to-white border-red-100':    level === 'expired',
+                        'bg-gradient-to-r from-orange-50 to-white border-orange-100': level === 'critical',
+                        'bg-gradient-to-r from-yellow-50 to-white border-yellow-100': level === 'warning',
+                        'bg-gradient-to-r from-green-50 to-white border-green-100':   level === 'ok',
+                        'bg-white border-gray-100': level === 'none',
+                      })}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+                            <div className="w-8 h-8 rounded-lg bg-white/70 flex items-center justify-center shrink-0 mt-0.5">
                               <FileText size={15} className="text-feros-navy" />
                             </div>
                             <div className="min-w-0">
@@ -3685,40 +3691,30 @@ export function VehicleDetailPage() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                            {level !== 'none' && (
-                              <span className={cn('text-xs px-2 py-1 rounded-full font-medium', {
-                                'bg-red-50 text-red-600 border border-red-200':          level === 'expired',
-                                'bg-orange-50 text-orange-600 border border-orange-200': level === 'critical',
-                                'bg-yellow-50 text-yellow-700 border border-yellow-200': level === 'warning',
-                                'bg-green-50 text-green-700 border border-green-200':    level === 'ok',
-                              })}>
-                                {level === 'expired' ? 'Expired' : level === 'ok' ? 'Valid' : `${differenceInDays(parseISO(doc.expiryDate!), new Date())}d left`}
-                              </span>
-                            )}
+                          <div className="flex items-center gap-1.5 shrink-0">
                             {doc.fileUrl && (
                               <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-                                className="p-1.5 rounded-lg bg-gradient-to-r from-green-100 to-white border border-green-200 text-green-700 hover:from-green-200 transition-colors"
+                                className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-white/80 transition-colors"
                                 title="View document"
                               >
-                                <ExternalLink size={14} />
+                                <Eye size={15} />
                               </a>
                             )}
                             {!isSupervisor && (
                               <button
                                 onClick={() => setDocToEdit(doc)}
-                                className="p-1.5 rounded-lg bg-gradient-to-r from-amber-100 to-white border border-amber-200 text-amber-700 hover:from-amber-200 transition-colors"
+                                className="p-1.5 rounded text-gray-400 hover:text-amber-600 hover:bg-white/80 transition-colors"
                                 title="Edit document"
                               >
-                                <Pencil size={14} />
+                                <Pencil size={15} />
                               </button>
                             )}
                             <button
                               onClick={() => setDocToDelete(doc)}
-                              className="p-1.5 rounded-lg bg-gradient-to-r from-red-100 to-white border border-red-200 text-red-600 hover:from-red-200 transition-colors"
+                              className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-white/80 transition-colors"
                               title="Delete document"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={15} />
                             </button>
                           </div>
                         </div>
