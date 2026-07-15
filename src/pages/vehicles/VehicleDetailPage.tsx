@@ -3606,13 +3606,6 @@ export function VehicleDetailPage() {
               { label: 'PUC',                           key: 'puc'          },
               { label: 'Road Tax',                      key: 'road'         },
             ]
-            const chipCls: Record<ExpiryLevel, string> = {
-              expired:  'bg-red-50 text-red-600 border-red-200',
-              critical: 'bg-orange-50 text-orange-600 border-orange-200',
-              warning:  'bg-yellow-50 text-yellow-700 border-yellow-200',
-              ok:       'bg-green-50 text-green-700 border-green-200',
-              none:     'bg-gray-50 text-gray-400 border-gray-200',
-            }
             return (
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Document Status</p>
@@ -3624,20 +3617,29 @@ export function VehicleDetailPage() {
                     const level = expiryLevel(doc?.expiryDate)
                     const days  = doc?.expiryDate && isValid(parseISO(doc.expiryDate))
                       ? differenceInDays(parseISO(doc.expiryDate), new Date()) : null
-                    const chipText =
-                      level === 'none'    ? 'Not recorded' :
-                      level === 'expired' ? `Expired ${Math.abs(days!)}d ago` :
-                      level === 'ok'      ? `Valid · ${days}d left` : `${days}d left`
                     return (
-                      <div key={key} className="flex items-center justify-between px-4 py-3.5 bg-white hover:bg-gray-50 transition-colors">
+                      <div key={key} className={cn('flex items-center justify-between px-4 py-3.5 transition-colors', {
+                        'bg-gradient-to-r from-red-50 to-white':    level === 'expired',
+                        'bg-gradient-to-r from-orange-50 to-white': level === 'critical',
+                        'bg-gradient-to-r from-yellow-50 to-white': level === 'warning',
+                        'bg-gradient-to-r from-green-50 to-white':  level === 'ok',
+                        'bg-white': level === 'none',
+                      })}>
                         <div>
                           <p className="text-sm font-medium text-gray-800">{label}</p>
                           {doc?.documentNumber && <p className="text-xs text-gray-400 mt-0.5">{doc.documentNumber}</p>}
                           {doc?.expiryDate && <p className="text-xs text-gray-400">Expires: {fmtDate(doc.expiryDate)}</p>}
                         </div>
-                        <span className={cn('text-xs font-medium px-2.5 py-1 rounded-full border', chipCls[level])}>
-                          {chipText}
-                        </span>
+                        {days !== null && (
+                          <p className={cn('text-xs font-medium', {
+                            'text-red-500':    level === 'expired',
+                            'text-orange-500': level === 'critical',
+                            'text-yellow-600': level === 'warning',
+                            'text-green-600':  level === 'ok',
+                          })}>
+                            {level === 'expired' ? `Expired ${Math.abs(days)}d ago` : `${days}d left`}
+                          </p>
+                        )}
                       </div>
                     )
                   })}
