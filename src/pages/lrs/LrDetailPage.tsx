@@ -793,87 +793,86 @@ export function LrDetailPage() {
         </div>
       </div>
 
-      {/* ── Driver card ── */}
-      {lr.driverName && (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
-          {/* Avatar */}
-          <div className="h-12 w-12 rounded-full bg-feros-navy/10 flex items-center justify-center shrink-0">
-            <span className="text-sm font-bold text-feros-navy">
-              {lr.driverName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
-            </span>
-          </div>
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-slate-800 truncate">{lr.driverName}</p>
-            <div className="flex items-center gap-3 mt-0.5">
-              <span className="text-xs text-slate-500 flex items-center gap-1">
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0" />
-                </svg>
-                Driver
-              </span>
+      {/* ── Driver + Cleaner cards ── */}
+      {(lr.driverName || lr.cleanerName) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {lr.driverName && (
+            <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-feros-navy/10 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-feros-navy">
+                  {lr.driverName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 truncate">{lr.driverName}</p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span className="text-xs text-slate-500 flex items-center gap-1">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0" />
+                    </svg>
+                    Driver
+                  </span>
+                  {lr.driverPhone && (
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      {lr.driverPhone}
+                    </span>
+                  )}
+                </div>
+              </div>
               {lr.driverPhone && (
-                <span className="text-xs text-slate-500 flex items-center gap-1">
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <a
+                  href={`tel:${lr.driverPhone}`}
+                  className="h-10 w-10 rounded-full bg-green-100 border border-green-200 flex items-center justify-center hover:bg-green-200 transition-colors shrink-0"
+                  title="Call driver"
+                >
+                  <svg className="h-5 w-5 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
-                  {lr.driverPhone}
-                </span>
+                </a>
               )}
             </div>
-          </div>
-          {/* Call button */}
-          {lr.driverPhone && (
-            <a
-              href={`tel:${lr.driverPhone}`}
-              className="h-10 w-10 rounded-full bg-green-100 border border-green-200 flex items-center justify-center hover:bg-green-200 transition-colors shrink-0"
-              title="Call driver"
-            >
-              <svg className="h-5 w-5 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-            </a>
           )}
-        </div>
-      )}
-
-      {/* ── Cleaner card ── */}
-      {lr.cleanerName && (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-feros-navy/10 flex items-center justify-center shrink-0">
-            <span className="text-sm font-bold text-feros-navy">
-              {lr.cleanerName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-slate-800 truncate">{lr.cleanerName}</p>
-            <div className="flex items-center gap-3 mt-0.5">
-              <span className="text-xs text-slate-500 flex items-center gap-1">
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0" />
-                </svg>
-                Cleaner
-              </span>
+          {lr.cleanerName && (
+            <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-feros-navy/10 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-feros-navy">
+                  {lr.cleanerName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 truncate">{lr.cleanerName}</p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span className="text-xs text-slate-500 flex items-center gap-1">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0" />
+                    </svg>
+                    Cleaner
+                  </span>
+                  {lr.cleanerPhone && (
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      {lr.cleanerPhone}
+                    </span>
+                  )}
+                </div>
+              </div>
               {lr.cleanerPhone && (
-                <span className="text-xs text-slate-500 flex items-center gap-1">
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <a
+                  href={`tel:${lr.cleanerPhone}`}
+                  className="h-10 w-10 rounded-full bg-green-100 border border-green-200 flex items-center justify-center hover:bg-green-200 transition-colors shrink-0"
+                  title="Call cleaner"
+                >
+                  <svg className="h-5 w-5 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
-                  {lr.cleanerPhone}
-                </span>
+                </a>
               )}
             </div>
-          </div>
-          {lr.cleanerPhone && (
-            <a
-              href={`tel:${lr.cleanerPhone}`}
-              className="h-10 w-10 rounded-full bg-green-100 border border-green-200 flex items-center justify-center hover:bg-green-200 transition-colors shrink-0"
-              title="Call cleaner"
-            >
-              <svg className="h-5 w-5 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-            </a>
           )}
         </div>
       )}
