@@ -22,7 +22,7 @@ import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, Pencil, Power, Camera,
-  ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, Paperclip, Trash2,
+  ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge, Users,
   Clock, Wifi,
 } from 'lucide-react'
