@@ -22,7 +22,7 @@ import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, Pencil, Power, Camera,
-  ClipboardList, Route, FileText, Plus, BadgeCheck, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Paperclip, Trash2,
+  ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge, Users,
   Clock, Wifi,
 } from 'lucide-react'
@@ -3696,23 +3696,18 @@ export function VehicleDetailPage() {
                                 {level === 'expired' ? 'Expired' : level === 'ok' ? 'Valid' : `${differenceInDays(parseISO(doc.expiryDate!), new Date())}d left`}
                               </span>
                             )}
-                            {doc.isVerified ? (
-                              <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
-                                <BadgeCheck size={12} /> Verified
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">Pending</span>
-                            )}
                             {doc.fileUrl && (
                               <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-colors border border-blue-200">
-                                <ExternalLink size={11} /> View
+                                className="p-1.5 rounded-lg bg-gradient-to-r from-green-100 to-white border border-green-200 text-green-700 hover:from-green-200 transition-colors"
+                                title="View document"
+                              >
+                                <ExternalLink size={14} />
                               </a>
                             )}
                             {!isSupervisor && (
                               <button
                                 onClick={() => setDocToEdit(doc)}
-                                className="p-1.5 text-gray-400 hover:text-feros-navy hover:bg-blue-50 rounded transition-colors"
+                                className="p-1.5 rounded-lg bg-gradient-to-r from-amber-100 to-white border border-amber-200 text-amber-700 hover:from-amber-200 transition-colors"
                                 title="Edit document"
                               >
                                 <Pencil size={14} />
@@ -3720,7 +3715,7 @@ export function VehicleDetailPage() {
                             )}
                             <button
                               onClick={() => setDocToDelete(doc)}
-                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                              className="p-1.5 rounded-lg bg-gradient-to-r from-red-100 to-white border border-red-200 text-red-600 hover:from-red-200 transition-colors"
                               title="Delete document"
                             >
                               <Trash2 size={14} />
