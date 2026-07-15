@@ -184,3 +184,15 @@ export const demoRequestsApi = {
       params: { status, ...(notes ? { notes } : {}) },
     }).then(r => r.data),
 }
+
+// ── App Config ────────────────────────────────────────────────────────────────
+export interface AppConfig {
+  minVersion: number
+  latestVersion: number
+  forceUpdate: boolean
+}
+
+export const appConfigApi = {
+  get:    ()                  => apiClient.get<ApiResponse<AppConfig>>('/app/config').then(r => r.data),
+  update: (data: AppConfig)   => apiClient.put<ApiResponse<AppConfig>>('/app/config', data).then(r => r.data),
+}
