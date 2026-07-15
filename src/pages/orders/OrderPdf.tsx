@@ -175,6 +175,7 @@ export function OrderPdfDocument({ order, companyName }: Props) {
               <View style={S.thead}>
                 <Text style={[S.th, { flex: 1.5 }]}>Vehicle</Text>
                 <Text style={[S.th, { flex: 1.5 }]}>Driver</Text>
+                <Text style={[S.th, { flex: 1.5 }]}>Cleaner</Text>
                 <Text style={[S.th, { flex: 0.8 }]}>Weight (MT)</Text>
                 <Text style={[S.th, { flex: 1 }]}>Load Date</Text>
                 <Text style={[S.th, { flex: 1 }]}>Delivery Date</Text>
@@ -188,6 +189,7 @@ export function OrderPdfDocument({ order, companyName }: Props) {
                     <View key={a.id} style={rowStyle}>
                       <Text style={[S.tdLeft, { flex: 1.5 }]}>{a.registrationNumber || a.vehicleRegistrationNumber || '—'}</Text>
                       <Text style={[S.tdLeft, { flex: 1.5 }]}>{a.currentDriverName ?? '—'}</Text>
+                      <Text style={[S.tdLeft, { flex: 1.5 }]}>{a.currentCleanerName ?? '—'}</Text>
                       <Text style={[S.td, { flex: 0.8 }]}>{Number(a.allocatedWeight).toLocaleString('en-IN')}</Text>
                       <Text style={[S.td, { flex: 1 }]}>{fmt(a.expectedLoadDate)}</Text>
                       <Text style={[S.td, { flex: 1 }]}>{fmt(a.expectedDeliveryDate)}</Text>

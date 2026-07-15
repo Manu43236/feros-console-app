@@ -717,6 +717,7 @@ export interface Lr {
   checkposts?: LrCheckpost[]; charges?: LrCharge[]
   createdById: number; createdByName: string
   driverId?: number; driverName?: string; driverPhone?: string
+  cleanerId?: number; cleanerName?: string; cleanerPhone?: string
   startedByName?: string; startedByRole?: string
   completedByName?: string; completedByRole?: string
   startOdometer?: number; endOdometer?: number
