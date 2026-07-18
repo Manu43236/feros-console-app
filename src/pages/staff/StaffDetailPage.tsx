@@ -401,7 +401,13 @@ export function StaffDetailPage() {
   }, [user])
 
   const saveMutation = useMutation({
-    mutationFn: (data: ProfileFormData) => staffApi.upsert(uid, data),
+    mutationFn: async (data: ProfileFormData) => {
+      const saves: Promise<unknown>[] = [staffApi.upsert(uid, data)]
+      if (isAdminOrAbove && roleEdit && roleEdit !== role) {
+        saves.push(staffApi.updateUser(uid, { name: user!.name, phone: user!.phone, role: roleEdit }))
+      }
+      return Promise.all(saves)
+    },
     onSuccess: () => {
       toast.success('Profile saved')
       qc.invalidateQueries({ queryKey: ['staff-profile', uid] })
@@ -409,15 +415,6 @@ export function StaffDetailPage() {
       qc.invalidateQueries({ queryKey: ['users'] })
     },
     onError: () => toast.error('Failed to save profile'),
-  })
-
-  const roleMutation = useMutation({
-    mutationFn: (newRole: string) => staffApi.updateUser(uid, { name: user!.name, phone: user!.phone, role: newRole }),
-    onSuccess: () => {
-      toast.success('Role updated')
-      qc.invalidateQueries({ queryKey: ['users'] })
-    },
-    onError: () => toast.error('Failed to update role'),
   })
 
   const resetPinMutation = useMutation({
@@ -591,28 +588,15 @@ export function StaffDetailPage() {
               {isAdminOrAbove && (
                 <div className="space-y-1.5">
                   <Label>Role</Label>
-                  <div className="flex gap-2">
-                    <select
-                      value={roleEdit}
-                      onChange={e => setRoleEdit(e.target.value)}
-                      className="flex-1 h-10 px-3 rounded-md border border-input bg-background text-sm"
-                    >
-                      {(rolesRes?.data ?? [])
-                        .filter(r => r.name !== 'SUPER_ADMIN' && (authRole === 'SUPER_ADMIN' || r.name !== 'ADMIN'))
-                        .map(r => <option key={r.name} value={r.name}>{r.name}</option>)}
-                    </select>
-                    {roleEdit !== role && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={roleMutation.isPending}
-                        onClick={() => roleMutation.mutate(roleEdit)}
-                        className="bg-feros-navy hover:bg-feros-navy/90 text-white h-10 px-3"
-                      >
-                        {roleMutation.isPending ? '…' : 'Save'}
-                      </Button>
-                    )}
-                  </div>
+                  <select
+                    value={roleEdit}
+                    onChange={e => setRoleEdit(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    {(rolesRes?.data ?? [])
+                      .filter(r => r.name !== 'SUPER_ADMIN' && (authRole === 'SUPER_ADMIN' || r.name !== 'ADMIN'))
+                      .map(r => <option key={r.name} value={r.name}>{r.name}</option>)}
+                  </select>
                 </div>
               )}
               <div className="space-y-1.5">
@@ -850,7 +834,7 @@ export function StaffDetailPage() {
             <div className="flex justify-end pb-6">
               <Button
                 type="submit"
-                disabled={!isDirty || saveMutation.isPending}
+                disabled={(!isDirty && roleEdit === role) || saveMutation.isPending}
                 className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2 px-6"
               >
                 <Save size={15} />
