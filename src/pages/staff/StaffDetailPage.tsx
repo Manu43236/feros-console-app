@@ -322,7 +322,9 @@ export function StaffDetailPage() {
   const authRole       = useAuthStore(s => s.role)
   const isSupervisor   = authRole === 'SUPERVISOR'
   const isAdminOrAbove = authRole === 'ADMIN' || authRole === 'SUPER_ADMIN'
-  const [roleEdit, setRoleEdit] = useState('')
+  const [roleEdit, setRoleEdit]   = useState('')
+  const [nameEdit, setNameEdit]   = useState('')
+  const [phoneEdit, setPhoneEdit] = useState('')
   const [searchParams] = useSearchParams()
   const [tab, setTab]               = useState<'info' | 'docs'>(searchParams.get('tab') === 'docs' ? 'docs' : 'info')
   const [selectedState, setSelectedState] = useState<number | undefined>()
@@ -392,19 +394,24 @@ export function StaffDetailPage() {
     }
   }, [profile, reset])
 
-  // Set pin and role edit from user data
+  // Set pin, role, name and phone edit from user data
   useEffect(() => {
     if (user) {
       setCurrentPin(user.generatedPin ?? null)
       setRoleEdit(user.role)
+      setNameEdit(user.name)
+      setPhoneEdit(user.phone)
     }
   }, [user])
 
   const saveMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
       const saves: Promise<unknown>[] = [staffApi.upsert(uid, data)]
-      if (isAdminOrAbove && roleEdit && roleEdit !== role) {
-        saves.push(staffApi.updateUser(uid, { name: user!.name, phone: user!.phone, role: roleEdit }))
+      const nameChanged  = nameEdit.trim() !== (user?.name ?? '')
+      const phoneChanged = phoneEdit.trim() !== (user?.phone ?? '')
+      const roleChanged  = isAdminOrAbove && roleEdit && roleEdit !== role
+      if (isAdminOrAbove && (nameChanged || phoneChanged || roleChanged)) {
+        saves.push(staffApi.updateUser(uid, { name: nameEdit.trim(), phone: phoneEdit.trim(), role: roleEdit || role }))
       }
       return Promise.all(saves)
     },
@@ -576,6 +583,18 @@ export function StaffDetailPage() {
             <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
               <Pencil size={14} className="text-gray-400" /> Personal Details
             </p>
+            {isAdminOrAbove && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Name</Label>
+                  <Input value={nameEdit} onChange={e => setNameEdit(e.target.value)} placeholder="Full name" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Phone</Label>
+                  <Input value={phoneEdit} onChange={e => setPhoneEdit(e.target.value)} placeholder="10-digit mobile" maxLength={10} />
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Designation *</Label>
@@ -834,7 +853,7 @@ export function StaffDetailPage() {
             <div className="flex justify-end pb-6">
               <Button
                 type="submit"
-                disabled={(!isDirty && roleEdit === role) || saveMutation.isPending}
+                disabled={(!isDirty && roleEdit === role && nameEdit === (user?.name ?? '') && phoneEdit === (user?.phone ?? '')) || saveMutation.isPending}
                 className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2 px-6"
               >
                 <Save size={15} />
