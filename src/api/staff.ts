@@ -3,6 +3,7 @@ import type { ApiResponse, StaffProfile, StaffDocument } from '@/types'
 
 export const staffApi = {
   createUser:     (data: unknown) => apiClient.post<ApiResponse<{ id: number; name: string; phone: string; generatedPin: string }>>('/users', data).then(r => r.data),
+  updateUser:     (id: number, data: { name: string; phone: string; role: string }) => apiClient.put<ApiResponse<unknown>>(`/users/${id}`, data).then(r => r.data),
   getUsers:       (params?: { hasAttendanceToday?: boolean }) => apiClient.get<ApiResponse<{ id: number; name: string; phone: string; role: string; generatedPin: string | null; isActive: boolean; designationName: string | null; completedTripsCount: number; isAssigned: boolean; activeOrderNumber: string | null }[]>>('/users', { params }).then(r => r.data),
   staffBulkUpload: (file: File) => {
     const form = new FormData()

@@ -317,10 +317,12 @@ export function StaffDetailPage() {
   const qc         = useQueryClient()
   const uid        = Number(userId)
 
-  const logoUrl      = useAuthStore(s => s.logoUrl)
-  const moduleType   = useAuthStore(s => s.moduleType)
-  const authRole     = useAuthStore(s => s.role)
-  const isSupervisor = authRole === 'SUPERVISOR'
+  const logoUrl        = useAuthStore(s => s.logoUrl)
+  const moduleType     = useAuthStore(s => s.moduleType)
+  const authRole       = useAuthStore(s => s.role)
+  const isSupervisor   = authRole === 'SUPERVISOR'
+  const isAdminOrAbove = authRole === 'ADMIN' || authRole === 'SUPER_ADMIN'
+  const [roleEdit, setRoleEdit] = useState('')
   const [searchParams] = useSearchParams()
   const [tab, setTab]               = useState<'info' | 'docs'>(searchParams.get('tab') === 'docs' ? 'docs' : 'info')
   const [selectedState, setSelectedState] = useState<number | undefined>()
@@ -340,6 +342,7 @@ export function StaffDetailPage() {
   const profile = profileRes?.data
 
   // Masters
+  const { data: rolesRes }           = useQuery({ queryKey: ['roles'], queryFn: globalMastersApi.getRoles, enabled: isAdminOrAbove })
   const { data: designationsRes }    = useQuery({ queryKey: ['designations'],     queryFn: tenantMastersApi.getDesignations })
   const { data: employmentTypesRes } = useQuery({ queryKey: ['employment-types'], queryFn: globalMastersApi.getEmploymentTypes })
   const { data: statesRes }          = useQuery({ queryKey: ['states'],           queryFn: globalMastersApi.getStates })
@@ -389,9 +392,12 @@ export function StaffDetailPage() {
     }
   }, [profile, reset])
 
-  // Set pin from user data
+  // Set pin and role edit from user data
   useEffect(() => {
-    if (user) setCurrentPin(user.generatedPin ?? null)
+    if (user) {
+      setCurrentPin(user.generatedPin ?? null)
+      setRoleEdit(user.role)
+    }
   }, [user])
 
   const saveMutation = useMutation({
@@ -403,6 +409,15 @@ export function StaffDetailPage() {
       qc.invalidateQueries({ queryKey: ['users'] })
     },
     onError: () => toast.error('Failed to save profile'),
+  })
+
+  const roleMutation = useMutation({
+    mutationFn: (newRole: string) => staffApi.updateUser(uid, { name: user!.name, phone: user!.phone, role: newRole }),
+    onSuccess: () => {
+      toast.success('Role updated')
+      qc.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: () => toast.error('Failed to update role'),
   })
 
   const resetPinMutation = useMutation({
@@ -573,6 +588,33 @@ export function StaffDetailPage() {
                 </select>
                 {errors.designationId && <p className="text-red-500 text-xs">{errors.designationId.message}</p>}
               </div>
+              {isAdminOrAbove && (
+                <div className="space-y-1.5">
+                  <Label>Role</Label>
+                  <div className="flex gap-2">
+                    <select
+                      value={roleEdit}
+                      onChange={e => setRoleEdit(e.target.value)}
+                      className="flex-1 h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    >
+                      {(rolesRes?.data ?? [])
+                        .filter(r => r.name !== 'SUPER_ADMIN' && (authRole === 'SUPER_ADMIN' || r.name !== 'ADMIN'))
+                        .map(r => <option key={r.name} value={r.name}>{r.name}</option>)}
+                    </select>
+                    {roleEdit !== role && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={roleMutation.isPending}
+                        onClick={() => roleMutation.mutate(roleEdit)}
+                        className="bg-feros-navy hover:bg-feros-navy/90 text-white h-10 px-3"
+                      >
+                        {roleMutation.isPending ? '…' : 'Save'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Employment Type</Label>
                 <select {...register('employmentTypeId')} disabled={isSupervisor} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm disabled:opacity-60 disabled:cursor-not-allowed">
