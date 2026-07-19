@@ -7,11 +7,12 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { staffApi } from '@/api/staff'
 import { attendanceApi } from '@/api/attendance'
+import { watchlistApi } from '@/api/watchlist'
 import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
 import {
   Plus, Search, UserCheck, Phone, ChevronRight, Copy, KeyRound, Eye, EyeOff,
-  Upload, Download, FileText, CheckCircle2, AlertCircle,
+  Upload, Download, FileText, CheckCircle2, AlertCircle, Star,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -511,6 +512,7 @@ export function StaffPage() {
   const logoUrl = useAuthStore(s => s.logoUrl)
   const role    = useAuthStore(s => s.role)
   const isSupervisor = role === 'SUPERVISOR'
+  const qc = useQueryClient()
   const PAGE_SIZE = 20
   const [search, setSearch]             = useState('')
   const [page, setPage]                 = useState(0)
@@ -518,12 +520,36 @@ export function StaffPage() {
   const [bulkOpen, setBulkOpen]         = useState(false)
   const [roleFilter, setRoleFilter]     = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [activeTab, setActiveTab]       = useState<'all' | 'watchlist'>('all')
 
   const today = new Date().toISOString().slice(0, 10)
 
   const { data: profilesRes }          = useQuery({ queryKey: ['staff'],  queryFn: () => staffApi.getAll() })
   const { data: usersRes, isLoading }  = useQuery({ queryKey: ['users'],  queryFn: () => staffApi.getUsers() })
   const { data: attendanceRes }        = useQuery({ queryKey: ['attendance-today', today], queryFn: () => attendanceApi.getByDate(today) })
+  const { data: wlIdsRes }             = useQuery({
+    queryKey: ['staff-watchlist-ids'],
+    queryFn: watchlistApi.getStaffIds,
+    enabled: isSupervisor,
+  })
+  const watchlistedIds = new Set<number>(wlIdsRes?.data ?? [])
+
+  const addToWatchlist     = useMutation({
+    mutationFn: (id: number) => watchlistApi.addStaff(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff-watchlist-ids'] }),
+    onError: () => toast.error('Failed to update watchlist'),
+  })
+  const removeFromWatchlist = useMutation({
+    mutationFn: (id: number) => watchlistApi.removeStaff(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff-watchlist-ids'] }),
+    onError: () => toast.error('Failed to update watchlist'),
+  })
+
+  function toggleWatchlist(e: React.MouseEvent, userId: number) {
+    e.stopPropagation()
+    if (watchlistedIds.has(userId)) removeFromWatchlist.mutate(userId)
+    else addToWatchlist.mutate(userId)
+  }
 
   // Map userId → attendance border color based on status
   const attendanceBorderMap = new Map<number, string>(
@@ -560,13 +586,14 @@ export function StaffPage() {
                          s.userPhone.includes(search)
     const matchRole    = !roleFilter || s.roleName === roleFilter
     const matchStatus  = !statusFilter || (statusFilter === 'active' ? s.isActive : !s.isActive)
-    const matchCrew    = !isSupervisor || (
+    const matchCrew      = !isSupervisor || (
       isEquipmentMode ? s.roleName === 'OPERATOR' : s.roleName === 'DRIVER' || s.roleName === 'CLEANER'
     )
-    const matchModule  = isEquipmentMode
+    const matchModule    = isEquipmentMode
       ? s.roleName !== 'DRIVER' && s.roleName !== 'CLEANER'
       : s.roleName !== 'OPERATOR'
-    return matchSearch && matchRole && matchStatus && matchCrew && matchModule
+    const matchWatchlist = activeTab === 'all' || watchlistedIds.has(s.userId)
+    return matchSearch && matchRole && matchStatus && matchCrew && matchModule && matchWatchlist
   })
   const totalPages = Math.max(1, Math.ceil(staff.length / PAGE_SIZE))
   const pageRows   = staff.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -596,6 +623,31 @@ export function StaffPage() {
           </div>
         )}
       </div>
+
+      {/* Watchlist tabs — supervisor only */}
+      {isSupervisor && (
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => { setActiveTab('all'); setPage(0) }}
+            className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+              activeTab === 'all'
+                ? 'bg-white text-feros-navy shadow-sm'
+                : 'text-gray-500 hover:text-gray-700')}
+          >
+            All Staff <span className="ml-1 text-xs text-gray-400">{allStaff.length}</span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('watchlist'); setPage(0) }}
+            className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5',
+              activeTab === 'watchlist'
+                ? 'bg-white text-feros-navy shadow-sm'
+                : 'text-gray-500 hover:text-gray-700')}
+          >
+            <Star size={13} className={activeTab === 'watchlist' ? 'fill-amber-400 text-amber-400' : ''} />
+            My Watchlist <span className="ml-1 text-xs text-gray-400">{watchlistedIds.size}</span>
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
@@ -714,7 +766,23 @@ export function StaffPage() {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <ChevronRight size={16} className="text-gray-300" />
+                      <div className="flex items-center gap-2 justify-end">
+                        {isSupervisor && (
+                          <button
+                            onClick={e => toggleWatchlist(e, s.userId)}
+                            title={watchlistedIds.has(s.userId) ? 'Remove from watchlist' : 'Add to watchlist'}
+                            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+                          >
+                            <Star
+                              size={16}
+                              className={watchlistedIds.has(s.userId)
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'text-gray-300 hover:text-amber-400'}
+                            />
+                          </button>
+                        )}
+                        <ChevronRight size={16} className="text-gray-300" />
+                      </div>
                     </td>
                   </tr>
                 ))}

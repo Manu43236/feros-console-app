@@ -7,13 +7,14 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi } from '@/api/vehicles'
 import { staffApi } from '@/api/staff'
+import { watchlistApi } from '@/api/watchlist'
 import { globalMastersApi, tenantMastersApi } from '@/api/masters'
 import { getApiError } from '@/lib/apiError'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import {
   Plus, Search, Truck, Upload, Download, CheckCircle, XCircle,
-  Paperclip, FileText, X, UserCog, Wifi,
+  Paperclip, FileText, X, UserCog, Wifi, Star,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1039,6 +1040,7 @@ const vehicleStatusBadge: Record<VehicleStatusType, string> = {
 export function VehiclesPage() {
   const { locked } = useSubscription()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const currentRole = useAuthStore(s => s.role)
   const isSupervisor   = currentRole === 'SUPERVISOR'
   const canAssignStaff = ['ADMIN', 'OFFICE_STAFF', 'SUPERVISOR'].includes(currentRole ?? '')
@@ -1052,6 +1054,7 @@ export function VehiclesPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [assignFilter, setAssignFilter] = useState('')
   const [scopeFilter, setScopeFilter] = useState('')
+  const [activeTab, setActiveTab]     = useState<'all' | 'watchlist'>('all')
   const [staffDialogVehicle, setStaffDialogVehicle] = useState<Vehicle | null>(null)
   const [staffDialogRole, setStaffDialogRole]       = useState<'DRIVER' | 'CLEANER'>('DRIVER')
 
@@ -1061,6 +1064,33 @@ export function VehiclesPage() {
   })
   const { data: typesRes }        = useQuery({ queryKey: ['vehicle-types'],    queryFn: globalMastersApi.getVehicleTypes })
   const { data: ownershipRes }    = useQuery({ queryKey: ['ownership-types'],  queryFn: globalMastersApi.getOwnershipTypes })
+
+  const { data: wlIdsRes }        = useQuery({
+    queryKey: ['vehicle-watchlist-ids'],
+    queryFn: watchlistApi.getVehicleIds,
+    enabled: isSupervisor,
+  })
+  const watchlistedIds = new Set<number>(wlIdsRes?.data ?? [])
+
+  const addToWatchlist    = useMutation({
+    mutationFn: (id: number) => watchlistApi.addVehicle(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vehicle-watchlist-ids'] }),
+    onError: () => toast.error('Failed to update watchlist'),
+  })
+  const removeFromWatchlist = useMutation({
+    mutationFn: (id: number) => watchlistApi.removeVehicle(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vehicle-watchlist-ids'] }),
+    onError: () => toast.error('Failed to update watchlist'),
+  })
+
+  function toggleWatchlist(e: React.MouseEvent, vehicleId: number) {
+    e.stopPropagation()
+    if (watchlistedIds.has(vehicleId)) {
+      removeFromWatchlist.mutate(vehicleId)
+    } else {
+      addToWatchlist.mutate(vehicleId)
+    }
+  }
 
   const allVehicles = [...(res?.data ?? [])].sort((a, b) => a.registrationNumber.localeCompare(b.registrationNumber))
 
@@ -1073,8 +1103,9 @@ export function VehiclesPage() {
     const matchOwner  = !ownerFilter || String(v.ownershipTypeId) === ownerFilter
     const matchStatus = !statusFilter || (statusFilter === 'active' ? v.isActive : !v.isActive)
     const matchAssign = !assignFilter || v.currentStatusType === assignFilter
-    const matchScope  = !scopeFilter || v.tripScope === scopeFilter
-    return matchSearch && matchType && matchOwner && matchStatus && matchAssign && matchScope
+    const matchScope     = !scopeFilter || v.tripScope === scopeFilter
+    const matchWatchlist = activeTab === 'all' || watchlistedIds.has(v.id)
+    return matchSearch && matchType && matchOwner && matchStatus && matchAssign && matchScope && matchWatchlist
   })
   const totalPages = Math.max(1, Math.ceil(vehicles.length / PAGE_SIZE))
   const pageRows   = vehicles.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -1113,6 +1144,31 @@ export function VehiclesPage() {
           </div>
         )}
       </div>
+
+      {/* Watchlist tabs — supervisor only */}
+      {isSupervisor && (
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => { setActiveTab('all'); setPage(0) }}
+            className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+              activeTab === 'all'
+                ? 'bg-white text-feros-navy shadow-sm'
+                : 'text-gray-500 hover:text-gray-700')}
+          >
+            All Vehicles <span className="ml-1 text-xs text-gray-400">{allVehicles.length}</span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('watchlist'); setPage(0) }}
+            className={cn('px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5',
+              activeTab === 'watchlist'
+                ? 'bg-white text-feros-navy shadow-sm'
+                : 'text-gray-500 hover:text-gray-700')}
+          >
+            <Star size={13} className={activeTab === 'watchlist' ? 'fill-amber-400 text-amber-400' : ''} />
+            My Watchlist <span className="ml-1 text-xs text-gray-400">{watchlistedIds.size}</span>
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
@@ -1335,7 +1391,22 @@ export function VehiclesPage() {
                           {v.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4" />
+                      <td className="py-3 px-4 text-right">
+                        {isSupervisor && (
+                          <button
+                            onClick={e => toggleWatchlist(e, v.id)}
+                            title={watchlistedIds.has(v.id) ? 'Remove from watchlist' : 'Add to watchlist'}
+                            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+                          >
+                            <Star
+                              size={16}
+                              className={watchlistedIds.has(v.id)
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'text-gray-300 hover:text-amber-400'}
+                            />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
