@@ -1138,8 +1138,8 @@ export function OrderDetailPage() {
           </div>
           <p className="text-sm font-semibold text-gray-800">{order.totalWeight} T total</p>
           <p className="text-xs mt-0.5">
-            <span className="text-green-600">{totalAssigned}T assigned</span>
-            {remaining > 0 && <span className="text-orange-500 ml-1">· {remaining}T remaining</span>}
+            <span className="text-green-600">{totalAssigned}T · {allocations.length} vehicle{allocations.length !== 1 ? 's' : ''}</span>
+            {remaining > 0 && <span className="text-orange-500 ml-1">· {remaining}T left</span>}
           </p>
         </div>
 
