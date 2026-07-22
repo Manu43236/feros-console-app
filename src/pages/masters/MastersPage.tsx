@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
-  Truck, Users, Tag, CreditCard, MapPin, Settings, Wifi, CalendarDays,
+  Truck, Users, Tag, CreditCard, MapPin, Settings, Wifi, CalendarDays, List,
   Plus, Pencil, Trash2, ChevronRight, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Loader2, Link, Link2Off,
 } from 'lucide-react'
@@ -463,15 +463,21 @@ function DesignationsSection() {
 }
 
 // ── Holidays ──────────────────────────────────────────────────────────────────
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+
 function HolidaysSection() {
   const qc = useQueryClient()
+  const today = new Date()
+  const [year, setYear] = useState(today.getFullYear())
+  const [month, setMonth] = useState(today.getMonth())
+  const [view, setView] = useState<'calendar' | 'list'>('calendar')
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<HolidayItem | null>(null)
-  const [year, setYear] = useState(new Date().getFullYear())
   const { register, handleSubmit, reset, formState: { errors } } = useForm<{ holidayDate: string; holidayName: string }>()
 
   const { data, isLoading } = useQuery({ queryKey: ['holidays', year], queryFn: () => tenantMastersApi.getHolidays(year) })
-  const items: HolidayItem[] = (data?.data ?? [])
+  const items: HolidayItem[] = data?.data ?? []
 
   const create = useMutation({
     mutationFn: (d: { holidayDate: string; holidayName: string }) => tenantMastersApi.createHoliday(d),
@@ -490,46 +496,142 @@ function HolidaysSection() {
 
   const { locked } = useSubscription()
 
-  function openAdd() { setEditing(null); reset({ holidayDate: '', holidayName: '' }); setOpen(true) }
+  function prevMonth() {
+    if (month === 0) { setMonth(11); setYear(y => y - 1) } else setMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (month === 11) { setMonth(0); setYear(y => y + 1) } else setMonth(m => m + 1)
+  }
+  function openAdd(date = '') { setEditing(null); reset({ holidayDate: date, holidayName: '' }); setOpen(true) }
   function openEdit(item: HolidayItem) { setEditing(item); reset({ holidayDate: item.holidayDate, holidayName: item.holidayName }); setOpen(true) }
   function onSubmit(d: { holidayDate: string; holidayName: string }) {
     if (editing) update.mutate({ id: editing.id, d })
     else create.mutate(d)
   }
 
+  // Calendar helpers
+  const holidayMap = new Map(items.map(h => [h.holidayDate, h]))
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+
+  const monthItems = items.filter(h => {
+    const d = new Date(h.holidayDate + 'T00:00:00')
+    return d.getFullYear() === year && d.getMonth() === month
+  })
+
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-800">Holidays</h2>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setYear(y => y - 1)}>‹</Button>
-            <span className="text-sm font-medium w-12 text-center">{year}</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setYear(y => y + 1)}>›</Button>
+          <div className="flex rounded-md border overflow-hidden text-xs">
+            <button
+              className={cn('px-2 py-1 flex items-center gap-1', view === 'calendar' ? 'bg-gray-100 font-medium' : '')}
+              onClick={() => setView('calendar')}
+            >
+              <CalendarDays size={12} />Cal
+            </button>
+            <button
+              className={cn('px-2 py-1 flex items-center gap-1 border-l', view === 'list' ? 'bg-gray-100 font-medium' : '')}
+              onClick={() => setView('list')}
+            >
+              <List size={12} />List
+            </button>
           </div>
-          {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
+          {!locked && <Button size="sm" onClick={() => openAdd()}><Plus size={14} className="mr-1" />Add</Button>}
         </div>
       </div>
-      {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
-        : items.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No holidays for {year}</div>
-        : (
-          <div className="border rounded-lg divide-y">
-            {items.map(item => (
-              <div key={item.id} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{item.holidayName}</p>
-                  <p className="text-xs text-gray-500">{new Date(item.holidayDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+
+      {/* Month/year nav */}
+      <div className="flex items-center justify-between mb-3">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={prevMonth}>‹</Button>
+        <span className="text-sm font-semibold">{MONTH_NAMES[month]} {year}</span>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={nextMonth}>›</Button>
+      </div>
+
+      {view === 'calendar' ? (
+        isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div> : (
+          <div>
+            {/* Day labels */}
+            <div className="grid grid-cols-7 mb-1">
+              {DAY_NAMES.map(d => (
+                <div key={d} className={cn('text-center text-xs font-medium py-1', d === 'Sun' ? 'text-red-400' : 'text-gray-500')}>
+                  {d}
                 </div>
-                {!locked && (
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}><Pencil size={13} /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(item.id)}><Trash2 size={13} /></Button>
+              ))}
+            </div>
+            {/* Grid */}
+            <div className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+              {Array.from({ length: firstDay }).map((_, i) => (
+                <div key={`e${i}`} className="bg-gray-50 h-14" />
+              ))}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+                const isSunday = (firstDay + i) % 7 === 0
+                const holiday = holidayMap.get(dateStr)
+                const isToday = dateStr === todayStr
+                return (
+                  <div
+                    key={day}
+                    onClick={() => {
+                      if (locked || isSunday) return
+                      if (holiday) openEdit(holiday)
+                      else openAdd(dateStr)
+                    }}
+                    className={cn(
+                      'h-14 p-1 flex flex-col items-start',
+                      isSunday ? 'bg-gray-50' : holiday ? 'bg-orange-50 cursor-pointer hover:bg-orange-100' : 'bg-white cursor-pointer hover:bg-blue-50',
+                    )}
+                  >
+                    <span className={cn(
+                      'text-xs font-medium w-5 h-5 flex items-center justify-center rounded-full',
+                      isSunday ? 'text-red-300' : isToday ? 'bg-feros-navy text-white' : 'text-gray-700',
+                    )}>
+                      {day}
+                    </span>
+                    {holiday && (
+                      <span className="text-[10px] text-orange-700 leading-tight mt-0.5 line-clamp-2 w-full">
+                        {holiday.holidayName}
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                )
+              })}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">Click a working day to mark as holiday · Click orange to edit · Sundays always off</p>
           </div>
-        )}
+        )
+      ) : (
+        // List view — filtered to current month
+        isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+        : monthItems.length === 0
+          ? <div className="text-sm text-gray-400 py-6 text-center">No holidays in {MONTH_NAMES[month]} {year}</div>
+          : (
+            <div className="border rounded-lg divide-y">
+              {monthItems.map(item => (
+                <div key={item.id} className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{item.holidayName}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(item.holidayDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                  </div>
+                  {!locked && (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}><Pencil size={13} /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(item.id)}><Trash2 size={13} /></Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+      )}
+
+      {/* Add/Edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Holiday</DialogTitle></DialogHeader>
