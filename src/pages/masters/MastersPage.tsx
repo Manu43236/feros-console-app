@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
-  Truck, Users, Tag, CreditCard, MapPin, Settings, Wifi,
+  Truck, Users, Tag, CreditCard, MapPin, Settings, Wifi, CalendarDays,
   Plus, Pencil, Trash2, ChevronRight, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Loader2, Link, Link2Off,
 } from 'lucide-react'
@@ -19,7 +19,7 @@ import type { GpsProviderConfig, GpsProviderVehicle, GpsProviderConfigRequest, G
 import type { RbacEntry } from '@/api/masters'
 import { targetsApi } from '@/api/targets'
 import { useSubscription } from '@/context/SubscriptionContext'
-import type { TenantMasterItem, DesignationItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
+import type { TenantMasterItem, DesignationItem, HolidayItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
 
 // ── Section config ────────────────────────────────────────────────────────────
 const SECTIONS = [
@@ -28,6 +28,7 @@ const SECTIONS = [
   { key: 'chargeTypes',     label: 'Charge Types',     icon: Tag        },
   { key: 'paymentTerms',    label: 'Payment Terms',    icon: CreditCard },
   { key: 'designations',    label: 'Designations',     icon: Users      },
+  { key: 'holidays',        label: 'Holidays',         icon: CalendarDays },
   { key: 'routes',          label: 'Routes',           icon: MapPin     },
   { key: 'gpsProviders',   label: 'GPS Providers',    icon: Wifi       },
   { key: 'settings',       label: 'Settings',         icon: Settings   },
@@ -340,7 +341,7 @@ function DesignationsSection() {
   const [editing, setEditing] = useState<DesignationItem | null>(null)
   const [roleType, setRoleType] = useState('')
   const [roleError, setRoleError] = useState(false)
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<{ name: string; payPerDay?: number }>()
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<{ name: string; payPerDay?: number; monthlyLeaveQuota?: number }>()
 
   const { data, isLoading } = useQuery({ queryKey: ['designations'], queryFn: tenantMastersApi.getDesignations })
   const items: DesignationItem[] = (data?.data as DesignationItem[]) ?? []
@@ -351,12 +352,12 @@ function DesignationsSection() {
     .map(r => ({ value: r.name, label: r.description || r.name.replace(/_/g, ' ') }))
 
   const create = useMutation({
-    mutationFn: (d: { name: string; roleType: string; payPerDay?: number }) => tenantMastersApi.createDesignation(d),
+    mutationFn: (d: { name: string; roleType: string; payPerDay?: number; monthlyLeaveQuota?: number }) => tenantMastersApi.createDesignation(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['designations'] }); toast.success('Added'); setOpen(false) },
     onError: () => toast.error('Failed to add'),
   })
   const update = useMutation({
-    mutationFn: ({ id, d }: { id: number; d: { name: string; roleType: string; payPerDay?: number } }) => tenantMastersApi.updateDesignation(id, d),
+    mutationFn: ({ id, d }: { id: number; d: { name: string; roleType: string; payPerDay?: number; monthlyLeaveQuota?: number } }) => tenantMastersApi.updateDesignation(id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['designations'] }); toast.success('Updated'); setOpen(false) },
     onError: () => toast.error('Failed to update'),
   })
@@ -371,12 +372,18 @@ function DesignationsSection() {
   function openAdd() { setEditing(null); reset({}); setRoleType(''); setRoleError(false); setOpen(true) }
   function openEdit(item: DesignationItem) {
     setEditing(item)
-    reset({ name: item.name, payPerDay: item.payPerDay })
+    reset({ name: item.name, payPerDay: item.payPerDay, monthlyLeaveQuota: item.monthlyLeaveQuota ?? 0 })
     setRoleType(item.roleType); setRoleError(false); setOpen(true)
   }
-  function onSubmit(d: { name: string; payPerDay?: number }) {
+  function onSubmit(d: { name: string; payPerDay?: number; monthlyLeaveQuota?: number }) {
     if (!roleType) { setRoleError(true); return }
-    const payload = { name: d.name, roleType, payPerDay: d.payPerDay ? Number(d.payPerDay) : undefined }
+    const isDailyRole = ['DRIVER', 'CLEANER', 'OPERATOR'].includes(roleType)
+    const payload = {
+      name: d.name,
+      roleType,
+      payPerDay: d.payPerDay ? Number(d.payPerDay) : undefined,
+      monthlyLeaveQuota: isDailyRole ? 0 : (d.monthlyLeaveQuota ? Number(d.monthlyLeaveQuota) : 0),
+    }
     if (editing) update.mutate({ id: editing.id, d: payload })
     else create.mutate(payload)
   }
@@ -398,6 +405,7 @@ function DesignationsSection() {
                   <p className="text-xs text-gray-500">
                     {item.roleType.replace('_', ' ')}
                     {item.payPerDay ? ` · ₹${item.payPerDay}/day` : ''}
+                    {item.monthlyLeaveQuota ? ` · ${item.monthlyLeaveQuota}L/mo` : ''}
                   </p>
                 </div>
                 {!locked && (
@@ -430,12 +438,112 @@ function DesignationsSection() {
               />
               {roleError && <p className="text-xs text-red-500 mt-1">Required</p>}
             </div>
-            {['DRIVER', 'CLEANER'].includes(roleType) && (
+            {['DRIVER', 'CLEANER', 'OPERATOR'].includes(roleType) && (
               <div>
                 <Label>Pay Per Day (₹)</Label>
                 <Input type="number" step="0.01" min="0" {...register('payPerDay')} className="mt-1" placeholder="e.g. 800" />
               </div>
             )}
+            {roleType && !['DRIVER', 'CLEANER', 'OPERATOR'].includes(roleType) && (
+              <div>
+                <Label>Monthly Leave Quota</Label>
+                <Input type="number" min="0" max="30" {...register('monthlyLeaveQuota')} className="mt-1" placeholder="e.g. 2" />
+                <p className="text-xs text-gray-400 mt-1">Paid leaves per month before deduction applies</p>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">{editing ? 'Update' : 'Add'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+// ── Holidays ──────────────────────────────────────────────────────────────────
+function HolidaysSection() {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<HolidayItem | null>(null)
+  const [year, setYear] = useState(new Date().getFullYear())
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<{ holidayDate: string; holidayName: string }>()
+
+  const { data, isLoading } = useQuery({ queryKey: ['holidays', year], queryFn: () => tenantMastersApi.getHolidays(year) })
+  const items: HolidayItem[] = (data?.data ?? [])
+
+  const create = useMutation({
+    mutationFn: (d: { holidayDate: string; holidayName: string }) => tenantMastersApi.createHoliday(d),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['holidays'] }); toast.success('Holiday added'); setOpen(false) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to add'),
+  })
+  const update = useMutation({
+    mutationFn: ({ id, d }: { id: number; d: { holidayDate: string; holidayName: string } }) => tenantMastersApi.updateHoliday(id, d),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['holidays'] }); toast.success('Updated'); setOpen(false) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Failed to update'),
+  })
+  const remove = useMutation({
+    mutationFn: (id: number) => tenantMastersApi.deleteHoliday(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['holidays'] }); toast.success('Deleted') },
+  })
+
+  const { locked } = useSubscription()
+
+  function openAdd() { setEditing(null); reset({ holidayDate: '', holidayName: '' }); setOpen(true) }
+  function openEdit(item: HolidayItem) { setEditing(item); reset({ holidayDate: item.holidayDate, holidayName: item.holidayName }); setOpen(true) }
+  function onSubmit(d: { holidayDate: string; holidayName: string }) {
+    if (editing) update.mutate({ id: editing.id, d })
+    else create.mutate(d)
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-semibold text-gray-800">Holidays</h2>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setYear(y => y - 1)}>‹</Button>
+            <span className="text-sm font-medium w-12 text-center">{year}</span>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setYear(y => y + 1)}>›</Button>
+          </div>
+          {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
+        </div>
+      </div>
+      {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+        : items.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No holidays for {year}</div>
+        : (
+          <div className="border rounded-lg divide-y">
+            {items.map(item => (
+              <div key={item.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{item.holidayName}</p>
+                  <p className="text-xs text-gray-500">{new Date(item.holidayDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+                {!locked && (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}><Pencil size={13} /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => remove.mutate(item.id)}><Trash2 size={13} /></Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Holiday</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
+            <div>
+              <Label>Date *</Label>
+              <Input type="date" {...register('holidayDate', { required: 'Required' })} className="mt-1" />
+              {errors.holidayDate && <p className="text-xs text-red-500 mt-1">{errors.holidayDate.message}</p>}
+            </div>
+            <div>
+              <Label>Name *</Label>
+              <Input {...register('holidayName', { required: 'Required' })} className="mt-1" placeholder="e.g. Diwali" />
+              {errors.holidayName && <p className="text-xs text-red-500 mt-1">{errors.holidayName.message}</p>}
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit">{editing ? 'Update' : 'Add'}</Button>
@@ -1488,6 +1596,7 @@ export function MastersPage() {
         )
       case 'paymentTerms':   return <PaymentTermsSection />
       case 'designations':   return <DesignationsSection />
+      case 'holidays':       return <HolidaysSection />
       case 'routes':         return <RoutesSection />
       case 'gpsProviders':   return <GpsProvidersSection />
       case 'settings':       return <SettingsSection />

@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem, TenantMasterItem, DesignationItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
+import type { ApiResponse, MasterItem, StateItem, CityItem, VehicleTypeItem, TaxItem, DocumentTypeItem, TenantMasterItem, DesignationItem, HolidayItem, RouteItem, PaymentTermsItem, VehicleStatusItem, VehicleStatusType } from '@/types'
 
 // Global Masters
 export const globalMastersApi = {
@@ -56,9 +56,15 @@ export const tenantMastersApi = {
 
   // Designations
   getDesignations:    () => apiClient.get<ApiResponse<DesignationItem[]>>('/masters/tenant/designations').then(r => r.data),
-  createDesignation:  (data: { name: string; roleType: string; payPerDay?: number }) => apiClient.post<ApiResponse<DesignationItem>>('/masters/tenant/designations', data).then(r => r.data),
-  updateDesignation:  (id: number, data: { name: string; roleType: string; payPerDay?: number }) => apiClient.put<ApiResponse<DesignationItem>>(`/masters/tenant/designations/${id}`, data).then(r => r.data),
+  createDesignation:  (data: { name: string; roleType: string; payPerDay?: number; monthlyLeaveQuota?: number }) => apiClient.post<ApiResponse<DesignationItem>>('/masters/tenant/designations', data).then(r => r.data),
+  updateDesignation:  (id: number, data: { name: string; roleType: string; payPerDay?: number; monthlyLeaveQuota?: number }) => apiClient.put<ApiResponse<DesignationItem>>(`/masters/tenant/designations/${id}`, data).then(r => r.data),
   deleteDesignation:  (id: number) => apiClient.delete(`/masters/tenant/designations/${id}`),
+
+  // Holidays
+  getHolidays:    (year?: number) => apiClient.get<ApiResponse<HolidayItem[]>>(`/masters/tenant/holidays${year ? `?year=${year}` : ''}`).then(r => r.data),
+  createHoliday:  (data: { holidayDate: string; holidayName: string }) => apiClient.post<ApiResponse<HolidayItem>>('/masters/tenant/holidays', data).then(r => r.data),
+  updateHoliday:  (id: number, data: { holidayDate: string; holidayName: string }) => apiClient.put<ApiResponse<HolidayItem>>(`/masters/tenant/holidays/${id}`, data).then(r => r.data),
+  deleteHoliday:  (id: number) => apiClient.delete(`/masters/tenant/holidays/${id}`),
 
   // Routes
   getRoutes:    () => apiClient.get<ApiResponse<RouteItem[]>>('/masters/tenant/routes').then(r => r.data),

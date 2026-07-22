@@ -225,7 +225,8 @@ export interface TenantMasterItem extends MasterItem {
   description?: string
   createdAt?: string; updatedAt?: string
 }
-export interface DesignationItem extends TenantMasterItem { roleType: string; payPerDay?: number }
+export interface DesignationItem extends TenantMasterItem { roleType: string; payPerDay?: number; monthlyLeaveQuota?: number }
+export interface HolidayItem { id: number; tenantId: number; holidayDate: string; holidayName: string; isActive: boolean; createdAt?: string; updatedAt?: string }
 export interface RouteItem extends TenantMasterItem {
   sourceCityId: number; sourceCityName: string
   destinationCityId: number; destinationCityName: string
