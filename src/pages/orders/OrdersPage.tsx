@@ -550,6 +550,7 @@ export function OrdersPage() {
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Order #</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Client</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Route</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Vehicles</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Material</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Weight</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide">Freight</th>
@@ -577,6 +578,11 @@ export function OrdersPage() {
                         <ArrowRight size={12} className="text-gray-400 flex-shrink-0" />
                         <span>{o.destinationCityName}</span>
                       </div>
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-800">
+                        {o.vehicleAllocations?.length ?? 0}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.materialTypeName}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.totalWeight} T</td>
