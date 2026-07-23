@@ -972,23 +972,29 @@ function StaffHistorySlot({ label, history, canAssign, onAssign, onUnassign }: {
         </div>
       </div>
 
-      {/* Replaced history — only shown when there is still an active assignment */}
-      {current && replaced.length > 0 && (
+      {/* History — Replaced (amber) when swapped, Removed (red) when unassigned */}
+      {replaced.length > 0 && (
         <div className="mt-2 border-t border-gray-100 pt-2 space-y-1.5">
-          {replaced.map(sa => (
-            <div key={sa.id} className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                <User size={13} className="text-gray-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">{sa.userName}</span>
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">Removed</span>
+          {replaced.map((sa, i) => {
+            const isRemoved = !current && i === 0
+            const badge = isRemoved
+              ? { label: 'Removed', cls: 'bg-red-50 text-red-600 border-red-200' }
+              : { label: 'Replaced', cls: 'bg-amber-50 text-amber-700 border-amber-200' }
+            return (
+              <div key={sa.id} className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                  <User size={13} className="text-gray-400" />
                 </div>
-                {sa.updatedAt && <p className="text-xs text-gray-400">{format(parseISO(sa.updatedAt), 'dd MMM yyyy, hh:mm a')}</p>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">{sa.userName}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full border font-medium ${badge.cls}`}>{badge.label}</span>
+                  </div>
+                  {sa.updatedAt && <p className="text-xs text-gray-400">{format(parseISO(sa.updatedAt), 'dd MMM yyyy, hh:mm a')}</p>}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
