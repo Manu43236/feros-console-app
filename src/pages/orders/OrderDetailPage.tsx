@@ -922,8 +922,8 @@ function StaffHistorySlot({ label, history, canAssign, onAssign, onUnassign }: {
 }) {
   const [dlg, setDlg] = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
   // Most recent = current; everything else = replaced history
-  const current  = history[0]
-  const replaced = history.slice(1)
+  const current  = history.find(sa => sa.allocationStatus !== 'CANCELLED') ?? null
+  const replaced = history.filter(sa => sa.allocationStatus === 'CANCELLED')
 
   return (
     <div className="px-4 py-3">
