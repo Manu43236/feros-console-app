@@ -708,10 +708,15 @@ function VehicleAllocationCard({
   })
 
   const unassignDriverMutation = useMutation({
-    mutationFn: () => vehiclesApi.unassignDriver(allocation.vehicleId),
+    mutationFn: () => {
+      const allocationId = (allocation.staffHistory ?? []).find(sa => sa.roleName === 'DRIVER' && sa.allocationStatus !== 'CANCELLED')?.id
+      if (!allocationId) throw new Error('No active driver allocation found')
+      return ordersApi.unassignStaff(orderId, allocationId)
+    },
     onSuccess: () => {
       toast.success('Driver unassigned')
       qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
       qc.invalidateQueries({ queryKey: ['users'] })
     },
     onError: (e: unknown) => {
@@ -721,10 +726,15 @@ function VehicleAllocationCard({
   })
 
   const unassignCleanerMutation = useMutation({
-    mutationFn: () => vehiclesApi.unassignCleaner(allocation.vehicleId),
+    mutationFn: () => {
+      const allocationId = (allocation.staffHistory ?? []).find(sa => sa.roleName === 'CLEANER' && sa.allocationStatus !== 'CANCELLED')?.id
+      if (!allocationId) throw new Error('No active cleaner allocation found')
+      return ordersApi.unassignStaff(orderId, allocationId)
+    },
     onSuccess: () => {
       toast.success('Cleaner unassigned')
       qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
       qc.invalidateQueries({ queryKey: ['users'] })
     },
     onError: (e: unknown) => {
