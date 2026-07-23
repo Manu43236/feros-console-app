@@ -27,7 +27,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { StatusBadge, PaymentStatusBadge, OrderForm } from './OrdersPage'
 import { cn } from '@/lib/utils'
-import type { OrderPaymentStatus, VehicleAllocation } from '@/types'
+import type { OrderPaymentStatus, StaffAllocation, VehicleAllocation } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { openOrderPdf } from './OrderPdf'
 
@@ -741,8 +741,8 @@ function VehicleAllocationCard({
   const regNo     = allocation.vehicleRegistrationNumber ?? allocation.registrationNumber
   const statusCls = ALLOC_STATUS_COLORS[allocation.allocationStatus] ?? 'bg-gray-50 text-gray-600'
 
-  const activeDriver  = allocation.currentDriverId  ? { id: allocation.currentDriverId,  name: allocation.currentDriverName  ?? '—', phone: allocation.currentDriverPhone  } : undefined
-  const activeCleaner = allocation.currentCleanerId ? { id: allocation.currentCleanerId, name: allocation.currentCleanerName ?? '—', phone: allocation.currentCleanerPhone } : undefined
+  const driverHistory  = (allocation.staffHistory ?? []).filter(sa => sa.roleName === 'DRIVER')
+  const cleanerHistory = (allocation.staffHistory ?? []).filter(sa => sa.roleName === 'CLEANER')
 
   return (
     <div className="border border-gray-100 rounded-xl overflow-hidden">
@@ -840,18 +840,16 @@ function VehicleAllocationCard({
       {/* Driver + Cleaner slots */}
       {expanded && (
         <div className="divide-y divide-gray-50">
-          {/* Driver slot */}
-          <StaffSlot
+          <StaffHistorySlot
             label="Driver"
-            person={activeDriver}
+            history={driverHistory}
             canAssign={canEditStaff}
             onAssign={() => setSlotDialog('DRIVER')}
             onUnassign={canEditStaff ? () => unassignDriverMutation.mutate() : undefined}
           />
-          {/* Cleaner slot */}
-          <StaffSlot
+          <StaffHistorySlot
             label="Cleaner"
-            person={activeCleaner}
+            history={cleanerHistory}
             canAssign={canEditStaff}
             onAssign={() => setSlotDialog('CLEANER')}
             onUnassign={canEditStaff ? () => unassignCleanerMutation.mutate() : undefined}
@@ -905,60 +903,84 @@ function VehicleAllocationCard({
 }
 
 // ── staff slot row ────────────────────────────────────────────────────────────
-function StaffSlot({ label, person, canAssign, onAssign, onUnassign }: {
+function StaffHistorySlot({ label, history, canAssign, onAssign, onUnassign }: {
   label: string
-  person: { id: number; name: string; phone?: string } | undefined
+  history: StaffAllocation[]
   canAssign: boolean
   onAssign: () => void
   onUnassign?: () => void
 }) {
   const [dlg, setDlg] = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
+  // Most recent = current; everything else = replaced history
+  const current  = history[0]
+  const replaced = history.slice(1)
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <div className={cn(
-        'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
-        person ? 'bg-blue-50' : 'bg-gray-100'
-      )}>
-        <User size={13} className={person ? 'text-feros-navy' : 'text-gray-400'} />
+    <div className="px-4 py-3">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{label}</p>
+
+      {/* Current assignment row */}
+      <div className="flex items-center gap-3">
+        <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0',
+          current ? 'bg-blue-50' : 'bg-gray-100')}>
+          <User size={13} className={current ? 'text-feros-navy' : 'text-gray-400'} />
+        </div>
+        <div className="flex-1 min-w-0">
+          {current ? (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-gray-800">{current.userName}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 font-medium">Current</span>
+              </div>
+              {current.userPhone && <p className="text-xs text-gray-400">{current.userPhone}</p>}
+            </>
+          ) : (
+            <p className="text-sm text-gray-400 italic">Not assigned</p>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {current && canAssign && onUnassign && (
+            <button
+              onClick={() => setDlg({ title: `Unassign ${label}`, desc: `Unassign ${current.userName} from this vehicle?`, onOk: onUnassign })}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-red-600 border-red-200 hover:bg-red-50 transition-colors"
+            >
+              <X size={11} /> Unassign
+            </button>
+          )}
+          {canAssign && (
+            <button
+              onClick={onAssign}
+              className={cn(
+                'flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors',
+                current ? 'text-orange-600 border-orange-200 hover:bg-orange-50' : 'text-feros-navy border-blue-200 hover:bg-blue-50'
+              )}
+            >
+              {current ? <RefreshCw size={11} /> : <Plus size={11} />}
+              {current ? 'Change' : 'Assign'}
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
-        {person ? (
-          <div>
-            <p className="text-sm font-medium text-gray-800">{person.name}</p>
-            {person.phone && <p className="text-xs text-gray-400">{person.phone}</p>}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-400 italic">Not assigned</p>
-        )}
-      </div>
+      {/* Replaced history */}
+      {replaced.length > 0 && (
+        <div className="mt-2 border-t border-gray-100 pt-2 space-y-1.5">
+          {replaced.map(sa => (
+            <div key={sa.id} className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                <User size={13} className="text-gray-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{sa.userName}</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">Replaced</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      <div className="flex items-center gap-1.5 shrink-0">
-        {person && canAssign && onUnassign && (
-          <button
-            onClick={() => setDlg({ title: `Unassign ${label}`, desc: `Unassign ${person.name} from this vehicle?`, onOk: onUnassign })}
-            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border text-red-600 border-red-200 hover:bg-red-50 transition-colors"
-          >
-            <X size={11} /> Unassign
-          </button>
-        )}
-        {canAssign && (
-          <button
-            onClick={onAssign}
-            className={cn(
-              'flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors',
-              person
-                ? 'text-orange-600 border-orange-200 hover:bg-orange-50'
-                : 'text-feros-navy border-blue-200 hover:bg-blue-50'
-            )}
-          >
-            {person ? <RefreshCw size={11} /> : <Plus size={11} />}
-            {person ? 'Change' : 'Assign'}
-          </button>
-        )}
-      </div>
       <ConfirmDialog
         open={!!dlg}
         title={dlg?.title ?? ''}

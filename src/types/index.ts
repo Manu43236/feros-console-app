@@ -635,7 +635,7 @@ export interface Order {
 
 export interface StaffAllocation {
   id: number
-  userId: number; userName: string; roleName: string
+  userId: number; userName: string; userPhone?: string; roleName: string
   expectedStartDate?: string; expectedEndDate?: string
   actualStartDate?: string; actualEndDate?: string
   allocationStatus: string; remarks?: string
@@ -657,6 +657,7 @@ export interface VehicleAllocation {
   currentDriverId?: number; currentDriverName?: string; currentDriverPhone?: string
   currentCleanerId?: number; currentCleanerName?: string; currentCleanerPhone?: string
   staffAllocations?: StaffAllocation[]
+  staffHistory?: StaffAllocation[]
 }
 
 export interface VehicleAssignmentHistory {
