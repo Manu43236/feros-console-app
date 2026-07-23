@@ -640,7 +640,7 @@ export interface StaffAllocation {
   actualStartDate?: string; actualEndDate?: string
   allocationStatus: string; remarks?: string
   allocatedById?: number; allocatedByName?: string
-  createdAt: string
+  createdAt: string; updatedAt?: string
 }
 
 export interface VehicleAllocation {

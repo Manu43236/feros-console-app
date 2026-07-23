@@ -972,8 +972,8 @@ function StaffHistorySlot({ label, history, canAssign, onAssign, onUnassign }: {
         </div>
       </div>
 
-      {/* Replaced history */}
-      {replaced.length > 0 && (
+      {/* Replaced history — only shown when there is still an active assignment */}
+      {current && replaced.length > 0 && (
         <div className="mt-2 border-t border-gray-100 pt-2 space-y-1.5">
           {replaced.map(sa => (
             <div key={sa.id} className="flex items-center gap-3">
@@ -983,8 +983,9 @@ function StaffHistorySlot({ label, history, canAssign, onAssign, onUnassign }: {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500">{sa.userName}</span>
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">Replaced</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">Removed</span>
                 </div>
+                {sa.updatedAt && <p className="text-xs text-gray-400">{format(parseISO(sa.updatedAt), 'dd MMM yyyy, hh:mm a')}</p>}
               </div>
             </div>
           ))}
@@ -1018,6 +1019,7 @@ export function OrderDetailPage() {
     queryKey: ['order', Number(orderId)],
     queryFn:  () => ordersApi.getById(Number(orderId)),
     enabled:  !!orderId,
+    refetchOnMount: 'always',
   })
 
   const { data: orderLrs = [] } = useQuery({
