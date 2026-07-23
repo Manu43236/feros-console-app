@@ -172,13 +172,16 @@ function AssignStaffDialog({ orderId, allocation, slotRole, open, onClose }: {
 
   const mutation = useMutation({
     mutationFn: (data: AssignStaffForm) =>
-      slotRole === 'DRIVER'
-        ? vehiclesApi.assignDriver(allocation.vehicleId, data.userId)
-        : vehiclesApi.assignCleaner(allocation.vehicleId, data.userId),
+      ordersApi.assignStaff(orderId, {
+        vehicleAllocationId: allocation.id,
+        userId: data.userId,
+        slotRole,
+      }),
     onSuccess: () => {
       toast.success(`${slotRole === 'DRIVER' ? 'Driver' : 'Cleaner'} assigned successfully`)
       qc.invalidateQueries({ queryKey: ['order', orderId] })
       qc.invalidateQueries({ queryKey: ['users', { hasAttendanceToday: true }] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
       reset(); onClose()
     },
     onError: (e: unknown) => {
