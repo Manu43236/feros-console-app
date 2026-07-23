@@ -1110,6 +1110,7 @@ export function AttendancePage() {
   const [editRecord, setEditRecord]     = useState<Attendance | undefined>()
   const [historyUser, setHistoryUser]   = useState<StaffUser | null>(null)
   const [mapCoords, setMapCoords]       = useState<{ lat: number; lng: number } | null>(null)
+  const [selfieUrl, setSelfieUrl]       = useState<string | null>(null)
 
   const { data: attendanceData, isLoading } = useQuery({
     queryKey: ['attendance', selectedDate],
@@ -1306,7 +1307,7 @@ export function AttendancePage() {
                       <th className="text-left px-5 py-3 whitespace-nowrap">Status</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Approval</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Location</th>
-                      <th className="text-left px-5 py-3 whitespace-nowrap">Leave Type</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Photo</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Marked By</th>
                       <th className="px-5 py-3"></th>
                     </tr>
@@ -1323,7 +1324,16 @@ export function AttendancePage() {
                             <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                             <td className="px-5 py-3 whitespace-nowrap"><ApprovalBadge status={r.approvalStatus} /></td>
                             <td className="px-5 py-3 w-[140px]">{r.locationName && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(r.locationName.trim()) ? <span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName}>{r.locationName}</span> : r.latitude != null && r.longitude != null ? <button onClick={() => setMapCoords({ lat: r.latitude!, lng: r.longitude! })} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><MapPin size={11} />Other</button> : <span className="text-gray-400 text-xs">—</span>}</td>
-                            <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.leaveTypeName ?? '—'}</td>
+                            <td className="px-5 py-3 whitespace-nowrap">
+                              {r.selfieUrl ? (
+                                <button onClick={() => setSelfieUrl(r.selfieUrl!)} className="group relative w-10 h-10 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors">
+                                  <img src={r.selfieUrl} alt="selfie" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                    <Camera size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  </div>
+                                </button>
+                              ) : <span className="text-gray-300 text-xs">—</span>}
+                            </td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.markedByName}</td>
                             <td className="px-5 py-3 whitespace-nowrap">
                               <div className="flex gap-1 justify-end">
@@ -1407,6 +1417,7 @@ export function AttendancePage() {
       )}
       <StaffHistoryDialog open={!!historyUser} onClose={() => setHistoryUser(null)} user={historyUser} />
       <MapModal coords={mapCoords} onClose={() => setMapCoords(null)} />
+      {selfieUrl && <SelfieDialog url={selfieUrl} onClose={() => setSelfieUrl(null)} />}
     </div>
   )
 }
