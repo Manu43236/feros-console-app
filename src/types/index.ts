@@ -589,6 +589,8 @@ export interface Vehicle {
   currentCleanerId?: number; currentCleanerName?: string
   isAssigned?: boolean; assignedOrderId?: number; assignedOrderNumber?: string
   coverImageUrl?: string
+  isInTransit?: boolean; activeLrId?: number; activeLrNumber?: string
+  activeOrderId?: number; activeOrderNumber?: string
 }
 
 export interface VehicleDocument {

@@ -875,8 +875,10 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [confirmAssign, setConfirmAssign] = useState(false)
   const roleLabel = role === 'DRIVER' ? 'Driver' : 'Cleaner'
   const accentColor = role === 'DRIVER' ? 'blue' : 'purple'
+  const isInTransit = vehicle?.isInTransit ?? false
 
   const { data: usersRes } = useQuery({
     queryKey: ['all-staff-users'],
@@ -919,7 +921,13 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
     onError: (e: unknown) => toast.error(getApiError(e, `Failed to unassign ${roleLabel.toLowerCase()}`)),
   })
 
-  function handleClose() { setSearch(''); setSelectedId(null); onClose() }
+  function handleClose() { setSearch(''); setSelectedId(null); setConfirmAssign(false); onClose() }
+
+  function handleAssignClick() {
+    if (!selectedId) return
+    if (isInTransit) { setConfirmAssign(true); return }
+    assignMutation.mutate()
+  }
 
   if (!vehicle) return null
 
@@ -934,6 +942,17 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
         </DialogHeader>
 
         <div className="flex flex-col" style={{ maxHeight: '70vh' }}>
+          {/* Active trip warning */}
+          {isInTransit && (
+            <div className="mx-4 mt-4 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
+              <p className="text-xs font-semibold text-amber-700">Vehicle is on an active trip</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                LR: {vehicle?.activeLrNumber} · Order: {vehicle?.activeOrderNumber}
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">You can swap the {roleLabel.toLowerCase()}, but cannot remove them mid-trip.</p>
+            </div>
+          )}
+
           {/* Current staff banner */}
           {currentName && (
             <div className={`flex items-center justify-between mx-4 mt-4 px-3 py-2.5 rounded-lg bg-${accentColor}-50 border border-${accentColor}-100`}>
@@ -941,13 +960,38 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
                 <p className={`text-xs font-medium text-${accentColor}-500`}>Currently Assigned</p>
                 <p className={`text-sm font-semibold text-${accentColor}-800`}>{currentName}</p>
               </div>
-              <button
-                onClick={() => unassignMutation.mutate()}
-                disabled={unassignMutation.isPending}
-                className="text-xs text-red-500 hover:text-red-700 font-semibold disabled:opacity-50 px-2 py-1 rounded hover:bg-red-50"
-              >
-                {unassignMutation.isPending ? 'Removing…' : 'Remove'}
-              </button>
+              {!isInTransit && (
+                <button
+                  onClick={() => unassignMutation.mutate()}
+                  disabled={unassignMutation.isPending}
+                  className="text-xs text-red-500 hover:text-red-700 font-semibold disabled:opacity-50 px-2 py-1 rounded hover:bg-red-50"
+                >
+                  {unassignMutation.isPending ? 'Removing…' : 'Remove'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Confirm swap during active trip */}
+          {confirmAssign && (
+            <div className="mx-4 mt-3 px-3 py-3 rounded-lg bg-orange-50 border border-orange-200">
+              <p className="text-xs font-semibold text-orange-700 mb-1">Confirm mid-trip swap?</p>
+              <p className="text-xs text-orange-600 mb-3">
+                This will swap the {roleLabel.toLowerCase()} on the active trip (LR: {vehicle?.activeLrNumber}).
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmAssign(false)}
+                  className="flex-1 text-xs font-medium px-3 py-1.5 rounded border border-orange-300 text-orange-700 hover:bg-orange-100"
+                >Cancel</button>
+                <button
+                  onClick={() => { setConfirmAssign(false); assignMutation.mutate() }}
+                  disabled={assignMutation.isPending}
+                  className="flex-1 text-xs font-medium px-3 py-1.5 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+                >
+                  {assignMutation.isPending ? 'Swapping…' : 'Confirm Swap'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -1014,10 +1058,10 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
             <Button variant="outline" className="flex-1" onClick={handleClose}>Cancel</Button>
             <Button
               className="flex-1"
-              disabled={!selectedId || assignMutation.isPending}
-              onClick={() => assignMutation.mutate()}
+              disabled={!selectedId || assignMutation.isPending || confirmAssign}
+              onClick={handleAssignClick}
             >
-              {assignMutation.isPending ? 'Assigning…' : `Assign ${roleLabel}`}
+              {assignMutation.isPending ? 'Assigning…' : isInTransit ? `Swap ${roleLabel}` : `Assign ${roleLabel}`}
             </Button>
           </div>
         </div>
