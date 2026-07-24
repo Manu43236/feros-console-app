@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import {
   CalendarDays, ChevronLeft, ChevronRight, Users,
   CheckCircle, XCircle, Clock, Umbrella, Pencil, ClipboardList,
-  AlertCircle, Camera, Calendar, LogIn, LogOut, Timer, Search, MapPin,
+  AlertCircle, Camera, Calendar, LogIn, LogOut, Timer, Search, MapPin, Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -333,14 +333,23 @@ function AttendanceDialog({
   const [userId, setUserId] = useState('')
   const [attendanceTypeId, setAttendanceTypeId] = useState('')
   const [leaveTypeId, setLeaveTypeId] = useState('none')
+  const [signInTime, setSignInTime] = useState('')
+  const [signOutTime, setSignOutTime] = useState('')
   const [selectErrors, setSelectErrors] = useState({ userId: '', attendanceTypeId: '' })
   const { register, handleSubmit, reset } = useForm<{ leaveReason?: string; remarks?: string }>()
+
+  function toDatetimeLocal(iso: string | undefined) {
+    if (!iso) return ''
+    try { return new Date(iso).toISOString().slice(0, 16) } catch { return '' }
+  }
 
   useEffect(() => {
     if (open) {
       setUserId(record ? String(record.userId) : '')
       setAttendanceTypeId(record ? String(record.attendanceTypeId) : '')
       setLeaveTypeId(record?.leaveTypeId ? String(record.leaveTypeId) : 'none')
+      setSignInTime(toDatetimeLocal(record?.markedAt))
+      setSignOutTime(toDatetimeLocal(record?.markedOutAt))
       setSelectErrors({ userId: '', attendanceTypeId: '' })
       reset({ leaveReason: record?.leaveReason ?? '', remarks: record?.remarks ?? '' })
     }
@@ -374,6 +383,8 @@ function AttendanceDialog({
       leaveTypeId: leaveTypeId !== 'none' ? Number(leaveTypeId) : undefined,
       leaveReason: d.leaveReason || undefined,
       remarks: d.remarks || undefined,
+      signInTime: isEdit && signInTime ? signInTime + ':00' : undefined,
+      signOutTime: isEdit && signOutTime ? signOutTime + ':00' : undefined,
     })
   }
 
@@ -438,6 +449,21 @@ function AttendanceDialog({
             <Label>Remarks</Label>
             <Input {...register('remarks')} className="mt-1" placeholder="Optional" />
           </div>
+          {isEdit && (
+            <div className="border-t pt-3 space-y-3">
+              <p className="text-xs text-gray-500 font-medium">Admin Correction — Sign-in / Sign-out Times</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Sign-in Time</Label>
+                  <Input type="datetime-local" value={signInTime} onChange={e => setSignInTime(e.target.value)} className="mt-1 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs">Sign-out Time</Label>
+                  <Input type="datetime-local" value={signOutTime} onChange={e => setSignOutTime(e.target.value)} className="mt-1 text-sm" />
+                </div>
+              </div>
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending}>
@@ -1098,7 +1124,9 @@ function DutyTimesTab({
 export function AttendancePage() {
   const { locked } = useSubscription()
   const role = useAuthStore(s => s.role)
-  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
+  const isAdmin   = role === 'ADMIN' || role === 'SUPER_ADMIN'
+  const canEdit   = isAdmin || role === 'OFFICE_STAFF' || role === 'SUPERVISOR'
+  const canDelete = isAdmin || role === 'OFFICE_STAFF'
 
   type Tab = 'daily' | 'duty' | 'my' | 'pending' | 'rejected'
   const [activeTab, setActiveTab]       = useState<Tab>('daily')
@@ -1130,6 +1158,16 @@ export function AttendancePage() {
 
   const { data: pendingData }  = useQuery({ queryKey: ['attendance-pending'],  queryFn: attendanceApi.getPending,  enabled: isAdmin })
   const { data: rejectedData } = useQuery({ queryKey: ['attendance-rejected'], queryFn: attendanceApi.getRejected, enabled: isAdmin })
+
+  const qc = useQueryClient()
+  const clearSignOutMutation = useMutation({
+    mutationFn: (id: number) => attendanceApi.clearSignOut(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['attendance', selectedDate] })
+      toast.success('Sign-out time cleared')
+    },
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed to clear sign-out') ?? 'Failed'),
+  })
   const pendingCount  = pendingData?.data?.length ?? 0
   const rejectedCount = rejectedData?.data?.length ?? 0
 
@@ -1337,10 +1375,22 @@ export function AttendancePage() {
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.markedByName}</td>
                             <td className="px-5 py-3 whitespace-nowrap">
                               <div className="flex gap-1 justify-end">
-                                {isAdmin && (
+                                {canEdit && (
                                   <Button variant="ghost" size="icon" className="h-7 w-7"
                                     onClick={() => { setEditRecord(r); setMarkOpen(true) }}>
                                     <Pencil size={12} />
+                                  </Button>
+                                )}
+                                {canDelete && r.markedOutAt && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                    title="Clear sign-out time"
+                                    disabled={clearSignOutMutation.isPending}
+                                    onClick={() => {
+                                      if (window.confirm(`Clear sign-out time for ${r.userName}?`)) {
+                                        clearSignOutMutation.mutate(r.id)
+                                      }
+                                    }}>
+                                    <Trash2 size={12} />
                                   </Button>
                                 )}
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500"
@@ -1393,27 +1443,27 @@ export function AttendancePage() {
         </>
       )}
 
+      {canEdit && (
+        <AttendanceDialog
+          open={markOpen}
+          onClose={() => { setMarkOpen(false); setEditRecord(undefined) }}
+          date={selectedDate}
+          record={editRecord}
+          users={allUsers}
+          attendanceTypes={attendanceTypes}
+          leaveTypes={leaveTypes}
+        />
+      )}
       {isAdmin && (
-        <>
-          <AttendanceDialog
-            open={markOpen}
-            onClose={() => { setMarkOpen(false); setEditRecord(undefined) }}
-            date={selectedDate}
-            record={editRecord}
-            users={allUsers}
-            attendanceTypes={attendanceTypes}
-            leaveTypes={leaveTypes}
-          />
-          <BulkMarkDialog
-            open={bulkOpen}
-            onClose={() => setBulkOpen(false)}
-            date={selectedDate}
-            users={allUsers}
-            attendanceTypes={attendanceTypes}
-            leaveTypes={leaveTypes}
-            existingMap={existingMap}
-          />
-        </>
+        <BulkMarkDialog
+          open={bulkOpen}
+          onClose={() => setBulkOpen(false)}
+          date={selectedDate}
+          users={allUsers}
+          attendanceTypes={attendanceTypes}
+          leaveTypes={leaveTypes}
+          existingMap={existingMap}
+        />
       )}
       <StaffHistoryDialog open={!!historyUser} onClose={() => setHistoryUser(null)} user={historyUser} />
       <MapModal coords={mapCoords} onClose={() => setMapCoords(null)} />

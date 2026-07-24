@@ -921,6 +921,7 @@ function StaffHistorySlot({ label, history, canAssign, onAssign, onUnassign }: {
   onUnassign?: () => void
 }) {
   const [dlg, setDlg] = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
   // Most recent = current; everything else = replaced history
   const current  = history.find(sa => sa.allocationStatus !== 'CANCELLED') ?? null
   const replaced = history.filter(sa => sa.allocationStatus === 'CANCELLED')
@@ -972,29 +973,40 @@ function StaffHistorySlot({ label, history, canAssign, onAssign, onUnassign }: {
         </div>
       </div>
 
-      {/* History — Replaced (amber) when swapped, Removed (red) when unassigned */}
+      {/* History — collapsible */}
       {replaced.length > 0 && (
-        <div className="mt-2 border-t border-gray-100 pt-2 space-y-1.5">
-          {replaced.map((sa, i) => {
-            const isRemoved = !current && i === 0
-            const badge = isRemoved
-              ? { label: 'Removed', cls: 'bg-red-50 text-red-600 border-red-200' }
-              : { label: 'Replaced', cls: 'bg-amber-50 text-amber-700 border-amber-200' }
-            return (
-              <div key={sa.id} className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                  <User size={13} className="text-gray-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">{sa.userName}</span>
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full border font-medium ${badge.cls}`}>{badge.label}</span>
+        <div className="mt-2 border-t border-gray-100 pt-2">
+          <button
+            onClick={() => setShowHistory(v => !v)}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-1.5"
+          >
+            <ChevronDown size={12} className={cn('transition-transform', showHistory && 'rotate-180')} />
+            {showHistory ? 'Hide history' : `History (${replaced.length})`}
+          </button>
+          {showHistory && (
+            <div className="space-y-1.5">
+              {replaced.map((sa, i) => {
+                const isRemoved = !current && i === 0
+                const badge = isRemoved
+                  ? { label: 'Removed', cls: 'bg-red-50 text-red-600 border-red-200' }
+                  : { label: 'Replaced', cls: 'bg-amber-50 text-amber-700 border-amber-200' }
+                return (
+                  <div key={sa.id} className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                      <User size={13} className="text-gray-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">{sa.userName}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full border font-medium ${badge.cls}`}>{badge.label}</span>
+                      </div>
+                      {sa.updatedAt && <p className="text-xs text-gray-400">{format(parseISO(sa.updatedAt), 'dd MMM yyyy, hh:mm a')}</p>}
+                    </div>
                   </div>
-                  {sa.updatedAt && <p className="text-xs text-gray-400">{format(parseISO(sa.updatedAt), 'dd MMM yyyy, hh:mm a')}</p>}
-                </div>
-              </div>
-            )
-          })}
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

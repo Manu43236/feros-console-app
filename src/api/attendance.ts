@@ -8,6 +8,8 @@ export interface AttendanceRequest {
   leaveTypeId?: number
   leaveReason?: string
   remarks?: string
+  signInTime?: string
+  signOutTime?: string
 }
 
 export interface BulkAttendanceEntry {
@@ -30,6 +32,7 @@ export const attendanceApi = {
   getByUser:  (userId: number, from: string, to: string) =>
     apiClient.get<ApiResponse<Attendance[]>>(`/attendance/user/${userId}?from=${from}&to=${to}`).then(r => r.data),
   update:     (id: number, data: AttendanceRequest) => apiClient.put<ApiResponse<Attendance>>(`/attendance/${id}`, data).then(r => r.data),
+  clearSignOut: (id: number) => apiClient.delete<ApiResponse<void>>(`/attendance/${id}/sign-out`).then(r => r.data),
 
   // Staff self-service
   markOwn:        (data: Pick<AttendanceRequest, 'attendanceTypeId' | 'leaveTypeId' | 'leaveReason' | 'remarks'>) =>
