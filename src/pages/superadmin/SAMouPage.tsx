@@ -48,6 +48,7 @@ interface MouState {
   obMigration: boolean; obConfig: boolean; obTraining: boolean; obGolive: boolean
   trainingSessions: string; goliveDays: string
   aoGps: boolean; aoEpod: boolean; aoPriority: boolean; aoApi: boolean
+  showAddons: boolean
   specialTerms: string
 }
 
@@ -62,6 +63,7 @@ const INIT: MouState = {
   obMigration: true, obConfig: true, obTraining: true, obGolive: true,
   trainingSessions: '3', goliveDays: '7 days',
   aoGps: false, aoEpod: false, aoPriority: false, aoApi: false,
+  showAddons: false,
   specialTerms: '',
 }
 
@@ -318,12 +320,17 @@ export function SAMouPage() {
         {/* Add-Ons */}
         <div style={{ marginBottom: 18 }}>
           <SecTitle>Add-On Services</SecTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            <Chk label="GPS (₹149/veh/mo)"  checked={f.aoGps}      onChange={v => set('aoGps', v)} />
-            <Chk label="ePOD (₹99/veh/mo)"  checked={f.aoEpod}     onChange={v => set('aoEpod', v)} />
-            <Chk label="Priority Support"    checked={f.aoPriority} onChange={v => set('aoPriority', v)} />
-            <Chk label="API Access"          checked={f.aoApi}      onChange={v => set('aoApi', v)} />
+          <div style={{ marginBottom: 8 }}>
+            <Chk label="Include Add-On Services in MOU" checked={f.showAddons} onChange={v => set('showAddons', v)} />
           </div>
+          {f.showAddons && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 6 }}>
+              <Chk label="GPS (₹149/veh/mo)"  checked={f.aoGps}      onChange={v => set('aoGps', v)} />
+              <Chk label="ePOD (₹99/veh/mo)"  checked={f.aoEpod}     onChange={v => set('aoEpod', v)} />
+              <Chk label="Priority Support"    checked={f.aoPriority} onChange={v => set('aoPriority', v)} />
+              <Chk label="API Access"          checked={f.aoApi}      onChange={v => set('aoApi', v)} />
+            </div>
+          )}
         </div>
 
         {/* Special Terms */}
@@ -473,6 +480,7 @@ export function SAMouPage() {
           </div>
 
           {/* Clause 5 — Add-Ons */}
+          {f.showAddons && (
           <div style={D.clause}>
             <div style={D.cTitle}><span style={D.cNum}>5.</span> Add-On Services (Optional)</div>
             <p style={D.p}>The following services are available at additional cost and can be activated at any time during the subscription period:</p>
@@ -487,6 +495,7 @@ export function SAMouPage() {
               </tbody>
             </table>
           </div>
+          )}
 
           {/* Clause 6 — GPS */}
           <div style={D.clause}>
