@@ -1094,9 +1094,8 @@ export function VehiclesPage() {
   const [formOpen, setFormOpen]       = useState(false)
   const [bulkOpen, setBulkOpen]       = useState(false)
   const [typeFilter, setTypeFilter]   = useState('')
-  const [ownerFilter, setOwnerFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [assignFilter, setAssignFilter] = useState('')
+  const [vehicleStatusFilter, setVehicleStatusFilter] = useState('')
   const [scopeFilter, setScopeFilter] = useState('')
   const [activeTab, setActiveTab]     = useState<'all' | 'watchlist'>('all')
   const [staffDialogVehicle, setStaffDialogVehicle] = useState<Vehicle | null>(null)
@@ -1107,7 +1106,6 @@ export function VehiclesPage() {
     queryFn: () => vehiclesApi.getAll(),
   })
   const { data: typesRes }        = useQuery({ queryKey: ['vehicle-types'],    queryFn: globalMastersApi.getVehicleTypes })
-  const { data: ownershipRes }    = useQuery({ queryKey: ['ownership-types'],  queryFn: globalMastersApi.getOwnershipTypes })
 
   const { data: wlIdsRes }        = useQuery({
     queryKey: ['vehicle-watchlist-ids'],
@@ -1143,13 +1141,12 @@ export function VehiclesPage() {
     const matchSearch = v.registrationNumber.toLowerCase().includes(q) ||
                         (v.brandName ?? '').toLowerCase().includes(q) ||
                         (v.vehicleTypeName ?? '').toLowerCase().includes(q)
-    const matchType   = !typeFilter  || String(v.vehicleTypeId) === typeFilter
-    const matchOwner  = !ownerFilter || String(v.ownershipTypeId) === ownerFilter
-    const matchStatus = !statusFilter || (statusFilter === 'active' ? v.isActive : !v.isActive)
-    const matchAssign = !assignFilter || v.currentStatusType === assignFilter
-    const matchScope     = !scopeFilter || v.tripScope === scopeFilter
-    const matchWatchlist = activeTab === 'all' || watchlistedIds.has(v.id)
-    return matchSearch && matchType && matchOwner && matchStatus && matchAssign && matchScope && matchWatchlist
+    const matchType          = !typeFilter          || String(v.vehicleTypeId) === typeFilter
+    const matchStatus        = !statusFilter        || (statusFilter === 'active' ? v.isActive : !v.isActive)
+    const matchVehicleStatus = !vehicleStatusFilter || v.currentStatusType === vehicleStatusFilter
+    const matchScope         = !scopeFilter         || v.tripScope === scopeFilter
+    const matchWatchlist     = activeTab === 'all'  || watchlistedIds.has(v.id)
+    return matchSearch && matchType && matchStatus && matchVehicleStatus && matchScope && matchWatchlist
   })
   const totalPages = Math.max(1, Math.ceil(vehicles.length / PAGE_SIZE))
   const pageRows   = vehicles.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -1235,32 +1232,27 @@ export function VehiclesPage() {
           className="h-10 w-36"
         />
         <SearchableSelect
-          value={ownerFilter}
-          onValueChange={v => { setOwnerFilter(v); setPage(0) }}
+          value={vehicleStatusFilter}
+          onValueChange={v => { setVehicleStatusFilter(v); setPage(0) }}
           options={[
-            { value: '', label: 'All Ownership' },
-            ...(ownershipRes?.data ?? []).map(o => ({ value: String(o.id), label: o.name })),
+            { value: '',           label: 'All Status' },
+            { value: 'AVAILABLE',  label: 'Available' },
+            { value: 'ASSIGNED',   label: 'Assigned' },
+            { value: 'ON_TRIP',    label: 'On Trip' },
+            { value: 'IN_REPAIR',  label: 'In Repair' },
+            { value: 'BREAKDOWN',  label: 'Breakdown' },
+            { value: 'ON_LEASE',   label: 'On Lease' },
+            { value: 'OTHER',      label: 'Other' },
           ]}
-          className="h-10 w-40"
+          className="h-10 w-36"
         />
         <SearchableSelect
           value={statusFilter}
           onValueChange={v => { setStatusFilter(v); setPage(0) }}
           options={[
-            { value: '', label: 'All Status' },
+            { value: '', label: 'Active/Inactive' },
             { value: 'active', label: 'Active' },
             { value: 'inactive', label: 'Inactive' },
-          ]}
-          className="h-10 w-36"
-        />
-        <SearchableSelect
-          value={assignFilter}
-          onValueChange={v => { setAssignFilter(v); setPage(0) }}
-          options={[
-            { value: '',          label: 'All Trips' },
-            { value: 'ASSIGNED',  label: 'Assigned' },
-            { value: 'ON_TRIP',   label: 'On Trip' },
-            { value: 'AVAILABLE', label: 'Available' },
           ]}
           className="h-10 w-36"
         />
