@@ -13,6 +13,7 @@ import type { SmServiceItem } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { EquipmentServiceManagerPage } from '@/pages/equipment/EquipmentServiceManagerPage'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Button } from '@/components/ui/button'
 
 function svcToBoard(s: SmServiceItem): BoardService {
@@ -106,19 +107,15 @@ function VehicleServiceManagerView() {
 
       {/* Vehicle picker before opening CreateServiceDialog */}
       <Dialog open={pickingVehicle} onOpenChange={v => !v && setPickingVehicle(false)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm min-h-[300px]">
           <DialogHeader><DialogTitle>Select Vehicle</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-1">
-            <select
-              value={pickedVehicleId ?? ''}
-              onChange={e => setPickedVehicleId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-feros-navy/20 focus:border-feros-navy"
-            >
-              <option value="">Select a vehicle…</option>
-              {vehicles.map(v => (
-                <option key={v.id} value={v.id}>{v.registrationNumber}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              options={vehicles.map(v => ({ value: String(v.id), label: v.registrationNumber }))}
+              value={pickedVehicleId ? String(pickedVehicleId) : ''}
+              onValueChange={val => setPickedVehicleId(Number(val))}
+              placeholder="Search vehicle…"
+            />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setPickingVehicle(false)}>Cancel</Button>
               <Button disabled={!pickedVehicleId} onClick={confirmVehicle} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
