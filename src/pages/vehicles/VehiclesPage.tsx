@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -1093,9 +1093,10 @@ export function VehiclesPage() {
   const [page, setPage]               = useState(0)
   const [formOpen, setFormOpen]       = useState(false)
   const [bulkOpen, setBulkOpen]       = useState(false)
+  const [searchParams] = useSearchParams()
   const [typeFilter, setTypeFilter]   = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [vehicleStatusFilter, setVehicleStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('active') ?? '')
+  const [vehicleStatusFilter, setVehicleStatusFilter] = useState(() => searchParams.get('status') ?? '')
   const [scopeFilter, setScopeFilter] = useState('')
   const [activeTab, setActiveTab]     = useState<'all' | 'watchlist'>('all')
   const [staffDialogVehicle, setStaffDialogVehicle] = useState<Vehicle | null>(null)
