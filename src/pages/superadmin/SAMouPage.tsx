@@ -117,6 +117,8 @@ export function SAMouPage() {
   const subtotal     = annual + onboardingFee
   const gstAmount    = Math.round(subtotal * gstRate / 100)
   const year1Total   = subtotal + gstAmount
+  // dynamic clause numbering — clause 5 is Add-Ons (conditional)
+  const cn = (n: number) => f.showAddons || n <= 4 ? n : n - 1
 
   const modules = [
     { key: 'modOps',           label: 'Operations, Orders & Trip Management' },
@@ -499,7 +501,7 @@ export function SAMouPage() {
 
           {/* Clause 6 — GPS */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>6.</span> GPS Integration</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(6)}.</span> GPS Integration</div>
             <p style={D.p}>FEROS supports integration with third-party GPS providers including but not limited to Tata Fleet Edge, BlackBuck, and Ashok Leyland GPS systems.</p>
             <ul style={{ paddingLeft: 18, margin: '6px 0' }}>
               <li style={D.li}>GPS hardware procurement and installation is the sole responsibility of the Client.</li>
@@ -511,7 +513,7 @@ export function SAMouPage() {
 
           {/* Clause 7 — Support */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>7.</span> Support &amp; Service Levels</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(7)}.</span> Support &amp; Service Levels</div>
             <ul style={{ paddingLeft: 18, margin: '6px 0' }}>
               <li style={D.li}><strong>Standard Support</strong> — Email and WhatsApp support, response within 24 business hours</li>
               <li style={D.li}><strong>Platform Availability</strong> — 99% uptime guaranteed, excluding scheduled maintenance windows</li>
@@ -525,7 +527,7 @@ export function SAMouPage() {
 
           {/* Clause 8 — Data */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>8.</span> Data Ownership, Security &amp; Confidentiality</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(8)}.</span> Data Ownership, Security &amp; Confidentiality</div>
             <p style={D.p}><strong>8.1 Data Ownership</strong><br />All data entered into the FEROS platform by the Client remains the <strong>sole property of the Client</strong>. The Service Provider shall not use, share, or sell Client data to any third party.</p>
             <p style={D.p}><strong>8.2 Data Accuracy</strong><br />The accuracy of data entered into the FEROS platform is the sole responsibility of the Client and their staff. The Service Provider is not liable for any business or financial decisions made based on incorrectly entered data.</p>
             <p style={D.p}><strong>8.3 Data Security &amp; Backups</strong><br />The Service Provider maintains automated data backups. The Client is advised to periodically export critical reports. The Service Provider's liability for data loss is limited to restoration from the most recent available backup.</p>
@@ -536,7 +538,7 @@ export function SAMouPage() {
 
           {/* Clause 9 — Staff */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>9.</span> Staff &amp; User Responsibility</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(9)}.</span> Staff &amp; User Responsibility</div>
             <ul style={{ paddingLeft: 18, margin: '6px 0' }}>
               <li style={D.li}>The Client is responsible for all actions performed on the FEROS platform by their staff and users.</li>
               <li style={D.li}>The Client must ensure their staff are adequately trained before using the platform for live operations.</li>
@@ -547,7 +549,7 @@ export function SAMouPage() {
 
           {/* Clause 10 — IP */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>10.</span> Intellectual Property</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(10)}.</span> Intellectual Property</div>
             <ul style={{ paddingLeft: 18, margin: '6px 0' }}>
               <li style={D.li}>The FEROS software, platform, design, codebase, and all related intellectual property remain the exclusive property of <strong>MandM Technologies</strong>.</li>
               <li style={D.li}>The Client is granted a non-exclusive, non-transferable licence to use the FEROS platform for their own internal business operations during the subscription period.</li>
@@ -557,7 +559,7 @@ export function SAMouPage() {
 
           {/* Clause 11 — Updates */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>11.</span> Software Updates &amp; Changes</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(11)}.</span> Software Updates &amp; Changes</div>
             <ul style={{ paddingLeft: 18, margin: '6px 0' }}>
               <li style={D.li}>The Service Provider may update, improve, or modify the FEROS platform at any time to enhance functionality, security, or performance.</li>
               <li style={D.li}>Core functionality agreed upon in this MOU will not be removed without prior written notice of at least <strong>30 days</strong>.</li>
@@ -567,7 +569,7 @@ export function SAMouPage() {
 
           {/* Clause 12 — Cancellation */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>12.</span> Cancellation &amp; Termination</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(12)}.</span> Cancellation &amp; Termination</div>
             <p style={D.p}><strong>12.1 No Mid-Term Cancellation</strong><br />The subscription is for a fixed annual term. No refund will be provided for unused months in the event of early termination by the Client.</p>
             <p style={D.p}><strong>12.2 Termination by Service Provider</strong><br />The Service Provider reserves the right to suspend or terminate access with <strong>30 days' written notice</strong> in the event of non-payment, misuse, or material breach of this MOU.</p>
             <p style={D.p}><strong>12.3 Renewal Opt-Out</strong><br />Either Party may choose not to renew by providing written notice at least <strong>30 days before</strong> the subscription renewal date.</p>
@@ -576,7 +578,7 @@ export function SAMouPage() {
 
           {/* Clause 13 — Liability */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>13.</span> Limitation of Liability</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(13)}.</span> Limitation of Liability</div>
             <ul style={{ paddingLeft: 18, margin: '6px 0' }}>
               <li style={D.li}>The Service Provider's total liability under this MOU shall not exceed the <strong>total annual subscription fee paid</strong> by the Client.</li>
               <li style={D.li}>The Service Provider shall not be liable for any indirect, consequential, or incidental losses arising from use or inability to use the platform.</li>
@@ -586,13 +588,13 @@ export function SAMouPage() {
 
           {/* Clause 14 — Governing Law */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>14.</span> Governing Law &amp; Dispute Resolution</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(14)}.</span> Governing Law &amp; Dispute Resolution</div>
             <p style={D.p}>This MOU shall be governed by the laws of <strong>{f.govState || 'Andhra Pradesh'}</strong>, India. Disputes shall first be resolved amicably within 30 days. If unresolved, disputes shall be subject to the exclusive jurisdiction of the courts of <strong>{f.govState || 'Andhra Pradesh'}</strong>, India.</p>
           </div>
 
           {/* Clause 15 — General */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>15.</span> General Terms</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(15)}.</span> General Terms</div>
             <ul style={{ paddingLeft: 18, margin: '6px 0' }}>
               <li style={D.li}>This MOU constitutes the entire understanding between the Parties and supersedes all prior discussions or agreements.</li>
               <li style={D.li}>Any amendments must be made in writing and signed by authorised representatives of both Parties.</li>
@@ -610,7 +612,7 @@ export function SAMouPage() {
 
           {/* Clause 16 — Signatures */}
           <div style={D.clause}>
-            <div style={D.cTitle}><span style={D.cNum}>16.</span> Signatures</div>
+            <div style={D.cTitle}><span style={D.cNum}>{cn(16)}.</span> Signatures</div>
             <div style={D.sigGrid}>
               {/* Service Provider */}
               <div style={D.sigBlk}>
