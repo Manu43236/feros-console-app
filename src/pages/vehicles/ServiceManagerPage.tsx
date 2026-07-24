@@ -4,7 +4,7 @@ import { Truck, Construction } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { serviceManagerApi } from '@/api/serviceManager'
 import { servicePartsApi, sparePartsApi } from '@/api/inventory'
-import { vehicleServicesApi } from '@/api/vehicles'
+import { vehicleServicesApi, vehiclesApi } from '@/api/vehicles'
 import { globalMastersApi } from '@/api/masters'
 import { CreateServiceDialog } from '@/components/shared/CreateServiceDialog'
 import { ServiceBoard } from '@/components/service/ServiceBoard'
@@ -12,6 +12,9 @@ import type { BoardBreakdown, BoardService, ServiceBoardConfig } from '@/compone
 import type { SmServiceItem } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { EquipmentServiceManagerPage } from '@/pages/equipment/EquipmentServiceManagerPage'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Button } from '@/components/ui/button'
 
 function svcToBoard(s: SmServiceItem): BoardService {
   return {
@@ -39,15 +42,19 @@ function svcToBoard(s: SmServiceItem): BoardService {
 // ── Vehicle Service Manager (adapter into the shared ServiceBoard) ──────────────
 function VehicleServiceManagerView() {
   const qc = useQueryClient()
-  const [logService, setLogService] = useState<{ vehicleId: number; vehicleReg: string; breakdownId: number } | null>(null)
+  const [logService, setLogService] = useState<{ vehicleId: number; vehicleReg: string; breakdownId?: number } | null>(null)
+  const [pickingVehicle, setPickingVehicle] = useState(false)
+  const [pickedVehicleId, setPickedVehicleId] = useState<number | null>(null)
 
   const { data: dashRes } = useQuery({ queryKey: ['sm-dashboard'], queryFn: serviceManagerApi.getDashboard, refetchInterval: 60_000 })
   const { data: techRes } = useQuery({ queryKey: ['sm-technicians'], queryFn: serviceManagerApi.getTechnicians })
   const { data: partsRes } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
   const { data: typesRes } = useQuery({ queryKey: ['service-task-types'], queryFn: globalMastersApi.getServiceTaskTypes })
+  const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehiclesApi.getAll(), enabled: pickingVehicle })
 
   const dashboard = dashRes?.data
   const technicians = techRes?.data ?? []
+  const vehicles = (vehiclesRes?.data ?? []).filter(v => v.isActive)
 
   const boardBreakdowns: BoardBreakdown[] = (dashboard?.breakdowns ?? []).map(b => ({
     id: b.breakdownId,
@@ -63,6 +70,18 @@ function VehicleServiceManagerView() {
   }))
   const boardServices: BoardService[] = (dashboard?.generalServices ?? []).map(svcToBoard)
 
+  function openVehiclePicker() {
+    setPickedVehicleId(null)
+    setPickingVehicle(true)
+  }
+
+  function confirmVehicle() {
+    const v = vehicles.find(x => x.id === pickedVehicleId)
+    if (!v) return
+    setPickingVehicle(false)
+    setLogService({ vehicleId: v.id, vehicleReg: v.registrationNumber })
+  }
+
   const cfg: ServiceBoardConfig = {
     title: 'Service Manager',
     subtitle: 'Examine breakdowns, log services, and assign technicians',
@@ -75,6 +94,7 @@ function VehicleServiceManagerView() {
     onRequestPart: (serviceId, taskId, body) => servicePartsApi.request(serviceId, { ...body, taskId }),
     onComplete: (serviceId, body) => vehicleServicesApi.complete(serviceId, { completedDate: body.completedDate, odometer: body.meterReading }),
     onLogService: (b) => setLogService({ vehicleId: b.assetId, vehicleReg: b.assetName, breakdownId: b.id }),
+    onCreateGeneralService: openVehiclePicker,
     onChanged: () => qc.invalidateQueries({ queryKey: ['sm-dashboard'] }),
   }
 
@@ -84,6 +104,28 @@ function VehicleServiceManagerView() {
         data={{ breakdowns: boardBreakdowns, generalServices: boardServices, technicianCount: technicians.length }}
         cfg={cfg}
       />
+
+      {/* Vehicle picker before opening CreateServiceDialog */}
+      <Dialog open={pickingVehicle} onOpenChange={v => !v && setPickingVehicle(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Select Vehicle</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-1">
+            <SearchableSelect
+              options={vehicles.map(v => ({ value: String(v.id), label: v.registrationNumber }))}
+              value={pickedVehicleId ? String(pickedVehicleId) : ''}
+              onValueChange={val => setPickedVehicleId(Number(val))}
+              placeholder="Search vehicle…"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPickingVehicle(false)}>Cancel</Button>
+              <Button disabled={!pickedVehicleId} onClick={confirmVehicle} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+                Next
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {logService && (
         <CreateServiceDialog
           vehicleId={logService.vehicleId}

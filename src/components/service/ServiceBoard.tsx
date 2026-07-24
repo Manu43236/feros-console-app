@@ -47,6 +47,7 @@ export interface ServiceBoardConfig {
   onRequestPart: (serviceId: number, taskId: number, body: { sparePartId: number; quantityRequested: number }) => Promise<unknown>
   onComplete: (serviceId: number, body: { completedDate: string; meterReading?: number }) => Promise<unknown>
   onLogService: (b: BoardBreakdown) => void
+  onCreateGeneralService?: () => void
   onChanged: () => void
   reportBreakdownSlot?: React.ReactNode
 }
@@ -402,7 +403,14 @@ export function ServiceBoard({ data, cfg }: {
             </button>
           ))}
         </div>
-        {cfg.reportBreakdownSlot}
+        <div className="pb-1">
+          {tab === 'breakdowns' && cfg.reportBreakdownSlot}
+          {tab === 'services' && cfg.onCreateGeneralService && (
+            <Button size="sm" onClick={cfg.onCreateGeneralService} className="h-8 text-xs bg-feros-navy hover:bg-feros-navy/90 text-white">
+              <Plus size={12} className="mr-1" /> New Service
+            </Button>
+          )}
+        </div>
       </div>
 
       {tab === 'breakdowns' ? (
