@@ -3236,7 +3236,7 @@ export function VehicleDetailPage() {
                     <span className="text-xs text-yellow-300 font-mono">{v.assignedOrderNumber}</span>
                   )}
                   <SearchableSelect
-                    value={v.isAssigned ? 'assigned' : String(v.currentStatusId ?? '')}
+                    value={v.isAssigned ? 'assigned' : v.currentStatusType === 'ON_TRIP' ? 'ontrip' : String(v.currentStatusId ?? '')}
                     onValueChange={v2 => {
                       const id = Number(v2)
                       if (!id || id === v.currentStatusId) return
@@ -3248,27 +3248,29 @@ export function VehicleDetailPage() {
                         setConfirmStatusName(selected?.name ?? '')
                       }
                     }}
-                    disabled={updateStatusMutation.isPending || !!v.isAssigned || !v.isActive}
+                    disabled={updateStatusMutation.isPending || !!v.isAssigned || !v.isActive || v.currentStatusType === 'ON_TRIP'}
                     showSearch={false}
                     options={
                       v.isAssigned
                         ? [{ value: 'assigned', label: 'Assigned to Order', color: 'text-blue-400 font-medium' }]
-                        : [
-                            ...(!v.currentStatusId ? [{ value: '', label: '— Set Status —' }] : []),
-                            ...(statusRes?.data ?? [])
-                              .filter(s => {
-                                const cur = v.currentStatusType
-                                if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
-                                if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
-                                if (isSupervisor) return s.statusType === 'BREAKDOWN'
-                                return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
-                              })
-                              .map(s => ({
-                                value: String(s.id),
-                                label: s.name,
-                                color: vehicleStatusOptionColor[s.statusType as VehicleStatusType],
-                              })),
-                          ]
+                        : v.currentStatusType === 'ON_TRIP'
+                          ? [{ value: 'ontrip', label: v.currentStatusName ?? 'On Trip', color: 'text-orange-400 font-medium' }]
+                          : [
+                              ...(!v.currentStatusId ? [{ value: '', label: '— Set Status —' }] : []),
+                              ...(statusRes?.data ?? [])
+                                .filter(s => {
+                                  const cur = v.currentStatusType
+                                  if (cur === 'BREAKDOWN') return isSupervisor ? s.statusType === 'BREAKDOWN' : s.statusType === 'BREAKDOWN' || s.statusType === 'IN_REPAIR'
+                                  if (cur === 'IN_REPAIR')  return isSupervisor ? s.statusType === 'IN_REPAIR' : s.statusType === 'IN_REPAIR' || s.statusType === 'AVAILABLE'
+                                  if (isSupervisor) return s.statusType === 'BREAKDOWN'
+                                  return s.statusType !== 'ASSIGNED' && s.statusType !== 'ON_TRIP' && s.statusType !== 'IN_REPAIR'
+                                })
+                                .map(s => ({
+                                  value: String(s.id),
+                                  label: s.name,
+                                  color: vehicleStatusOptionColor[s.statusType as VehicleStatusType],
+                                })),
+                            ]
                     }
                     className="h-8 w-44"
                     triggerClassName="h-8 text-xs"
@@ -3303,9 +3305,9 @@ export function VehicleDetailPage() {
                   </span>
                 )}
               </div>
-              {(v.isAssigned || !v.isActive) && (
+              {(v.isAssigned || !v.isActive || v.currentStatusType === 'ON_TRIP') && (
                 <p className="text-xs text-blue-300/70 mt-1">
-                  {v.isAssigned ? 'Unassign from order to change status' : 'Activate vehicle to change status'}
+                  {v.isAssigned ? 'Unassign from order to change status' : v.currentStatusType === 'ON_TRIP' ? 'Vehicle is on an active trip' : 'Activate vehicle to change status'}
                 </p>
               )}
               <p className="text-blue-200 text-sm mt-1.5">
