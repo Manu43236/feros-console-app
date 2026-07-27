@@ -751,6 +751,7 @@ export interface InvoiceLrItem {
   lrId: number; lrNumber: string; lrDate?: string
   orderId: number; orderNumber: string
   vehicleRegistrationNumber: string
+  materialTypeName?: string
   billingWeight?: number; freightRateType?: string; freightRate?: number
   freightAmount: number; chargesAmount: number; checkpostFineAmount: number; totalAmount: number
   remarks?: string; createdAt: string

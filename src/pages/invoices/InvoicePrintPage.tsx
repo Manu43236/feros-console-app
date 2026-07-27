@@ -303,17 +303,17 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
 
               {/* Title */}
               <tr>
-                <td colSpan={7} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 15, padding: '8px' }}>
+                <td colSpan={8} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 15, padding: '8px' }}>
                   ANNEXURE
                 </td>
               </tr>
               <tr>
-                <td colSpan={7} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 13 }}>
+                <td colSpan={8} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 13 }}>
                   {invoice.tenantCompanyName || ''}
                 </td>
               </tr>
               <tr>
-                <td colSpan={7} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 12 }}>
+                <td colSpan={8} style={{ ...cell(), textAlign: 'center', fontWeight: 700, fontSize: 12 }}>
                   {invoice.clientName}
                 </td>
               </tr>
@@ -324,8 +324,9 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
                 <th style={cell()}>Pass No</th>
                 <th style={cell({ width: 90, textAlign: 'center' })}>Trip Date</th>
                 <th style={cell({ width: 100, textAlign: 'center' })}>Vehicle No</th>
-                <th style={cell({ width: 70, textAlign: 'right' })}>Rate</th>
+                <th style={cell()}>Material</th>
                 <th style={cell({ width: 90, textAlign: 'right' })}>Net Weight</th>
+                <th style={cell({ width: 70, textAlign: 'right' })}>Rate</th>
                 <th style={cell({ width: 90, textAlign: 'right' })}>Bill Amount</th>
               </tr>
 
@@ -341,8 +342,9 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
                         <td style={cell()}>{item.lrNumber}</td>
                         <td style={cell({ textAlign: 'center' })}>{fmtDate(item.lrDate)}</td>
                         <td style={cell({ textAlign: 'center' })}>{item.vehicleRegistrationNumber}</td>
-                        <td style={cell({ textAlign: 'right' })}>{fmt(item.freightRate)}</td>
+                        <td style={cell()}>{item.materialTypeName ?? '—'}</td>
                         <td style={cell({ textAlign: 'right' })}>{item.billingWeight != null ? Number(item.billingWeight).toFixed(3) : '—'}</td>
+                        <td style={cell({ textAlign: 'right' })}>{fmt(item.freightRate)}</td>
                         <td style={cell({ textAlign: 'right' })}>{fmt(item.freightAmount)}</td>
                       </tr>
                     )
@@ -352,7 +354,7 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
                   const dateAmount = items.reduce((s, i) => s + Number(i.freightAmount  ?? 0), 0)
                   rows.push(
                     <tr key={`sub-${date}`} style={{ fontWeight: 700 }}>
-                      <td colSpan={5} style={cell({ textAlign: 'right' })}>Total</td>
+                      <td colSpan={6} style={cell({ textAlign: 'right' })}>Total</td>
                       <td style={cell({ textAlign: 'right' })}>{dateQty.toFixed(3)}</td>
                       <td style={cell({ textAlign: 'right' })}>{fmt(dateAmount)}</td>
                     </tr>
@@ -363,7 +365,7 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
 
               {/* Grand Total */}
               <tr style={{ fontWeight: 700 }}>
-                <td colSpan={5} style={cell({ textAlign: 'right' })}>Grand Total</td>
+                <td colSpan={6} style={cell({ textAlign: 'right' })}>Grand Total</td>
                 <td style={cell({ textAlign: 'right' })}>{totalQty.toFixed(3)}</td>
                 <td style={cell({ textAlign: 'right' })}>{fmt(subtotal)}</td>
               </tr>
