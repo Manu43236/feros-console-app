@@ -303,7 +303,7 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
           <img src={ferosLogo} alt="" aria-hidden="true" style={{
             position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 260, opacity: 0.07, pointerEvents: 'none', zIndex: 0,
+            width: 420, opacity: 0.15, pointerEvents: 'none', zIndex: 0,
           }} />
           <table style={{ width: '100%', borderCollapse: 'collapse', border: B, position: 'relative', zIndex: 1 }}>
             <tbody>
