@@ -1,7 +1,8 @@
 import {
-  Document, Page, Text, View, StyleSheet, Font, pdf,
+  Document, Page, Text, View, StyleSheet, Font, Image, pdf,
 } from '@react-pdf/renderer'
 import type { Lr, LrCheckpost, LrCharge, Order } from '@/types'
+import ferosLogo from '@/assets/feros_solo_logo.png'
 
 Font.register({
   family: 'NotoSans',
@@ -157,6 +158,9 @@ export function LrPdfDocument({
   return (
     <Document title={`LR ${lr.lrNumber}`} author={tenant.companyName}>
       <Page size="A5" style={S.page}>
+
+        {/* Watermark */}
+        <Image src={ferosLogo} style={{ position: 'absolute', top: 190, left: 105, width: 210, opacity: 0.08 }} />
 
         {/* ══ HEADER ══ */}
         <View style={S.headerTopRow}>
