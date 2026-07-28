@@ -118,15 +118,16 @@ function GenerateDialog({ open, onClose, users }: {
   }
 
   const mutation = useMutation({
-    mutationFn: (d: GenerateForm) => payrollApi.generate({
+    mutationFn: (d: GenerateForm) => payrollApi.generateRange({
       userId:            Number(d.userId),
       payCycleStartDate: d.from,
       payCycleEndDate:   d.to,
       dailyRate:         isMonthly ? undefined : d.dailyRate,
       monthlySalary:     isMonthly ? d.monthlySalary : undefined,
     }),
-    onSuccess: () => {
-      toast.success('Payroll generated')
+    onSuccess: (res) => {
+      const count = res.data?.length ?? 1
+      toast.success(count > 1 ? `${count} payrolls generated` : 'Payroll generated')
       qc.invalidateQueries({ queryKey: ['payrolls'] })
       reset(); setRateAutoFilled(false); onClose()
     },

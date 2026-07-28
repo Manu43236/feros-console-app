@@ -7,6 +7,7 @@ export const payrollApi = {
   getAdvancesByUser:  (userId: number) => apiClient.get<ApiResponse<SalaryAdvance[]>>(`/payroll/advances/user/${userId}`).then(r => r.data),
   getPendingAdvances: (userId: number) => apiClient.get<ApiResponse<SalaryAdvance[]>>(`/payroll/advances/user/${userId}/pending`).then(r => r.data),
   generate:           (data: unknown) => apiClient.post<ApiResponse<Payroll>>('/payroll/generate', data).then(r => r.data),
+  generateRange:      (data: unknown) => apiClient.post<ApiResponse<Payroll[]>>('/payroll/generate-range', data).then(r => r.data),
   bulkGenerate:       (data: unknown) => apiClient.post<ApiResponse<BulkPayrollResult>>('/payroll/bulk-generate', data).then(r => r.data),
   getAll:             (params?: { page?: number; size?: number; search?: string }) =>
                         apiClient.get<ApiResponse<PageResponse<Payroll>>>('/payroll', { params }).then(r => r.data),
