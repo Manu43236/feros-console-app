@@ -293,6 +293,9 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
 
         </tbody>
       </table>
+      <div style={{ marginTop: 10, textAlign: 'center', fontSize: 9, color: '#9ca3af' }}>
+        Powered by FEROS
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════════
           PAGE 2 — ANNEXURE
@@ -379,6 +382,9 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
 
             </tbody>
           </table>
+          <div style={{ marginTop: 10, textAlign: 'center', fontSize: 9, color: '#9ca3af' }}>
+            Powered by FEROS
+          </div>
         </div>
       )}
     </div>
