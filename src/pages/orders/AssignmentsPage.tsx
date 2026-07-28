@@ -709,14 +709,16 @@ export default function AssignmentsPage() {
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.assignedByName ?? '—'}</td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{fmtDateTime(row.assignedAt)}</td>
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => unassignVehicle.mutate({ orderId: row.orderId, allocationId: row.allocationId })}
-                            disabled={unassignVehicle.isPending}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                            title="Unassign vehicle"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {row.allocationStatus === 'ALLOCATED' && (
+                            <button
+                              onClick={() => unassignVehicle.mutate({ orderId: row.orderId, allocationId: row.allocationId })}
+                              disabled={unassignVehicle.isPending}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                              title="Unassign vehicle"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -792,14 +794,16 @@ export default function AssignmentsPage() {
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.assignedByName ?? '—'}</td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{fmtDateTime(row.assignedAt)}</td>
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => unassignDriver.mutate({ orderId: row.orderId, staffAllocationId: row.staffAllocationId })}
-                            disabled={unassignDriver.isPending}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                            title="Unassign driver"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {row.allocationStatus === 'ALLOCATED' && (
+                            <button
+                              onClick={() => unassignDriver.mutate({ orderId: row.orderId, staffAllocationId: row.staffAllocationId })}
+                              disabled={unassignDriver.isPending}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                              title="Unassign driver"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
