@@ -522,7 +522,7 @@ export function StaffPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [activeTab, setActiveTab]       = useState<'all' | 'watchlist'>('all')
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local time (IST)
 
   const { data: profilesRes }          = useQuery({ queryKey: ['staff'],  queryFn: () => staffApi.getAll() })
   const { data: usersRes, isLoading }  = useQuery({ queryKey: ['users'],  queryFn: () => staffApi.getUsers() })
