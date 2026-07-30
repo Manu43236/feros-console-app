@@ -881,8 +881,8 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
   const isInTransit = vehicle?.isInTransit ?? false
 
   const { data: usersRes } = useQuery({
-    queryKey: ['all-staff-users'],
-    queryFn: () => staffApi.getUsers(),
+    queryKey: ['all-staff-users', 'attended'],
+    queryFn: () => staffApi.getUsers({ hasAttendanceToday: true }),
     enabled: open,
   })
 
