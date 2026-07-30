@@ -1011,9 +1011,16 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
           {/* User list */}
           <div className="overflow-y-auto border-t divide-y divide-gray-50" style={{ maxHeight: '320px' }}>
             {filtered.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">
-                {eligible.length === 0 ? `No active ${roleLabel.toLowerCase()}s found` : `No results for "${search}"`}
-              </p>
+              <div className="text-center py-8 px-4">
+                {eligible.length === 0 ? (
+                  <>
+                    <p className="text-sm text-gray-500">No {roleLabel.toLowerCase()}s have marked attendance today</p>
+                    <p className="text-xs text-gray-400 mt-1">Ask them to mark attendance before assigning</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400">No results for "{search}"</p>
+                )}
+              </div>
             ) : (
               filtered.map(u => {
                 const isSelected = selectedId === u.id
