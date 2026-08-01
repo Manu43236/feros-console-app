@@ -196,3 +196,29 @@ export const appConfigApi = {
   get:    ()                  => apiClient.get<ApiResponse<AppConfig>>('/app/config').then(r => r.data),
   update: (data: AppConfig)   => apiClient.put<ApiResponse<AppConfig>>('/app/config', data).then(r => r.data),
 }
+
+export interface TutorialVideo {
+  id: number
+  role: string
+  language: string
+  featureTitle: string
+  youtubeUrl: string
+  sortOrder: number
+  isActive: boolean
+}
+
+export interface TutorialVideoRequest {
+  role: string
+  language: string
+  featureTitle: string
+  youtubeUrl: string
+  sortOrder: number
+  isActive: boolean
+}
+
+export const tutorialVideosApi = {
+  getAll:  ()                                   => apiClient.get<ApiResponse<TutorialVideo[]>>('/tutorial-videos/all').then(r => r.data),
+  create:  (data: TutorialVideoRequest)         => apiClient.post<ApiResponse<TutorialVideo>>('/tutorial-videos', data).then(r => r.data),
+  update:  (id: number, data: TutorialVideoRequest) => apiClient.put<ApiResponse<TutorialVideo>>(`/tutorial-videos/${id}`, data).then(r => r.data),
+  delete:  (id: number)                         => apiClient.delete<ApiResponse<void>>(`/tutorial-videos/${id}`).then(r => r.data),
+}
