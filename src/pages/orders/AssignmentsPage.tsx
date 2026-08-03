@@ -49,7 +49,7 @@ interface HistoryRow {
 
 function fmtDateTime(iso?: string) {
   if (!iso) return '—'
-  try { return format(parseISO(iso), 'dd MMM yyyy, hh:mm a') } catch { return iso }
+  try { return format(parseISO(iso), 'dd MMM yyyy, hh:mm:ss a') } catch { return iso }
 }
 
 // ── Add Vehicle Assignment Dialog ─────────────────────────────────────────────

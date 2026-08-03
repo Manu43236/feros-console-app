@@ -2582,7 +2582,7 @@ function eventDotColor(type: HistoryEventType) {
 
 function fmtDateTime(iso?: string) {
   if (!iso) return '—'
-  try { return format(parseISO(iso), 'dd MMM yyyy, hh:mm a') } catch { return iso }
+  try { return format(parseISO(iso), 'dd MMM yyyy, hh:mm:ss a') } catch { return iso }
 }
 
 function groupByDate(events: HistoryEvent[]): Array<{ date: string; label: string; items: HistoryEvent[] }> {
@@ -3032,7 +3032,7 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
                               </span>
                             </div>
                             <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
-                              {e.actionAt ? format(parseISO(e.actionAt), 'hh:mm a') : '—'}
+                              {e.actionAt ? format(parseISO(e.actionAt), 'hh:mm:ss a') : '—'}
                             </span>
                           </div>
                           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
