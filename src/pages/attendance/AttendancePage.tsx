@@ -1217,7 +1217,7 @@ export function AttendancePage() {
   )
   const unmarked = allUsers.length - records.length
 
-  const filteredMarked   = records.filter(r => !dailySearch || r.userName?.toLowerCase().includes(dailySearch.toLowerCase()))
+  const filteredMarked   = records.filter(r => !dailySearch || r.userName?.toLowerCase().includes(dailySearch.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(dailySearch.toLowerCase()))
   const filteredUnmarked = isAdmin ? allUsers.filter(u => !existingMap[u.id] && (!dailySearch || u.name?.toLowerCase().includes(dailySearch.toLowerCase()))) : []
   const allDailyRows = [
     ...filteredMarked.map(r => ({ kind: 'marked' as const, r })),
@@ -1345,7 +1345,7 @@ export function AttendancePage() {
                 <Input
                   value={dailySearch}
                   onChange={e => { setDailySearch(e.target.value); setDailyPage(0) }}
-                  placeholder="Search by name…"
+                  placeholder="Search by name or vehicle…"
                   className="pl-8 h-8 text-sm"
                 />
               </div>
