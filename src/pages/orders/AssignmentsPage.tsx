@@ -540,7 +540,8 @@ export default function AssignmentsPage() {
         const q = hSearch.toLowerCase()
         if (!r.subject.toLowerCase().includes(q) &&
             !(r.orderNumber ?? '').toLowerCase().includes(q) &&
-            !(r.actionByName ?? '').toLowerCase().includes(q)) return false
+            !(r.actionByName ?? '').toLowerCase().includes(q) &&
+            !(r.vehicleRegNumber ?? '').toLowerCase().includes(q)) return false
       }
       if (hFrom && (r.actionAt ?? '') < hFrom) return false
       if (hTo   && (r.actionAt ?? '') > hTo + 'T23:59:59') return false
