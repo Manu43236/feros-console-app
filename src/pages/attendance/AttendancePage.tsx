@@ -690,6 +690,8 @@ function PendingApprovalsTab() {
   const [mapCoords, setMapCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [dateFilter, setDateFilter] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-pending'],
@@ -698,14 +700,18 @@ function PendingApprovalsTab() {
   const records = [...(data?.data ?? [])].sort((a, b) =>
     new Date(b.markedAt ?? b.attendanceDate).getTime() - new Date(a.markedAt ?? a.attendanceDate).getTime()
   )
-  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
-  const pageRows   = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const filtered = records.filter(r =>
+    (!search || r.userName?.toLowerCase().includes(search.toLowerCase())) &&
+    (!dateFilter || r.attendanceDate === dateFilter)
+  )
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageRows   = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   function toggleSelect(id: number) {
     setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
   function toggleAll() {
-    setSelected(prev => prev.size === records.length ? new Set() : new Set(records.map(r => r.id)))
+    setSelected(prev => prev.size === filtered.length ? new Set() : new Set(filtered.map(r => r.id)))
   }
 
   const approveMutation = useMutation({
@@ -743,12 +749,33 @@ function PendingApprovalsTab() {
   return (
     <>
       <div className="border rounded-xl bg-white overflow-hidden">
-        <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <h2 className="text-sm font-semibold text-gray-700">Pending Approvals</h2>
             <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">{records.length} pending</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(0) }}
+                placeholder="Search by name…"
+                className="pl-8 h-8 text-sm w-44"
+              />
+            </div>
+            <Input
+              type="date"
+              value={dateFilter}
+              onChange={e => { setDateFilter(e.target.value); setPage(0) }}
+              className="h-8 text-sm w-36"
+            />
+            {(search || dateFilter) && (
+              <button onClick={() => { setSearch(''); setDateFilter(''); setPage(0) }}
+                className="text-xs text-gray-400 hover:text-gray-600 px-1">✕ Clear</button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             {selected.size > 0 && (
               <>
                 <span className="text-xs text-gray-500">{selected.size} selected</span>
@@ -772,12 +799,15 @@ function PendingApprovalsTab() {
               className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
           </div>
         </div>
+        {filtered.length === 0 && (
+          <div className="py-10 text-center text-sm text-gray-400">No records match your filters</div>
+        )}
         <div className="overflow-auto max-h-[calc(100vh-18rem)]">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10">
               <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
                 <th className="px-5 py-3 w-10">
-                  <input type="checkbox" checked={selected.size === records.length} onChange={toggleAll} className="rounded" />
+                  <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} className="rounded" />
                 </th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
