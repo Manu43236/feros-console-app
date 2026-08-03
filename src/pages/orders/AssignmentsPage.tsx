@@ -399,6 +399,7 @@ export default function AssignmentsPage() {
   const [hTab, setHTab]           = useState<'vehicle' | 'staff'>('vehicle')
   const [hSearch, setHSearch]     = useState('')
   const [hAction, setHAction]     = useState<'Assigned' | 'Unassigned' | ''>('')
+  const [hRole, setHRole]         = useState('')
   const [hFrom, setHFrom]         = useState('')
   const [hTo, setHTo]             = useState('')
   const [hPage, setHPage]         = useState(0)
@@ -536,6 +537,7 @@ export default function AssignmentsPage() {
   const filteredHistoryRows = useMemo(() => {
     return activeHistoryRows.filter(r => {
       if (hAction && r.action !== hAction) return false
+      if (hRole && r.subjectRole !== hRole) return false
       if (hSearch) {
         const q = hSearch.toLowerCase()
         if (!r.subject.toLowerCase().includes(q) &&
@@ -547,7 +549,7 @@ export default function AssignmentsPage() {
       if (hTo   && (r.actionAt ?? '') > hTo + 'T23:59:59') return false
       return true
     })
-  }, [activeHistoryRows, hAction, hSearch, hFrom, hTo])
+  }, [activeHistoryRows, hAction, hRole, hSearch, hFrom, hTo])
 
   const hTotalPages = Math.max(1, Math.ceil(filteredHistoryRows.length / PAGE_SIZE))
   const hPageRows   = filteredHistoryRows.slice(hPage * PAGE_SIZE, (hPage + 1) * PAGE_SIZE)
@@ -581,7 +583,7 @@ export default function AssignmentsPage() {
   })
 
   function resetHistoryFilters() {
-    setHSearch(''); setHAction(''); setHFrom(''); setHTo(''); setHPage(0)
+    setHSearch(''); setHAction(''); setHRole(''); setHFrom(''); setHTo(''); setHPage(0)
   }
 
   return (
@@ -857,6 +859,17 @@ export default function AssignmentsPage() {
               <option value="Assigned">Assigned</option>
               <option value="Unassigned">Unassigned</option>
             </select>
+            {hTab === 'staff' && (
+              <select
+                value={hRole}
+                onChange={e => { setHRole(e.target.value); setHPage(0) }}
+                className="h-8 text-xs border border-gray-200 rounded-lg px-2 outline-none focus:ring-1 focus:ring-feros-navy/30 bg-white"
+              >
+                <option value="">All roles</option>
+                <option value="DRIVER">Driver</option>
+                <option value="CLEANER">Cleaner</option>
+              </select>
+            )}
             <input
               type="date"
               value={hFrom}
@@ -869,7 +882,7 @@ export default function AssignmentsPage() {
               onChange={e => { setHTo(e.target.value); setHPage(0) }}
               className="h-8 text-xs border border-gray-200 rounded-lg px-2 outline-none focus:ring-1 focus:ring-feros-navy/30"
             />
-            {(hSearch || hAction || hFrom || hTo) && (
+            {(hSearch || hAction || hRole || hFrom || hTo) && (
               <button
                 onClick={resetHistoryFilters}
                 className="h-8 px-2 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
