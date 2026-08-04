@@ -493,15 +493,16 @@ export default function AssignmentsPage() {
   }, [vehicleHistoryRes])
 
   const staffHistoryRows = useMemo((): HistoryRow[] => {
-    const records = (staffHistoryRes?.data ?? []) as StaffAssignmentHistory[]
-    const rows: HistoryRow[] = []
-    for (const r of records) {
-      rows.push({ id: `s-${r.id}-a`, action: 'Assigned', type: 'Staff', subject: r.userName, subjectRole: r.userRole, vehicleRegNumber: r.vehicleRegistrationNumber, actionByName: r.assignedByName, actionAt: r.assignedAt })
-      if (r.unassignedAt) {
-        rows.push({ id: `s-${r.id}-u`, action: 'Unassigned', type: 'Staff', subject: r.userName, subjectRole: r.userRole, vehicleRegNumber: r.vehicleRegistrationNumber, actionByName: r.unassignedByName, actionAt: r.unassignedAt })
-      }
-    }
-    return rows.sort((a, b) => (b.actionAt ?? '').localeCompare(a.actionAt ?? ''))
+    return ((staffHistoryRes?.data ?? []) as StaffAssignmentHistory[]).map(r => ({
+      id: `s-${r.id}-${r.action}`,
+      action: r.action,
+      type: 'Staff' as const,
+      subject: r.userName,
+      subjectRole: r.userRole,
+      vehicleRegNumber: r.vehicleRegistrationNumber,
+      actionByName: r.actionByName,
+      actionAt: r.actionAt,
+    }))
   }, [staffHistoryRes])
 
   // ── Filter + paginate active tabs ─────────────────────────────────────────────

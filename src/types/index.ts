@@ -673,8 +673,8 @@ export interface StaffAssignmentHistory {
   id: number
   vehicleId: number; vehicleRegistrationNumber: string
   userId: number; userName: string; userRole: string
-  assignedByName?: string; assignedAt?: string
-  unassignedByName?: string; unassignedAt?: string
+  action: 'Assigned' | 'Unassigned'
+  actionByName?: string; actionAt?: string
 }
 
 // ─── Breakdown ────────────────────────────────────────────────────────────────
