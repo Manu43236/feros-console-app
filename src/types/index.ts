@@ -675,6 +675,7 @@ export interface StaffAssignmentHistory {
   userId: number; userName: string; userRole: string
   action: 'Assigned' | 'Unassigned'
   actionByName?: string; actionAt?: string
+  orderNumber?: string
 }
 
 // ─── Breakdown ────────────────────────────────────────────────────────────────

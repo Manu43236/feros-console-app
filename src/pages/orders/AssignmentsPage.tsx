@@ -500,6 +500,7 @@ export default function AssignmentsPage() {
       subject: r.userName,
       subjectRole: r.userRole,
       vehicleRegNumber: r.vehicleRegistrationNumber,
+      orderNumber: r.orderNumber,
       actionByName: r.actionByName,
       actionAt: r.actionAt,
     }))
@@ -920,7 +921,7 @@ export default function AssignmentsPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     <tr>
-                      {['Action', hTab === 'vehicle' ? 'Vehicle' : 'Staff', hTab === 'vehicle' ? 'Order' : 'Role', ...(hTab === 'staff' ? ['Vehicle'] : []), 'Action By', 'Action At'].map(h => (
+                      {['Action', hTab === 'vehicle' ? 'Vehicle' : 'Staff', hTab === 'vehicle' ? 'Order' : 'Role', ...(hTab === 'staff' ? ['Vehicle', 'Order'] : []), 'Action By', 'Action At'].map(h => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -945,6 +946,9 @@ export default function AssignmentsPage() {
                         </td>
                         {hTab === 'staff' && (
                           <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.vehicleRegNumber ?? '—'}</td>
+                        )}
+                        {hTab === 'staff' && (
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">{row.orderNumber ?? '—'}</td>
                         )}
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.actionByName ?? '—'}</td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{fmtDateTime(row.actionAt)}</td>
