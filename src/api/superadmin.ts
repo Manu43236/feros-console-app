@@ -72,6 +72,8 @@ export const subscriptionsApi = {
   getHistory:         (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory[]>>(`/subscriptions/${tenantId}/history`).then(r => r.data),
   generateInvoice:    (tenantId: number, historyId: number) => apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/history/${historyId}/invoice`).then(r => r.data),
   getInvoices:        (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>(`/subscriptions/${tenantId}/invoices`).then(r => r.data),
+  getAllInvoices:      (params?: { tenantId?: number; year?: number; month?: number }) =>
+                        apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/invoices', { params }).then(r => r.data),
   getInvoiceSummary:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoiceSummary>>(`/subscriptions/${tenantId}/invoices/summary`).then(r => r.data),
   createProforma:     (tenantId: number, data: { invoiceDate?: string; fromDate: string; toDate: string; vehicleCount: number; ratePerVehicle: number; gstType: string; additionalCharges?: { name: string; amount: number }[]; notes?: string }) =>
                         apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/proforma`, data).then(r => r.data),

@@ -900,7 +900,10 @@ function TenantsTab() {
 // ─── Invoices Tab ─────────────────────────────────────────────────────────────
 function InvoicesTab() {
   const qc = useQueryClient()
-  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null)
+  const currentYear = new Date().getFullYear()
+  const [filters, setFilters] = useState({ tenantId: '', year: String(currentYear), month: '' })
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 15
   const [showProforma, setShowProforma] = useState(false)
   const [confirmInvoice, setConfirmInvoice] = useState<SubscriptionInvoice | null>(null)
 
@@ -908,157 +911,174 @@ function InvoicesTab() {
   const tenants = tenantsRes?.data ?? []
 
   const { data: invoicesRes, isLoading } = useQuery({
-    queryKey: ['sa-invoices', selectedTenantId],
-    queryFn: () => subscriptionsApi.getInvoices(selectedTenantId!),
-    enabled: selectedTenantId != null,
+    queryKey: ['sa-invoices-all', filters],
+    queryFn: () => subscriptionsApi.getAllInvoices({
+      tenantId: filters.tenantId ? Number(filters.tenantId) : undefined,
+      year:     filters.year   ? Number(filters.year)     : undefined,
+      month:    filters.month  ? Number(filters.month)    : undefined,
+    }),
   })
-  const invoices: SubscriptionInvoice[] = invoicesRes?.data ?? []
+  const allInvoices: SubscriptionInvoice[] = invoicesRes?.data ?? []
+  const totalPages = Math.max(1, Math.ceil(allInvoices.length / PAGE_SIZE))
+  const invoices = allInvoices.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
-  const { data: summaryRes } = useQuery({
-    queryKey: ['sa-invoice-summary', selectedTenantId],
-    queryFn: () => subscriptionsApi.getInvoiceSummary(selectedTenantId!),
-    enabled: selectedTenantId != null,
-  })
-  const summary: SubscriptionInvoiceSummary | null = summaryRes?.data ?? null
-
-  function invalidate() {
-    qc.invalidateQueries({ queryKey: ['sa-invoices', selectedTenantId] })
-    qc.invalidateQueries({ queryKey: ['sa-invoice-summary', selectedTenantId] })
-  }
+  function invalidate() { qc.invalidateQueries({ queryKey: ['sa-invoices-all'] }) }
 
   function downloadPdf(inv: SubscriptionInvoice) {
-    subscriptionsApi.downloadInvoicePdf(selectedTenantId!, inv.id).then(blob => {
+    subscriptionsApi.downloadInvoicePdf(inv.tenantId, inv.id).then(blob => {
       const url = URL.createObjectURL(blob)
       window.open(url, '_blank')
     })
   }
 
   const deleteMutation = useMutation({
-    mutationFn: (invoiceId: number) => subscriptionsApi.deleteProforma(selectedTenantId!, invoiceId),
+    mutationFn: (inv: SubscriptionInvoice) => subscriptionsApi.deleteProforma(inv.tenantId, inv.id),
     onSuccess: () => invalidate(),
     onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed to delete'),
   })
 
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+  function setFilter(k: keyof typeof filters, v: string) {
+    setFilters(f => ({ ...f, [k]: v }))
+    setPage(0)
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-end gap-4">
+      {/* Filter row */}
+      <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="text-xs text-gray-600 mb-1 block">Select Tenant</label>
-          <SearchableSelect className="w-64" placeholder="— choose tenant —"
-            value={selectedTenantId != null ? String(selectedTenantId) : ''}
-            onValueChange={v => { setSelectedTenantId(v ? Number(v) : null) }}
-            options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))} />
+          <label className="text-xs text-gray-600 mb-1 block">Tenant</label>
+          <SearchableSelect className="w-56" placeholder="All Tenants"
+            value={filters.tenantId}
+            onValueChange={v => setFilter('tenantId', v)}
+            options={tenants.map((t: any) => ({ value: String(t.id), label: t.companyName }))} />
         </div>
-        {selectedTenantId != null && (
+        <div>
+          <label className="text-xs text-gray-600 mb-1 block">Year</label>
+          <select className="border rounded-lg px-3 py-2 text-sm"
+            value={filters.year} onChange={e => setFilter('year', e.target.value)}>
+            <option value="">All Years</option>
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-600 mb-1 block">Month</label>
+          <select className="border rounded-lg px-3 py-2 text-sm"
+            value={filters.month} onChange={e => setFilter('month', e.target.value)}>
+            <option value="">All Months</option>
+            {MONTHS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+          </select>
+        </div>
+        <div className="ml-auto">
           <button onClick={() => setShowProforma(true)}
             className="px-4 py-2 bg-feros-navy text-white text-sm rounded-lg hover:bg-blue-900">
             + Create Proforma
           </button>
-        )}
+        </div>
       </div>
 
-      {/* Summary cards */}
-      {summary && (
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: 'Total Subscription Value', value: fmt(summary.totalSubscriptionValue), color: 'text-gray-800' },
-            { label: 'Total Invoiced (GST)', value: fmt(summary.totalInvoiced), color: 'text-green-700' },
-            { label: 'Balance Outstanding', value: fmt(summary.balanceOutstanding), color: summary.balanceOutstanding > 0 ? 'text-orange-600' : 'text-green-700' },
-            { label: 'Pending Proformas', value: String(summary.pendingProformas), color: summary.pendingProformas > 0 ? 'text-blue-700' : 'text-gray-500' },
-          ].map(c => (
-            <div key={c.label} className="bg-white border rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">{c.label}</p>
-              <p className={`text-lg font-bold ${c.color}`}>{c.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {selectedTenantId == null ? (
-        <div className="py-12 text-center text-gray-400 text-sm">Select a tenant to view invoices</div>
-      ) : isLoading ? (
+      {isLoading ? (
         <div className="py-12 text-center text-gray-400 text-sm">Loading…</div>
-      ) : invoices.length === 0 ? (
-        <div className="py-12 text-center text-gray-400 text-sm">No invoices yet</div>
+      ) : allInvoices.length === 0 ? (
+        <div className="py-12 text-center text-gray-400 text-sm">No invoices found</div>
       ) : (
-        <div className="bg-white rounded-xl border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">Number</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th className="px-4 py-3 text-left">Date</th>
-                <th className="px-4 py-3 text-left">Period</th>
-                <th className="px-4 py-3 text-right">Taxable</th>
-                <th className="px-4 py-3 text-right">GST</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-left">Mode</th>
-                <th className="px-4 py-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {invoices.map(inv => {
-                const isProforma = inv.invoiceStatus === 'PROFORMA'
-                const number = isProforma ? inv.proformaNumber : inv.invoiceNumber
-                const date = isProforma ? inv.createdAt?.slice(0, 10) : inv.paymentDate
-                return (
-                  <tr key={inv.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{number ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isProforma ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                        {isProforma ? 'PROFORMA' : 'TAX INVOICE'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{date ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{inv.periodStart} → {inv.periodEnd ?? '∞'}</td>
-                    <td className="px-4 py-3 text-right">{fmt(inv.amount)}</td>
-                    <td className="px-4 py-3 text-right text-xs text-gray-500">
-                      {inv.gstType === 'INTER_STATE'
-                        ? `IGST ${fmt(inv.gstAmount)}`
-                        : `CGST ${fmt(inv.cgstAmount)} + SGST ${fmt(inv.sgstAmount)}`}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{inv.paymentMode ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        {isProforma && (
-                          <button onClick={() => setConfirmInvoice(inv)}
-                            className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">
-                            Confirm Payment
+        <>
+          <div className="bg-white rounded-xl border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">Number</th>
+                  <th className="px-4 py-3 text-left">Tenant</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-left">Period</th>
+                  <th className="px-4 py-3 text-right">Taxable</th>
+                  <th className="px-4 py-3 text-right">GST</th>
+                  <th className="px-4 py-3 text-right">Total</th>
+                  <th className="px-4 py-3 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {invoices.map(inv => {
+                  const isProforma = inv.invoiceStatus === 'PROFORMA'
+                  const number = isProforma ? inv.proformaNumber : inv.invoiceNumber
+                  const date = isProforma ? (inv.paymentDate ?? inv.createdAt?.slice(0, 10)) : inv.paymentDate
+                  return (
+                    <tr key={inv.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{number ?? '—'}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600 max-w-[160px] truncate" title={inv.companyName}>{inv.companyName}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isProforma ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                          {isProforma ? 'PROFORMA' : 'TAX INVOICE'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{date ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{inv.periodStart} → {inv.periodEnd ?? '∞'}</td>
+                      <td className="px-4 py-3 text-right">{fmt(inv.amount)}</td>
+                      <td className="px-4 py-3 text-right text-xs text-gray-500">
+                        {isProforma
+                          ? <span className="text-gray-400 italic">+18% extra</span>
+                          : inv.gstType === 'INTER_STATE'
+                            ? `IGST ${fmt(inv.gstAmount)}`
+                            : `CGST ${fmt(inv.cgstAmount)} + SGST ${fmt(inv.sgstAmount)}`}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          {isProforma && (
+                            <button onClick={() => setConfirmInvoice(inv)}
+                              className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">
+                              Confirm
+                            </button>
+                          )}
+                          <button onClick={() => downloadPdf(inv)}
+                            className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
+                            PDF
                           </button>
-                        )}
-                        <button onClick={() => downloadPdf(inv)}
-                          className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
-                          PDF
-                        </button>
-                        {isProforma && (
-                          <button
-                            onClick={() => { if (window.confirm('Delete this proforma invoice?')) deleteMutation.mutate(inv.id) }}
-                            className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50">
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                          {isProforma && (
+                            <button
+                              onClick={() => { if (window.confirm('Delete this proforma?')) deleteMutation.mutate(inv) }}
+                              className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50">
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span>{allInvoices.length} invoices · page {page + 1} of {totalPages}</span>
+              <div className="flex gap-2">
+                <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">← Prev</button>
+                <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">Next →</button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {showProforma && selectedTenantId != null && (
+      {showProforma && (
         <ProformaDialog
-          tenantId={selectedTenantId}
+          tenants={tenants}
           onClose={() => setShowProforma(false)}
           onSuccess={invalidate}
         />
       )}
 
-      {confirmInvoice && selectedTenantId != null && (
+      {confirmInvoice && (
         <ConfirmPaymentDialog
-          tenantId={selectedTenantId}
+          tenantId={confirmInvoice.tenantId}
           invoice={confirmInvoice}
           onClose={() => setConfirmInvoice(null)}
           onSuccess={invalidate}
@@ -1069,9 +1089,10 @@ function InvoicesTab() {
 }
 
 // ─── Proforma Dialog ──────────────────────────────────────────────────────────
-function ProformaDialog({ tenantId, onClose, onSuccess }: {
-  tenantId: number; onClose: () => void; onSuccess: () => void
+function ProformaDialog({ tenantId: initTenantId, tenants, onClose, onSuccess }: {
+  tenantId?: number; tenants: any[]; onClose: () => void; onSuccess: () => void
 }) {
+  const [selectedTenantId, setSelectedTenantId] = useState(initTenantId ? String(initTenantId) : '')
   const [form, setForm] = useState({
     invoiceDate: '', fromDate: '', toDate: '',
     vehicleCount: '', ratePerVehicle: '',
@@ -1080,7 +1101,7 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
   const [extraCharges, setExtraCharges] = useState<{ name: string; amount: string }[]>([])
 
   const mutation = useMutation({
-    mutationFn: () => subscriptionsApi.createProforma(tenantId, {
+    mutationFn: () => subscriptionsApi.createProforma(Number(selectedTenantId), {
       invoiceDate: form.invoiceDate || undefined,
       fromDate: form.fromDate,
       toDate: form.toDate,
@@ -1107,13 +1128,23 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
     vehicleBase = parseFloat((vehicles * rate * months).toFixed(2))
     base        = parseFloat((vehicleBase + extraTotal).toFixed(2))
   }
-  const canSubmit = form.fromDate && form.toDate && form.toDate > form.fromDate
+  const canSubmit = !!selectedTenantId && form.fromDate && form.toDate && form.toDate > form.fromDate
     && vehicles > 0 && rate > 0 && !mutation.isPending
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto py-6">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4">
         <h3 className="font-semibold text-feros-navy text-lg">Create Proforma Invoice</h3>
+
+        {!initTenantId && (
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Tenant <span className="text-red-500">*</span></label>
+            <SearchableSelect className="w-full" placeholder="— select tenant —"
+              value={selectedTenantId}
+              onValueChange={setSelectedTenantId}
+              options={tenants.map((t: any) => ({ value: String(t.id), label: t.companyName }))} />
+          </div>
+        )}
 
         <div className="mb-3">
           <label className="text-xs text-gray-600 mb-1 block">Invoice Date <span className="text-gray-400">(leave blank for today)</span></label>
