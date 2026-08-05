@@ -79,6 +79,8 @@ export const subscriptionsApi = {
                         apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/${invoiceId}/confirm`, data).then(r => r.data),
   downloadInvoicePdf: (tenantId: number, invoiceId: number) =>
                         apiClient.get(`/subscriptions/${tenantId}/invoices/${invoiceId}/pdf`, { responseType: 'blob' }).then(r => r.data as Blob),
+  deleteProforma:     (tenantId: number, invoiceId: number) =>
+                        apiClient.delete(`/subscriptions/${tenantId}/invoices/${invoiceId}`).then(r => r.data),
   getCurrent:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/current`).then(r => r.data),
   getMy:           () => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>('/subscriptions/my').then(r => r.data),
   getMyInvoices:   () => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/my/invoices').then(r => r.data),

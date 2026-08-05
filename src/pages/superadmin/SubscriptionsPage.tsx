@@ -933,6 +933,12 @@ function InvoicesTab() {
     })
   }
 
+  const deleteMutation = useMutation({
+    mutationFn: (invoiceId: number) => subscriptionsApi.deleteProforma(selectedTenantId!, invoiceId),
+    onSuccess: () => invalidate(),
+    onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed to delete'),
+  })
+
   return (
     <div className="space-y-4">
       <div className="flex items-end gap-4">
@@ -1025,6 +1031,13 @@ function InvoicesTab() {
                           className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
                           PDF
                         </button>
+                        {isProforma && (
+                          <button
+                            onClick={() => { if (window.confirm('Delete this proforma invoice?')) deleteMutation.mutate(inv.id) }}
+                            className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50">
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
