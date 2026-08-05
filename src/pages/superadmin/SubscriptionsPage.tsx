@@ -1073,7 +1073,7 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
   tenantId: number; onClose: () => void; onSuccess: () => void
 }) {
   const [form, setForm] = useState({
-    fromDate: '', toDate: '',
+    invoiceDate: '', fromDate: '', toDate: '',
     vehicleCount: '', ratePerVehicle: '',
     gstType: 'INTRA_STATE',
   })
@@ -1081,6 +1081,7 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
 
   const mutation = useMutation({
     mutationFn: () => subscriptionsApi.createProforma(tenantId, {
+      invoiceDate: form.invoiceDate || undefined,
       fromDate: form.fromDate,
       toDate: form.toDate,
       vehicleCount: Number(form.vehicleCount),
@@ -1113,6 +1114,12 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto py-6">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4">
         <h3 className="font-semibold text-feros-navy text-lg">Create Proforma Invoice</h3>
+
+        <div className="mb-3">
+          <label className="text-xs text-gray-600 mb-1 block">Invoice Date <span className="text-gray-400">(leave blank for today)</span></label>
+          <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+            value={form.invoiceDate} onChange={e => setForm(f => ({ ...f, invoiceDate: e.target.value }))} />
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
