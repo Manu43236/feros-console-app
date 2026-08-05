@@ -907,13 +907,6 @@ function InvoicesTab() {
   const { data: tenantsRes } = useQuery({ queryKey: ['sa-tenants'], queryFn: () => tenantsApi.getAll() })
   const tenants = tenantsRes?.data ?? []
 
-  const { data: historyRes } = useQuery({
-    queryKey: ['sa-history', selectedTenantId],
-    queryFn: () => subscriptionsApi.getHistory(selectedTenantId!),
-    enabled: selectedTenantId != null,
-  })
-  const history: SubscriptionHistory[] = historyRes?.data ?? []
-
   const { data: invoicesRes, isLoading } = useQuery({
     queryKey: ['sa-invoices', selectedTenantId],
     queryFn: () => subscriptionsApi.getInvoices(selectedTenantId!),
