@@ -108,25 +108,30 @@ function FeatureCarousel() {
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(to right, #000000, #1E293B)' }}>
-      {/* Left panel */}
-      <div className="hidden lg:flex lg:w-[52%] flex-col bg-transparent">
-        {/* Logo + Carousel grouped and centered together */}
+    // Mobile: navy top → equipment brown bottom | Desktop: navy left | brown right
+    <div className="min-h-screen flex flex-col lg:flex-row"
+      style={{ background: 'linear-gradient(to bottom, #1E3A5F 50%, #1C1400 50%)' }}>
+
+      {/* Left panel — navy */}
+      <div className="hidden lg:flex lg:w-[52%] flex-col" style={{ background: '#1E3A5F' }}>
         <div className="flex-1 flex items-center justify-center px-12">
           <div className="flex flex-col items-center gap-10 w-full">
             <img src={ferosLogo} alt="FEROS" className="w-64 object-contain" />
             <FeatureCarousel />
           </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-blue-400/60 text-xs pb-8">
+        <p className="text-center text-blue-300/40 text-xs pb-8">
           © {new Date().getFullYear()} FEROS. All rights reserved.
         </p>
       </div>
 
-      {/* Right panel — login form */}
-      <div className="w-full lg:w-[48%] flex items-center justify-center bg-transparent p-8">
+      {/* Right panel — equipment brown */}
+      <div className="w-full lg:w-[48%] flex items-center justify-center p-8"
+        style={{ background: '#1C1400' }}>
+        {/* Mobile logo */}
+        <div className="lg:hidden absolute top-8 left-1/2 -translate-x-1/2">
+          <img src={ferosLogo} alt="FEROS" className="h-10 w-auto object-contain" />
+        </div>
         <div className="w-full max-w-md">{children}</div>
       </div>
     </div>
