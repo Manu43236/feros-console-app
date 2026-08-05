@@ -1045,7 +1045,6 @@ function InvoicesTab() {
       {showProforma && selectedTenantId != null && (
         <ProformaDialog
           tenantId={selectedTenantId}
-          history={history}
           onClose={() => setShowProforma(false)}
           onSuccess={invalidate}
         />
@@ -1064,73 +1063,120 @@ function InvoicesTab() {
 }
 
 // ─── Proforma Dialog ──────────────────────────────────────────────────────────
-function ProformaDialog({ tenantId, history, onClose, onSuccess }: {
-  tenantId: number; history: SubscriptionHistory[];
-  onClose: () => void; onSuccess: () => void
+function ProformaDialog({ tenantId, onClose, onSuccess }: {
+  tenantId: number; onClose: () => void; onSuccess: () => void
 }) {
-  const [form, setForm] = useState({ historyId: '', expectedAmount: '', gstType: 'INTRA_STATE' })
+  const [form, setForm] = useState({
+    fromDate: '', toDate: '',
+    vehicleCount: '', ratePerVehicle: '',
+    gstType: 'INTRA_STATE',
+  })
+
   const mutation = useMutation({
     mutationFn: () => subscriptionsApi.createProforma(tenantId, {
-      historyId: Number(form.historyId),
-      expectedAmount: Number(form.expectedAmount),
+      fromDate: form.fromDate,
+      toDate: form.toDate,
+      vehicleCount: Number(form.vehicleCount),
+      ratePerVehicle: Number(form.ratePerVehicle),
       gstType: form.gstType,
     }),
     onSuccess: () => { onSuccess(); onClose() },
     onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
   })
 
-  const amt = Number(form.expectedAmount) || 0
-  const base = amt ? (amt / 1.18).toFixed(2) : '—'
-  const gst  = amt ? (amt - amt / 1.18).toFixed(2) : '—'
+  // Live calculation
+  const vehicles = Number(form.vehicleCount) || 0
+  const rate     = Number(form.ratePerVehicle) || 0
+  let days = 0, months = 0, base = 0, gst = 0, total = 0
+  if (form.fromDate && form.toDate && form.toDate > form.fromDate) {
+    const d1 = new Date(form.fromDate), d2 = new Date(form.toDate)
+    days   = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1
+    months = parseFloat((days / 30).toFixed(2))
+    base   = parseFloat((vehicles * rate * months).toFixed(2))
+    gst    = parseFloat((base * 0.18).toFixed(2))
+    total  = parseFloat((base + gst).toFixed(2))
+  }
+  const isIntra = form.gstType === 'INTRA_STATE'
+  const canSubmit = form.fromDate && form.toDate && form.toDate > form.fromDate
+    && vehicles > 0 && rate > 0 && !mutation.isPending
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-        <h3 className="font-semibold text-feros-navy">Create Proforma Invoice</h3>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+        <h3 className="font-semibold text-feros-navy text-lg">Create Proforma Invoice</h3>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-gray-600 mb-1 block">Subscription Period</label>
-            <select className="w-full border rounded-lg px-3 py-2 text-sm"
-              value={form.historyId} onChange={e => setForm(f => ({ ...f, historyId: e.target.value }))}>
-              <option value="">— select period —</option>
-              {history.map(h => (
-                <option key={h.id} value={h.id}>
-                  {h.planName} · {h.startDate} → {h.endDate ?? '∞'} · {h.status}
-                </option>
-              ))}
-            </select>
+            <label className="text-xs text-gray-600 mb-1 block">From Date</label>
+            <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.fromDate} onChange={e => setForm(f => ({ ...f, fromDate: e.target.value }))} />
           </div>
-
           <div>
-            <label className="text-xs text-gray-600 mb-1 block">Expected Amount (incl. GST) ₹</label>
+            <label className="text-xs text-gray-600 mb-1 block">To Date</label>
+            <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.toDate} onChange={e => setForm(f => ({ ...f, toDate: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Number of Vehicles</label>
             <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
-              value={form.expectedAmount} onChange={e => setForm(f => ({ ...f, expectedAmount: e.target.value }))}
-              placeholder="e.g. 250000" />
-            {amt > 0 && (
-              <p className="text-xs text-gray-400 mt-1">Taxable: ₹{base} + GST: ₹{gst}</p>
-            )}
+              value={form.vehicleCount} onChange={e => setForm(f => ({ ...f, vehicleCount: e.target.value }))}
+              placeholder="e.g. 115" min={1} />
           </div>
-
           <div>
-            <label className="text-xs text-gray-600 mb-1 block">GST Type</label>
-            <div className="flex gap-3">
-              {['INTRA_STATE', 'INTER_STATE'].map(g => (
-                <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="radio" name="gstType" value={g}
-                    checked={form.gstType === g} onChange={() => setForm(f => ({ ...f, gstType: g }))} />
-                  {g === 'INTRA_STATE' ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)'}
-                </label>
-              ))}
-            </div>
+            <label className="text-xs text-gray-600 mb-1 block">Rate per Vehicle / Month (₹)</label>
+            <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.ratePerVehicle} onChange={e => setForm(f => ({ ...f, ratePerVehicle: e.target.value }))}
+              placeholder="e.g. 725" min={1} />
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div>
+          <label className="text-xs text-gray-600 mb-1 block">GST Type</label>
+          <div className="flex gap-4">
+            {['INTRA_STATE', 'INTER_STATE'].map(g => (
+              <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="gstType" value={g}
+                  checked={form.gstType === g} onChange={() => setForm(f => ({ ...f, gstType: g }))} />
+                {g === 'INTRA_STATE' ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)'}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Live calculation preview */}
+        {total > 0 && (
+          <div className="bg-gray-50 rounded-xl p-4 space-y-1 text-sm">
+            <div className="flex justify-between text-gray-500">
+              <span>Period</span>
+              <span>{days} days ({months} months)</span>
+            </div>
+            <div className="flex justify-between text-gray-500">
+              <span>{vehicles} vehicles × ₹{rate} × {months} months</span>
+              <span>₹{fmt(base)}</span>
+            </div>
+            {isIntra ? (
+              <>
+                <div className="flex justify-between text-gray-500">
+                  <span>CGST (9%)</span><span>₹{fmt(gst / 2)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>SGST (9%)</span><span>₹{fmt(gst / 2)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between text-gray-500">
+                <span>IGST (18%)</span><span>₹{fmt(gst)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold text-feros-navy border-t pt-1 mt-1">
+              <span>Total</span><span>₹{fmt(total)}</span>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
-          <button
-            disabled={!form.historyId || !form.expectedAmount || mutation.isPending}
-            onClick={() => mutation.mutate()}
+          <button disabled={!canSubmit} onClick={() => mutation.mutate()}
             className="px-4 py-2 text-sm bg-feros-navy text-white rounded-lg hover:bg-blue-900 disabled:opacity-50">
             {mutation.isPending ? 'Creating…' : 'Create Proforma'}
           </button>
