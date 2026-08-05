@@ -905,6 +905,7 @@ function InvoicesTab() {
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 15
   const [showProforma, setShowProforma] = useState(false)
+  const [editInvoice, setEditInvoice] = useState<SubscriptionInvoice | null>(null)
   const [confirmInvoice, setConfirmInvoice] = useState<SubscriptionInvoice | null>(null)
 
   const { data: tenantsRes } = useQuery({ queryKey: ['sa-tenants'], queryFn: () => tenantsApi.getAll() })
@@ -935,6 +936,12 @@ function InvoicesTab() {
     mutationFn: (inv: SubscriptionInvoice) => subscriptionsApi.deleteProforma(inv.tenantId, inv.id),
     onSuccess: () => invalidate(),
     onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed to delete'),
+  })
+
+  const sendMutation = useMutation({
+    mutationFn: (inv: SubscriptionInvoice) => subscriptionsApi.sendProforma(inv.tenantId, inv.id),
+    onSuccess: () => invalidate(),
+    onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
   })
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
@@ -1003,23 +1010,30 @@ function InvoicesTab() {
               </thead>
               <tbody className="divide-y">
                 {invoices.map(inv => {
-                  const isProforma = inv.invoiceStatus === 'PROFORMA'
-                  const number = isProforma ? inv.proformaNumber : inv.invoiceNumber
-                  const date = isProforma ? (inv.paymentDate ?? inv.createdAt?.slice(0, 10)) : inv.paymentDate
+                  const isProforma  = inv.invoiceStatus === 'PROFORMA'
+                  const isSent      = inv.invoiceStatus === 'SENT'
+                  const isEditable  = isProforma || isSent
+                  const isConfirmed = inv.invoiceStatus === 'CONFIRMED'
+                  const number = isConfirmed ? inv.invoiceNumber : inv.proformaNumber
+                  const date = isConfirmed ? inv.paymentDate : (inv.paymentDate ?? inv.createdAt?.slice(0, 10))
+                  const badge = isProforma
+                    ? 'bg-blue-100 text-blue-700'
+                    : isSent
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-green-100 text-green-700'
+                  const label = isProforma ? 'PROFORMA' : isSent ? 'SENT' : 'TAX INVOICE'
                   return (
                     <tr key={inv.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{number ?? '—'}</td>
                       <td className="px-4 py-3 text-xs text-gray-600 max-w-[160px] truncate" title={inv.companyName}>{inv.companyName}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isProforma ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                          {isProforma ? 'PROFORMA' : 'TAX INVOICE'}
-                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge}`}>{label}</span>
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{date ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{inv.periodStart} → {inv.periodEnd ?? '∞'}</td>
                       <td className="px-4 py-3 text-right">{fmt(inv.amount)}</td>
                       <td className="px-4 py-3 text-right text-xs text-gray-500">
-                        {isProforma
+                        {!isConfirmed
                           ? <span className="text-gray-400 italic">+18% extra</span>
                           : inv.gstType === 'INTER_STATE'
                             ? `IGST ${fmt(inv.gstAmount)}`
@@ -1027,8 +1041,20 @@ function InvoicesTab() {
                       </td>
                       <td className="px-4 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
                       <td className="px-4 py-3">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
+                          {isEditable && (
+                            <button onClick={() => setEditInvoice(inv)}
+                              className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
+                              Edit
+                            </button>
+                          )}
                           {isProforma && (
+                            <button onClick={() => sendMutation.mutate(inv)}
+                              className="text-xs px-2 py-1 bg-amber-500 text-white rounded hover:bg-amber-600">
+                              Mark Sent
+                            </button>
+                          )}
+                          {isSent && (
                             <button onClick={() => setConfirmInvoice(inv)}
                               className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">
                               Confirm
@@ -1038,9 +1064,9 @@ function InvoicesTab() {
                             className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
                             PDF
                           </button>
-                          {isProforma && (
+                          {isEditable && (
                             <button
-                              onClick={() => { if (window.confirm('Delete this proforma?')) deleteMutation.mutate(inv) }}
+                              onClick={() => { if (window.confirm('Delete this invoice?')) deleteMutation.mutate(inv) }}
                               className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50">
                               Delete
                             </button>
@@ -1076,6 +1102,15 @@ function InvoicesTab() {
         />
       )}
 
+      {editInvoice && (
+        <ProformaDialog
+          tenants={tenants}
+          invoice={editInvoice}
+          onClose={() => setEditInvoice(null)}
+          onSuccess={invalidate}
+        />
+      )}
+
       {confirmInvoice && (
         <ConfirmPaymentDialog
           tenantId={confirmInvoice.tenantId}
@@ -1089,29 +1124,48 @@ function InvoicesTab() {
 }
 
 // ─── Proforma Dialog ──────────────────────────────────────────────────────────
-function ProformaDialog({ tenantId: initTenantId, tenants, onClose, onSuccess }: {
-  tenantId?: number; tenants: any[]; onClose: () => void; onSuccess: () => void
+function ProformaDialog({ tenantId: initTenantId, tenants, invoice, onClose, onSuccess }: {
+  tenantId?: number; tenants: any[]; invoice?: SubscriptionInvoice; onClose: () => void; onSuccess: () => void
 }) {
-  const [selectedTenantId, setSelectedTenantId] = useState(initTenantId ? String(initTenantId) : '')
+  const isEdit = !!invoice
+  const [selectedTenantId, setSelectedTenantId] = useState(
+    invoice ? String(invoice.tenantId) : (initTenantId ? String(initTenantId) : '')
+  )
+
+  // parse existing additional charges from JSON for pre-fill
+  const parsedCharges: { name: string; amount: string }[] = (() => {
+    if (!invoice?.additionalChargesJson) return []
+    try {
+      return JSON.parse(invoice.additionalChargesJson).map((c: any) => ({ name: c.name, amount: String(c.amount) }))
+    } catch { return [] }
+  })()
+
   const [form, setForm] = useState({
-    invoiceDate: '', fromDate: '', toDate: '',
-    vehicleCount: '', ratePerVehicle: '',
-    gstType: 'INTRA_STATE',
+    invoiceDate: invoice?.paymentDate ?? '',
+    fromDate: invoice?.periodStart ?? '',
+    toDate: invoice?.periodEnd ?? '',
+    vehicleCount: invoice?.vehicleCount ? String(invoice.vehicleCount) : '',
+    ratePerVehicle: invoice?.pricePerVehicle ? String(invoice.pricePerVehicle) : '',
+    gstType: invoice?.gstType ?? 'INTRA_STATE',
   })
-  const [extraCharges, setExtraCharges] = useState<{ name: string; amount: string }[]>([])
+  const [extraCharges, setExtraCharges] = useState<{ name: string; amount: string }[]>(parsedCharges)
+
+  const payload = {
+    invoiceDate: form.invoiceDate || undefined,
+    fromDate: form.fromDate,
+    toDate: form.toDate,
+    vehicleCount: Number(form.vehicleCount),
+    ratePerVehicle: Number(form.ratePerVehicle),
+    gstType: form.gstType,
+    additionalCharges: extraCharges
+      .filter(c => c.name && Number(c.amount) > 0)
+      .map(c => ({ name: c.name, amount: Number(c.amount) })),
+  }
 
   const mutation = useMutation({
-    mutationFn: () => subscriptionsApi.createProforma(Number(selectedTenantId), {
-      invoiceDate: form.invoiceDate || undefined,
-      fromDate: form.fromDate,
-      toDate: form.toDate,
-      vehicleCount: Number(form.vehicleCount),
-      ratePerVehicle: Number(form.ratePerVehicle),
-      gstType: form.gstType,
-      additionalCharges: extraCharges
-        .filter(c => c.name && Number(c.amount) > 0)
-        .map(c => ({ name: c.name, amount: Number(c.amount) })),
-    }),
+    mutationFn: () => isEdit
+      ? subscriptionsApi.updateProforma(invoice!.tenantId, invoice!.id, payload)
+      : subscriptionsApi.createProforma(Number(selectedTenantId), payload),
     onSuccess: () => { onSuccess(); onClose() },
     onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
   })
@@ -1134,7 +1188,7 @@ function ProformaDialog({ tenantId: initTenantId, tenants, onClose, onSuccess }:
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto py-6">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4">
-        <h3 className="font-semibold text-feros-navy text-lg">Create Proforma Invoice</h3>
+        <h3 className="font-semibold text-feros-navy text-lg">{isEdit ? 'Edit Invoice' : 'Create Proforma Invoice'}</h3>
 
         {!initTenantId && (
           <div>
@@ -1183,7 +1237,7 @@ function ProformaDialog({ tenantId: initTenantId, tenants, onClose, onSuccess }:
             {['INTRA_STATE', 'INTER_STATE'].map(g => (
               <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="radio" name="gstType" value={g}
-                  checked={form.gstType === g} onChange={() => setForm(f => ({ ...f, gstType: g }))} />
+                  checked={form.gstType === g} onChange={() => setForm(f => ({ ...f, gstType: g as 'INTRA_STATE' | 'INTER_STATE' }))} />
                 {g === 'INTRA_STATE' ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)'}
               </label>
             ))}
@@ -1241,7 +1295,7 @@ function ProformaDialog({ tenantId: initTenantId, tenants, onClose, onSuccess }:
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
           <button disabled={!canSubmit} onClick={() => mutation.mutate()}
             className="px-4 py-2 text-sm bg-feros-navy text-white rounded-lg hover:bg-blue-900 disabled:opacity-50">
-            {mutation.isPending ? 'Creating…' : 'Create Proforma'}
+            {mutation.isPending ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create Proforma')}
           </button>
         </div>
       </div>

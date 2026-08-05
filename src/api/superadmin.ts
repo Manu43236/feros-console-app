@@ -83,6 +83,10 @@ export const subscriptionsApi = {
                         apiClient.get(`/subscriptions/${tenantId}/invoices/${invoiceId}/pdf`, { responseType: 'blob' }).then(r => r.data as Blob),
   deleteProforma:     (tenantId: number, invoiceId: number) =>
                         apiClient.delete(`/subscriptions/${tenantId}/invoices/${invoiceId}`).then(r => r.data),
+  sendProforma:       (tenantId: number, invoiceId: number) =>
+                        apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/${invoiceId}/send`).then(r => r.data),
+  updateProforma:     (tenantId: number, invoiceId: number, data: { invoiceDate?: string; fromDate: string; toDate: string; vehicleCount: number; ratePerVehicle: number; gstType: string; additionalCharges?: { name: string; amount: number }[] }) =>
+                        apiClient.put<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/${invoiceId}`, data).then(r => r.data),
   getCurrent:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/current`).then(r => r.data),
   getMy:           () => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>('/subscriptions/my').then(r => r.data),
   getMyInvoices:   () => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/my/invoices').then(r => r.data),

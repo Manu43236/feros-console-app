@@ -1314,7 +1314,7 @@ export interface SubscriptionInvoice {
   id: number
   invoiceNumber?: string
   proformaNumber?: string
-  invoiceStatus: 'PROFORMA' | 'CONFIRMED'
+  invoiceStatus: 'PROFORMA' | 'SENT' | 'CONFIRMED'
   gstType?: 'INTRA_STATE' | 'INTER_STATE'
   tenantId: number
   companyName: string
@@ -1341,6 +1341,7 @@ export interface SubscriptionInvoice {
   tenantState?: string
   tenantPincode?: string
   tenantGstin?: string
+  additionalChargesJson?: string
 }
 
 export interface SubscriptionInvoiceSummary {
