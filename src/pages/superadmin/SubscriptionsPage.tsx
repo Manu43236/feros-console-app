@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import type { Tenant } from '@/types'
 import { tenantsApi, subscriptionsApi, notificationsApi } from '@/api/superadmin'
-import type { SubscriptionHistory, SubscriptionInvoice, SubscriptionInvoiceSummary } from '@/types'
+import type { SubscriptionHistory, SubscriptionInvoice } from '@/types'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 
 type Tab = 'tenants' | 'invoices' | 'broadcast'
