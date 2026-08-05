@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import type { Tenant } from '@/types'
 import { tenantsApi, subscriptionsApi, notificationsApi } from '@/api/superadmin'
-import type { SubscriptionHistory, SubscriptionInvoice } from '@/types'
+import type { SubscriptionHistory, SubscriptionInvoice, SubscriptionInvoiceSummary } from '@/types'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 
 type Tab = 'tenants' | 'invoices' | 'broadcast'
@@ -899,9 +899,20 @@ function TenantsTab() {
 
 // ─── Invoices Tab ─────────────────────────────────────────────────────────────
 function InvoicesTab() {
+  const qc = useQueryClient()
   const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null)
+  const [showProforma, setShowProforma] = useState(false)
+  const [confirmInvoice, setConfirmInvoice] = useState<SubscriptionInvoice | null>(null)
+
   const { data: tenantsRes } = useQuery({ queryKey: ['sa-tenants'], queryFn: () => tenantsApi.getAll() })
   const tenants = tenantsRes?.data ?? []
+
+  const { data: historyRes } = useQuery({
+    queryKey: ['sa-history', selectedTenantId],
+    queryFn: () => subscriptionsApi.getHistory(selectedTenantId!),
+    enabled: selectedTenantId != null,
+  })
+  const history: SubscriptionHistory[] = historyRes?.data ?? []
 
   const { data: invoicesRes, isLoading } = useQuery({
     queryKey: ['sa-invoices', selectedTenantId],
@@ -910,15 +921,60 @@ function InvoicesTab() {
   })
   const invoices: SubscriptionInvoice[] = invoicesRes?.data ?? []
 
+  const { data: summaryRes } = useQuery({
+    queryKey: ['sa-invoice-summary', selectedTenantId],
+    queryFn: () => subscriptionsApi.getInvoiceSummary(selectedTenantId!),
+    enabled: selectedTenantId != null,
+  })
+  const summary: SubscriptionInvoiceSummary | null = summaryRes?.data ?? null
+
+  function invalidate() {
+    qc.invalidateQueries({ queryKey: ['sa-invoices', selectedTenantId] })
+    qc.invalidateQueries({ queryKey: ['sa-invoice-summary', selectedTenantId] })
+  }
+
+  function downloadPdf(inv: SubscriptionInvoice) {
+    subscriptionsApi.downloadInvoicePdf(selectedTenantId!, inv.id).then(blob => {
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    })
+  }
+
   return (
     <div className="space-y-4">
-      <div>
-        <label className="text-xs text-gray-600 mb-1 block">Select Tenant</label>
-        <SearchableSelect className="w-64" placeholder="— choose tenant —"
-          value={selectedTenantId != null ? String(selectedTenantId) : ''}
-          onValueChange={v => setSelectedTenantId(v ? Number(v) : null)}
-          options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))} />
+      <div className="flex items-end gap-4">
+        <div>
+          <label className="text-xs text-gray-600 mb-1 block">Select Tenant</label>
+          <SearchableSelect className="w-64" placeholder="— choose tenant —"
+            value={selectedTenantId != null ? String(selectedTenantId) : ''}
+            onValueChange={v => { setSelectedTenantId(v ? Number(v) : null) }}
+            options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))} />
+        </div>
+        {selectedTenantId != null && (
+          <button onClick={() => setShowProforma(true)}
+            className="px-4 py-2 bg-feros-navy text-white text-sm rounded-lg hover:bg-blue-900">
+            + Create Proforma
+          </button>
+        )}
       </div>
+
+      {/* Summary cards */}
+      {summary && (
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: 'Total Subscription Value', value: fmt(summary.totalSubscriptionValue), color: 'text-gray-800' },
+            { label: 'Total Invoiced (GST)', value: fmt(summary.totalInvoiced), color: 'text-green-700' },
+            { label: 'Balance Outstanding', value: fmt(summary.balanceOutstanding), color: summary.balanceOutstanding > 0 ? 'text-orange-600' : 'text-green-700' },
+            { label: 'Pending Proformas', value: String(summary.pendingProformas), color: summary.pendingProformas > 0 ? 'text-blue-700' : 'text-gray-500' },
+          ].map(c => (
+            <div key={c.label} className="bg-white border rounded-xl p-4">
+              <p className="text-xs text-gray-500 mb-1">{c.label}</p>
+              <p className={`text-lg font-bold ${c.color}`}>{c.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {selectedTenantId == null ? (
         <div className="py-12 text-center text-gray-400 text-sm">Select a tenant to view invoices</div>
       ) : isLoading ? (
@@ -930,35 +986,240 @@ function InvoicesTab() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
               <tr>
-                <th className="px-4 py-3 text-left">Invoice #</th>
-                <th className="px-4 py-3 text-left">Plan</th>
-                <th className="px-4 py-3 text-left">Vehicles</th>
+                <th className="px-4 py-3 text-left">Number</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-left">Date</th>
                 <th className="px-4 py-3 text-left">Period</th>
-                <th className="px-4 py-3 text-right">Amount</th>
+                <th className="px-4 py-3 text-right">Taxable</th>
                 <th className="px-4 py-3 text-right">GST</th>
                 <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-left">Ref</th>
+                <th className="px-4 py-3 text-left">Mode</th>
+                <th className="px-4 py-3 text-left">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {invoices.map(inv => (
-                <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs font-semibold">{inv.invoiceNumber}</td>
-                  <td className="px-4 py-3">{inv.planName ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">
-                    {inv.vehicleCount && inv.pricePerVehicle ? `${inv.vehicleCount} × ${fmt(inv.pricePerVehicle)}` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{inv.periodStart} → {inv.periodEnd ?? '∞'}</td>
-                  <td className="px-4 py-3 text-right">{fmt(inv.amount)}</td>
-                  <td className="px-4 py-3 text-right">{fmt(inv.gstAmount)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{inv.paymentRef ?? '—'}</td>
-                </tr>
-              ))}
+              {invoices.map(inv => {
+                const isProforma = inv.invoiceStatus === 'PROFORMA'
+                const number = isProforma ? inv.proformaNumber : inv.invoiceNumber
+                const date = isProforma ? inv.createdAt?.slice(0, 10) : inv.paymentDate
+                return (
+                  <tr key={inv.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{number ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isProforma ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                        {isProforma ? 'PROFORMA' : 'TAX INVOICE'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{date ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{inv.periodStart} → {inv.periodEnd ?? '∞'}</td>
+                    <td className="px-4 py-3 text-right">{fmt(inv.amount)}</td>
+                    <td className="px-4 py-3 text-right text-xs text-gray-500">
+                      {inv.gstType === 'INTER_STATE'
+                        ? `IGST ${fmt(inv.gstAmount)}`
+                        : `CGST ${fmt(inv.cgstAmount)} + SGST ${fmt(inv.sgstAmount)}`}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{inv.paymentMode ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        {isProforma && (
+                          <button onClick={() => setConfirmInvoice(inv)}
+                            className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">
+                            Confirm Payment
+                          </button>
+                        )}
+                        <button onClick={() => downloadPdf(inv)}
+                          className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
+                          PDF
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       )}
+
+      {showProforma && selectedTenantId != null && (
+        <ProformaDialog
+          tenantId={selectedTenantId}
+          history={history}
+          onClose={() => setShowProforma(false)}
+          onSuccess={invalidate}
+        />
+      )}
+
+      {confirmInvoice && selectedTenantId != null && (
+        <ConfirmPaymentDialog
+          tenantId={selectedTenantId}
+          invoice={confirmInvoice}
+          onClose={() => setConfirmInvoice(null)}
+          onSuccess={invalidate}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── Proforma Dialog ──────────────────────────────────────────────────────────
+function ProformaDialog({ tenantId, history, onClose, onSuccess }: {
+  tenantId: number; history: SubscriptionHistory[];
+  onClose: () => void; onSuccess: () => void
+}) {
+  const [form, setForm] = useState({ historyId: '', expectedAmount: '', gstType: 'INTRA_STATE' })
+  const mutation = useMutation({
+    mutationFn: () => subscriptionsApi.createProforma(tenantId, {
+      historyId: Number(form.historyId),
+      expectedAmount: Number(form.expectedAmount),
+      gstType: form.gstType,
+    }),
+    onSuccess: () => { onSuccess(); onClose() },
+    onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
+  })
+
+  const amt = Number(form.expectedAmount) || 0
+  const base = amt ? (amt / 1.18).toFixed(2) : '—'
+  const gst  = amt ? (amt - amt / 1.18).toFixed(2) : '—'
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <h3 className="font-semibold text-feros-navy">Create Proforma Invoice</h3>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Subscription Period</label>
+            <select className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.historyId} onChange={e => setForm(f => ({ ...f, historyId: e.target.value }))}>
+              <option value="">— select period —</option>
+              {history.map(h => (
+                <option key={h.id} value={h.id}>
+                  {h.planName} · {h.startDate} → {h.endDate ?? '∞'} · {h.status}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Expected Amount (incl. GST) ₹</label>
+            <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.expectedAmount} onChange={e => setForm(f => ({ ...f, expectedAmount: e.target.value }))}
+              placeholder="e.g. 250000" />
+            {amt > 0 && (
+              <p className="text-xs text-gray-400 mt-1">Taxable: ₹{base} + GST: ₹{gst}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">GST Type</label>
+            <div className="flex gap-3">
+              {['INTRA_STATE', 'INTER_STATE'].map(g => (
+                <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="gstType" value={g}
+                    checked={form.gstType === g} onChange={() => setForm(f => ({ ...f, gstType: g }))} />
+                  {g === 'INTRA_STATE' ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)'}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+          <button
+            disabled={!form.historyId || !form.expectedAmount || mutation.isPending}
+            onClick={() => mutation.mutate()}
+            className="px-4 py-2 text-sm bg-feros-navy text-white rounded-lg hover:bg-blue-900 disabled:opacity-50">
+            {mutation.isPending ? 'Creating…' : 'Create Proforma'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Confirm Payment Dialog ───────────────────────────────────────────────────
+function ConfirmPaymentDialog({ tenantId, invoice, onClose, onSuccess }: {
+  tenantId: number; invoice: SubscriptionInvoice;
+  onClose: () => void; onSuccess: () => void
+}) {
+  const [form, setForm] = useState({
+    receivedAmount: String(invoice.totalAmount ?? ''),
+    paymentDate: new Date().toISOString().slice(0, 10),
+    paymentMode: 'NEFT',
+    paymentRef: '',
+  })
+  const mutation = useMutation({
+    mutationFn: () => subscriptionsApi.confirmPayment(tenantId, invoice.id, {
+      receivedAmount: Number(form.receivedAmount),
+      paymentDate: form.paymentDate,
+      paymentMode: form.paymentMode,
+      paymentRef: form.paymentRef || undefined,
+    }),
+    onSuccess: () => { onSuccess(); onClose() },
+    onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
+  })
+
+  const amt = Number(form.receivedAmount) || 0
+  const base = amt ? (amt / 1.18).toFixed(2) : '—'
+  const gst  = amt ? (amt - amt / 1.18).toFixed(2) : '—'
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <h3 className="font-semibold text-feros-navy">Confirm Payment → Issue Tax Invoice</h3>
+        <p className="text-xs text-gray-500">Proforma: {invoice.proformaNumber}</p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Amount Received (incl. GST) ₹</label>
+            <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.receivedAmount} onChange={e => setForm(f => ({ ...f, receivedAmount: e.target.value }))} />
+            {amt > 0 && (
+              <p className="text-xs text-gray-400 mt-1">
+                {invoice.gstType === 'INTER_STATE'
+                  ? `Taxable: ₹${base} + IGST: ₹${gst}`
+                  : `Taxable: ₹${base} + CGST: ₹${(Number(gst)/2).toFixed(2)} + SGST: ₹${(Number(gst)/2).toFixed(2)}`}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Payment Date</label>
+            <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.paymentDate} onChange={e => setForm(f => ({ ...f, paymentDate: e.target.value }))} />
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Payment Mode</label>
+            <select className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.paymentMode} onChange={e => setForm(f => ({ ...f, paymentMode: e.target.value }))}>
+              {['NEFT', 'RTGS', 'UPI', 'CHEQUE', 'CASH'].map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Payment Reference (optional)</label>
+            <input type="text" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.paymentRef} onChange={e => setForm(f => ({ ...f, paymentRef: e.target.value }))}
+              placeholder="UTR / cheque no / UPI ref" />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+          <button
+            disabled={!form.receivedAmount || !form.paymentDate || mutation.isPending}
+            onClick={() => mutation.mutate()}
+            className="px-4 py-2 text-sm bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50">
+            {mutation.isPending ? 'Confirming…' : 'Confirm & Issue Tax Invoice'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

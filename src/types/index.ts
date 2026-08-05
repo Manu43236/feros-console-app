@@ -1312,7 +1312,10 @@ export interface SubscriptionHistory {
 
 export interface SubscriptionInvoice {
   id: number
-  invoiceNumber: string
+  invoiceNumber?: string
+  proformaNumber?: string
+  invoiceStatus: 'PROFORMA' | 'CONFIRMED'
+  gstType?: 'INTRA_STATE' | 'INTER_STATE'
   tenantId: number
   companyName: string
   planName?: string
@@ -1324,14 +1327,27 @@ export interface SubscriptionInvoice {
   amount?: number
   installationCharges?: number
   gstAmount?: number
+  cgstAmount?: number
+  sgstAmount?: number
+  igstAmount?: number
   totalAmount?: number
   paymentRef?: string
+  paymentDate?: string
+  paymentMode?: string
+  confirmedAt?: string
   createdAt: string
   tenantAddress?: string
   tenantCity?: string
   tenantState?: string
   tenantPincode?: string
   tenantGstin?: string
+}
+
+export interface SubscriptionInvoiceSummary {
+  totalSubscriptionValue: number
+  totalInvoiced: number
+  balanceOutstanding: number
+  pendingProformas: number
 }
 
 export interface UpgradeRequest {

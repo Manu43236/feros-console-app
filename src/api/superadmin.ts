@@ -71,7 +71,14 @@ export const subscriptionsApi = {
   reactivate:  (tenantId: number) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/reactivate`).then(r => r.data),
   getHistory:         (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory[]>>(`/subscriptions/${tenantId}/history`).then(r => r.data),
   generateInvoice:    (tenantId: number, historyId: number) => apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/history/${historyId}/invoice`).then(r => r.data),
-  getInvoices: (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>(`/subscriptions/${tenantId}/invoices`).then(r => r.data),
+  getInvoices:        (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>(`/subscriptions/${tenantId}/invoices`).then(r => r.data),
+  getInvoiceSummary:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoiceSummary>>(`/subscriptions/${tenantId}/invoices/summary`).then(r => r.data),
+  createProforma:     (tenantId: number, data: { historyId: number; expectedAmount: number; gstType: string; notes?: string }) =>
+                        apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/proforma`, data).then(r => r.data),
+  confirmPayment:     (tenantId: number, invoiceId: number, data: { receivedAmount: number; paymentDate: string; paymentMode: string; paymentRef?: string }) =>
+                        apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/${invoiceId}/confirm`, data).then(r => r.data),
+  downloadInvoicePdf: (tenantId: number, invoiceId: number) =>
+                        apiClient.get(`/subscriptions/${tenantId}/invoices/${invoiceId}/pdf`, { responseType: 'blob' }).then(r => r.data as Blob),
   getCurrent:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/current`).then(r => r.data),
   getMy:           () => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>('/subscriptions/my').then(r => r.data),
   getMyInvoices:   () => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/my/invoices').then(r => r.data),
