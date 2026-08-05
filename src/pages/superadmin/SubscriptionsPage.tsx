@@ -1223,8 +1223,10 @@ function ConfirmPaymentDialog({ tenantId, invoice, onClose, onSuccess }: {
   tenantId: number; invoice: SubscriptionInvoice;
   onClose: () => void; onSuccess: () => void
 }) {
+  // pre-fill with proforma base × 1.18 (amount client should pay incl. GST)
+  const expectedTotal = invoice.totalAmount ? (invoice.totalAmount * 1.18).toFixed(2) : ''
   const [form, setForm] = useState({
-    receivedAmount: String(invoice.totalAmount ?? ''),
+    receivedAmount: expectedTotal,
     paymentDate: new Date().toISOString().slice(0, 10),
     paymentMode: 'NEFT',
     paymentRef: '',
@@ -1240,9 +1242,10 @@ function ConfirmPaymentDialog({ tenantId, invoice, onClose, onSuccess }: {
     onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
   })
 
-  const amt = Number(form.receivedAmount) || 0
+  const amt  = Number(form.receivedAmount) || 0
   const base = amt ? (amt / 1.18).toFixed(2) : '—'
   const gst  = amt ? (amt - amt / 1.18).toFixed(2) : '—'
+  const isIGST = invoice.gstType === 'INTER_STATE'
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -1250,16 +1253,23 @@ function ConfirmPaymentDialog({ tenantId, invoice, onClose, onSuccess }: {
         <h3 className="font-semibold text-feros-navy">Confirm Payment → Issue Tax Invoice</h3>
         <p className="text-xs text-gray-500">Proforma: {invoice.proformaNumber}</p>
 
+        {/* Proforma summary */}
+        <div className="bg-blue-50 rounded-lg px-3 py-2 text-xs text-blue-800 space-y-0.5">
+          <div className="flex justify-between"><span>Proforma Base (ex-GST)</span><span className="font-medium">{fmt(invoice.totalAmount)}</span></div>
+          <div className="flex justify-between"><span>GST @ 18%</span><span className="font-medium">{fmt((invoice.totalAmount ?? 0) * 0.18)}</span></div>
+          <div className="flex justify-between font-semibold border-t border-blue-200 pt-1 mt-1"><span>Total Payable (incl. GST)</span><span>{fmt((invoice.totalAmount ?? 0) * 1.18)}</span></div>
+        </div>
+
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-gray-600 mb-1 block">Amount Received (incl. GST) ₹</label>
+            <label className="text-xs text-gray-600 mb-1 block">Amount Received (incl. GST)</label>
             <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
               value={form.receivedAmount} onChange={e => setForm(f => ({ ...f, receivedAmount: e.target.value }))} />
             {amt > 0 && (
               <p className="text-xs text-gray-400 mt-1">
-                {invoice.gstType === 'INTER_STATE'
-                  ? `Taxable: ₹${base} + IGST: ₹${gst}`
-                  : `Taxable: ₹${base} + CGST: ₹${(Number(gst)/2).toFixed(2)} + SGST: ₹${(Number(gst)/2).toFixed(2)}`}
+                {isIGST
+                  ? `Taxable: ${base} + IGST: ${gst}`
+                  : `Taxable: ${base} + CGST: ${(Number(gst)/2).toFixed(2)} + SGST: ${(Number(gst)/2).toFixed(2)}`}
               </p>
             )}
           </div>
