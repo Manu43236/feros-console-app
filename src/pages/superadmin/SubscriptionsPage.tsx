@@ -1094,21 +1094,18 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
     onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
   })
 
-  // Live calculation
+  // Live calculation — proforma is ex-GST, GST is extra as applicable
   const vehicles = Number(form.vehicleCount) || 0
   const rate     = Number(form.ratePerVehicle) || 0
   const extraTotal = extraCharges.reduce((s, c) => s + (Number(c.amount) || 0), 0)
-  let days = 0, months = 0, vehicleBase = 0, base = 0, gst = 0, total = 0
+  let days = 0, months = 0, vehicleBase = 0, base = 0
   if (form.fromDate && form.toDate && form.toDate > form.fromDate) {
     const d1 = new Date(form.fromDate), d2 = new Date(form.toDate)
     days        = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1
     months      = parseFloat((days / 30).toFixed(2))
     vehicleBase = parseFloat((vehicles * rate * months).toFixed(2))
     base        = parseFloat((vehicleBase + extraTotal).toFixed(2))
-    gst         = parseFloat((base * 0.18).toFixed(2))
-    total       = parseFloat((base + gst).toFixed(2))
   }
-  const isIntra  = form.gstType === 'INTRA_STATE'
   const canSubmit = form.fromDate && form.toDate && form.toDate > form.fromDate
     && vehicles > 0 && rate > 0 && !mutation.isPending
 
@@ -1178,8 +1175,8 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
           ))}
         </div>
 
-        {/* Live calculation preview */}
-        {total > 0 && (
+        {/* Live calculation preview — ex-GST */}
+        {base > 0 && (
           <div className="bg-gray-50 rounded-xl p-4 space-y-1 text-sm">
             <div className="flex justify-between text-gray-500">
               <span>Period</span>
@@ -1195,26 +1192,10 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
                 <span>{fmt(Number(c.amount))}</span>
               </div>
             ))}
-            <div className="flex justify-between text-gray-600 border-t pt-1">
-              <span>Taxable Amount</span><span>{fmt(base)}</span>
-            </div>
-            {isIntra ? (
-              <>
-                <div className="flex justify-between text-gray-500">
-                  <span>CGST (9%)</span><span>{fmt(gst / 2)}</span>
-                </div>
-                <div className="flex justify-between text-gray-500">
-                  <span>SGST (9%)</span><span>{fmt(gst / 2)}</span>
-                </div>
-              </>
-            ) : (
-              <div className="flex justify-between text-gray-500">
-                <span>IGST (18%)</span><span>{fmt(gst)}</span>
-              </div>
-            )}
             <div className="flex justify-between font-bold text-feros-navy border-t pt-1 mt-1">
-              <span>Total</span><span>{fmt(total)}</span>
+              <span>Total (excl. GST)</span><span>{fmt(base)}</span>
             </div>
+            <div className="text-xs text-gray-400">* GST @ 18% extra as applicable</div>
           </div>
         )}
 
