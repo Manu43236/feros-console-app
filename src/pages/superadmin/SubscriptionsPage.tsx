@@ -1064,6 +1064,7 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
     vehicleCount: '', ratePerVehicle: '',
     gstType: 'INTRA_STATE',
   })
+  const [extraCharges, setExtraCharges] = useState<{ name: string; amount: string }[]>([])
 
   const mutation = useMutation({
     mutationFn: () => subscriptionsApi.createProforma(tenantId, {
@@ -1072,6 +1073,9 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
       vehicleCount: Number(form.vehicleCount),
       ratePerVehicle: Number(form.ratePerVehicle),
       gstType: form.gstType,
+      additionalCharges: extraCharges
+        .filter(c => c.name && Number(c.amount) > 0)
+        .map(c => ({ name: c.name, amount: Number(c.amount) })),
     }),
     onSuccess: () => { onSuccess(); onClose() },
     onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
@@ -1080,22 +1084,24 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
   // Live calculation
   const vehicles = Number(form.vehicleCount) || 0
   const rate     = Number(form.ratePerVehicle) || 0
-  let days = 0, months = 0, base = 0, gst = 0, total = 0
+  const extraTotal = extraCharges.reduce((s, c) => s + (Number(c.amount) || 0), 0)
+  let days = 0, months = 0, vehicleBase = 0, base = 0, gst = 0, total = 0
   if (form.fromDate && form.toDate && form.toDate > form.fromDate) {
     const d1 = new Date(form.fromDate), d2 = new Date(form.toDate)
-    days   = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1
-    months = parseFloat((days / 30).toFixed(2))
-    base   = parseFloat((vehicles * rate * months).toFixed(2))
-    gst    = parseFloat((base * 0.18).toFixed(2))
-    total  = parseFloat((base + gst).toFixed(2))
+    days        = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1
+    months      = parseFloat((days / 30).toFixed(2))
+    vehicleBase = parseFloat((vehicles * rate * months).toFixed(2))
+    base        = parseFloat((vehicleBase + extraTotal).toFixed(2))
+    gst         = parseFloat((base * 0.18).toFixed(2))
+    total       = parseFloat((base + gst).toFixed(2))
   }
-  const isIntra = form.gstType === 'INTRA_STATE'
+  const isIntra  = form.gstType === 'INTRA_STATE'
   const canSubmit = form.fromDate && form.toDate && form.toDate > form.fromDate
     && vehicles > 0 && rate > 0 && !mutation.isPending
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto py-6">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4">
         <h3 className="font-semibold text-feros-navy text-lg">Create Proforma Invoice</h3>
 
         <div className="grid grid-cols-2 gap-3">
@@ -1136,6 +1142,29 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
           </div>
         </div>
 
+        {/* Additional charges */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs text-gray-600">Additional Charges</label>
+            <button onClick={() => setExtraCharges(c => [...c, { name: '', amount: '' }])}
+              className="text-xs px-2 py-1 bg-feros-navy text-white rounded-lg hover:bg-blue-900">
+              + Add
+            </button>
+          </div>
+          {extraCharges.map((c, i) => (
+            <div key={i} className="flex gap-2 mb-2">
+              <input type="text" placeholder="e.g. Onboarding Charges"
+                className="flex-1 border rounded-lg px-3 py-2 text-sm"
+                value={c.name} onChange={e => setExtraCharges(arr => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+              <input type="number" placeholder="Amount"
+                className="w-32 border rounded-lg px-3 py-2 text-sm"
+                value={c.amount} onChange={e => setExtraCharges(arr => arr.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))} />
+              <button onClick={() => setExtraCharges(arr => arr.filter((_, j) => j !== i))}
+                className="text-gray-400 hover:text-red-500 px-1">✕</button>
+            </div>
+          ))}
+        </div>
+
         {/* Live calculation preview */}
         {total > 0 && (
           <div className="bg-gray-50 rounded-xl p-4 space-y-1 text-sm">
@@ -1145,24 +1174,33 @@ function ProformaDialog({ tenantId, onClose, onSuccess }: {
             </div>
             <div className="flex justify-between text-gray-500">
               <span>{vehicles} vehicles × ₹{rate} × {months} months</span>
-              <span>₹{fmt(base)}</span>
+              <span>{fmt(vehicleBase)}</span>
+            </div>
+            {extraCharges.filter(c => c.name && Number(c.amount) > 0).map((c, i) => (
+              <div key={i} className="flex justify-between text-gray-500">
+                <span>{c.name}</span>
+                <span>{fmt(Number(c.amount))}</span>
+              </div>
+            ))}
+            <div className="flex justify-between text-gray-600 border-t pt-1">
+              <span>Taxable Amount</span><span>{fmt(base)}</span>
             </div>
             {isIntra ? (
               <>
                 <div className="flex justify-between text-gray-500">
-                  <span>CGST (9%)</span><span>₹{fmt(gst / 2)}</span>
+                  <span>CGST (9%)</span><span>{fmt(gst / 2)}</span>
                 </div>
                 <div className="flex justify-between text-gray-500">
-                  <span>SGST (9%)</span><span>₹{fmt(gst / 2)}</span>
+                  <span>SGST (9%)</span><span>{fmt(gst / 2)}</span>
                 </div>
               </>
             ) : (
               <div className="flex justify-between text-gray-500">
-                <span>IGST (18%)</span><span>₹{fmt(gst)}</span>
+                <span>IGST (18%)</span><span>{fmt(gst)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-feros-navy border-t pt-1 mt-1">
-              <span>Total</span><span>₹{fmt(total)}</span>
+              <span>Total</span><span>{fmt(total)}</span>
             </div>
           </div>
         )}

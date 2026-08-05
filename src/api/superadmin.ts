@@ -73,7 +73,7 @@ export const subscriptionsApi = {
   generateInvoice:    (tenantId: number, historyId: number) => apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/history/${historyId}/invoice`).then(r => r.data),
   getInvoices:        (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>(`/subscriptions/${tenantId}/invoices`).then(r => r.data),
   getInvoiceSummary:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoiceSummary>>(`/subscriptions/${tenantId}/invoices/summary`).then(r => r.data),
-  createProforma:     (tenantId: number, data: { fromDate: string; toDate: string; vehicleCount: number; ratePerVehicle: number; gstType: string; notes?: string }) =>
+  createProforma:     (tenantId: number, data: { fromDate: string; toDate: string; vehicleCount: number; ratePerVehicle: number; gstType: string; additionalCharges?: { name: string; amount: number }[]; notes?: string }) =>
                         apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/proforma`, data).then(r => r.data),
   confirmPayment:     (tenantId: number, invoiceId: number, data: { receivedAmount: number; paymentDate: string; paymentMode: string; paymentRef?: string }) =>
                         apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/${invoiceId}/confirm`, data).then(r => r.data),
