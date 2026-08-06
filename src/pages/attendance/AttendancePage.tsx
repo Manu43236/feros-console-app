@@ -701,7 +701,7 @@ function PendingApprovalsTab() {
     new Date(b.markedAt ?? b.attendanceDate).getTime() - new Date(a.markedAt ?? a.attendanceDate).getTime()
   )
   const filtered = records.filter(r =>
-    (!search || r.userName?.toLowerCase().includes(search.toLowerCase())) &&
+    (!search || r.userName?.toLowerCase().includes(search.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(search.toLowerCase())) &&
     (!dateFilter || r.attendanceDate === dateFilter)
   )
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -760,7 +760,7 @@ function PendingApprovalsTab() {
               <Input
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(0) }}
-                placeholder="Search by name…"
+                placeholder="Search by name or vehicle…"
                 className="pl-8 h-8 text-sm w-44"
               />
             </div>
