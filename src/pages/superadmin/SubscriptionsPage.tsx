@@ -1009,8 +1009,9 @@ function InvoicesTab() {
               </thead>
               <tbody className="divide-y">
                 {invoices.map(inv => {
-                  const isProforma = inv.invoiceStatus === 'PROFORMA'
-                  const isSent     = inv.invoiceStatus === 'SENT'
+                  const isProforma  = inv.invoiceStatus === 'PROFORMA'
+                  const isSent      = inv.invoiceStatus === 'SENT'
+                  const isEditable  = isProforma || isSent
                   const number = isProforma ? inv.proformaNumber : inv.invoiceNumber
                   const date   = inv.paymentDate ?? inv.createdAt?.slice(0, 10)
                   const badge  = isProforma
@@ -1039,21 +1040,21 @@ function InvoicesTab() {
                       <td className="px-4 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2 flex-wrap">
+                          {isEditable && (
+                            <button onClick={() => setEditInvoice(inv)}
+                              className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
+                              Edit
+                            </button>
+                          )}
                           {isProforma && (
-                            <>
-                              <button onClick={() => setEditInvoice(inv)}
-                                className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (window.confirm(`Issue tax invoice for ${inv.companyName}?\n\nThis will calculate GST (18%) and assign an invoice number. This cannot be undone.`))
-                                    sendMutation.mutate(inv)
-                                }}
-                                className="text-xs px-2 py-1 bg-amber-500 text-white rounded hover:bg-amber-600">
-                                Issue Invoice
-                              </button>
-                            </>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Issue tax invoice for ${inv.companyName}?\n\nThis will calculate GST (18%) and assign an invoice number. This cannot be undone.`))
+                                  sendMutation.mutate(inv)
+                              }}
+                              className="text-xs px-2 py-1 bg-amber-500 text-white rounded hover:bg-amber-600">
+                              Issue Invoice
+                            </button>
                           )}
                           <button onClick={() => downloadPdf(inv)}
                             className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
