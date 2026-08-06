@@ -1160,7 +1160,9 @@ function ProformaDialog({ tenantId: initTenantId, tenants, invoice, onClose, onS
     onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
   })
 
-  // Live calculation — proforma is ex-GST, GST is extra as applicable
+  const isSentEdit = isEdit && invoice?.invoiceStatus === 'SENT'
+
+  // Live calculation
   const vehicles = Number(form.vehicleCount) || 0
   const rate     = Number(form.ratePerVehicle) || 0
   const extraTotal = extraCharges.reduce((s, c) => s + (Number(c.amount) || 0), 0)
@@ -1172,6 +1174,9 @@ function ProformaDialog({ tenantId: initTenantId, tenants, invoice, onClose, onS
     vehicleBase = parseFloat((vehicles * rate * months).toFixed(2))
     base        = parseFloat((vehicleBase + extraTotal).toFixed(2))
   }
+  const gstAmt   = parseFloat((base * 0.18).toFixed(2))
+  const totalAmt = parseFloat((base + gstAmt).toFixed(2))
+  const isIGST   = form.gstType === 'INTER_STATE'
   const canSubmit = !!selectedTenantId && form.fromDate && form.toDate && form.toDate > form.fromDate
     && vehicles > 0 && rate > 0 && !mutation.isPending
 
@@ -1267,7 +1272,6 @@ function ProformaDialog({ tenantId: initTenantId, tenants, invoice, onClose, onS
           ))}
         </div>
 
-        {/* Live calculation preview — ex-GST */}
         {base > 0 && (
           <div className="bg-gray-50 rounded-xl p-4 space-y-1 text-sm">
             <div className="flex justify-between text-gray-500">
@@ -1284,10 +1288,37 @@ function ProformaDialog({ tenantId: initTenantId, tenants, invoice, onClose, onS
                 <span>{fmt(Number(c.amount))}</span>
               </div>
             ))}
-            <div className="flex justify-between font-bold text-feros-navy border-t pt-1 mt-1">
-              <span>Total (excl. GST)</span><span>{fmt(base)}</span>
-            </div>
-            <div className="text-xs text-gray-400">* GST @ 18% extra as applicable</div>
+            {isSentEdit ? (
+              <>
+                <div className="flex justify-between text-gray-600 border-t pt-1 mt-1">
+                  <span>Taxable Amount</span><span>{fmt(base)}</span>
+                </div>
+                {isIGST ? (
+                  <div className="flex justify-between text-gray-500">
+                    <span>IGST @ 18%</span><span>{fmt(gstAmt)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-gray-500">
+                      <span>CGST @ 9%</span><span>{fmt(parseFloat((gstAmt / 2).toFixed(2)))}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-500">
+                      <span>SGST @ 9%</span><span>{fmt(parseFloat((gstAmt / 2).toFixed(2)))}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between font-bold text-feros-navy border-t pt-1 mt-1">
+                  <span>Total (incl. GST)</span><span>{fmt(totalAmt)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between font-bold text-feros-navy border-t pt-1 mt-1">
+                  <span>Total (excl. GST)</span><span>{fmt(base)}</span>
+                </div>
+                <div className="text-xs text-gray-400">* GST @ 18% extra as applicable</div>
+              </>
+            )}
           </div>
         )}
 
