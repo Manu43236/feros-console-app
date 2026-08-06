@@ -692,6 +692,7 @@ function PendingApprovalsTab() {
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-pending'],
@@ -702,7 +703,8 @@ function PendingApprovalsTab() {
   )
   const filtered = records.filter(r =>
     (!search || r.userName?.toLowerCase().includes(search.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(search.toLowerCase())) &&
-    (!dateFilter || r.attendanceDate === dateFilter)
+    (!dateFilter || r.attendanceDate === dateFilter) &&
+    (!roleFilter || r.roleName === roleFilter)
   )
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageRows   = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -770,8 +772,18 @@ function PendingApprovalsTab() {
               onChange={e => { setDateFilter(e.target.value); setPage(0) }}
               className="h-8 text-sm w-36"
             />
-            {(search || dateFilter) && (
-              <button onClick={() => { setSearch(''); setDateFilter(''); setPage(0) }}
+            <select
+              value={roleFilter}
+              onChange={e => { setRoleFilter(e.target.value); setPage(0) }}
+              className="h-8 text-sm border border-input rounded-md px-2 bg-white text-gray-700"
+            >
+              <option value="">All Roles</option>
+              <option value="DRIVER">Driver</option>
+              <option value="CLEANER">Cleaner</option>
+              <option value="SUPERVISOR">Supervisor</option>
+            </select>
+            {(search || dateFilter || roleFilter) && (
+              <button onClick={() => { setSearch(''); setDateFilter(''); setRoleFilter(''); setPage(0) }}
                 className="text-xs text-gray-400 hover:text-gray-600 px-1">✕ Clear</button>
             )}
           </div>
