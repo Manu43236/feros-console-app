@@ -1060,9 +1060,9 @@ function InvoicesTab() {
                             className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
                             PDF
                           </button>
-                          {isProforma && (
+                          {isEditable && (
                             <button
-                              onClick={() => { if (window.confirm('Delete this draft?')) deleteMutation.mutate(inv) }}
+                              onClick={() => { if (window.confirm('Delete this invoice?')) deleteMutation.mutate(inv) }}
                               className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50">
                               Delete
                             </button>
