@@ -899,66 +899,437 @@ function TenantsTab() {
 
 // ─── Invoices Tab ─────────────────────────────────────────────────────────────
 function InvoicesTab() {
-  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null)
+  const qc = useQueryClient()
+  const currentYear = new Date().getFullYear()
+  const [filters, setFilters] = useState({ tenantId: '', year: String(currentYear), month: '' })
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 15
+  const [showProforma, setShowProforma] = useState(false)
+  const [editInvoice, setEditInvoice] = useState<SubscriptionInvoice | null>(null)
+
   const { data: tenantsRes } = useQuery({ queryKey: ['sa-tenants'], queryFn: () => tenantsApi.getAll() })
   const tenants = tenantsRes?.data ?? []
 
   const { data: invoicesRes, isLoading } = useQuery({
-    queryKey: ['sa-invoices', selectedTenantId],
-    queryFn: () => subscriptionsApi.getInvoices(selectedTenantId!),
-    enabled: selectedTenantId != null,
+    queryKey: ['sa-invoices-all', filters],
+    queryFn: () => subscriptionsApi.getAllInvoices({
+      tenantId: filters.tenantId ? Number(filters.tenantId) : undefined,
+      year:     filters.year   ? Number(filters.year)     : undefined,
+      month:    filters.month  ? Number(filters.month)    : undefined,
+    }),
   })
-  const invoices: SubscriptionInvoice[] = invoicesRes?.data ?? []
+  const allInvoices: SubscriptionInvoice[] = invoicesRes?.data ?? []
+  const totalPages = Math.max(1, Math.ceil(allInvoices.length / PAGE_SIZE))
+  const invoices = allInvoices.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  function invalidate() { qc.invalidateQueries({ queryKey: ['sa-invoices-all'] }) }
+
+  function downloadPdf(inv: SubscriptionInvoice) {
+    subscriptionsApi.downloadInvoicePdf(inv.tenantId, inv.id).then(blob => {
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    })
+  }
+
+  const deleteMutation = useMutation({
+    mutationFn: (inv: SubscriptionInvoice) => subscriptionsApi.deleteProforma(inv.tenantId, inv.id),
+    onSuccess: () => invalidate(),
+    onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed to delete'),
+  })
+
+  const sendMutation = useMutation({
+    mutationFn: (inv: SubscriptionInvoice) => subscriptionsApi.sendProforma(inv.tenantId, inv.id),
+    onSuccess: () => invalidate(),
+    onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed to issue invoice'),
+  })
+
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+  function setFilter(k: keyof typeof filters, v: string) {
+    setFilters(f => ({ ...f, [k]: v }))
+    setPage(0)
+  }
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="text-xs text-gray-600 mb-1 block">Select Tenant</label>
-        <SearchableSelect className="w-64" placeholder="— choose tenant —"
-          value={selectedTenantId != null ? String(selectedTenantId) : ''}
-          onValueChange={v => setSelectedTenantId(v ? Number(v) : null)}
-          options={tenants.map(t => ({ value: String(t.id), label: t.companyName }))} />
-      </div>
-      {selectedTenantId == null ? (
-        <div className="py-12 text-center text-gray-400 text-sm">Select a tenant to view invoices</div>
-      ) : isLoading ? (
-        <div className="py-12 text-center text-gray-400 text-sm">Loading…</div>
-      ) : invoices.length === 0 ? (
-        <div className="py-12 text-center text-gray-400 text-sm">No invoices yet</div>
-      ) : (
-        <div className="bg-white rounded-xl border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-              <tr>
-                <th className="px-4 py-3 text-left">Invoice #</th>
-                <th className="px-4 py-3 text-left">Plan</th>
-                <th className="px-4 py-3 text-left">Vehicles</th>
-                <th className="px-4 py-3 text-left">Period</th>
-                <th className="px-4 py-3 text-right">Amount</th>
-                <th className="px-4 py-3 text-right">GST</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-left">Ref</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {invoices.map(inv => (
-                <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs font-semibold">{inv.invoiceNumber}</td>
-                  <td className="px-4 py-3">{inv.planName ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">
-                    {inv.vehicleCount && inv.pricePerVehicle ? `${inv.vehicleCount} × ${fmt(inv.pricePerVehicle)}` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{inv.periodStart} → {inv.periodEnd ?? '∞'}</td>
-                  <td className="px-4 py-3 text-right">{fmt(inv.amount)}</td>
-                  <td className="px-4 py-3 text-right">{fmt(inv.gstAmount)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{inv.paymentRef ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Filter row */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="text-xs text-gray-600 mb-1 block">Tenant</label>
+          <SearchableSelect className="w-56" placeholder="All Tenants"
+            value={filters.tenantId}
+            onValueChange={v => setFilter('tenantId', v)}
+            options={tenants.map((t: any) => ({ value: String(t.id), label: t.companyName }))} />
         </div>
+        <div>
+          <label className="text-xs text-gray-600 mb-1 block">Year</label>
+          <select className="border rounded-lg px-3 py-2 text-sm"
+            value={filters.year} onChange={e => setFilter('year', e.target.value)}>
+            <option value="">All Years</option>
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-600 mb-1 block">Month</label>
+          <select className="border rounded-lg px-3 py-2 text-sm"
+            value={filters.month} onChange={e => setFilter('month', e.target.value)}>
+            <option value="">All Months</option>
+            {MONTHS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+          </select>
+        </div>
+        <div className="ml-auto">
+          <button onClick={() => setShowProforma(true)}
+            className="px-4 py-2 bg-feros-navy text-white text-sm rounded-lg hover:bg-blue-900">
+            + Create Proforma
+          </button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="py-12 text-center text-gray-400 text-sm">Loading…</div>
+      ) : allInvoices.length === 0 ? (
+        <div className="py-12 text-center text-gray-400 text-sm">No invoices found</div>
+      ) : (
+        <>
+          <div className="bg-white rounded-xl border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">Number</th>
+                  <th className="px-4 py-3 text-left">Tenant</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-left">Period</th>
+                  <th className="px-4 py-3 text-right">Taxable</th>
+                  <th className="px-4 py-3 text-right">GST</th>
+                  <th className="px-4 py-3 text-right">Total</th>
+                  <th className="px-4 py-3 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {invoices.map(inv => {
+                  const isProforma  = inv.invoiceStatus === 'PROFORMA'
+                  const isSent      = inv.invoiceStatus === 'SENT'
+                  const isEditable  = isProforma || isSent
+                  const number = isProforma ? inv.proformaNumber : inv.invoiceNumber
+                  const date   = inv.paymentDate ?? inv.createdAt?.slice(0, 10)
+                  const badge  = isProforma
+                    ? 'bg-blue-100 text-blue-700'
+                    : isSent
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-green-100 text-green-700'
+                  const label = isProforma ? 'DRAFT' : isSent ? 'INVOICE SENT' : 'TAX INVOICE'
+                  return (
+                    <tr key={inv.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{number ?? '—'}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600 max-w-[160px] truncate" title={inv.companyName}>{inv.companyName}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge}`}>{label}</span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{date ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{inv.periodStart} → {inv.periodEnd ?? '∞'}</td>
+                      <td className="px-4 py-3 text-right">{fmt(inv.amount)}</td>
+                      <td className="px-4 py-3 text-right text-xs text-gray-500">
+                        {isProforma
+                          ? <span className="text-gray-400 italic">+18% on issue</span>
+                          : inv.gstType === 'INTER_STATE'
+                            ? `IGST ${fmt(inv.gstAmount)}`
+                            : `CGST ${fmt(inv.cgstAmount)} + SGST ${fmt(inv.sgstAmount)}`}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold">{fmt(inv.totalAmount)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2 flex-wrap">
+                          {isEditable && (
+                            <button onClick={() => setEditInvoice(inv)}
+                              className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
+                              Edit
+                            </button>
+                          )}
+                          {isProforma && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Issue tax invoice for ${inv.companyName}?\n\nThis will calculate GST (18%) and assign an invoice number. This cannot be undone.`))
+                                  sendMutation.mutate(inv)
+                              }}
+                              className="text-xs px-2 py-1 bg-amber-500 text-white rounded hover:bg-amber-600">
+                              Issue Invoice
+                            </button>
+                          )}
+                          <button onClick={() => downloadPdf(inv)}
+                            className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
+                            PDF
+                          </button>
+                          {isEditable && (
+                            <button
+                              onClick={() => { if (window.confirm('Delete this invoice?')) deleteMutation.mutate(inv) }}
+                              className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50">
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span>{allInvoices.length} invoices · page {page + 1} of {totalPages}</span>
+              <div className="flex gap-2">
+                <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">← Prev</button>
+                <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">Next →</button>
+              </div>
+            </div>
+          )}
+        </>
       )}
+
+      {showProforma && (
+        <ProformaDialog
+          tenants={tenants}
+          onClose={() => setShowProforma(false)}
+          onSuccess={invalidate}
+        />
+      )}
+
+      {editInvoice && (
+        <ProformaDialog
+          tenants={tenants}
+          invoice={editInvoice}
+          onClose={() => setEditInvoice(null)}
+          onSuccess={invalidate}
+        />
+      )}
+
+    </div>
+  )
+}
+
+// ─── Proforma Dialog ──────────────────────────────────────────────────────────
+function ProformaDialog({ tenantId: initTenantId, tenants, invoice, onClose, onSuccess }: {
+  tenantId?: number; tenants: any[]; invoice?: SubscriptionInvoice; onClose: () => void; onSuccess: () => void
+}) {
+  const isEdit = !!invoice
+  const [selectedTenantId, setSelectedTenantId] = useState(
+    invoice ? String(invoice.tenantId) : (initTenantId ? String(initTenantId) : '')
+  )
+
+  // parse existing additional charges from JSON for pre-fill
+  const parsedCharges: { name: string; amount: string }[] = (() => {
+    if (!invoice?.additionalChargesJson) return []
+    try {
+      return JSON.parse(invoice.additionalChargesJson).map((c: any) => ({ name: c.name, amount: String(c.amount) }))
+    } catch { return [] }
+  })()
+
+  const [form, setForm] = useState({
+    invoiceDate: invoice?.paymentDate ?? '',
+    fromDate: invoice?.periodStart ?? '',
+    toDate: invoice?.periodEnd ?? '',
+    vehicleCount: invoice?.vehicleCount ? String(invoice.vehicleCount) : '',
+    ratePerVehicle: invoice?.pricePerVehicle ? String(invoice.pricePerVehicle) : '',
+    gstType: invoice?.gstType ?? 'INTRA_STATE',
+    proformaNumber: invoice?.proformaNumber ?? '',
+  })
+  const [extraCharges, setExtraCharges] = useState<{ name: string; amount: string }[]>(parsedCharges)
+
+  const payload = {
+    invoiceDate: form.invoiceDate || undefined,
+    fromDate: form.fromDate,
+    toDate: form.toDate,
+    vehicleCount: Number(form.vehicleCount),
+    ratePerVehicle: Number(form.ratePerVehicle),
+    gstType: form.gstType,
+    proformaNumber: form.proformaNumber || undefined,
+    additionalCharges: extraCharges
+      .filter(c => c.name && Number(c.amount) > 0)
+      .map(c => ({ name: c.name, amount: Number(c.amount) })),
+  }
+
+  const mutation = useMutation({
+    mutationFn: () => isEdit
+      ? subscriptionsApi.updateProforma(invoice!.tenantId, invoice!.id, payload)
+      : subscriptionsApi.createProforma(Number(selectedTenantId), payload),
+    onSuccess: () => { onSuccess(); onClose() },
+    onError: (e: any) => alert(e?.response?.data?.message ?? 'Failed'),
+  })
+
+  const isSentEdit = isEdit && invoice?.invoiceStatus === 'SENT'
+
+  // Live calculation
+  const vehicles = Number(form.vehicleCount) || 0
+  const rate     = Number(form.ratePerVehicle) || 0
+  const extraTotal = extraCharges.reduce((s, c) => s + (Number(c.amount) || 0), 0)
+  let days = 0, months = 0, vehicleBase = 0, base = 0
+  if (form.fromDate && form.toDate && form.toDate > form.fromDate) {
+    const d1 = new Date(form.fromDate), d2 = new Date(form.toDate)
+    days        = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1
+    months      = parseFloat((days / 30).toFixed(2))
+    vehicleBase = parseFloat((vehicles * rate * months).toFixed(2))
+    base        = parseFloat((vehicleBase + extraTotal).toFixed(2))
+  }
+  const gstAmt   = parseFloat((base * 0.18).toFixed(2))
+  const totalAmt = parseFloat((base + gstAmt).toFixed(2))
+  const isIGST   = form.gstType === 'INTER_STATE'
+  const canSubmit = !!selectedTenantId && form.fromDate && form.toDate && form.toDate > form.fromDate
+    && vehicles > 0 && rate > 0 && !mutation.isPending
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto py-6">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 space-y-4">
+        <h3 className="font-semibold text-feros-navy text-lg">{isEdit ? 'Edit Invoice' : 'Create Proforma Invoice'}</h3>
+
+        {!initTenantId && (
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Tenant <span className="text-red-500">*</span></label>
+            <SearchableSelect className="w-full" placeholder="— select tenant —"
+              value={selectedTenantId}
+              onValueChange={setSelectedTenantId}
+              options={tenants.map((t: any) => ({ value: String(t.id), label: t.companyName }))} />
+          </div>
+        )}
+
+        <div className="mb-3">
+          <label className="text-xs text-gray-600 mb-1 block">Invoice Date <span className="text-gray-400">(leave blank for today)</span></label>
+          <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+            value={form.invoiceDate} onChange={e => setForm(f => ({ ...f, invoiceDate: e.target.value }))} />
+        </div>
+
+        {isEdit && (
+          <div className="mb-3">
+            <label className="text-xs text-gray-600 mb-1 block">Proforma Number</label>
+            <input type="text" className="w-full border rounded-lg px-3 py-2 text-sm font-mono"
+              value={form.proformaNumber}
+              onChange={e => setForm(f => ({ ...f, proformaNumber: e.target.value }))}
+              placeholder="e.g. MMPRF262701" />
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">From Date</label>
+            <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.fromDate} onChange={e => setForm(f => ({ ...f, fromDate: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">To Date</label>
+            <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.toDate} onChange={e => setForm(f => ({ ...f, toDate: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Number of Vehicles</label>
+            <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.vehicleCount} onChange={e => setForm(f => ({ ...f, vehicleCount: e.target.value }))}
+              placeholder="e.g. 115" min={1} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 mb-1 block">Rate per Vehicle / Month (₹)</label>
+            <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.ratePerVehicle} onChange={e => setForm(f => ({ ...f, ratePerVehicle: e.target.value }))}
+              placeholder="e.g. 725" min={1} />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-600 mb-1 block">GST Type</label>
+          <div className="flex gap-4">
+            {['INTRA_STATE', 'INTER_STATE'].map(g => (
+              <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="gstType" value={g}
+                  checked={form.gstType === g} onChange={() => setForm(f => ({ ...f, gstType: g as 'INTRA_STATE' | 'INTER_STATE' }))} />
+                {g === 'INTRA_STATE' ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)'}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Additional charges */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs text-gray-600">Additional Charges</label>
+            <button onClick={() => setExtraCharges(c => [...c, { name: '', amount: '' }])}
+              className="text-xs px-2 py-1 bg-feros-navy text-white rounded-lg hover:bg-blue-900">
+              + Add
+            </button>
+          </div>
+          {extraCharges.map((c, i) => (
+            <div key={i} className="flex gap-2 mb-2">
+              <input type="text" placeholder="e.g. Onboarding Charges"
+                className="flex-1 border rounded-lg px-3 py-2 text-sm"
+                value={c.name} onChange={e => setExtraCharges(arr => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+              <input type="number" placeholder="Amount"
+                className="w-32 border rounded-lg px-3 py-2 text-sm"
+                value={c.amount} onChange={e => setExtraCharges(arr => arr.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))} />
+              <button onClick={() => setExtraCharges(arr => arr.filter((_, j) => j !== i))}
+                className="text-gray-400 hover:text-red-500 px-1">✕</button>
+            </div>
+          ))}
+        </div>
+
+        {base > 0 && (
+          <div className="bg-gray-50 rounded-xl p-4 space-y-1 text-sm">
+            <div className="flex justify-between text-gray-500">
+              <span>Period</span>
+              <span>{days} days ({months} months)</span>
+            </div>
+            <div className="flex justify-between text-gray-500">
+              <span>{vehicles} vehicles × ₹{rate} × {months} months</span>
+              <span>{fmt(vehicleBase)}</span>
+            </div>
+            {extraCharges.filter(c => c.name && Number(c.amount) > 0).map((c, i) => (
+              <div key={i} className="flex justify-between text-gray-500">
+                <span>{c.name}</span>
+                <span>{fmt(Number(c.amount))}</span>
+              </div>
+            ))}
+            {isSentEdit ? (
+              <>
+                <div className="flex justify-between text-gray-600 border-t pt-1 mt-1">
+                  <span>Taxable Amount</span><span>{fmt(base)}</span>
+                </div>
+                {isIGST ? (
+                  <div className="flex justify-between text-gray-500">
+                    <span>IGST @ 18%</span><span>{fmt(gstAmt)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-gray-500">
+                      <span>CGST @ 9%</span><span>{fmt(parseFloat((gstAmt / 2).toFixed(2)))}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-500">
+                      <span>SGST @ 9%</span><span>{fmt(parseFloat((gstAmt / 2).toFixed(2)))}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between font-bold text-feros-navy border-t pt-1 mt-1">
+                  <span>Total (incl. GST)</span><span>{fmt(totalAmt)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between font-bold text-feros-navy border-t pt-1 mt-1">
+                  <span>Total (excl. GST)</span><span>{fmt(base)}</span>
+                </div>
+                <div className="text-xs text-gray-400">* GST @ 18% extra as applicable</div>
+              </>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+          <button disabled={!canSubmit} onClick={() => mutation.mutate()}
+            className="px-4 py-2 text-sm bg-feros-navy text-white rounded-lg hover:bg-blue-900 disabled:opacity-50">
+            {mutation.isPending ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save Changes' : 'Create Proforma')}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

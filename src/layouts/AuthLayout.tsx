@@ -108,18 +108,16 @@ function FeatureCarousel() {
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(to right, #000000, #1E293B)' }}>
+    <div className="min-h-screen flex" style={{ background: 'linear-gradient(to right, #1E3A5F, #1C1400)' }}>
+
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-[52%] flex-col bg-transparent">
-        {/* Logo + Carousel grouped and centered together */}
         <div className="flex-1 flex items-center justify-center px-12">
           <div className="flex flex-col items-center gap-10 w-full">
             <img src={ferosLogo} alt="FEROS" className="w-64 object-contain" />
             <FeatureCarousel />
           </div>
         </div>
-
-        {/* Footer */}
         <p className="text-center text-blue-400/60 text-xs pb-8">
           © {new Date().getFullYear()} FEROS. All rights reserved.
         </p>

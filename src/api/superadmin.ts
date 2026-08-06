@@ -71,7 +71,22 @@ export const subscriptionsApi = {
   reactivate:  (tenantId: number) => apiClient.post<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/reactivate`).then(r => r.data),
   getHistory:         (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory[]>>(`/subscriptions/${tenantId}/history`).then(r => r.data),
   generateInvoice:    (tenantId: number, historyId: number) => apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/history/${historyId}/invoice`).then(r => r.data),
-  getInvoices: (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>(`/subscriptions/${tenantId}/invoices`).then(r => r.data),
+  getInvoices:        (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>(`/subscriptions/${tenantId}/invoices`).then(r => r.data),
+  getAllInvoices:      (params?: { tenantId?: number; year?: number; month?: number }) =>
+                        apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/invoices', { params }).then(r => r.data),
+  getInvoiceSummary:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoiceSummary>>(`/subscriptions/${tenantId}/invoices/summary`).then(r => r.data),
+  createProforma:     (tenantId: number, data: { invoiceDate?: string; fromDate: string; toDate: string; vehicleCount: number; ratePerVehicle: number; gstType: string; additionalCharges?: { name: string; amount: number }[]; notes?: string }) =>
+                        apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/proforma`, data).then(r => r.data),
+  confirmPayment:     (tenantId: number, invoiceId: number, data: { receivedAmount: number; paymentDate: string; paymentMode: string; paymentRef?: string }) =>
+                        apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/${invoiceId}/confirm`, data).then(r => r.data),
+  downloadInvoicePdf: (tenantId: number, invoiceId: number) =>
+                        apiClient.get(`/subscriptions/${tenantId}/invoices/${invoiceId}/pdf`, { responseType: 'blob' }).then(r => r.data as Blob),
+  deleteProforma:     (tenantId: number, invoiceId: number) =>
+                        apiClient.delete(`/subscriptions/${tenantId}/invoices/${invoiceId}`).then(r => r.data),
+  sendProforma:       (tenantId: number, invoiceId: number) =>
+                        apiClient.post<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/${invoiceId}/send`).then(r => r.data),
+  updateProforma:     (tenantId: number, invoiceId: number, data: { invoiceDate?: string; fromDate: string; toDate: string; vehicleCount: number; ratePerVehicle: number; gstType: string; additionalCharges?: { name: string; amount: number }[] }) =>
+                        apiClient.put<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/${tenantId}/invoices/${invoiceId}`, data).then(r => r.data),
   getCurrent:  (tenantId: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/current`).then(r => r.data),
   getMy:           () => apiClient.get<ApiResponse<import('@/types').SubscriptionHistory>>('/subscriptions/my').then(r => r.data),
   getMyInvoices:   () => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/my/invoices').then(r => r.data),
