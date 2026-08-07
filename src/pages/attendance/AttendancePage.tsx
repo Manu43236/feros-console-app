@@ -753,7 +753,6 @@ function PendingApprovalsTab() {
       <div className="border rounded-xl bg-white overflow-hidden">
         <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 shrink-0">
-            <h2 className="text-sm font-semibold text-gray-700">Pending Approvals</h2>
             <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">{records.length} pending</span>
           </div>
           <div className="flex items-center gap-2 flex-1">
@@ -791,15 +790,17 @@ function PendingApprovalsTab() {
             {selected.size > 0 && (
               <>
                 <span className="text-xs text-gray-500">{selected.size} selected</span>
-                <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-3 text-xs"
+                <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 w-7 p-0"
+                  title="Approve All"
                   disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
                   onClick={() => bulkApproveMutation.mutate()}>
-                  <CheckCircle size={12} className="mr-1" />Approve All
+                  <CheckCircle size={14} />
                 </Button>
-                <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50 h-7 px-3 text-xs"
+                <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50 h-7 w-7 p-0"
+                  title="Reject All"
                   disabled={bulkApproveMutation.isPending || bulkRejectMutation.isPending}
                   onClick={() => bulkRejectMutation.mutate()}>
-                  <XCircle size={12} className="mr-1" />Reject All
+                  <XCircle size={14} />
                 </Button>
                 <span className="text-gray-300">|</span>
               </>
