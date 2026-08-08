@@ -97,7 +97,7 @@ function LrRegisterTable({ rows, loading }: { rows: LrRegisterRow[]; loading: bo
     loading={loading}
     headers={['LR No.', 'LR Date', 'Order No.', 'Client', 'Vehicle', 'Driver', 'Cleaner',
       'From', 'To', 'Material', 'Alloc. Wt', 'Loaded Wt', 'Delivered Wt', 'Variance',
-      'Overloaded', 'Loaded At', 'Delivered At', 'E-Way Bill', 'Status', 'Remarks']}
+      'Overloaded', 'Loaded At', 'Delivered At', 'E-Way Bill', 'Invoiced', 'Status', 'Remarks']}
     rows={rows.map(r => [
       <span className="font-medium text-feros-navy">{r.lrNumber}</span>,
       r.lrDate,
@@ -121,6 +121,9 @@ function LrRegisterTable({ rows, loading }: { rows: LrRegisterRow[]; loading: bo
       fmtDateTime(r.loadedAt),
       fmtDateTime(r.deliveredAt),
       dash(r.ewayBillNumber),
+      r.isInvoiced
+        ? <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Yes</span>
+        : <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">No</span>,
       <StatusBadge status={r.lrStatus} />,
       dash(r.remarks),
     ])}

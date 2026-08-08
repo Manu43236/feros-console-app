@@ -933,6 +933,7 @@ export interface LrRegisterRow {
   loadedAt?: string; deliveredAt?: string
   ewayBillNumber?: string; ewayBillDate?: string; ewayBillValidUpto?: string
   lrStatus: string; remarks?: string
+  isInvoiced?: boolean
 }
 export interface InvoiceOutstandingRow {
   invoiceId: number; invoiceNumber: string
