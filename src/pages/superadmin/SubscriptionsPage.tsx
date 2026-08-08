@@ -1169,8 +1169,15 @@ function ProformaDialog({ tenantId: initTenantId, tenants, invoice, onClose, onS
   let days = 0, months = 0, vehicleBase = 0, base = 0
   if (form.fromDate && form.toDate && form.toDate > form.fromDate) {
     const d1 = new Date(form.fromDate), d2 = new Date(form.toDate)
-    days        = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1
-    months      = parseFloat((days / 30).toFixed(2))
+    days = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1
+    // Calendar month calculation — same logic as backend
+    const y1 = d1.getFullYear(), m1 = d1.getMonth(), day1 = d1.getDate()
+    const y2 = d2.getFullYear(), m2 = d2.getMonth(), day2 = d2.getDate()
+    let whole = (y2 - y1) * 12 + (m2 - m1)
+    if (day2 < day1) whole--
+    const pivot = new Date(y1, m1 + whole, day1)
+    const rem   = Math.round((d2.getTime() - pivot.getTime()) / 86400000)
+    months      = parseFloat((whole + rem / 30).toFixed(2))
     vehicleBase = parseFloat((vehicles * rate * months).toFixed(2))
     base        = parseFloat((vehicleBase + extraTotal).toFixed(2))
   }
