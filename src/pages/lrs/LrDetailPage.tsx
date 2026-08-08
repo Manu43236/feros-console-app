@@ -906,6 +906,33 @@ export function LrDetailPage() {
         />
       </div>
 
+      {/* ── Odometer ── */}
+      {(lr.startOdometer != null || lr.endOdometer != null) && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Odometer Readings</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Start Odometer</p>
+              <p className="font-medium text-gray-800">{lr.startOdometer != null ? `${lr.startOdometer.toLocaleString('en-IN')} km` : '—'}</p>
+              {lr.startOdometerRecordedAt && <p className="text-xs text-gray-400 mt-0.5">{new Date(lr.startOdometerRecordedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>}
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">End Odometer</p>
+              <p className="font-medium text-gray-800">{lr.endOdometer != null ? `${lr.endOdometer.toLocaleString('en-IN')} km` : '—'}</p>
+              {lr.endOdometerRecordedAt && <p className="text-xs text-gray-400 mt-0.5">{new Date(lr.endOdometerRecordedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>}
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Distance</p>
+              <p className="font-medium text-gray-800">
+                {lr.startOdometer != null && lr.endOdometer != null
+                  ? `${(lr.endOdometer - lr.startOdometer).toLocaleString('en-IN')} km`
+                  : '—'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── E-way Bill ── */}
       {(lr.ewayBillNumber || lr.ewayBillDate || lr.ewayBillValidUpto) && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">

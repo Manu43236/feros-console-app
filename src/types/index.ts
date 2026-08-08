@@ -729,7 +729,8 @@ export interface Lr {
   cleanerId?: number; cleanerName?: string; cleanerPhone?: string
   startedByName?: string; startedByRole?: string
   completedByName?: string; completedByRole?: string
-  startOdometer?: number; endOdometer?: number
+  startOdometer?: number; startOdometerRecordedAt?: string
+  endOdometer?: number; endOdometerRecordedAt?: string
   isActive: boolean; createdAt: string; updatedAt: string
 }
 
