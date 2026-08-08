@@ -295,7 +295,15 @@ function SubscriptionInvoiceDocument({ inv }: { inv: SubscriptionInvoice }) {
         <tbody>
           <tr>
             <td style={{ padding: '6px 8px', width: '50%', verticalAlign: 'top', borderRight: '1px solid #333' }}>
-              <div style={{ marginTop: 4, color: '#555', fontSize: 10 }}>
+              <div style={{ marginBottom: 8, fontSize: 10 }}>
+                <div style={{ fontWeight: 700, marginBottom: 3 }}>Bank Details</div>
+                <div style={{ fontWeight: 600 }}>MANDM TECHNOLOGIES</div>
+                <div style={{ color: '#333' }}>A/C No: 50200123104534</div>
+                <div style={{ color: '#333' }}>IFSC Code: HDFC0001032</div>
+                <div style={{ color: '#333' }}>Type: Current Account</div>
+                <div style={{ color: '#333' }}>HDFC Bank Ltd, Anakapalli Branch</div>
+              </div>
+              <div style={{ marginTop: 4, color: '#555', fontSize: 10, borderTop: '1px solid #e5e7eb', paddingTop: 6 }}>
                 <div style={{ fontWeight: 600, marginBottom: 2 }}>Declaration</div>
                 We declare that this invoice shows the actual price of the services
                 described and that all particulars are true and correct.
