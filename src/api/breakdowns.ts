@@ -13,8 +13,22 @@ interface BreakdownRequest {
 interface BreakdownReplaceRequest {
   replacementVehicleId: number
   expectedDeliveryDate?: string
-  transferStaff: boolean
+  // null = auto-move D1+C1; provided = supervisor chose specific staff
+  selectedDriverId?: number
+  selectedCleanerId?: number
   notes?: string
+}
+
+export interface VehicleStaffMember {
+  id: number
+  name: string
+  phone?: string
+  hasAttendanceToday: boolean
+}
+
+export interface VehicleCurrentStaff {
+  driver?: VehicleStaffMember
+  cleaner?: VehicleStaffMember
 }
 
 export const breakdownsApi = {
@@ -56,5 +70,10 @@ export const breakdownsApi = {
   resolveStandalone: (vehicleId: number, breakdownId: number) =>
     apiClient.post<ApiResponse<Breakdown>>(
       `/vehicles/${vehicleId}/breakdown/${breakdownId}/resolve`
+    ).then(r => r.data),
+
+  getVehicleCurrentStaff: (vehicleId: number) =>
+    apiClient.get<ApiResponse<VehicleCurrentStaff>>(
+      `/vehicles/${vehicleId}/current-staff`
     ).then(r => r.data),
 }

@@ -9,7 +9,7 @@ import apiClient from '@/api/client'
 import { vehiclesApi } from '@/api/vehicles'
 import { staffApi } from '@/api/staff'
 import { lrsApi } from '@/api/lrs'
-import { breakdownsApi } from '@/api/breakdowns'
+import { breakdownsApi, type VehicleCurrentStaff } from '@/api/breakdowns'
 import { toast } from 'sonner'
 import { format, parseISO } from 'date-fns'
 import {
@@ -465,36 +465,76 @@ function ReportBreakdownDialog({ orderId, allocationId, vehicleReg, open, onClos
 
 // ── replace vehicle dialog ────────────────────────────────────────────────────
 const replaceSchema = z.object({
-  replacementVehicleId:  z.coerce.number().min(1, 'Select a vehicle'),
-  expectedDeliveryDate:  z.string().optional(),
-  transferStaff:         z.enum(['true','false']),
-  notes:                 z.string().optional(),
+  replacementVehicleId: z.coerce.number().min(1, 'Select a vehicle'),
+  expectedDeliveryDate: z.string().optional(),
+  selectedDriverId:     z.number().optional(),
+  selectedCleanerId:    z.number().optional(),
+  notes:                z.string().optional(),
 })
 type ReplaceForm = z.infer<typeof replaceSchema>
 
-function ReplaceVehicleDialog({ orderId, breakdown, open, onClose }: {
-  orderId: number; breakdown: Breakdown; open: boolean; onClose: () => void
+function ReplaceVehicleDialog({ orderId, breakdown, allocation, open, onClose }: {
+  orderId: number
+  breakdown: Breakdown
+  allocation: VehicleAllocation
+  open: boolean
+  onClose: () => void
 }) {
   const qc = useQueryClient()
+  const [v2Staff, setV2Staff] = useState<VehicleCurrentStaff | null>(null)
+  const [staffLoading, setStaffLoading] = useState(false)
+
   const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehiclesApi.getAll() })
 
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<ReplaceForm>({
     resolver: zodResolver(replaceSchema) as Resolver<ReplaceForm>,
-    defaultValues: { transferStaff: 'true' },
   })
+
+  const selectedVehicleId = watch('replacementVehicleId')
+  const selectedDriverId  = watch('selectedDriverId')
+  const selectedCleanerId = watch('selectedCleanerId')
+
+  // Fetch V2's staff whenever the selected vehicle changes
+  useEffect(() => {
+    if (!selectedVehicleId) { setV2Staff(null); return }
+    setStaffLoading(true)
+    setV2Staff(null)
+    setValue('selectedDriverId', undefined)
+    setValue('selectedCleanerId', undefined)
+    breakdownsApi.getVehicleCurrentStaff(selectedVehicleId)
+      .then(res => setV2Staff(res.data ?? null))
+      .catch(() => setV2Staff(null))
+      .finally(() => setStaffLoading(false))
+  }, [selectedVehicleId])
+
+  const hasV2Staff = !!(v2Staff?.driver || v2Staff?.cleaner)
+
+  // All staff available for selection: current trip's D1+C1 + V2's D2+C2
+  const driverOptions = [
+    allocation.currentDriverId ? { id: allocation.currentDriverId, name: allocation.currentDriverName ?? 'Current Driver', hasAttendance: true, tag: 'Current' } : null,
+    v2Staff?.driver            ? { id: v2Staff.driver.id,          name: v2Staff.driver.name,                               hasAttendance: v2Staff.driver.hasAttendanceToday, tag: "V2's Driver" } : null,
+  ].filter(Boolean) as { id: number; name: string; hasAttendance: boolean; tag: string }[]
+
+  const cleanerOptions = [
+    allocation.currentCleanerId ? { id: allocation.currentCleanerId, name: allocation.currentCleanerName ?? 'Current Cleaner', hasAttendance: true, tag: 'Current' } : null,
+    v2Staff?.cleaner             ? { id: v2Staff.cleaner.id,           name: v2Staff.cleaner.name,                                hasAttendance: v2Staff.cleaner.hasAttendanceToday, tag: "V2's Cleaner" } : null,
+  ].filter(Boolean) as { id: number; name: string; hasAttendance: boolean; tag: string }[]
+
+  const selectedV2 = (vehiclesRes?.data ?? []).find(v => v.id === selectedVehicleId)
 
   const mutation = useMutation({
     mutationFn: (data: ReplaceForm) => breakdownsApi.replace(orderId, breakdown.id, {
       replacementVehicleId: data.replacementVehicleId,
-      expectedDeliveryDate:  data.expectedDeliveryDate || undefined,
-      transferStaff:         data.transferStaff === 'true',
-      notes:                 data.notes,
+      expectedDeliveryDate: data.expectedDeliveryDate || undefined,
+      selectedDriverId:     data.selectedDriverId,
+      selectedCleanerId:    data.selectedCleanerId,
+      notes:                data.notes,
     }),
     onSuccess: () => {
       toast.success('Replacement vehicle assigned — LR transferred')
       qc.invalidateQueries({ queryKey: ['order', orderId] })
       qc.invalidateQueries({ queryKey: ['breakdown', breakdown.vehicleAllocationId] })
-      reset(); onClose()
+      reset(); setV2Staff(null); onClose()
     },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -503,13 +543,11 @@ function ReplaceVehicleDialog({ orderId, breakdown, open, onClose }: {
   })
 
   const availableVehicles = (vehiclesRes?.data ?? []).filter(
-    v => v.isActive &&
-         v.currentStatusType === 'AVAILABLE' &&
-         v.id !== breakdown.vehicleId
+    v => v.isActive && v.currentStatusType === 'AVAILABLE' && v.id !== breakdown.vehicleId
   )
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+    <Dialog open={open} onOpenChange={v => { if (!v) { reset(); setV2Staff(null); onClose() } }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -517,37 +555,126 @@ function ReplaceVehicleDialog({ orderId, breakdown, open, onClose }: {
           </DialogTitle>
           <p className="text-sm text-gray-500 mt-1">
             Broken vehicle: <span className="font-semibold font-mono text-red-600">{breakdown.vehicleRegistrationNumber}</span>
-            <span className="ml-2 text-gray-400">· Same LR will travel with the goods</span>
+            <span className="ml-2 text-gray-400">· Same LR continues with goods</span>
           </p>
         </DialogHeader>
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
+
+          {/* Vehicle picker */}
           <div className="space-y-1.5">
             <Label>Replacement Vehicle *</Label>
             <SearchableSelect
-              placeholder="Select vehicle"
-              value={watch('replacementVehicleId') ? String(watch('replacementVehicleId')) : ''}
+              placeholder="Select available vehicle"
+              value={selectedVehicleId ? String(selectedVehicleId) : ''}
               onValueChange={v => setValue('replacementVehicleId', Number(v), { shouldValidate: true })}
-              options={availableVehicles.map(v => ({ value: String(v.id), label: `${v.registrationNumber}${v.vehicleTypeName ? ` · ${v.vehicleTypeName}` : ''}${v.capacityInTons ? ` · ${v.capacityInTons}T` : ''}` }))}
+              options={availableVehicles.map(v => ({
+                value: String(v.id),
+                label: `${v.registrationNumber}${v.vehicleTypeName ? ` · ${v.vehicleTypeName}` : ''}${v.capacityInTons ? ` · ${v.capacityInTons}T` : ''}`,
+              }))}
             />
             {errors.replacementVehicleId && <p className="text-red-500 text-xs">{errors.replacementVehicleId.message}</p>}
           </div>
+
+          {/* V2 odometer display */}
+          {selectedV2 && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-sm">
+              <span className="text-blue-600 font-medium">New trip start odometer:</span>
+              <span className="font-mono font-semibold text-blue-800">
+                {selectedV2.currentOdometerReading != null ? `${selectedV2.currentOdometerReading.toLocaleString()} km` : '—'}
+              </span>
+            </div>
+          )}
+
+          {/* Staff selection — only shown when V2 has known staff */}
+          {selectedVehicleId && !staffLoading && hasV2Staff && (
+            <div className="space-y-3 border rounded-lg p-3 bg-gray-50">
+              <p className="text-sm font-medium text-gray-700">Select staff for trip continuation</p>
+
+              {/* Driver */}
+              {driverOptions.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-500">Driver *</Label>
+                  <div className="space-y-1.5">
+                    {driverOptions.map(opt => (
+                      <label key={opt.id} className={cn(
+                        'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
+                        selectedDriverId === opt.id ? 'border-feros-navy bg-feros-navy/5' : 'border-gray-200 hover:border-gray-300 bg-white'
+                      )}>
+                        <input
+                          type="radio"
+                          name="driver"
+                          className="accent-feros-navy"
+                          checked={selectedDriverId === opt.id}
+                          onChange={() => setValue('selectedDriverId', opt.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">{opt.name}</span>
+                          <span className="ml-2 text-xs text-gray-400">{opt.tag}</span>
+                        </div>
+                        {!opt.hasAttendance && (
+                          <span className="text-xs text-amber-600 font-medium shrink-0">⚠ No attendance</span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cleaner */}
+              {cleanerOptions.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-500">Cleaner</Label>
+                  <div className="space-y-1.5">
+                    {cleanerOptions.map(opt => (
+                      <label key={opt.id} className={cn(
+                        'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
+                        selectedCleanerId === opt.id ? 'border-feros-navy bg-feros-navy/5' : 'border-gray-200 hover:border-gray-300 bg-white'
+                      )}>
+                        <input
+                          type="radio"
+                          name="cleaner"
+                          className="accent-feros-navy"
+                          checked={selectedCleanerId === opt.id}
+                          onChange={() => setValue('selectedCleanerId', opt.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">{opt.name}</span>
+                          <span className="ml-2 text-xs text-gray-400">{opt.tag}</span>
+                        </div>
+                        {!opt.hasAttendance && (
+                          <span className="text-xs text-amber-600 font-medium shrink-0">⚠ No attendance</span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Auto-move note when V2 has no staff */}
+          {selectedVehicleId && !staffLoading && !hasV2Staff && (
+            <p className="text-xs text-gray-500 bg-gray-50 border rounded-lg px-3 py-2">
+              Current driver & cleaner will automatically continue with the replacement vehicle.
+            </p>
+          )}
+
+          {staffLoading && (
+            <p className="text-xs text-gray-400">Checking vehicle staff…</p>
+          )}
+
           <div className="space-y-1.5">
             <Label>Revised Delivery Date</Label>
             <Input type="date" {...register('expectedDeliveryDate')} />
           </div>
-          <div className="space-y-1.5">
-            <Label>Driver / Cleaner *</Label>
-            <select {...register('transferStaff')} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-              <option value="true">Transfer existing driver & cleaner to replacement vehicle</option>
-              <option value="false">Cancel staff — assign manually to new vehicle</option>
-            </select>
-          </div>
+
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Input placeholder="Reason for replacement…" {...register('notes')} />
           </div>
+
           <div className="flex justify-end gap-3 pt-2 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => { reset(); setV2Staff(null); onClose() }}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
               {mutation.isPending ? 'Assigning…' : 'Assign Replacement'}
             </Button>
@@ -896,6 +1023,7 @@ function VehicleAllocationCard({
         <ReplaceVehicleDialog
           orderId={orderId}
           breakdown={breakdown}
+          allocation={allocation}
           open={replaceDialog}
           onClose={() => setReplaceDialog(false)}
         />
