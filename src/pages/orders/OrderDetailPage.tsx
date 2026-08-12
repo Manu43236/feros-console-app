@@ -1159,7 +1159,7 @@ export function OrderDetailPage() {
   const [assignVehicleOpen, setAssignVehicleOpen]   = useState(false)
   const [editOpen, setEditOpen]                     = useState(false)
   const [paymentStatusOpen, setPaymentStatusOpen]   = useState(false)
-  const [dlg, setDlg]                               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
+  const [dlg, setDlg]                               = useState<{ title: string; desc: string; onOk: () => void; confirmLabel?: string } | null>(null)
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['order', Number(orderId)],
@@ -1248,7 +1248,7 @@ export function OrderDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setDlg({ title: 'Mark Order Delivered', desc: 'All existing LRs must be delivered. Mark this order as delivered?', onOk: () => forceDeliverMutation.mutate() })}
+                  onClick={() => setDlg({ title: 'Mark Order Delivered', desc: 'All existing LRs must be delivered. Mark this order as delivered?', onOk: () => forceDeliverMutation.mutate(), confirmLabel: 'Yes, Deliver' })}
                   className="text-green-300 border-green-400/40 hover:bg-green-500/20 bg-transparent gap-1.5"
                 >
                   <CheckCircle size={14} /> Mark Delivered
@@ -1262,7 +1262,7 @@ export function OrderDetailPage() {
                 const desc = hasBreakdown
                   ? `Warning: This order has vehicles currently in transit. Cancel order ${order.orderNumber} anyway?`
                   : `Cancel order ${order.orderNumber}? This cannot be undone.`
-                setDlg({ title: 'Cancel Order', desc, onOk: () => cancelMutation.mutate() })
+                setDlg({ title: 'Cancel Order', desc, onOk: () => cancelMutation.mutate(), confirmLabel: 'Yes, Cancel' })
               }}
                   className="text-red-300 border-red-400/40 hover:bg-red-500/20 bg-transparent gap-1.5"
                 >
@@ -1459,7 +1459,7 @@ export function OrderDetailPage() {
         open={!!dlg}
         title={dlg?.title ?? ''}
         description={dlg?.desc ?? ''}
-        confirmLabel="Yes, Cancel"
+        confirmLabel={dlg?.confirmLabel ?? 'Confirm'}
         onConfirm={() => { dlg?.onOk(); setDlg(null) }}
         onCancel={() => setDlg(null)}
       />
