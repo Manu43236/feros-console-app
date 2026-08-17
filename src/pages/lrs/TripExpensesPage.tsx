@@ -217,6 +217,49 @@ function ExpenseDetailPanel({ expense, onClose }: { expense: TripExpense; onClos
             </div>
           )}
 
+          {/* Driver Info */}
+          {(expense.driverName || expense.driverPhone || expense.driverBankName || expense.driverAccountNumber) && (
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Driver Details</p>
+              <div className="space-y-1.5 text-sm">
+                {expense.driverName && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Name</span>
+                    <span className="font-medium text-gray-800">{expense.driverName}</span>
+                  </div>
+                )}
+                {expense.driverPhone && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Phone</span>
+                    <a href={`tel:${expense.driverPhone}`} className="font-medium text-feros-navy">{expense.driverPhone}</a>
+                  </div>
+                )}
+                {(expense.driverBankName || expense.driverAccountNumber || expense.driverIfscCode) && (
+                  <div className="border-t border-gray-100 pt-2 mt-2 space-y-1.5">
+                    {expense.driverAccountNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Account No.</span>
+                        <span className="font-mono font-semibold text-gray-800 select-all">{expense.driverAccountNumber}</span>
+                      </div>
+                    )}
+                    {expense.driverIfscCode && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">IFSC</span>
+                        <span className="font-mono font-semibold text-gray-800 select-all">{expense.driverIfscCode}</span>
+                      </div>
+                    )}
+                    {expense.driverBankName && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Bank</span>
+                        <span className="text-gray-700">{expense.driverBankName}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Fixed Allowances */}
           <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Trip Allowances (Fixed)</p>

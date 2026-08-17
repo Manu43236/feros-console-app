@@ -17,6 +17,8 @@ import {
   Construction, KeyRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useWebPush } from '@/hooks/useWebPush'
+import { deleteWebFcmToken } from '@/lib/firebase'
 import { SubscriptionContext } from '@/context/SubscriptionContext'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import type { ModuleKey } from '@/types'
@@ -588,6 +590,8 @@ export function AppLayout() {
   const navigate = useNavigate()
   const qc = useQueryClient()
 
+  useWebPush(role)
+
   const isImpersonating = !!saSession
   const tenantId = useAuthStore(s => s.tenantId)
 
@@ -655,6 +659,7 @@ export function AppLayout() {
   }
 
   async function handleLogout() {
+    try { await deleteWebFcmToken() } catch (_) {}
     try { await authApi.logout() } catch (_) {}
     logout()
     qc.clear()

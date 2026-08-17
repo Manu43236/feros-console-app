@@ -13,4 +13,7 @@ export const authApi = {
 
   askPinReset: (phone: string) =>
     apiClient.post<ApiResponse<void>>(`/auth/ask-pin-reset?phone=${encodeURIComponent(phone)}`).then(r => r.data),
+
+  updateFcmToken: (fcmToken: string) =>
+    apiClient.patch<ApiResponse<void>>('/auth/fcm-token', { fcmToken }).then(r => r.data),
 }

@@ -284,6 +284,7 @@ export interface TripExpense {
   lrId: number
   lrNumber: string
   driverName?: string
+  driverPhone?: string
   cleanerName?: string
   advanceAmount: number
   tripDays: number
