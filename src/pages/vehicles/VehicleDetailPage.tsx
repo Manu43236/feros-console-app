@@ -24,7 +24,7 @@ import {
   AlertTriangle, Pencil, Power, Camera,
   ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, CircleDot, Gauge, Users,
-  Clock, Wifi, FileText, Upload, ExternalLink,
+  Clock, Wifi, Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
