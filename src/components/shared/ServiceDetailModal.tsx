@@ -4,7 +4,7 @@ import { format, parseISO, isValid } from 'date-fns'
 import {
   Wrench, MapPin, Calendar, IndianRupee, FileText,
   CheckCircle, Clock, Circle, Package, User, Play, CheckCircle2,
-  Upload, ExternalLink, FileImage,
+  Upload, ExternalLink, FileImage, Download,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { servicePartsApi } from '@/api/inventory'
@@ -194,15 +194,27 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
 
   const totalTaskCost = service.tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0)
 
+  function openPdf() {
+    window.open(`/vehicle-services/${service.id}/pdf`, '_blank')
+  }
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Wrench size={16} className="text-feros-navy" />
-            {service.serviceNumber}
-          </DialogTitle>
-          <p className="text-xs text-gray-400 mt-0.5">{service.vehicleRegistrationNumber}</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <DialogTitle className="flex items-center gap-2">
+                <Wrench size={16} className="text-feros-navy" />
+                {service.serviceNumber}
+              </DialogTitle>
+              <p className="text-xs text-gray-400 mt-0.5">{service.vehicleRegistrationNumber}</p>
+            </div>
+            <button onClick={openPdf}
+              className="flex items-center gap-1.5 text-xs text-feros-navy border border-feros-navy/30 rounded-md px-2.5 py-1.5 hover:bg-feros-navy/5 transition-colors shrink-0 ml-2">
+              <Download size={12} /> PDF
+            </button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-5 pt-1">
@@ -342,20 +354,28 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
                     </div>
                   )
                 })}
-                {service.serviceCharges != null && service.serviceCharges > 0 && (
+                {service.estimatedCost != null && service.estimatedCost > 0 && (
                   <div className="flex justify-between pt-1 text-sm text-gray-700 border-t border-gray-100">
-                    <span>Service Charges</span>
+                    <span>Estimated Cost</span>
                     <span className="flex items-center gap-0.5">
-                      <IndianRupee size={11} />{service.serviceCharges.toLocaleString('en-IN')}
+                      <IndianRupee size={11} />{service.estimatedCost.toLocaleString('en-IN')}
                     </span>
                   </div>
                 )}
-                {(totalTaskCost > 0 || (service.serviceCharges ?? 0) > 0) && (
+                {service.completedCost != null && service.completedCost > 0 && (
+                  <div className="flex justify-between pt-1 text-sm text-blue-700 border-t border-gray-100">
+                    <span className="font-medium">Completed Cost (Bill)</span>
+                    <span className="flex items-center gap-0.5 font-medium">
+                      <IndianRupee size={11} />{service.completedCost.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                )}
+                {(totalTaskCost > 0 || (service.estimatedCost ?? 0) > 0 || (service.completedCost ?? 0) > 0) && (
                   <div className="flex justify-between pt-1 text-sm font-semibold text-gray-800">
                     <span>Total Cost</span>
                     <span className="flex items-center gap-0.5 text-green-700">
                       <IndianRupee size={12} />
-                      {(totalTaskCost + (service.serviceCharges ?? 0)).toLocaleString('en-IN')}
+                      {(service.totalCost ?? totalTaskCost + (service.estimatedCost ?? 0)).toLocaleString('en-IN')}
                     </span>
                   </div>
                 )}

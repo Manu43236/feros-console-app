@@ -16,6 +16,7 @@ import ClientAdvancesPage from '@/pages/clients/ClientAdvancesPage'
 import { VehiclesPage }        from '@/pages/vehicles/VehiclesPage'
 import { VehicleDetailPage }   from '@/pages/vehicles/VehicleDetailPage'
 import VehicleServicesPage     from '@/pages/vehicles/VehicleServicesPage'
+import { ServicePdfPage }     from '@/pages/vehicles/ServicePdfPage'
 import ServiceManagerPage      from '@/pages/vehicles/ServiceManagerPage'
 import FuelLogsPage            from '@/pages/vehicles/FuelLogsPage'
 import MeterReadingsPage       from '@/pages/vehicles/MeterReadingsPage'
@@ -117,6 +118,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/invoices/:invoiceId/print" element={<InvoicePrintPage />} />
         <Route path="/subscription/invoice/:invoiceId/print" element={<SubscriptionInvoicePrintPage />} />
+        <Route path="/vehicle-services/:id/pdf" element={<ProtectedRoute><ServicePdfPage /></ProtectedRoute>} />
 
         <Route
           element={

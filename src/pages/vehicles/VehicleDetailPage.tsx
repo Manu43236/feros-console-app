@@ -431,7 +431,7 @@ function CreateServiceDialog({
   const [serviceDate, setServiceDate] = useState('')
   const [odometer, setOdometer]       = useState(currentOdometer ? String(currentOdometer) : '')
   const [notes, setNotes]             = useState('')
-  const [serviceCharges, setServiceCharges] = useState('')
+  const [estimatedCost, setEstimatedCost] = useState('')
   const [dueAtOdometer, setDueAtOdometer] = useState('')
   const [insuranceClaimNo, setInsuranceClaimNo]   = useState('')
   const [insuranceClaimAmt, setInsuranceClaimAmt] = useState('')
@@ -467,7 +467,7 @@ function CreateServiceDialog({
     setTriggeredBy(breakdownId ? 'BREAKDOWN' : 'SCHEDULED')
     setServiceType('INTERNAL'); setPayerType('OWN_EXPENSE')
     setVendorName(''); setLocation('')
-    setServiceDate(''); setOdometer(currentOdometer ? String(currentOdometer) : ''); setNotes(''); setServiceCharges(''); setDueAtOdometer('')
+    setServiceDate(''); setOdometer(currentOdometer ? String(currentOdometer) : ''); setNotes(''); setEstimatedCost(''); setDueAtOdometer('')
     setInsuranceClaimNo(''); setInsuranceClaimAmt('')
     setCertificateNumber(''); setCertificateValidUntil('')
     setIsEscalated(false)
@@ -525,7 +525,7 @@ function CreateServiceDialog({
       odometer: odometer ? Number(odometer) : null,
       dueAtOdometer: dueAtOdometer ? Number(dueAtOdometer) : null,
       notes: notes || null,
-      serviceCharges: serviceCharges ? Number(serviceCharges) : null,
+      estimatedCost: estimatedCost ? Number(estimatedCost) : null,
       insuranceClaimNo: payerType === 'INSURANCE' ? insuranceClaimNo || null : null,
       insuranceClaimAmt: payerType === 'INSURANCE' && insuranceClaimAmt ? Number(insuranceClaimAmt) : null,
       certificateNumber: triggeredBy === 'COMPLIANCE' ? certificateNumber || null : null,
@@ -705,8 +705,8 @@ function CreateServiceDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Service Charges ₹ <span className="text-gray-400 font-normal">(optional — labour / workshop fee)</span></Label>
-            <Input type="number" placeholder="0" value={serviceCharges} onChange={e => setServiceCharges(e.target.value)} />
+            <Label>Estimated Cost ₹ <span className="text-gray-400 font-normal">(optional — quote from vendor)</span></Label>
+            <Input type="number" placeholder="0" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} />
           </div>
 
           {/* Tasks */}
@@ -843,13 +843,40 @@ function CreateServiceDialog({
 // ── complete service dialog ────────────────────────────────────────────────────
 function CompleteServiceDialog({ service, currentOdometer, open, onClose }: { service: VehicleServiceRecord | null; currentOdometer?: number; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
+  const billRef = useRef<HTMLInputElement>(null)
   const [completedDate, setCompletedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [odometer, setOdometer]           = useState(currentOdometer ? String(currentOdometer) : (service?.odometer?.toString() ?? ''))
+  const [completedCost, setCompletedCost] = useState('')
+  const [uploadingBill, setUploadingBill] = useState(false)
+  const [billDocUrl, setBillDocUrl]       = useState<string | undefined>(undefined)
+
+  function handleClose() {
+    setCompletedDate(format(new Date(), 'yyyy-MM-dd'))
+    setOdometer(currentOdometer ? String(currentOdometer) : (service?.odometer?.toString() ?? ''))
+    setCompletedCost('')
+    setBillDocUrl(undefined)
+    onClose()
+  }
+
+  async function handleBillUpload(file: File) {
+    if (!service) return
+    setUploadingBill(true)
+    try {
+      const res = await vehicleServicesApi.uploadBillDoc(service.id, file)
+      setBillDocUrl(res.data?.billDocUrl)
+      toast.success('Bill document uploaded')
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setUploadingBill(false)
+    }
+  }
 
   const mutation = useMutation({
     mutationFn: () => vehicleServicesApi.complete(service!.id, {
       completedDate,
       odometer: odometer ? Number(odometer) : undefined,
+      completedCost: completedCost ? Number(completedCost) : undefined,
     }),
     onSuccess: () => {
       toast.success('Service marked complete!')
@@ -859,12 +886,11 @@ function CompleteServiceDialog({ service, currentOdometer, open, onClose }: { se
       qc.invalidateQueries({ queryKey: ['vehicles'] })
       handleClose()
     },
-    onError: (e: unknown) => toast.error(
-      getApiError(e, 'Failed') ?? 'Failed'
-    ),
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
-  function handleClose() { setCompletedDate(format(new Date(), 'yyyy-MM-dd')); setOdometer(currentOdometer ? String(currentOdometer) : (service?.odometer?.toString() ?? '')); onClose() }
+  const billUrl = billDocUrl ?? service?.billDocUrl
+  const isBillImage = billUrl && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(billUrl)
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
@@ -879,6 +905,35 @@ function CompleteServiceDialog({ service, currentOdometer, open, onClose }: { se
           <div className="space-y-1.5">
             <Label>Odometer at Completion (km)</Label>
             <Input type="number" placeholder={service?.odometer?.toString() ?? '0'} value={odometer} onChange={e => setOdometer(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Completed Cost ₹ <span className="text-gray-400 font-normal">(total bill from vendor)</span></Label>
+            <Input type="number" placeholder="0" value={completedCost} onChange={e => setCompletedCost(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Final Bill Document <span className="text-gray-400 font-normal">(optional)</span></Label>
+            <input ref={billRef} type="file" accept="image/*,.pdf" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleBillUpload(f); e.target.value = '' }} />
+            {billUrl ? (
+              <div className="space-y-1.5">
+                {isBillImage
+                  ? <img src={billUrl} alt="Bill" className="w-full rounded max-h-32 object-contain bg-gray-50 border" />
+                  : <a href={billUrl} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline">
+                      Bill document uploaded ↗
+                    </a>
+                }
+                <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
+                  className="text-xs text-gray-400 hover:text-gray-600">
+                  {uploadingBill ? 'Uploading…' : 'Replace'}
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
+                className="w-full border-2 border-dashed border-gray-200 rounded-lg py-2.5 text-xs text-gray-400 hover:border-gray-300 flex items-center justify-center gap-1.5">
+                {uploadingBill ? 'Uploading…' : 'Upload Bill (image or PDF)'}
+              </button>
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">

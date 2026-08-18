@@ -65,8 +65,8 @@ export const vehicleServicesApi = {
   start:                (id: number)                     => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/start`, {}).then(r => r.data),
   cancel:               (id: number)                     => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/cancel`, {}).then(r => r.data),
   updateNotes:          (id: number, notes: string)      => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/notes`, { notes }).then(r => r.data),
-  updateServiceCharges: (id: number, serviceCharges: number | null) =>
-    apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/charges`, { serviceCharges }).then(r => r.data),
+  updateEstimatedCost: (id: number, estimatedCost: number | null) =>
+    apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/charges`, { estimatedCost }).then(r => r.data),
   uploadEstimateDoc: (id: number, file: File) => {
     const fd = new FormData(); fd.append('file', file)
     return apiClient.post<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/estimate-doc`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
@@ -75,6 +75,6 @@ export const vehicleServicesApi = {
     const fd = new FormData(); fd.append('file', file)
     return apiClient.post<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/bill-doc`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
   },
-  complete:             (id: number, data: { completedDate: string; odometer?: number }) => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/complete`, data).then(r => r.data),
+  complete:             (id: number, data: { completedDate: string; odometer?: number; completedCost?: number }) => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/complete`, data).then(r => r.data),
   delete:               (id: number)                     => apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}`).then(r => r.data),
 }

@@ -1424,7 +1424,8 @@ export interface VehicleServiceRecord {
   odometer?: number
   notes?: string
   totalCost?: number
-  serviceCharges?: number
+  estimatedCost?: number
+  completedCost?: number
   estimateDocUrl?: string
   billDocUrl?: string
   insuranceClaimNo?: string
