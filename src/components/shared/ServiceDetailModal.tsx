@@ -364,27 +364,25 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
           )}
 
           {/* ── Documents ── */}
-          {(service.serviceType === 'THIRD_PARTY' || service.serviceType === 'OEM_CENTER' || service.estimateDocUrl || service.billDocUrl) && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <FileText size={12} /> Documents
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <DocUploadCard
-                  label="Estimate"
-                  url={service.estimateDocUrl}
-                  uploading={uploadingEstimate}
-                  onUpload={f => handleUpload('estimate', f)}
-                />
-                <DocUploadCard
-                  label="Final Bill"
-                  url={service.billDocUrl}
-                  uploading={uploadingBill}
-                  onUpload={f => handleUpload('bill', f)}
-                />
-              </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <FileText size={12} /> Documents
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <DocUploadCard
+                label="Estimate"
+                url={service.estimateDocUrl}
+                uploading={uploadingEstimate}
+                onUpload={f => handleUpload('estimate', f)}
+              />
+              <DocUploadCard
+                label="Final Bill"
+                url={service.billDocUrl}
+                uploading={uploadingBill}
+                onUpload={f => handleUpload('bill', f)}
+              />
             </div>
-          )}
+          </div>
 
           {/* ── Parts Used ── */}
           <div>
