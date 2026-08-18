@@ -1279,7 +1279,7 @@ export function OrderDetailPage() {
                   <Receipt size={14} /> Payment
                 </Button>
               )}
-              {!isSupervisor && order.orderStatus === 'PENDING' && (
+              {(role === 'SUPER_ADMIN' || (!isSupervisor && order.orderStatus === 'PENDING')) && (
                 <Button
                   size="sm"
                   onClick={() => setEditOpen(true)}

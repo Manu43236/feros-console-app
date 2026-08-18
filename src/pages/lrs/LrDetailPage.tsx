@@ -1,4 +1,5 @@
 import { getApiError } from '@/lib/apiError'
+import { useAuthStore } from '@/store/authStore'
 import { TripExpenseTab } from './TripExpenseTab'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -446,7 +447,7 @@ function ChargesTab({ lrId, charges, canDelete }: { lrId: number; charges: LrCha
 }
 
 // ─── Edit LR Dialog ────────────────────────────────────────────────────────
-function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, currentDeliveredWeight, currentEwayBillNumber, currentEwayBillDate, currentEwayBillValidUpto, open, onClose }: {
+function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, currentDeliveredWeight, currentEwayBillNumber, currentEwayBillDate, currentEwayBillValidUpto, open, onClose, isSuperAdmin }: {
   lrId: number
   lrStatus: LrStatus
   currentRemarks?: string
@@ -457,6 +458,7 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
   currentEwayBillValidUpto?: string
   open: boolean
   onClose: () => void
+  isSuperAdmin?: boolean
 }) {
   const qc = useQueryClient()
   const [remarks, setRemarks]               = useState(currentRemarks ?? '')
@@ -466,8 +468,8 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
   const [ewayBillDate, setEwayBillDate]     = useState(currentEwayBillDate ?? '')
   const [ewayBillValidUpto, setEwayBillValidUpto] = useState(currentEwayBillValidUpto ?? '')
 
-  const canEditLoaded    = lrStatus === 'CREATED' || lrStatus === 'WEIGHT_LOADED' || lrStatus === 'IN_TRANSIT'
-  const canEditDelivered = lrStatus === 'DELIVERED'
+  const canEditLoaded    = isSuperAdmin || lrStatus === 'CREATED' || lrStatus === 'WEIGHT_LOADED' || lrStatus === 'IN_TRANSIT'
+  const canEditDelivered = isSuperAdmin || lrStatus === 'DELIVERED'
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -597,6 +599,8 @@ export function LrDetailPage() {
   const { lrId } = useParams<{ lrId: string }>()
   const navigate = useNavigate()
   const id = parseInt(lrId!)
+  const role = useAuthStore(s => s.role)
+  const isSuperAdmin = role === 'SUPER_ADMIN'
 
   const [tab, setTab]               = useState<'checkposts' | 'charges' | 'expenses'>('checkposts')
   const [dialog, setDialog]         = useState<ActiveDialog>(null)
@@ -649,7 +653,7 @@ export function LrDetailPage() {
   if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading…</div>
   if (!lr) return <div className="p-8 text-center text-gray-500">LR not found.</div>
 
-  const isActive   = lr.lrStatus !== 'CANCELLED' && lr.lrStatus !== 'DELIVERED'
+  const isActive   = isSuperAdmin || (lr.lrStatus !== 'CANCELLED' && lr.lrStatus !== 'DELIVERED')
   const canAdd     = isActive
   const totalFines = checkposts.reduce((s, cp) => s + (cp.fineAmount ?? 0), 0)
 
@@ -1027,7 +1031,7 @@ export function LrDetailPage() {
       <MarkDeliveredDialog  lrId={id} startOdometer={lr?.startOdometer} open={dialog === 'deliver'}   onClose={() => setDialog(null)} />
       <AddCheckpostDialog   lrId={id} open={dialog === 'checkpost'} onClose={() => setDialog(null)} />
       <AddChargeDialog      lrId={id} open={dialog === 'charge'}    onClose={() => setDialog(null)} />
-      <EditLrDialog         lrId={id} lrStatus={lr.lrStatus} currentRemarks={lr.remarks} currentLoadedWeight={lr.loadedWeight} currentDeliveredWeight={lr.deliveredWeight} currentEwayBillNumber={lr.ewayBillNumber} currentEwayBillDate={lr.ewayBillDate} currentEwayBillValidUpto={lr.ewayBillValidUpto} open={dialog === 'edit'} onClose={() => setDialog(null)} />
+      <EditLrDialog         lrId={id} lrStatus={lr.lrStatus} currentRemarks={lr.remarks} currentLoadedWeight={lr.loadedWeight} currentDeliveredWeight={lr.deliveredWeight} currentEwayBillNumber={lr.ewayBillNumber} currentEwayBillDate={lr.ewayBillDate} currentEwayBillValidUpto={lr.ewayBillValidUpto} open={dialog === 'edit'} onClose={() => setDialog(null)} isSuperAdmin={isSuperAdmin} />
       <CancelLrDialog       lrId={id} open={dialog === 'cancel'}    onClose={() => setDialog(null)} />
     </div>
   )
