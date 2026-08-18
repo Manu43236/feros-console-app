@@ -195,7 +195,7 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
   const totalTaskCost = service.tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0)
 
   function openPdf() {
-    window.open(`/vehicle-services/${service.id}/pdf`, '_blank')
+    window.open(`/vehicle-services/${service!.id}/pdf`, '_blank')
   }
 
   return (
