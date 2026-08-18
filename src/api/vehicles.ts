@@ -58,13 +58,23 @@ export const vehiclesApi = {
 }
 
 export const vehicleServicesApi = {
-  getAll:        ()                               => apiClient.get<ApiResponse<VehicleServiceRecord[]>>('/vehicle-services').then(r => r.data),
-  getByVehicle:  (vehicleId: number)              => apiClient.get<ApiResponse<VehicleServiceRecord[]>>(`/vehicle-services/vehicle/${vehicleId}`).then(r => r.data),
-  getById:       (id: number)                     => apiClient.get<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}`).then(r => r.data),
-  create:        (data: unknown)                  => apiClient.post<ApiResponse<VehicleServiceRecord>>('/vehicle-services', data).then(r => r.data),
-  start:         (id: number)                     => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/start`, {}).then(r => r.data),
-  cancel:        (id: number)                     => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/cancel`, {}).then(r => r.data),
-  updateNotes:   (id: number, notes: string)      => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/notes`, { notes }).then(r => r.data),
-  complete:      (id: number, data: { completedDate: string; odometer?: number }) => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/complete`, data).then(r => r.data),
-  delete:        (id: number)                     => apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}`).then(r => r.data),
+  getAll:               ()                               => apiClient.get<ApiResponse<VehicleServiceRecord[]>>('/vehicle-services').then(r => r.data),
+  getByVehicle:         (vehicleId: number)              => apiClient.get<ApiResponse<VehicleServiceRecord[]>>(`/vehicle-services/vehicle/${vehicleId}`).then(r => r.data),
+  getById:              (id: number)                     => apiClient.get<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}`).then(r => r.data),
+  create:               (data: unknown)                  => apiClient.post<ApiResponse<VehicleServiceRecord>>('/vehicle-services', data).then(r => r.data),
+  start:                (id: number)                     => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/start`, {}).then(r => r.data),
+  cancel:               (id: number)                     => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/cancel`, {}).then(r => r.data),
+  updateNotes:          (id: number, notes: string)      => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/notes`, { notes }).then(r => r.data),
+  updateServiceCharges: (id: number, serviceCharges: number | null) =>
+    apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/charges`, { serviceCharges }).then(r => r.data),
+  uploadEstimateDoc: (id: number, file: File) => {
+    const fd = new FormData(); fd.append('file', file)
+    return apiClient.post<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/estimate-doc`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+  },
+  uploadBillDoc: (id: number, file: File) => {
+    const fd = new FormData(); fd.append('file', file)
+    return apiClient.post<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/bill-doc`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+  },
+  complete:             (id: number, data: { completedDate: string; odometer?: number }) => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/complete`, data).then(r => r.data),
+  delete:               (id: number)                     => apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}`).then(r => r.data),
 }

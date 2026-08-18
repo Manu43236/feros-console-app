@@ -1,11 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
+import { useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, parseISO, isValid } from 'date-fns'
 import {
   Wrench, MapPin, Calendar, IndianRupee, FileText,
   CheckCircle, Clock, Circle, Package, User, Play, CheckCircle2,
+  Upload, ExternalLink, FileImage,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { servicePartsApi } from '@/api/inventory'
+import { vehicleServicesApi } from '@/api/vehicles'
+import { toast } from 'sonner'
 import type { VehicleServiceRecord, ServicePart } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -94,13 +98,75 @@ interface Props {
   onClose: () => void
 }
 
+function DocUploadCard({
+  label, url, onUpload, uploading,
+}: { label: string; url?: string; onUpload: (f: File) => void; uploading: boolean }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const isImage = url && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url)
+  return (
+    <div className="border border-gray-100 rounded-lg p-3 space-y-2">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+        <FileImage size={12} /> {label}
+      </p>
+      {url ? (
+        <div className="space-y-2">
+          {isImage
+            ? <img src={url} alt={label} className="w-full rounded max-h-40 object-contain bg-gray-50" />
+            : (
+              <a href={url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline">
+                <ExternalLink size={12} /> View {label}
+              </a>
+            )
+          }
+          <button
+            onClick={() => ref.current?.click()}
+            disabled={uploading}
+            className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+            <Upload size={11} /> Replace
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => ref.current?.click()}
+          disabled={uploading}
+          className="w-full border-2 border-dashed border-gray-200 rounded-lg py-3 text-xs text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-1.5">
+          <Upload size={12} /> {uploading ? 'Uploading…' : `Upload ${label}`}
+        </button>
+      )}
+      <input ref={ref} type="file" accept="image/*,.pdf" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = '' }} />
+    </div>
+  )
+}
+
 export function ServiceDetailModal({ service, open, onClose }: Props) {
+  const qc = useQueryClient()
+  const [uploadingEstimate, setUploadingEstimate] = useState(false)
+  const [uploadingBill, setUploadingBill]         = useState(false)
+
   const { data: partsData } = useQuery({
     queryKey: ['service-parts', service?.id],
     queryFn: () => servicePartsApi.getByService(service!.id),
     enabled: !!service,
   })
   const parts: ServicePart[] = partsData?.data ?? []
+
+  async function handleUpload(type: 'estimate' | 'bill', file: File) {
+    if (!service) return
+    const setter = type === 'estimate' ? setUploadingEstimate : setUploadingBill
+    setter(true)
+    try {
+      const fn = type === 'estimate' ? vehicleServicesApi.uploadEstimateDoc : vehicleServicesApi.uploadBillDoc
+      await fn(service.id, file)
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+      toast.success(`${type === 'estimate' ? 'Estimate' : 'Bill'} document uploaded`)
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setter(false)
+    }
+  }
 
   if (!service) return null
 
@@ -276,14 +342,46 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
                     </div>
                   )
                 })}
-                {totalTaskCost > 0 && (
-                  <div className="flex justify-between pt-1 text-sm font-semibold text-gray-800">
-                    <span>Total Cost</span>
-                    <span className="flex items-center gap-0.5 text-green-700">
-                      <IndianRupee size={12} />{totalTaskCost.toLocaleString('en-IN')}
+                {service.serviceCharges != null && service.serviceCharges > 0 && (
+                  <div className="flex justify-between pt-1 text-sm text-gray-700 border-t border-gray-100">
+                    <span>Service Charges</span>
+                    <span className="flex items-center gap-0.5">
+                      <IndianRupee size={11} />{service.serviceCharges.toLocaleString('en-IN')}
                     </span>
                   </div>
                 )}
+                {(totalTaskCost > 0 || (service.serviceCharges ?? 0) > 0) && (
+                  <div className="flex justify-between pt-1 text-sm font-semibold text-gray-800">
+                    <span>Total Cost</span>
+                    <span className="flex items-center gap-0.5 text-green-700">
+                      <IndianRupee size={12} />
+                      {(totalTaskCost + (service.serviceCharges ?? 0)).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Documents ── */}
+          {(service.serviceType === 'THIRD_PARTY' || service.serviceType === 'OEM_CENTER' || service.estimateDocUrl || service.billDocUrl) && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <FileText size={12} /> Documents
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <DocUploadCard
+                  label="Estimate"
+                  url={service.estimateDocUrl}
+                  uploading={uploadingEstimate}
+                  onUpload={f => handleUpload('estimate', f)}
+                />
+                <DocUploadCard
+                  label="Final Bill"
+                  url={service.billDocUrl}
+                  uploading={uploadingBill}
+                  onUpload={f => handleUpload('bill', f)}
+                />
               </div>
             </div>
           )}
