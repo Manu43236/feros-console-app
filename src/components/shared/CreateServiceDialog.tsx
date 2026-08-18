@@ -20,6 +20,11 @@ interface TaskDraft {
   cost?: number
 }
 
+interface VendorPart {
+  description: string
+  cost?: number
+}
+
 interface Props {
   vehicleId: number
   vehicleReg: string
@@ -56,6 +61,10 @@ export function CreateServiceDialog({
   const [customTasks,         setCustomTasks]         = useState<TaskDraft[]>([])
   const [showCustom,          setShowCustom]          = useState(false)
   const [customTaskName,      setCustomTaskName]      = useState('')
+  const [vendorParts,         setVendorParts]         = useState<VendorPart[]>([])
+  const [partDesc,            setPartDesc]            = useState('')
+  const [partCost,            setPartCost]            = useState('')
+  const [showAddPart,         setShowAddPart]         = useState(false)
 
   const { data: taskTypesRes } = useQuery({
     queryKey: ['service-task-types'],
@@ -65,7 +74,13 @@ export function CreateServiceDialog({
 
   const mutation = useMutation({
     mutationFn: (data: unknown) => vehicleServicesApi.create(data),
-    onSuccess: () => {
+    onSuccess: async (res) => {
+      const serviceId = res.data?.id
+      if (serviceId && vendorParts.length > 0) {
+        await Promise.all(vendorParts.map(p =>
+          vehicleServicesApi.addVendorItem(serviceId, p.description, p.cost)
+        ))
+      }
       toast.success('Service created')
       qc.invalidateQueries({ queryKey: ['vehicle-services'] })
       qc.invalidateQueries({ queryKey: ['vehicle-breakdowns-history', vehicleId] })
@@ -88,6 +103,7 @@ export function CreateServiceDialog({
     setIsEscalated(false)
     setSelectedTaskIds(new Set()); setTaskDrafts({}); setCustomTasks([])
     setShowCustom(false); setCustomTaskName('')
+    setVendorParts([]); setPartDesc(''); setPartCost(''); setShowAddPart(false)
     onClose()
   }
 
@@ -322,6 +338,51 @@ export function CreateServiceDialog({
             <Label>Estimated Cost ₹ <span className="text-gray-400 font-normal">(optional — quote from vendor)</span></Label>
             <Input type="number" placeholder="0" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} />
           </div>
+
+          {/* Spare Parts — only for 3rd party / OEM */}
+          {(serviceType === 'THIRD_PARTY' || serviceType === 'OEM_CENTER') && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Spare Parts Estimation <span className="text-gray-400 font-normal">(optional)</span></Label>
+                {!showAddPart && (
+                  <button type="button" onClick={() => setShowAddPart(true)}
+                    className="flex items-center gap-1 text-xs text-feros-navy hover:underline font-medium">
+                    <Plus size={11} /> Add Spare Part
+                  </button>
+                )}
+              </div>
+              {vendorParts.map((p, i) => (
+                <div key={i} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5 text-xs">
+                  <span className="text-gray-700 truncate flex-1">{p.description}</span>
+                  <span className="text-gray-500 mx-2 shrink-0">
+                    {p.cost != null ? `₹${p.cost.toLocaleString('en-IN')}` : '—'}
+                  </span>
+                  <button type="button" onClick={() => setVendorParts(v => v.filter((_, j) => j !== i))}
+                    className="text-gray-300 hover:text-red-500 shrink-0">
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              {showAddPart && (
+                <div className="flex items-center gap-1.5">
+                  <Input placeholder="Part / item name" value={partDesc} autoFocus
+                    onChange={e => setPartDesc(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (partDesc.trim()) { setVendorParts(v => [...v, { description: partDesc.trim(), cost: partCost ? Number(partCost) : undefined }]); setPartDesc(''); setPartCost(''); setShowAddPart(false) } } }}
+                    className="flex-1 h-8 text-xs" />
+                  <Input placeholder="₹ cost" type="number" min="0" value={partCost}
+                    onChange={e => setPartCost(e.target.value)}
+                    className="w-20 h-8 text-xs" />
+                  <Button type="button" size="sm" className="h-8 bg-feros-navy text-white text-xs px-2 shrink-0"
+                    disabled={!partDesc.trim()}
+                    onClick={() => { setVendorParts(v => [...v, { description: partDesc.trim(), cost: partCost ? Number(partCost) : undefined }]); setPartDesc(''); setPartCost(''); setShowAddPart(false) }}>
+                    Add
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-8 text-xs shrink-0"
+                    onClick={() => { setShowAddPart(false); setPartDesc(''); setPartCost('') }}>✕</Button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tasks */}
           <div className="space-y-2">

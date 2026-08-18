@@ -77,4 +77,8 @@ export const vehicleServicesApi = {
   },
   complete:             (id: number, data: { completedDate: string; odometer?: number; completedCost?: number }) => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/complete`, data).then(r => r.data),
   delete:               (id: number)                     => apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}`).then(r => r.data),
+  addVendorItem:        (id: number, description: string, cost?: number) =>
+    apiClient.post<ApiResponse<{ id: number; description: string; cost?: number }>>(`/vehicle-services/${id}/vendor-items`, { description, cost }).then(r => r.data),
+  deleteVendorItem:     (id: number, itemId: number) =>
+    apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}/vendor-items/${itemId}`).then(r => r.data),
 }

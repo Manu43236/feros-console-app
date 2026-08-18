@@ -848,6 +848,12 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
   const billRef = useRef<HTMLInputElement>(null)
   const [uploadingEst,  setUploadingEst]  = useState(false)
   const [uploadingBill, setUploadingBill] = useState(false)
+  const [newItemDesc, setNewItemDesc]     = useState('')
+  const [newItemCost, setNewItemCost]     = useState('')
+  const [addingItem,  setAddingItem]      = useState(false)
+  const [showAddItem, setShowAddItem]     = useState(false)
+
+  const isThirdParty = s.serviceType === 'THIRD_PARTY' || s.serviceType === 'OEM_CENTER'
 
   async function upload(type: 'estimate' | 'bill', file: File) {
     const set = type === 'estimate' ? setUploadingEst : setUploadingBill
@@ -861,7 +867,27 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
     finally { set(false) }
   }
 
+  async function addItem() {
+    if (!newItemDesc.trim()) return
+    setAddingItem(true)
+    try {
+      await vehicleServicesApi.addVendorItem(s.id, newItemDesc.trim(), newItemCost ? parseFloat(newItemCost) : undefined)
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+      setNewItemDesc(''); setNewItemCost(''); setShowAddItem(false)
+      toast.success('Part added')
+    } catch { toast.error('Failed to add part') }
+    finally { setAddingItem(false) }
+  }
+
+  async function removeItem(itemId: number) {
+    try {
+      await vehicleServicesApi.deleteVendorItem(s.id, itemId)
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+    } catch { toast.error('Failed to remove part') }
+  }
+
   const isCompleted = s.status === 'COMPLETED'
+  const items = s.vendorItems ?? []
 
   return (
     <div className="border-t border-gray-100 px-4 py-3 bg-gray-50/40 space-y-3">
@@ -885,6 +911,48 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
           </span>
         )}
       </div>
+
+      {/* Vendor parts — only for 3rd party / OEM */}
+      {isThirdParty && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-gray-500">Parts / Items (Vendor Quote)</p>
+            {!showAddItem && (
+              <button onClick={() => setShowAddItem(true)}
+                className="flex items-center gap-1 text-xs text-feros-navy hover:underline font-medium">
+                <Plus size={11} /> Add
+              </button>
+            )}
+          </div>
+          {items.map(item => (
+            <div key={item.id} className="flex items-center justify-between bg-white border border-gray-200 rounded px-2 py-1.5 text-xs">
+              <span className="text-gray-700 truncate flex-1">{item.description}</span>
+              <span className="text-gray-500 mx-2 shrink-0">
+                {item.cost != null ? `₹${item.cost.toLocaleString('en-IN')}` : '—'}
+              </span>
+              <button onClick={() => removeItem(item.id)} className="text-gray-300 hover:text-red-500 shrink-0">
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+          {showAddItem && (
+            <div className="flex items-center gap-1.5">
+              <input value={newItemDesc} onChange={e => setNewItemDesc(e.target.value)}
+                placeholder="Part / item name" autoFocus
+                className="flex-1 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-feros-navy" />
+              <input value={newItemCost} onChange={e => setNewItemCost(e.target.value)}
+                placeholder="₹ cost" type="number" min="0"
+                className="w-20 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-feros-navy" />
+              <button onClick={addItem} disabled={addingItem || !newItemDesc.trim()}
+                className="text-xs bg-feros-navy text-white px-2 py-1 rounded disabled:opacity-50">
+                {addingItem ? '…' : 'Add'}
+              </button>
+              <button onClick={() => { setShowAddItem(false); setNewItemDesc(''); setNewItemCost('') }}
+                className="text-xs text-gray-400 hover:text-gray-600 px-1">✕</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Doc cards */}
       <div className="flex items-start gap-2">

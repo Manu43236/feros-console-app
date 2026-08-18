@@ -1434,11 +1434,18 @@ export interface VehicleServiceRecord {
   certificateValidUntil?: string
   isEscalated?: boolean
   tasks: VehicleServiceTask[]
+  vendorItems?: ServiceVendorItem[]
   startedAt?: string
   createdAt: string
   updatedAt: string
   invoiceId?: number
   invoiceNumber?: string
+}
+
+export interface ServiceVendorItem {
+  id: number
+  description: string
+  cost?: number
 }
 
 // ─── Service Invoice ──────────────────────────────────────────────────────────

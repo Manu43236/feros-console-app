@@ -59,9 +59,12 @@ function inr(v?: number | null) {
 }
 
 function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
-  const totalTaskCost  = s.tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0)
-  const isCompleted    = s.status === 'COMPLETED'
-  const displayTotal   = s.totalCost ?? (s.completedCost ?? totalTaskCost + (s.estimatedCost ?? 0))
+  const totalTaskCost   = s.tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0)
+  const totalVendorCost = (s.vendorItems ?? []).reduce((sum, i) => sum + (i.cost ?? 0), 0)
+  const isCompleted     = s.status === 'COMPLETED'
+  const isThirdParty    = s.serviceType === 'THIRD_PARTY' || s.serviceType === 'OEM_CENTER'
+  const estimationTotal = (s.estimatedCost ?? 0) + totalTaskCost + totalVendorCost
+  const displayTotal    = s.totalCost ?? (s.completedCost ?? estimationTotal)
 
   return (
     <Document title={`Service ${s.serviceNumber}`}>
@@ -120,6 +123,19 @@ function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
           </View>
         )}
 
+        {/* Vendor parts — only for 3rd party / OEM */}
+        {isThirdParty && (s.vendorItems ?? []).length > 0 && (
+          <View style={S.section}>
+            <Text style={S.sectionHead}>Parts / Items (Vendor Quote)</Text>
+            {(s.vendorItems ?? []).map((item, i) => (
+              <View key={i} style={S.taskRow}>
+                <Text style={S.taskName}>{item.description}</Text>
+                <Text style={S.taskCost}>{item.cost != null ? inr(item.cost) : '—'}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Cost summary */}
         <View style={S.section}>
           <Text style={S.sectionHead}>Cost Summary</Text>
@@ -129,6 +145,12 @@ function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
               <Text style={{ fontSize: 7.5, color: '#555' }}>Service Charges (Estimated)</Text>
               <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{s.estimatedCost != null ? inr(s.estimatedCost) : '₹0.00'}</Text>
             </View>
+            {isThirdParty && (
+              <View style={{ padding: '5pt 6pt', borderBottom: '0.5pt solid #eee', flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 7.5, color: '#555' }}>Parts / Items (Vendor Quote)</Text>
+                <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{totalVendorCost > 0 ? inr(totalVendorCost) : '₹0.00'}</Text>
+              </View>
+            )}
             <View style={{ padding: '5pt 6pt', borderBottom: '0.5pt solid #eee', flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ fontSize: 7.5, color: '#555' }}>Task Costs</Text>
               <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{totalTaskCost > 0 ? inr(totalTaskCost) : '₹0.00'}</Text>
@@ -140,7 +162,7 @@ function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
                 <View style={S.compCell}>
                   <Text style={S.compLabel}>ESTIMATION TOTAL</Text>
                   <Text style={[S.compVal, { color: NAVY }]}>
-                    {inr((s.estimatedCost ?? 0) + totalTaskCost)}
+                    {inr(estimationTotal)}
                   </Text>
                 </View>
                 <View style={S.compDivider} />
