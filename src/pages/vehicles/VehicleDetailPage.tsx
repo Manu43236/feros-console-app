@@ -860,50 +860,76 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
     finally { set(false) }
   }
 
+  const isCompleted = s.status === 'COMPLETED'
+
   return (
-    <div className="flex items-center gap-2 border-t border-gray-50 px-4 py-2 bg-gray-50/50">
+    <div className="border-t border-gray-100 px-4 py-3 bg-gray-50/40 space-y-3">
       <input ref={estRef}  type="file" accept="image/*,.pdf" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) upload('estimate', f); e.target.value = '' }} />
       <input ref={billRef} type="file" accept="image/*,.pdf" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) upload('bill', f); e.target.value = '' }} />
 
-      <span className="text-xs text-gray-400 font-medium mr-1">Docs:</span>
+      {/* Cost amounts */}
+      <div className="flex items-center gap-4 text-xs">
+        <span className="text-gray-500">
+          Estimation: <span className="font-semibold text-gray-700">
+            {s.estimatedCost != null ? `₹${s.estimatedCost.toLocaleString('en-IN')}` : '—'}
+          </span>
+        </span>
+        {isCompleted && (
+          <span className="text-gray-500">
+            Actual Bill: <span className="font-semibold text-blue-700">
+              {s.completedCost != null ? `₹${s.completedCost.toLocaleString('en-IN')}` : '—'}
+            </span>
+          </span>
+        )}
+      </div>
 
-      {/* Estimate */}
-      {s.estimateDocUrl ? (
-        <a href={s.estimateDocUrl} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
-          <ExternalLink size={11} /> Estimate
-        </a>
-      ) : (
-        <button onClick={() => estRef.current?.click()} disabled={uploadingEst}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
-          <Upload size={11} /> {uploadingEst ? 'Uploading…' : 'Estimate'}
-        </button>
-      )}
+      {/* Doc cards */}
+      <div className="flex items-start gap-2">
+        {/* Estimate doc — always shown */}
+        <div className="flex-1 border border-gray-200 rounded-lg p-2.5 bg-white min-w-0">
+          <p className="text-xs font-medium text-gray-500 mb-1.5">Estimate Doc</p>
+          {s.estimateDocUrl ? (
+            <a href={s.estimateDocUrl} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+              <ExternalLink size={11} /> View
+            </a>
+          ) : (
+            <button onClick={() => estRef.current?.click()} disabled={uploadingEst}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
+              <Upload size={11} /> {uploadingEst ? 'Uploading…' : 'Upload'}
+            </button>
+          )}
+        </div>
 
-      <span className="text-gray-200">|</span>
+        {/* Bill doc — only when completed */}
+        {isCompleted && (
+          <div className="flex-1 border border-gray-200 rounded-lg p-2.5 bg-white min-w-0">
+            <p className="text-xs font-medium text-gray-500 mb-1.5">Bill Doc</p>
+            {s.billDocUrl ? (
+              <a href={s.billDocUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                <ExternalLink size={11} /> View
+              </a>
+            ) : (
+              <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
+                <Upload size={11} /> {uploadingBill ? 'Uploading…' : 'Upload'}
+              </button>
+            )}
+          </div>
+        )}
 
-      {/* Bill */}
-      {s.billDocUrl ? (
-        <a href={s.billDocUrl} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
-          <ExternalLink size={11} /> Bill
-        </a>
-      ) : (
-        <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
-          <Upload size={11} /> {uploadingBill ? 'Uploading…' : 'Bill'}
-        </button>
-      )}
-
-      <span className="text-gray-200">|</span>
-
-      {/* PDF */}
-      <a href={`/vehicle-services/${s.id}/pdf`} target="_blank" rel="noopener noreferrer"
-        className="flex items-center gap-1 text-xs text-feros-navy hover:underline">
-        <FileText size={11} /> PDF
-      </a>
+        {/* PDF */}
+        <div className="border border-feros-navy/20 rounded-lg p-2.5 bg-white">
+          <p className="text-xs font-medium text-gray-500 mb-1.5">PDF</p>
+          <a href={`/vehicle-services/${s.id}/pdf`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-feros-navy hover:underline">
+            <FileText size={11} /> View
+          </a>
+        </div>
+      </div>
     </div>
   )
 }
