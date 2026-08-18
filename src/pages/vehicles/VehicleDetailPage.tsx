@@ -431,6 +431,7 @@ function CreateServiceDialog({
   const [serviceDate, setServiceDate] = useState('')
   const [odometer, setOdometer]       = useState(currentOdometer ? String(currentOdometer) : '')
   const [notes, setNotes]             = useState('')
+  const [serviceCharges, setServiceCharges] = useState('')
   const [dueAtOdometer, setDueAtOdometer] = useState('')
   const [insuranceClaimNo, setInsuranceClaimNo]   = useState('')
   const [insuranceClaimAmt, setInsuranceClaimAmt] = useState('')
@@ -466,7 +467,7 @@ function CreateServiceDialog({
     setTriggeredBy(breakdownId ? 'BREAKDOWN' : 'SCHEDULED')
     setServiceType('INTERNAL'); setPayerType('OWN_EXPENSE')
     setVendorName(''); setLocation('')
-    setServiceDate(''); setOdometer(currentOdometer ? String(currentOdometer) : ''); setNotes(''); setDueAtOdometer('')
+    setServiceDate(''); setOdometer(currentOdometer ? String(currentOdometer) : ''); setNotes(''); setServiceCharges(''); setDueAtOdometer('')
     setInsuranceClaimNo(''); setInsuranceClaimAmt('')
     setCertificateNumber(''); setCertificateValidUntil('')
     setIsEscalated(false)
@@ -524,6 +525,7 @@ function CreateServiceDialog({
       odometer: odometer ? Number(odometer) : null,
       dueAtOdometer: dueAtOdometer ? Number(dueAtOdometer) : null,
       notes: notes || null,
+      serviceCharges: serviceCharges ? Number(serviceCharges) : null,
       insuranceClaimNo: payerType === 'INSURANCE' ? insuranceClaimNo || null : null,
       insuranceClaimAmt: payerType === 'INSURANCE' && insuranceClaimAmt ? Number(insuranceClaimAmt) : null,
       certificateNumber: triggeredBy === 'COMPLIANCE' ? certificateNumber || null : null,
@@ -700,6 +702,11 @@ function CreateServiceDialog({
           <div className="space-y-1.5">
             <Label>Notes <span className="text-gray-400 font-normal">(optional)</span></Label>
             <Input placeholder="Any additional notes…" value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Service Charges ₹ <span className="text-gray-400 font-normal">(optional — labour / workshop fee)</span></Label>
+            <Input type="number" placeholder="0" value={serviceCharges} onChange={e => setServiceCharges(e.target.value)} />
           </div>
 
           {/* Tasks */}
