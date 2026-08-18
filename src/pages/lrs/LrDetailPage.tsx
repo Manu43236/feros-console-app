@@ -600,7 +600,8 @@ export function LrDetailPage() {
   const navigate = useNavigate()
   const id = parseInt(lrId!)
   const role = useAuthStore(s => s.role)
-  const isSuperAdmin = role === 'SUPER_ADMIN'
+  const saSession = useAuthStore(s => s.saSession)
+  const isSuperAdmin = role === 'SUPER_ADMIN' || saSession !== null
 
   const [tab, setTab]               = useState<'checkposts' | 'charges' | 'expenses'>('checkposts')
   const [dialog, setDialog]         = useState<ActiveDialog>(null)

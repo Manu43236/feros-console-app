@@ -1187,6 +1187,8 @@ export function OrderDetailPage() {
   const order = res?.data
 
   const role         = useAuthStore(s => s.role)
+  const saSession    = useAuthStore(s => s.saSession)
+  const isSuperAdmin = role === 'SUPER_ADMIN' || saSession !== null
   const companyName  = useAuthStore(s => s.companyName) ?? ''
   const isSupervisor = role === 'SUPERVISOR'
   const [pdfLoading, setPdfLoading] = useState(false)
@@ -1279,7 +1281,7 @@ export function OrderDetailPage() {
                   <Receipt size={14} /> Payment
                 </Button>
               )}
-              {(role === 'SUPER_ADMIN' || (!isSupervisor && order.orderStatus === 'PENDING')) && (
+              {(isSuperAdmin || (!isSupervisor && order.orderStatus === 'PENDING')) && (
                 <Button
                   size="sm"
                   onClick={() => setEditOpen(true)}
