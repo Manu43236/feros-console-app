@@ -120,32 +120,39 @@ function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
           </View>
         )}
 
-        {/* Cost summary — side-by-side comparison when completed */}
+        {/* Cost summary */}
         <View style={S.section}>
           <Text style={S.sectionHead}>Cost Summary</Text>
           <View style={S.compBox}>
-            <View style={S.compRow}>
-              <View style={S.compCell}>
-                <Text style={S.compLabel}>ESTIMATION</Text>
-                <Text style={[S.compVal, { color: NAVY }]}>{inr(s.estimatedCost)}</Text>
-              </View>
-              {isCompleted && (
-                <>
-                  <View style={S.compDivider} />
-                  <View style={S.compCell}>
-                    <Text style={S.compLabel}>ACTUAL BILL</Text>
-                    <Text style={[S.compVal, { color: s.completedCost != null ? BLUE : '#aaa' }]}>
-                      {inr(s.completedCost)}
-                    </Text>
-                  </View>
-                </>
-              )}
+            {/* Breakdown rows */}
+            <View style={{ padding: '5pt 6pt', borderBottom: '0.5pt solid #eee', flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 7.5, color: '#555' }}>Service Charges (Estimated)</Text>
+              <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{s.estimatedCost != null ? inr(s.estimatedCost) : '₹0.00'}</Text>
             </View>
-            {totalTaskCost > 0 && (
-              <View style={{ padding: '4pt 6pt', borderBottom: '0.5pt solid #eee' }}>
-                <Text style={{ fontSize: 7, color: '#555' }}>Task costs: {inr(totalTaskCost)}</Text>
+            <View style={{ padding: '5pt 6pt', borderBottom: '0.5pt solid #eee', flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 7.5, color: '#555' }}>Task Costs</Text>
+              <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{totalTaskCost > 0 ? inr(totalTaskCost) : '₹0.00'}</Text>
+            </View>
+
+            {/* Side-by-side estimation vs actual when completed */}
+            {isCompleted && (
+              <View style={S.compRow}>
+                <View style={S.compCell}>
+                  <Text style={S.compLabel}>ESTIMATION TOTAL</Text>
+                  <Text style={[S.compVal, { color: NAVY }]}>
+                    {inr((s.estimatedCost ?? 0) + totalTaskCost)}
+                  </Text>
+                </View>
+                <View style={S.compDivider} />
+                <View style={S.compCell}>
+                  <Text style={S.compLabel}>ACTUAL BILL</Text>
+                  <Text style={[S.compVal, { color: s.completedCost != null ? BLUE : '#aaa' }]}>
+                    {s.completedCost != null ? inr(s.completedCost) : '—'}
+                  </Text>
+                </View>
               </View>
             )}
+
             <View style={S.totalBox}>
               <Text style={S.totalLabel}>TOTAL COST</Text>
               <Text style={S.totalVal}>{inr(displayTotal)}</Text>
