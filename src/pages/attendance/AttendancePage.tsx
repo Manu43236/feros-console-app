@@ -1002,10 +1002,19 @@ function DutyTimesTab({
   setSelectedDate: (d: string) => void
 }) {
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
   useEffect(() => { setPage(0) }, [selectedDate])
+  useEffect(() => { setPage(0) }, [search])
 
-  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
-  const pageRows   = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? records.filter(r =>
+        r.userName.toLowerCase().includes(q) ||
+        r.assignedVehicleNumber?.toLowerCase().includes(q)
+      )
+    : records
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageRows   = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   function fmtTime(iso: string | undefined) {
     if (!iso) return '—'
@@ -1016,8 +1025,8 @@ function DutyTimesTab({
     } catch { return '—' }
   }
 
-  const markedOutCount = records.filter(r => r.markedOutAt).length
-  const onDutyCount    = records.length - markedOutCount
+  const markedOutCount = filtered.filter(r => r.markedOutAt).length
+  const onDutyCount    = filtered.length - markedOutCount
 
   return (
     <div className="space-y-4">
@@ -1080,9 +1089,16 @@ function DutyTimesTab({
 
       {/* Table */}
       <div className="border rounded-xl bg-white overflow-hidden">
-        <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">Duty Times — {selectedDate}</h2>
-          <div className="flex items-center gap-2">
+        <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-gray-700 shrink-0">Duty Times — {selectedDate}</h2>
+          <input
+            type="text"
+            placeholder="Search by name or vehicle no…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 max-w-xs text-xs border rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-feros-navy/30 bg-white"
+          />
+          <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
               className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-white">Prev</button>
             <span className="text-xs text-gray-500">{page + 1} / {totalPages}</span>
@@ -1093,9 +1109,9 @@ function DutyTimesTab({
 
         {isLoading ? (
           <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
-        ) : records.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-400">
-            No attendance records for this date
+            {q ? `No results for "${search}"` : 'No attendance records for this date'}
           </div>
         ) : (
           <div className="overflow-auto max-h-[calc(100vh-22rem)]">
