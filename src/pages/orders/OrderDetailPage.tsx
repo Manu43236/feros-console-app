@@ -1188,7 +1188,7 @@ export function OrderDetailPage() {
 
   const role         = useAuthStore(s => s.role)
   const saSession    = useAuthStore(s => s.saSession)
-  const isSuperAdmin = role === 'SUPER_ADMIN' || saSession !== null
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || saSession !== null
   const companyName  = useAuthStore(s => s.companyName) ?? ''
   const isSupervisor = role === 'SUPERVISOR'
   const [pdfLoading, setPdfLoading] = useState(false)

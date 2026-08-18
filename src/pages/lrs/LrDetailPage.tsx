@@ -601,7 +601,7 @@ export function LrDetailPage() {
   const id = parseInt(lrId!)
   const role = useAuthStore(s => s.role)
   const saSession = useAuthStore(s => s.saSession)
-  const isSuperAdmin = role === 'SUPER_ADMIN' || saSession !== null
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || saSession !== null
 
   const [tab, setTab]               = useState<'checkposts' | 'charges' | 'expenses'>('checkposts')
   const [dialog, setDialog]         = useState<ActiveDialog>(null)
