@@ -15,9 +15,8 @@ Font.register({
   ],
 })
 
-const NAVY  = '#1E3A5F'
-const GREEN = '#15803d'
-const BLUE  = '#1d4ed8'
+const NAVY = '#1E3A5F'
+const BLUE = '#1d4ed8'
 
 const S = StyleSheet.create({
   page:        { fontFamily: 'NotoSans', fontSize: 8, color: '#000', backgroundColor: '#fff', padding: 22 },
