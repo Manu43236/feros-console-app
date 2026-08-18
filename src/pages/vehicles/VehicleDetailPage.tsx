@@ -23,8 +23,8 @@ import {
   ArrowLeft, Truck, Shield, MapPin, Fuel,
   AlertTriangle, Pencil, Power, Camera,
   ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Paperclip, Trash2,
-  Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, Info, CircleDot, Gauge, Users,
-  Clock, Wifi,
+  Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, CircleDot, Gauge, Users,
+  Clock, Wifi, FileText, Upload, ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -840,6 +840,74 @@ function CreateServiceDialog({
   )
 }
 
+// ── service doc actions (inline on card) ───────────────────────────────────────
+function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
+  const qc = useQueryClient()
+  const estRef  = useRef<HTMLInputElement>(null)
+  const billRef = useRef<HTMLInputElement>(null)
+  const [uploadingEst,  setUploadingEst]  = useState(false)
+  const [uploadingBill, setUploadingBill] = useState(false)
+
+  async function upload(type: 'estimate' | 'bill', file: File) {
+    const set = type === 'estimate' ? setUploadingEst : setUploadingBill
+    const fn  = type === 'estimate' ? vehicleServicesApi.uploadEstimateDoc : vehicleServicesApi.uploadBillDoc
+    set(true)
+    try {
+      await fn(s.id, file)
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+      toast.success(`${type === 'estimate' ? 'Estimate' : 'Bill'} uploaded`)
+    } catch { toast.error('Upload failed') }
+    finally { set(false) }
+  }
+
+  return (
+    <div className="flex items-center gap-2 border-t border-gray-50 px-4 py-2 bg-gray-50/50">
+      <input ref={estRef}  type="file" accept="image/*,.pdf" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) upload('estimate', f); e.target.value = '' }} />
+      <input ref={billRef} type="file" accept="image/*,.pdf" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) upload('bill', f); e.target.value = '' }} />
+
+      <span className="text-xs text-gray-400 font-medium mr-1">Docs:</span>
+
+      {/* Estimate */}
+      {s.estimateDocUrl ? (
+        <a href={s.estimateDocUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+          <ExternalLink size={11} /> Estimate
+        </a>
+      ) : (
+        <button onClick={() => estRef.current?.click()} disabled={uploadingEst}
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
+          <Upload size={11} /> {uploadingEst ? 'Uploading…' : 'Estimate'}
+        </button>
+      )}
+
+      <span className="text-gray-200">|</span>
+
+      {/* Bill */}
+      {s.billDocUrl ? (
+        <a href={s.billDocUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+          <ExternalLink size={11} /> Bill
+        </a>
+      ) : (
+        <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
+          <Upload size={11} /> {uploadingBill ? 'Uploading…' : 'Bill'}
+        </button>
+      )}
+
+      <span className="text-gray-200">|</span>
+
+      {/* PDF */}
+      <a href={`/vehicle-services/${s.id}/pdf`} target="_blank" rel="noopener noreferrer"
+        className="flex items-center gap-1 text-xs text-feros-navy hover:underline">
+        <FileText size={11} /> PDF
+      </a>
+    </div>
+  )
+}
+
 // ── complete service dialog ────────────────────────────────────────────────────
 function CompleteServiceDialog({ service, currentOdometer, open, onClose }: { service: VehicleServiceRecord | null; currentOdometer?: number; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
@@ -1359,11 +1427,6 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
                             </Button>
                           </>
                         )}
-                        <button onClick={() => setDetailService(s)}
-                          className="p-1.5 text-gray-300 hover:text-feros-navy rounded transition-colors"
-                          title="View details">
-                          <Info size={14} />
-                        </button>
                         {!isSupervisor && s.status === 'OPEN' && (
                           <button onClick={() => setDeleteId(s.id)}
                             className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors">
@@ -1377,6 +1440,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
                   {s.status === 'IN_PROGRESS' && (
                     <InProgressNotesSection service={s} onSave={(notes) => notesMutation.mutate({ id: s.id, notes })} saving={notesMutation.isPending} />
                   )}
+                  <ServiceDocActions s={s} />
                 </div>
               ))}
             </div>
