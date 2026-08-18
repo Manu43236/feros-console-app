@@ -1,4 +1,5 @@
 import { getApiError } from '@/lib/apiError'
+import { compressImage } from '@/lib/imageCompress'
 import { useAuthStore } from '@/store/authStore'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -853,7 +854,7 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
     const fn  = type === 'estimate' ? vehicleServicesApi.uploadEstimateDoc : vehicleServicesApi.uploadBillDoc
     set(true)
     try {
-      await fn(s.id, file)
+      await fn(s.id, await compressImage(file))
       qc.invalidateQueries({ queryKey: ['vehicle-services'] })
       toast.success(`${type === 'estimate' ? 'Estimate' : 'Bill'} uploaded`)
     } catch { toast.error('Upload failed') }
@@ -956,7 +957,7 @@ function CompleteServiceDialog({ service, currentOdometer, open, onClose }: { se
     if (!service) return
     setUploadingBill(true)
     try {
-      const res = await vehicleServicesApi.uploadBillDoc(service.id, file)
+      const res = await vehicleServicesApi.uploadBillDoc(service.id, await compressImage(file))
       setBillDocUrl(res.data?.billDocUrl)
       toast.success('Bill document uploaded')
     } catch {
