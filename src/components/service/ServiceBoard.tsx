@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Wrench, AlertTriangle, CheckCircle2, Clock, User, ChevronDown, ChevronUp, Plus, UserCheck,
-  MapPin, Calendar, StickyNote, Store, Eye,
+  MapPin, Calendar, StickyNote, Store, IndianRupee, Upload, ExternalLink, FileImage, Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -20,16 +20,19 @@ export interface BoardPart {
   status: 'REQUESTED' | 'APPROVED' | 'REJECTED'
 }
 export interface BoardTask {
-  id: number; displayName: string; status: ServiceTaskStatus
+  id: number; displayName: string; status: ServiceTaskStatus; cost?: number
   assignedMechanicId?: number | null; assignedMechanicName?: string | null
   mechanicStartedAt?: string | null; mechanicClosedAt?: string | null
   parts?: BoardPart[]
 }
 export interface BoardService {
   id: number; serviceNumber?: string; assetName: string
-  status: string; serviceTypeLabel?: string; tasks: BoardTask[]
+  status: string; serviceTypeLabel?: string; serviceType?: string; tasks: BoardTask[]
   serviceDate?: string; triggeredBy?: string
   vendorName?: string; location?: string; notes?: string
+  estimatedCost?: number; completedCost?: number; totalCost?: number
+  estimateDocUrl?: string; billDocUrl?: string
+  vendorItems?: Array<{ id: number; description: string; cost?: number }>
 }
 export interface BoardBreakdown {
   id: number; assetId: number; assetName: string
@@ -51,7 +54,8 @@ export interface ServiceBoardConfig {
   onComplete: (serviceId: number, body: { completedDate: string; meterReading?: number }) => Promise<unknown>
   onLogService: (b: BoardBreakdown) => void
   onCreateGeneralService?: () => void
-  onViewDetails?: (serviceId: number) => void
+  onUploadDoc?: (serviceId: number, type: 'estimate' | 'bill', file: File) => Promise<void>
+  onOpenPdf?: (serviceId: number) => void
   onChanged: () => void
   reportBreakdownSlot?: React.ReactNode
 }
@@ -286,6 +290,127 @@ function TaskRow({ task, serviceId, cfg }: { task: BoardTask; serviceId: number;
 }
 
 // ── Service Card ────────────────────────────────────────────────────────────────
+function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: ServiceBoardConfig }) {
+  const estimateRef = useRef<HTMLInputElement>(null)
+  const billRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState<'estimate' | 'bill' | null>(null)
+
+  async function upload(type: 'estimate' | 'bill', file: File) {
+    if (!cfg.onUploadDoc) return
+    setUploading(type)
+    try { await cfg.onUploadDoc(service.id, type, file) } finally { setUploading(null) }
+  }
+
+  const isThirdParty = service.serviceType === 'THIRD_PARTY' || service.serviceType === 'OEM_CENTER'
+  const totalVendorCost = (service.vendorItems ?? []).reduce((s, i) => s + (i.cost ?? 0), 0)
+  const totalTaskCost = service.tasks.reduce((s, t) => s + (t.cost ?? 0), 0)
+  const hasAnyCost = (service.estimatedCost ?? 0) > 0 || totalVendorCost > 0 || totalTaskCost > 0 || (service.completedCost ?? 0) > 0
+
+  function SmallDoc({ label, url, type, inputRef }: { label: string; url?: string; type: 'estimate' | 'bill'; inputRef: React.RefObject<HTMLInputElement | null> }) {
+    const isImg = url && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url)
+    return (
+      <div className="border border-gray-100 rounded-lg p-2.5 space-y-1.5">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+          <FileImage size={10} /> {label}
+        </p>
+        {url ? (
+          <>
+            {isImg
+              ? <img src={url} alt={label} className="w-full rounded max-h-32 object-contain bg-gray-50 cursor-pointer" onClick={() => window.open(url, '_blank')} />
+              : <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink size={10} /> View {label}</a>
+            }
+            {cfg.onUploadDoc && (
+              <button disabled={uploading === type} onClick={() => inputRef.current?.click()}
+                className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-0.5">
+                <Upload size={9} /> {uploading === type ? 'Uploading…' : 'Replace'}
+              </button>
+            )}
+          </>
+        ) : cfg.onUploadDoc ? (
+          <button disabled={uploading === type} onClick={() => inputRef.current?.click()}
+            className="w-full border-2 border-dashed border-gray-200 rounded py-2 text-[10px] text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-1">
+            <Upload size={10} />{uploading === type ? 'Uploading…' : `Upload ${label}`}
+          </button>
+        ) : (
+          <p className="text-[10px] text-gray-300">Not uploaded</p>
+        )}
+        <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) upload(type, f); e.target.value = '' }} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-4 pt-2 pb-3 border-t border-gray-100 space-y-3">
+      {/* Cost breakdown */}
+      {hasAnyCost && (
+        <div className="space-y-1">
+          {(service.estimatedCost ?? 0) > 0 && (
+            <div className="flex justify-between text-xs text-gray-600">
+              <span>Service Labor Charges</span>
+              <span className="flex items-center gap-0.5"><IndianRupee size={10} />{service.estimatedCost!.toLocaleString('en-IN')}</span>
+            </div>
+          )}
+          {isThirdParty && totalVendorCost > 0 && (
+            <div className="flex justify-between text-xs text-gray-600">
+              <span>Parts / Items (Vendor Quote)</span>
+              <span className="flex items-center gap-0.5"><IndianRupee size={10} />{totalVendorCost.toLocaleString('en-IN')}</span>
+            </div>
+          )}
+          {totalTaskCost > 0 && (
+            <div className="flex justify-between text-xs text-gray-600">
+              <span>Tasks Cost</span>
+              <span className="flex items-center gap-0.5"><IndianRupee size={10} />{totalTaskCost.toLocaleString('en-IN')}</span>
+            </div>
+          )}
+          {(service.totalCost ?? 0) > 0 && (
+            <div className="flex justify-between text-xs font-semibold text-gray-800 border-t border-gray-100 pt-1">
+              <span>Total Est. Cost</span>
+              <span className="flex items-center gap-0.5 text-green-700"><IndianRupee size={10} />{service.totalCost!.toLocaleString('en-IN')}</span>
+            </div>
+          )}
+          {(service.completedCost ?? 0) > 0 && (
+            <div className="flex justify-between text-xs font-semibold text-blue-700">
+              <span>Actual Bill</span>
+              <span className="flex items-center gap-0.5"><IndianRupee size={10} />{service.completedCost!.toLocaleString('en-IN')}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Vendor quote items */}
+      {isThirdParty && (service.vendorItems ?? []).length > 0 && (
+        <div className="space-y-0.5">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Vendor Quote Items</p>
+          {service.vendorItems!.map(item => (
+            <div key={item.id} className="flex justify-between text-xs text-gray-600 py-0.5 border-b border-gray-50 last:border-0">
+              <span>{item.description}</span>
+              {item.cost != null && <span className="flex items-center gap-0.5 shrink-0 ml-2"><IndianRupee size={9} />{item.cost.toLocaleString('en-IN')}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Documents */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Documents</p>
+          {cfg.onOpenPdf && (
+            <button onClick={() => cfg.onOpenPdf!(service.id)}
+              className="flex items-center gap-1 text-[10px] text-feros-navy border border-feros-navy/30 rounded px-2 py-0.5 hover:bg-feros-navy/5">
+              <Download size={9} /> PDF
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <SmallDoc label="Estimate" url={service.estimateDocUrl} type="estimate" inputRef={estimateRef} />
+          <SmallDoc label="Final Bill" url={service.billDocUrl} type="bill" inputRef={billRef} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ServiceCard({ service, cfg, isBreakdownService = false }: { service: BoardService; cfg: ServiceBoardConfig; isBreakdownService?: boolean; }) {
   const [expanded, setExpanded] = useState(true)
   const [completeOpen, setCompleteOpen] = useState(false)
@@ -303,11 +428,6 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
           {service.serviceTypeLabel && <span className="text-xs text-gray-400 capitalize">{service.serviceTypeLabel}</span>}
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-3" onClick={e => e.stopPropagation()}>
-          {cfg.onViewDetails && (
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => cfg.onViewDetails!(service.id)}>
-              <Eye size={11} /> Details
-            </Button>
-          )}
           {service.status !== 'COMPLETED' && (
             <>
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAddTaskOpen(true)}><Plus size={11} /> Add Task</Button>
@@ -351,10 +471,11 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
               )}
             </div>
           )}
-          <div className="px-4 pb-3">
-            {service.tasks.length === 0 ? <p className="text-xs text-gray-400 py-3">No tasks on this service</p>
+          <div className="px-4 py-3">
+            {service.tasks.length === 0 ? <p className="text-xs text-gray-400 py-1">No tasks on this service</p>
               : service.tasks.map(task => <TaskRow key={task.id} task={task} serviceId={service.id} cfg={cfg} />)}
           </div>
+          <ServiceInlineDocs service={service} cfg={cfg} />
         </div>
       )}
       {completeOpen && <CompleteServiceDialog serviceId={service.id} cfg={cfg} onClose={() => setCompleteOpen(false)} />}

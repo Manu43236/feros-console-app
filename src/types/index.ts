@@ -1606,6 +1606,7 @@ export interface SmTaskItem {
   taskId: number
   displayName: string
   status: ServiceTaskStatus
+  cost?: number
   assignedMechanicId?: number
   assignedMechanicName?: string
   mechanicStartedAt?: string
@@ -1625,6 +1626,12 @@ export interface SmServiceItem {
   vendorName?: string
   location?: string
   notes?: string
+  estimatedCost?: number
+  completedCost?: number
+  totalCost?: number
+  estimateDocUrl?: string
+  billDocUrl?: string
+  vendorItems?: Array<{ id: number; description: string; cost?: number }>
   tasks: SmTaskItem[]
 }
 

@@ -6,9 +6,9 @@ import { serviceManagerApi } from '@/api/serviceManager'
 import { servicePartsApi, sparePartsApi } from '@/api/inventory'
 import { vehicleServicesApi, vehiclesApi } from '@/api/vehicles'
 import { globalMastersApi } from '@/api/masters'
+import { compressImage } from '@/lib/imageCompress'
 import { CreateServiceDialog } from '@/components/shared/CreateServiceDialog'
 import { ServiceBoard } from '@/components/service/ServiceBoard'
-import { ServiceDetailModal } from '@/components/shared/ServiceDetailModal'
 import type { BoardBreakdown, BoardService, ServiceBoardConfig } from '@/components/service/ServiceBoard'
 import type { SmServiceItem } from '@/types'
 import { useAuthStore } from '@/store/authStore'
@@ -23,16 +23,24 @@ function svcToBoard(s: SmServiceItem): BoardService {
     serviceNumber: s.serviceNumber,
     assetName: s.vehicleRegistrationNumber,
     status: s.serviceStatus,
+    serviceType: s.serviceType,
     serviceTypeLabel: s.serviceType ? s.serviceType.replace(/_/g, ' ').toLowerCase() : undefined,
     serviceDate: s.serviceDate,
     triggeredBy: s.triggeredBy,
     vendorName: s.vendorName,
     location: s.location,
     notes: s.notes,
+    estimatedCost: s.estimatedCost,
+    completedCost: s.completedCost,
+    totalCost: s.totalCost,
+    estimateDocUrl: s.estimateDocUrl,
+    billDocUrl: s.billDocUrl,
+    vendorItems: s.vendorItems,
     tasks: s.tasks.map(t => ({
       id: t.taskId,
       displayName: t.displayName,
       status: t.status,
+      cost: t.cost,
       assignedMechanicId: t.assignedMechanicId,
       assignedMechanicName: t.assignedMechanicName,
       mechanicStartedAt: t.mechanicStartedAt,
@@ -51,14 +59,6 @@ function VehicleServiceManagerView() {
   const [logService, setLogService] = useState<{ vehicleId: number; vehicleReg: string; breakdownId?: number } | null>(null)
   const [pickingVehicle, setPickingVehicle] = useState(false)
   const [pickedVehicleId, setPickedVehicleId] = useState<number | null>(null)
-  const [detailServiceId, setDetailServiceId] = useState<number | null>(null)
-
-  const { data: detailRes } = useQuery({
-    queryKey: ['vehicle-service', detailServiceId],
-    queryFn: () => vehicleServicesApi.getById(detailServiceId!),
-    enabled: !!detailServiceId,
-  })
-  const detailService = detailRes?.data ?? null
 
   const { data: dashRes } = useQuery({ queryKey: ['sm-dashboard'], queryFn: serviceManagerApi.getDashboard, refetchInterval: 60_000 })
   const { data: techRes } = useQuery({ queryKey: ['sm-technicians'], queryFn: serviceManagerApi.getTechnicians })
@@ -109,7 +109,13 @@ function VehicleServiceManagerView() {
     onComplete: (serviceId, body) => vehicleServicesApi.complete(serviceId, { completedDate: body.completedDate, odometer: body.meterReading }),
     onLogService: (b) => setLogService({ vehicleId: b.assetId, vehicleReg: b.assetName, breakdownId: b.id }),
     onCreateGeneralService: openVehiclePicker,
-    onViewDetails: (id) => setDetailServiceId(id),
+    onUploadDoc: async (serviceId, type, file) => {
+      const compressed = await compressImage(file)
+      const fn = type === 'estimate' ? vehicleServicesApi.uploadEstimateDoc : vehicleServicesApi.uploadBillDoc
+      await fn(serviceId, compressed)
+      qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
+    },
+    onOpenPdf: (id) => window.open(`/vehicle-services/${id}/pdf`, '_blank'),
     onChanged: () => qc.invalidateQueries({ queryKey: ['sm-dashboard'] }),
   }
 
@@ -152,11 +158,6 @@ function VehicleServiceManagerView() {
         />
       )}
 
-      <ServiceDetailModal
-        service={detailService}
-        open={!!detailServiceId}
-        onClose={() => setDetailServiceId(null)}
-      />
     </>
   )
 }
