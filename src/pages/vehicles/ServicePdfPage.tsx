@@ -6,6 +6,7 @@ import {
 import { vehicleServicesApi } from '@/api/vehicles'
 import ferosLogo from '@/assets/feros_solo_logo.png'
 import type { VehicleServiceRecord } from '@/types'
+import { useAuthStore } from '@/store/authStore'
 
 Font.register({
   family: 'NotoSans',
@@ -58,7 +59,7 @@ function inr(v?: number | null) {
   return '₹' + v.toLocaleString('en-IN')
 }
 
-function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
+function ServiceDoc({ s, tenantLogoUrl }: { s: VehicleServiceRecord; tenantLogoUrl?: string | null }) {
   const totalTaskCost   = s.tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0)
   const totalVendorCost = (s.vendorItems ?? []).reduce((sum, i) => sum + (i.cost ?? 0), 0)
   const isCompleted     = s.status === 'COMPLETED'
@@ -71,9 +72,17 @@ function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
     <Document title={`Service ${s.serviceNumber}`}>
       <Page size="A4" style={S.page}>
 
+        {/* FEROS watermark — centered on full page */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <Image src={ferosLogo} style={{ width: 320, opacity: 0.08 }} />
+        </View>
+
         {/* Header */}
         <View style={S.header}>
-          <Image src={ferosLogo} style={S.logo} />
+          {tenantLogoUrl
+            ? <Image src={tenantLogoUrl} style={S.logo} />
+            : <Image src={ferosLogo} style={S.logo} />
+          }
           <View>
             <Text style={S.title}>Service Cost Est.</Text>
             <Text style={S.subtitle}>{s.serviceNumber} · {s.vehicleRegistrationNumber}</Text>
@@ -196,6 +205,7 @@ function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
 
 export function ServicePdfPage() {
   const { id } = useParams<{ id: string }>()
+  const logoUrl = useAuthStore(s => s.logoUrl)
   const { data, isLoading, isError } = useQuery({
     queryKey: ['vehicle-service', Number(id)],
     queryFn: () => vehicleServicesApi.getById(Number(id)),
@@ -207,7 +217,7 @@ export function ServicePdfPage() {
 
   return (
     <PDFViewer style={{ width: '100%', height: '100vh', border: 'none' }}>
-      <ServiceDoc s={data.data} />
+      <ServiceDoc s={data.data} tenantLogoUrl={logoUrl} />
     </PDFViewer>
   )
 }
