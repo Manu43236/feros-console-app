@@ -335,7 +335,7 @@ export function CreateServiceDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Estimated Cost ₹ <span className="text-gray-400 font-normal">(optional — quote from vendor)</span></Label>
+            <Label>Service Labor Charges ₹ <span className="text-gray-400 font-normal">(optional — labor/service fee from vendor)</span></Label>
             <Input type="number" placeholder="0" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} />
           </div>
 

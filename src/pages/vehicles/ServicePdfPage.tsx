@@ -64,7 +64,8 @@ function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
   const isCompleted     = s.status === 'COMPLETED'
   const isThirdParty    = s.serviceType === 'THIRD_PARTY' || s.serviceType === 'OEM_CENTER'
   const estimationTotal = (s.estimatedCost ?? 0) + totalTaskCost + totalVendorCost
-  const displayTotal    = s.totalCost ?? (s.completedCost ?? estimationTotal)
+  // backend now includes vendor items in totalCost; use completedCost as final when available
+  const displayTotal    = isCompleted && s.completedCost != null ? s.completedCost : (s.totalCost ?? estimationTotal)
 
   return (
     <Document title={`Service ${s.serviceNumber}`}>
@@ -142,7 +143,7 @@ function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
           <View style={S.compBox}>
             {/* Breakdown rows */}
             <View style={{ padding: '5pt 6pt', borderBottom: '0.5pt solid #eee', flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 7.5, color: '#555' }}>Service Charges (Estimated)</Text>
+              <Text style={{ fontSize: 7.5, color: '#555' }}>Service Labor Charges</Text>
               <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{s.estimatedCost != null ? inr(s.estimatedCost) : '₹0.00'}</Text>
             </View>
             {isThirdParty && (
@@ -160,7 +161,7 @@ function ServiceDoc({ s }: { s: VehicleServiceRecord }) {
             {isCompleted && (
               <View style={S.compRow}>
                 <View style={S.compCell}>
-                  <Text style={S.compLabel}>ESTIMATION TOTAL</Text>
+                  <Text style={S.compLabel}>EST. TOTAL (LABOR + PARTS + TASKS)</Text>
                   <Text style={[S.compVal, { color: NAVY }]}>
                     {inr(estimationTotal)}
                   </Text>

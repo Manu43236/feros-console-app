@@ -717,7 +717,7 @@ function CreateServiceDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Estimated Cost ₹ <span className="text-gray-400 font-normal">(optional — quote from vendor)</span></Label>
+            <Label>Service Labor Charges ₹ <span className="text-gray-400 font-normal">(optional — labor/service fee from vendor)</span></Label>
             <Input type="number" placeholder="0" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} />
           </div>
 
@@ -955,12 +955,20 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
         onChange={e => { const f = e.target.files?.[0]; if (f) upload('bill', f); e.target.value = '' }} />
 
       {/* Cost amounts */}
-      <div className="flex items-center gap-4 text-xs">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <span className="text-gray-500">
-          Estimation: <span className="font-semibold text-gray-700">
+          Service Labor Charges: <span className="font-semibold text-gray-700">
             {s.estimatedCost != null ? `₹${s.estimatedCost.toLocaleString('en-IN')}` : '—'}
           </span>
         </span>
+        {(() => {
+          const tasksCost = s.tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0)
+          return tasksCost > 0 ? (
+            <span className="text-gray-500">
+              Tasks Cost: <span className="font-semibold text-gray-700">₹{tasksCost.toLocaleString('en-IN')}</span>
+            </span>
+          ) : null
+        })()}
         {isCompleted && (
           <span className="text-gray-500">
             Actual Bill: <span className="font-semibold text-blue-700">
@@ -1550,8 +1558,8 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
                           )}
                           {s.location && <span>📍 {s.location}</span>}
                           {(s.totalCost ?? 0) > 0 && (
-                            <span className="flex items-center gap-1 text-green-600 font-medium">
-                              <IndianRupee size={11} />{s.totalCost?.toLocaleString('en-IN')}
+                            <span className="flex items-center gap-1 text-green-700 font-medium">
+                              Est Service Cost: <IndianRupee size={11} />{s.totalCost?.toLocaleString('en-IN')}
                             </span>
                           )}
                         </div>
