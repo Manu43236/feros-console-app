@@ -244,7 +244,7 @@ function AddTaskDialog({ serviceId, cfg, onClose }: { serviceId: number; cfg: Se
 }
 
 // ── Task Row ────────────────────────────────────────────────────────────────────
-function TaskRow({ task, serviceId, cfg }: { task: BoardTask; serviceId: number; cfg: ServiceBoardConfig }) {
+function TaskRow({ task, serviceId, cfg, isExternal }: { task: BoardTask; serviceId: number; cfg: ServiceBoardConfig; isExternal?: boolean }) {
   const [assignOpen, setAssignOpen] = useState(false)
   const [partOpen, setPartOpen] = useState(false)
   return (
@@ -255,12 +255,14 @@ function TaskRow({ task, serviceId, cfg }: { task: BoardTask; serviceId: number;
           <span className="text-sm text-gray-800 font-medium truncate">{task.displayName}</span>
           {task.assignedMechanicName && <span className="flex items-center gap-1 text-xs text-gray-400"><User size={11} />{task.assignedMechanicName}</span>}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0 ml-3">
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 px-2" onClick={() => setPartOpen(true)}><Plus size={11} /> Part</Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 px-2 border-feros-navy/30 text-feros-navy hover:bg-feros-navy/5" onClick={() => setAssignOpen(true)}>
-            <UserCheck size={11} />{task.assignedMechanicId ? 'Reassign' : 'Assign'}
-          </Button>
-        </div>
+        {!isExternal && (
+          <div className="flex items-center gap-1.5 shrink-0 ml-3">
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1 px-2" onClick={() => setPartOpen(true)}><Plus size={11} /> Part</Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1 px-2 border-feros-navy/30 text-feros-navy hover:bg-feros-navy/5" onClick={() => setAssignOpen(true)}>
+              <UserCheck size={11} />{task.assignedMechanicId ? 'Reassign' : 'Assign'}
+            </Button>
+          </div>
+        )}
       </div>
       {(task.mechanicStartedAt || task.mechanicClosedAt) && (
         <div className="mt-1.5 flex items-center gap-3 text-xs flex-wrap">
@@ -416,6 +418,7 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
   const [completeOpen, setCompleteOpen] = useState(false)
   const [addTaskOpen, setAddTaskOpen] = useState(false)
   const allClosed = service.tasks.length > 0 && service.tasks.every(t => t.status === 'MECHANIC_CLOSED' || t.status === 'COMPLETED')
+  const isExternal = service.serviceType === 'THIRD_PARTY' || service.serviceType === 'OEM_CENTER'
   return (
     <div className={cn('bg-white rounded-xl border overflow-hidden', isBreakdownService && 'border-l-4 border-l-orange-300')}>
       <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setExpanded(e => !e)}>
@@ -430,7 +433,9 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
         <div className="flex items-center gap-2 shrink-0 ml-3" onClick={e => e.stopPropagation()}>
           {service.status !== 'COMPLETED' && (
             <>
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAddTaskOpen(true)}><Plus size={11} /> Add Task</Button>
+              {!isExternal && (
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAddTaskOpen(true)}><Plus size={11} /> Add Task</Button>
+              )}
               <Button size="sm" variant={allClosed ? 'default' : 'outline'} className={cn('h-7 text-xs', allClosed && 'bg-green-600 hover:bg-green-700 border-green-600')} onClick={() => setCompleteOpen(true)}>
                 <CheckCircle2 size={12} className="mr-1" />Complete
               </Button>
@@ -473,7 +478,7 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
           )}
           <div className="px-4 py-3">
             {service.tasks.length === 0 ? <p className="text-xs text-gray-400 py-1">No tasks on this service</p>
-              : service.tasks.map(task => <TaskRow key={task.id} task={task} serviceId={service.id} cfg={cfg} />)}
+              : service.tasks.map(task => <TaskRow key={task.id} task={task} serviceId={service.id} cfg={cfg} isExternal={isExternal} />)}
           </div>
           <ServiceInlineDocs service={service} cfg={cfg} />
         </div>
