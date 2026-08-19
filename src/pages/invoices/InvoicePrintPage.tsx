@@ -301,7 +301,7 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
           PAGE 2 — ANNEXURE
       ══════════════════════════════════════════════════════════════════ */}
       {lrItems.length > 0 && (
-        <div className="annexure-page" style={{ marginTop: 32, pageBreakBefore: 'always', breakBefore: 'page', position: 'relative' }}>
+        <div className="annexure-page" style={{ pageBreakBefore: 'always', breakBefore: 'page', position: 'relative', minHeight: '281mm' }}>
           {/* Watermark */}
           <img src={ferosLogo} alt="" aria-hidden="true" style={{
             position: 'absolute', top: '50%', left: '50%',
