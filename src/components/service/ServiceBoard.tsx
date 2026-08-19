@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Wrench, AlertTriangle, CheckCircle2, Clock, User, ChevronDown, ChevronUp, Plus, UserCheck,
+  MapPin, Calendar, StickyNote, Store,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,8 @@ export interface BoardTask {
 export interface BoardService {
   id: number; serviceNumber?: string; assetName: string
   status: string; serviceTypeLabel?: string; tasks: BoardTask[]
+  serviceDate?: string; triggeredBy?: string
+  vendorName?: string; location?: string; notes?: string
 }
 export interface BoardBreakdown {
   id: number; assetId: number; assetName: string
@@ -310,9 +313,42 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
         </div>
       </div>
       {expanded && (
-        <div className="px-4 pb-3 border-t border-gray-100">
-          {service.tasks.length === 0 ? <p className="text-xs text-gray-400 py-3">No tasks on this service</p>
-            : service.tasks.map(task => <TaskRow key={task.id} task={task} serviceId={service.id} cfg={cfg} />)}
+        <div className="border-t border-gray-100">
+          {/* Context strip — location, vendor, date, notes */}
+          {(service.location || service.vendorName || service.serviceDate || service.notes || service.triggeredBy) && (
+            <div className="px-4 py-2 bg-gray-50 flex flex-wrap gap-x-4 gap-y-1 border-b border-gray-100">
+              {service.triggeredBy && (
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Wrench size={10} className="shrink-0" />
+                  {service.triggeredBy.replace(/_/g, ' ')}
+                </span>
+              )}
+              {service.serviceDate && (
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Calendar size={10} className="shrink-0" />{fmtDate(service.serviceDate)}
+                </span>
+              )}
+              {service.location && (
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <MapPin size={10} className="shrink-0" />{service.location}
+                </span>
+              )}
+              {service.vendorName && (
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Store size={10} className="shrink-0" />{service.vendorName}
+                </span>
+              )}
+              {service.notes && (
+                <span className="flex items-center gap-1 text-xs text-gray-500 w-full">
+                  <StickyNote size={10} className="shrink-0" />{service.notes}
+                </span>
+              )}
+            </div>
+          )}
+          <div className="px-4 pb-3">
+            {service.tasks.length === 0 ? <p className="text-xs text-gray-400 py-3">No tasks on this service</p>
+              : service.tasks.map(task => <TaskRow key={task.id} task={task} serviceId={service.id} cfg={cfg} />)}
+          </div>
         </div>
       )}
       {completeOpen && <CompleteServiceDialog serviceId={service.id} cfg={cfg} onClose={() => setCompleteOpen(false)} />}

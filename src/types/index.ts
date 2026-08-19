@@ -1620,6 +1620,11 @@ export interface SmServiceItem {
   vehicleRegistrationNumber: string
   serviceStatus: ServiceStatus
   serviceType: VehicleServiceType
+  serviceDate?: string
+  triggeredBy?: ServiceTriggeredBy
+  vendorName?: string
+  location?: string
+  notes?: string
   tasks: SmTaskItem[]
 }
 

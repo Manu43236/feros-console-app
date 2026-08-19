@@ -23,6 +23,11 @@ function svcToBoard(s: SmServiceItem): BoardService {
     assetName: s.vehicleRegistrationNumber,
     status: s.serviceStatus,
     serviceTypeLabel: s.serviceType ? s.serviceType.replace(/_/g, ' ').toLowerCase() : undefined,
+    serviceDate: s.serviceDate,
+    triggeredBy: s.triggeredBy,
+    vendorName: s.vendorName,
+    location: s.location,
+    notes: s.notes,
     tasks: s.tasks.map(t => ({
       id: t.taskId,
       displayName: t.displayName,
