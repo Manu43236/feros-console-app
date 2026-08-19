@@ -8,6 +8,7 @@ import { vehicleServicesApi, vehiclesApi } from '@/api/vehicles'
 import { globalMastersApi } from '@/api/masters'
 import { CreateServiceDialog } from '@/components/shared/CreateServiceDialog'
 import { ServiceBoard } from '@/components/service/ServiceBoard'
+import { ServiceDetailModal } from '@/components/shared/ServiceDetailModal'
 import type { BoardBreakdown, BoardService, ServiceBoardConfig } from '@/components/service/ServiceBoard'
 import type { SmServiceItem } from '@/types'
 import { useAuthStore } from '@/store/authStore'
@@ -50,6 +51,14 @@ function VehicleServiceManagerView() {
   const [logService, setLogService] = useState<{ vehicleId: number; vehicleReg: string; breakdownId?: number } | null>(null)
   const [pickingVehicle, setPickingVehicle] = useState(false)
   const [pickedVehicleId, setPickedVehicleId] = useState<number | null>(null)
+  const [detailServiceId, setDetailServiceId] = useState<number | null>(null)
+
+  const { data: detailRes } = useQuery({
+    queryKey: ['vehicle-service', detailServiceId],
+    queryFn: () => vehicleServicesApi.getById(detailServiceId!),
+    enabled: !!detailServiceId,
+  })
+  const detailService = detailRes?.data ?? null
 
   const { data: dashRes } = useQuery({ queryKey: ['sm-dashboard'], queryFn: serviceManagerApi.getDashboard, refetchInterval: 60_000 })
   const { data: techRes } = useQuery({ queryKey: ['sm-technicians'], queryFn: serviceManagerApi.getTechnicians })
@@ -100,6 +109,7 @@ function VehicleServiceManagerView() {
     onComplete: (serviceId, body) => vehicleServicesApi.complete(serviceId, { completedDate: body.completedDate, odometer: body.meterReading }),
     onLogService: (b) => setLogService({ vehicleId: b.assetId, vehicleReg: b.assetName, breakdownId: b.id }),
     onCreateGeneralService: openVehiclePicker,
+    onViewDetails: (id) => setDetailServiceId(id),
     onChanged: () => qc.invalidateQueries({ queryKey: ['sm-dashboard'] }),
   }
 
@@ -141,6 +151,12 @@ function VehicleServiceManagerView() {
           onSuccess={() => qc.invalidateQueries({ queryKey: ['sm-dashboard'] })}
         />
       )}
+
+      <ServiceDetailModal
+        service={detailService}
+        open={!!detailServiceId}
+        onClose={() => setDetailServiceId(null)}
+      />
     </>
   )
 }

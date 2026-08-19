@@ -192,7 +192,9 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
     },
   ]
 
-  const totalTaskCost = service.tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0)
+  const totalTaskCost   = service.tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0)
+  const totalVendorCost = (service.vendorItems ?? []).reduce((sum, i) => sum + (i.cost ?? 0), 0)
+  const isThirdParty    = service.serviceType === 'THIRD_PARTY' || service.serviceType === 'OEM_CENTER'
 
   function openPdf() {
     window.open(`/vehicle-services/${service!.id}/pdf`, '_blank')
@@ -356,15 +358,23 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
                 })}
                 {service.estimatedCost != null && service.estimatedCost > 0 && (
                   <div className="flex justify-between pt-1 text-sm text-gray-700 border-t border-gray-100">
-                    <span>Estimated Cost</span>
+                    <span>Service Labor Charges</span>
                     <span className="flex items-center gap-0.5">
                       <IndianRupee size={11} />{service.estimatedCost.toLocaleString('en-IN')}
                     </span>
                   </div>
                 )}
+                {isThirdParty && totalVendorCost > 0 && (
+                  <div className="flex justify-between pt-1 text-sm text-gray-700 border-t border-gray-100">
+                    <span>Parts / Items (Vendor Quote)</span>
+                    <span className="flex items-center gap-0.5">
+                      <IndianRupee size={11} />{totalVendorCost.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                )}
                 {service.completedCost != null && service.completedCost > 0 && (
                   <div className="flex justify-between pt-1 text-sm text-blue-700 border-t border-gray-100">
-                    <span className="font-medium">Completed Cost (Bill)</span>
+                    <span className="font-medium">Actual Bill</span>
                     <span className="flex items-center gap-0.5 font-medium">
                       <IndianRupee size={11} />{service.completedCost.toLocaleString('en-IN')}
                     </span>
@@ -375,10 +385,31 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
                     <span>Total Cost</span>
                     <span className="flex items-center gap-0.5 text-green-700">
                       <IndianRupee size={12} />
-                      {(service.totalCost ?? totalTaskCost + (service.estimatedCost ?? 0)).toLocaleString('en-IN')}
+                      {(service.totalCost ?? (totalTaskCost + (service.estimatedCost ?? 0) + totalVendorCost)).toLocaleString('en-IN')}
                     </span>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Vendor Quote Items ── */}
+          {isThirdParty && (service.vendorItems ?? []).length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Package size={12} /> Vendor Quote Items
+              </p>
+              <div className="space-y-1">
+                {(service.vendorItems ?? []).map(item => (
+                  <div key={item.id} className="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0">
+                    <span className="text-gray-700">{item.description}</span>
+                    {item.cost != null && (
+                      <span className="flex items-center gap-0.5 text-gray-600 shrink-0 ml-2">
+                        <IndianRupee size={11} />{item.cost.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Wrench, AlertTriangle, CheckCircle2, Clock, User, ChevronDown, ChevronUp, Plus, UserCheck,
-  MapPin, Calendar, StickyNote, Store,
+  MapPin, Calendar, StickyNote, Store, Eye,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -51,6 +51,7 @@ export interface ServiceBoardConfig {
   onComplete: (serviceId: number, body: { completedDate: string; meterReading?: number }) => Promise<unknown>
   onLogService: (b: BoardBreakdown) => void
   onCreateGeneralService?: () => void
+  onViewDetails?: (serviceId: number) => void
   onChanged: () => void
   reportBreakdownSlot?: React.ReactNode
 }
@@ -285,7 +286,7 @@ function TaskRow({ task, serviceId, cfg }: { task: BoardTask; serviceId: number;
 }
 
 // ── Service Card ────────────────────────────────────────────────────────────────
-function ServiceCard({ service, cfg, isBreakdownService = false }: { service: BoardService; cfg: ServiceBoardConfig; isBreakdownService?: boolean }) {
+function ServiceCard({ service, cfg, isBreakdownService = false }: { service: BoardService; cfg: ServiceBoardConfig; isBreakdownService?: boolean; }) {
   const [expanded, setExpanded] = useState(true)
   const [completeOpen, setCompleteOpen] = useState(false)
   const [addTaskOpen, setAddTaskOpen] = useState(false)
@@ -302,6 +303,11 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
           {service.serviceTypeLabel && <span className="text-xs text-gray-400 capitalize">{service.serviceTypeLabel}</span>}
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-3" onClick={e => e.stopPropagation()}>
+          {cfg.onViewDetails && (
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => cfg.onViewDetails!(service.id)}>
+              <Eye size={11} /> Details
+            </Button>
+          )}
           {service.status !== 'COMPLETED' && (
             <>
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAddTaskOpen(true)}><Plus size={11} /> Add Task</Button>
