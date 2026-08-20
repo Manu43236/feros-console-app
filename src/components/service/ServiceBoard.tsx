@@ -407,10 +407,10 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
               <Input placeholder="Part / item name" value={newItemDesc} autoFocus
                 onChange={e => setNewItemDesc(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addVendorItem() } }}
-                className="w-40 h-7 text-xs" />
+                className="flex-1 min-w-0 h-7 text-xs" />
               <Input placeholder="₹ cost" type="number" min="0" value={newItemCost}
                 onChange={e => setNewItemCost(e.target.value)}
-                className="w-28 h-7 text-xs" />
+                className="w-28 h-7 text-xs shrink-0" />
               <Button type="button" size="sm" className="h-7 bg-feros-navy text-white text-xs px-2 shrink-0"
                 disabled={!newItemDesc.trim() || addingItem} onClick={addVendorItem}>
                 {addingItem ? '…' : 'Add'}

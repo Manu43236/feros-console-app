@@ -1006,10 +1006,10 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
             <div className="flex items-center gap-1.5">
               <input value={newItemDesc} onChange={e => setNewItemDesc(e.target.value)}
                 placeholder="Part / item name" autoFocus
-                className="flex-1 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-feros-navy" />
+                className="flex-1 min-w-0 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-feros-navy" />
               <input value={newItemCost} onChange={e => setNewItemCost(e.target.value)}
                 placeholder="₹ cost" type="number" min="0"
-                className="w-20 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-feros-navy" />
+                className="w-28 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-feros-navy" />
               <button onClick={addItem} disabled={addingItem || !newItemDesc.trim()}
                 className="text-xs bg-feros-navy text-white px-2 py-1 rounded disabled:opacity-50">
                 {addingItem ? '…' : 'Add'}
