@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils'
 import type { BreakdownDuration, BreakdownType, VehicleDocument, VehicleStatusType, VehicleServiceRecord, Breakdown, MasterItem, ServicePart } from '@/types'
 import { VehicleForm } from './VehiclesPage'
 import { ServiceDetailModal } from '@/components/shared/ServiceDetailModal'
+import { CompleteServiceDialog } from '@/components/service/CompleteServiceDialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -1069,113 +1070,6 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
   )
 }
 
-// ── complete service dialog ────────────────────────────────────────────────────
-function CompleteServiceDialog({ service, currentOdometer, open, onClose }: { service: VehicleServiceRecord | null; currentOdometer?: number; open: boolean; onClose: () => void }) {
-  const qc = useQueryClient()
-  const billRef = useRef<HTMLInputElement>(null)
-  const [completedDate, setCompletedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [odometer, setOdometer]           = useState(currentOdometer ? String(currentOdometer) : (service?.odometer?.toString() ?? ''))
-  const [completedCost, setCompletedCost] = useState('')
-  const [uploadingBill, setUploadingBill] = useState(false)
-  const [billDocUrl, setBillDocUrl]       = useState<string | undefined>(undefined)
-
-  function handleClose() {
-    setCompletedDate(format(new Date(), 'yyyy-MM-dd'))
-    setOdometer(currentOdometer ? String(currentOdometer) : (service?.odometer?.toString() ?? ''))
-    setCompletedCost('')
-    setBillDocUrl(undefined)
-    onClose()
-  }
-
-  async function handleBillUpload(file: File) {
-    if (!service) return
-    setUploadingBill(true)
-    try {
-      const res = await vehicleServicesApi.uploadBillDoc(service.id, await compressImage(file))
-      setBillDocUrl(res.data?.billDocUrl)
-      toast.success('Bill document uploaded')
-    } catch {
-      toast.error('Upload failed')
-    } finally {
-      setUploadingBill(false)
-    }
-  }
-
-  const mutation = useMutation({
-    mutationFn: () => vehicleServicesApi.complete(service!.id, {
-      completedDate,
-      odometer: odometer ? Number(odometer) : undefined,
-      completedCost: completedCost ? Number(completedCost) : undefined,
-    }),
-    onSuccess: () => {
-      toast.success('Service marked complete!')
-      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
-      qc.invalidateQueries({ queryKey: ['vehicle-breakdowns-history', service!.vehicleId] })
-      qc.invalidateQueries({ queryKey: ['vehicle', service!.vehicleId] })
-      qc.invalidateQueries({ queryKey: ['vehicles'] })
-      handleClose()
-    },
-    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
-  })
-
-  const billUrl = billDocUrl ?? service?.billDocUrl
-  const isBillImage = billUrl && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(billUrl)
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Complete Service</DialogTitle></DialogHeader>
-        <p className="text-sm text-gray-500">{service?.serviceNumber}</p>
-        <div className="space-y-3 pt-1">
-          <div className="space-y-1.5">
-            <Label>Completed Date *</Label>
-            <Input type="date" value={completedDate} onChange={e => setCompletedDate(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Odometer at Completion (km)</Label>
-            <Input type="number" placeholder={service?.odometer?.toString() ?? '0'} value={odometer} onChange={e => setOdometer(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Completed Cost ₹ <span className="text-gray-400 font-normal">(total bill from vendor)</span></Label>
-            <Input type="number" placeholder="0" value={completedCost} onChange={e => setCompletedCost(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Final Bill Document <span className="text-gray-400 font-normal">(optional)</span></Label>
-            <input ref={billRef} type="file" accept="image/*,.pdf" className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleBillUpload(f); e.target.value = '' }} />
-            {billUrl ? (
-              <div className="space-y-1.5">
-                {isBillImage
-                  ? <img src={billUrl} alt="Bill" className="w-full rounded max-h-32 object-contain bg-gray-50 border" />
-                  : <a href={billUrl} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline">
-                      Bill document uploaded ↗
-                    </a>
-                }
-                <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
-                  className="text-xs text-gray-400 hover:text-gray-600">
-                  {uploadingBill ? 'Uploading…' : 'Replace'}
-                </button>
-              </div>
-            ) : (
-              <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
-                className="w-full border-2 border-dashed border-gray-200 rounded-lg py-2.5 text-xs text-gray-400 hover:border-gray-300 flex items-center justify-center gap-1.5">
-                {uploadingBill ? 'Uploading…' : 'Upload Bill (image or PDF)'}
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={handleClose} disabled={mutation.isPending}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !completedDate}
-            className="bg-green-600 hover:bg-green-700 text-white">
-            {mutation.isPending ? 'Saving…' : 'Mark Complete'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 // ── add part dialog ────────────────────────────────────────────────────────────
 function AddPartDialog({ serviceId, onClose }: { serviceId: number; onClose: () => void }) {
@@ -1680,9 +1574,22 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
         onClose={() => setCreateOpen(false)}
       />
       <CompleteServiceDialog
-        service={completeService}
-        currentOdometer={currentOdometer}
         open={!!completeService}
+        serviceId={completeService?.id ?? 0}
+        serviceNumber={completeService?.serviceNumber}
+        currentOdometer={currentOdometer ?? completeService?.odometer}
+        existingBillDocUrl={completeService?.billDocUrl}
+        onComplete={async (data) => {
+          await vehicleServicesApi.complete(completeService!.id, data)
+          qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+          qc.invalidateQueries({ queryKey: ['vehicle-breakdowns-history', completeService!.vehicleId] })
+          qc.invalidateQueries({ queryKey: ['vehicle', completeService!.vehicleId] })
+          qc.invalidateQueries({ queryKey: ['vehicles'] })
+        }}
+        onUploadBill={async (serviceId, file) => {
+          const res = await vehicleServicesApi.uploadBillDoc(serviceId, await compressImage(file))
+          return res.data?.billDocUrl
+        }}
         onClose={() => setCompleteService(null)}
       />
       <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>

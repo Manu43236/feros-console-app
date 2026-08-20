@@ -106,7 +106,12 @@ function VehicleServiceManagerView() {
     onAssign: (serviceId, taskId, mechanicId) => serviceManagerApi.assignTechnician(serviceId, taskId, mechanicId),
     onAddTask: (serviceId, body) => serviceManagerApi.addTask(serviceId, body),
     onRequestPart: (serviceId, taskId, body) => servicePartsApi.request(serviceId, { ...body, taskId }),
-    onComplete: (serviceId, body) => vehicleServicesApi.complete(serviceId, { completedDate: body.completedDate, odometer: body.meterReading }),
+    onComplete: (serviceId, body) => vehicleServicesApi.complete(serviceId, { completedDate: body.completedDate, odometer: body.odometer, completedCost: body.completedCost }),
+    onUploadBillDoc: async (serviceId, file) => {
+      const res = await vehicleServicesApi.uploadBillDoc(serviceId, await compressImage(file))
+      qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
+      return res.data?.billDocUrl
+    },
     onLogService: (b) => setLogService({ vehicleId: b.assetId, vehicleReg: b.assetName, breakdownId: b.id }),
     onCreateGeneralService: openVehiclePicker,
     onUploadDoc: async (serviceId, type, file) => {

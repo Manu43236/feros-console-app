@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import type { ServiceTaskStatus } from '@/types'
+import { CompleteServiceDialog } from './CompleteServiceDialog'
 
 // ── Normalized board model (both vehicle + equipment map into this) ─────────────
 export interface BoardPart {
@@ -51,7 +52,8 @@ export interface ServiceBoardConfig {
   onAssign: (serviceId: number, taskId: number, mechanicId: number) => Promise<unknown>
   onAddTask: (serviceId: number, body: { taskTypeId?: number; customName?: string }) => Promise<unknown>
   onRequestPart: (serviceId: number, taskId: number, body: { sparePartId: number; quantityRequested: number }) => Promise<unknown>
-  onComplete: (serviceId: number, body: { completedDate: string; meterReading?: number }) => Promise<unknown>
+  onComplete: (serviceId: number, body: { completedDate: string; odometer?: number; completedCost?: number }) => Promise<unknown>
+  onUploadBillDoc?: (serviceId: number, file: File) => Promise<string | undefined>
   onLogService: (b: BoardBreakdown) => void
   onCreateGeneralService?: () => void
   onUploadDoc?: (serviceId: number, type: 'estimate' | 'bill', file: File) => Promise<void>
@@ -176,38 +178,6 @@ function RequestPartDialog({ serviceId, taskId, taskName, cfg, onClose }: { serv
   )
 }
 
-function CompleteServiceDialog({ serviceId, cfg, onClose }: { serviceId: number; cfg: ServiceBoardConfig; onClose: () => void }) {
-  const [completedDate, setCompletedDate] = useState(new Date().toISOString().split('T')[0])
-  const [meter, setMeter] = useState('')
-  const mutation = useMutation({
-    mutationFn: () => cfg.onComplete(serviceId, { completedDate, meterReading: meter ? Number(meter) : undefined }),
-    onSuccess: () => { toast.success('Service marked as completed'); cfg.onChanged(); onClose() },
-    onError: () => toast.error('Failed to complete service'),
-  })
-  return (
-    <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Mark Service Complete</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label className="mb-1.5 block">Completed Date *</Label>
-            <Input type="date" value={completedDate} onChange={e => setCompletedDate(e.target.value)} />
-          </div>
-          <div>
-            <Label className="mb-1.5 block">{cfg.meterLabel ?? 'Odometer'} (optional)</Label>
-            <Input type="number" placeholder={`${cfg.meterLabel ?? 'Odometer'} at completion`} value={meter} onChange={e => setMeter(e.target.value)} />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-green-600 hover:bg-green-700" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
-            {mutation.isPending ? 'Completing…' : 'Mark Complete'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 function AddTaskDialog({ serviceId, cfg, onClose }: { serviceId: number; cfg: ServiceBoardConfig; onClose: () => void }) {
   const [taskTypeId, setTaskTypeId] = useState<number | null>(null)
@@ -437,10 +407,10 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
               <Input placeholder="Part / item name" value={newItemDesc} autoFocus
                 onChange={e => setNewItemDesc(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addVendorItem() } }}
-                className="flex-1 h-7 text-xs" />
+                className="w-40 h-7 text-xs" />
               <Input placeholder="₹ cost" type="number" min="0" value={newItemCost}
                 onChange={e => setNewItemCost(e.target.value)}
-                className="w-20 h-7 text-xs" />
+                className="w-28 h-7 text-xs" />
               <Button type="button" size="sm" className="h-7 bg-feros-navy text-white text-xs px-2 shrink-0"
                 disabled={!newItemDesc.trim() || addingItem} onClick={addVendorItem}>
                 {addingItem ? '…' : 'Add'}
@@ -547,7 +517,18 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
           <ServiceInlineDocs service={service} cfg={cfg} />
         </div>
       )}
-      {completeOpen && <CompleteServiceDialog serviceId={service.id} cfg={cfg} onClose={() => setCompleteOpen(false)} />}
+      {completeOpen && (
+        <CompleteServiceDialog
+          open
+          serviceId={service.id}
+          serviceNumber={service.serviceNumber}
+          meterLabel={cfg.meterLabel}
+          existingBillDocUrl={service.billDocUrl}
+          onComplete={async (data) => { await cfg.onComplete(service.id, data); cfg.onChanged() }}
+          onUploadBill={cfg.onUploadBillDoc}
+          onClose={() => setCompleteOpen(false)}
+        />
+      )}
       {addTaskOpen && <AddTaskDialog serviceId={service.id} cfg={cfg} onClose={() => setAddTaskOpen(false)} />}
     </div>
   )

@@ -94,7 +94,7 @@ export function EquipmentServiceManagerPage() {
     onAssign: (serviceId, taskId, mechanicId) => equipmentApi.assignTaskTechnician(equipmentIdOf(serviceId)!, serviceId, taskId, mechanicId),
     onAddTask: (serviceId, body) => equipmentApi.addTask(equipmentIdOf(serviceId)!, serviceId, body),
     onRequestPart: (serviceId, taskId, body) => equipmentApi.requestPart(equipmentIdOf(serviceId)!, serviceId, { ...body, taskId }),
-    onComplete: (serviceId, body) => equipmentApi.completeService(equipmentIdOf(serviceId)!, serviceId, { completedHmr: body.meterReading ?? null, completedDate: body.completedDate }),
+    onComplete: (serviceId, body) => equipmentApi.completeService(equipmentIdOf(serviceId)!, serviceId, { completedHmr: body.odometer ?? null, completedDate: body.completedDate }),
     onLogService: (b) => setLogService({ equipmentId: b.assetId, currentHmr: machineHmr(b.assetId) }),
     onChanged: invalidate,
     reportBreakdownSlot: (
