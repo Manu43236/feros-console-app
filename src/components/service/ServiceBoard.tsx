@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Wrench, AlertTriangle, CheckCircle2, Clock, User, ChevronDown, ChevronUp, Plus, UserCheck,
-  MapPin, Calendar, StickyNote, Store, IndianRupee, Upload, ExternalLink, FileImage, Download,
+  MapPin, Calendar, StickyNote, Store, IndianRupee, Upload, ExternalLink, FileImage, Download, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -56,6 +56,8 @@ export interface ServiceBoardConfig {
   onCreateGeneralService?: () => void
   onUploadDoc?: (serviceId: number, type: 'estimate' | 'bill', file: File) => Promise<void>
   onOpenPdf?: (serviceId: number) => void
+  onAddVendorItem?: (serviceId: number, description: string, cost?: number) => Promise<unknown>
+  onDeleteVendorItem?: (serviceId: number, itemId: number) => Promise<unknown>
   onChanged: () => void
   reportBreakdownSlot?: React.ReactNode
 }
@@ -296,6 +298,30 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
   const estimateRef = useRef<HTMLInputElement>(null)
   const billRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState<'estimate' | 'bill' | null>(null)
+  const [showAddItem, setShowAddItem] = useState(false)
+  const [newItemDesc, setNewItemDesc] = useState('')
+  const [newItemCost, setNewItemCost] = useState('')
+  const [addingItem, setAddingItem] = useState(false)
+
+  async function addVendorItem() {
+    if (!newItemDesc.trim() || !cfg.onAddVendorItem) return
+    setAddingItem(true)
+    try {
+      await cfg.onAddVendorItem(service.id, newItemDesc.trim(), newItemCost ? parseFloat(newItemCost) : undefined)
+      setNewItemDesc(''); setNewItemCost(''); setShowAddItem(false)
+      cfg.onChanged()
+      toast.success('Part added')
+    } catch { toast.error('Failed to add part') }
+    finally { setAddingItem(false) }
+  }
+
+  async function deleteVendorItem(itemId: number) {
+    if (!cfg.onDeleteVendorItem) return
+    try {
+      await cfg.onDeleteVendorItem(service.id, itemId)
+      cfg.onChanged()
+    } catch { toast.error('Failed to remove part') }
+  }
 
   async function upload(type: 'estimate' | 'bill', file: File) {
     if (!cfg.onUploadDoc) return
@@ -381,15 +407,53 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
       )}
 
       {/* Vendor quote items */}
-      {isThirdParty && (service.vendorItems ?? []).length > 0 && (
-        <div className="space-y-0.5">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Vendor Quote Items</p>
-          {service.vendorItems!.map(item => (
-            <div key={item.id} className="flex justify-between text-xs text-gray-600 py-0.5 border-b border-gray-50 last:border-0">
-              <span>{item.description}</span>
-              {item.cost != null && <span className="flex items-center gap-0.5 shrink-0 ml-2"><IndianRupee size={9} />{item.cost.toLocaleString('en-IN')}</span>}
+      {isThirdParty && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Parts / Items (Vendor Quote)</p>
+            {cfg.onAddVendorItem && service.status !== 'COMPLETED' && !showAddItem && (
+              <button onClick={() => setShowAddItem(true)}
+                className="flex items-center gap-0.5 text-[10px] text-feros-navy hover:underline font-medium">
+                <Plus size={9} /> Add Part
+              </button>
+            )}
+          </div>
+          {(service.vendorItems ?? []).map(item => (
+            <div key={item.id} className="flex justify-between text-xs text-gray-600 py-0.5 border-b border-gray-50 last:border-0 group">
+              <span className="flex-1 truncate">{item.description}</span>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                {item.cost != null && <span className="flex items-center gap-0.5"><IndianRupee size={9} />{item.cost.toLocaleString('en-IN')}</span>}
+                {cfg.onDeleteVendorItem && service.status !== 'COMPLETED' && (
+                  <button onClick={() => deleteVendorItem(item.id)}
+                    className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
+          {showAddItem && (
+            <div className="flex items-center gap-1.5 pt-0.5">
+              <Input placeholder="Part / item name" value={newItemDesc} autoFocus
+                onChange={e => setNewItemDesc(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addVendorItem() } }}
+                className="flex-1 h-7 text-xs" />
+              <Input placeholder="₹ cost" type="number" min="0" value={newItemCost}
+                onChange={e => setNewItemCost(e.target.value)}
+                className="w-20 h-7 text-xs" />
+              <Button type="button" size="sm" className="h-7 bg-feros-navy text-white text-xs px-2 shrink-0"
+                disabled={!newItemDesc.trim() || addingItem} onClick={addVendorItem}>
+                {addingItem ? '…' : 'Add'}
+              </Button>
+              <button type="button" onClick={() => { setShowAddItem(false); setNewItemDesc(''); setNewItemCost('') }}
+                className="text-gray-400 hover:text-gray-600">
+                <X size={13} />
+              </button>
+            </div>
+          )}
+          {(service.vendorItems ?? []).length === 0 && !showAddItem && (
+            <p className="text-[10px] text-gray-300">No parts added yet</p>
+          )}
         </div>
       )}
 

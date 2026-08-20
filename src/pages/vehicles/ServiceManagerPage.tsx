@@ -116,6 +116,8 @@ function VehicleServiceManagerView() {
       qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
     },
     onOpenPdf: (id) => window.open(`/vehicle-services/${id}/pdf`, '_blank'),
+    onAddVendorItem: (serviceId, description, cost) => vehicleServicesApi.addVendorItem(serviceId, description, cost),
+    onDeleteVendorItem: (serviceId, itemId) => vehicleServicesApi.deleteVendorItem(serviceId, itemId),
     onChanged: () => qc.invalidateQueries({ queryKey: ['sm-dashboard'] }),
   }
 
