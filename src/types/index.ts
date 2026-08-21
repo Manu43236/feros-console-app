@@ -41,6 +41,7 @@ export interface LoginResponse {
   moduleType?: ModuleType | null
   canAccessVehicles?: boolean | null
   canAccessEquipment?: boolean | null
+  canAccessLeases?: boolean | null
 }
 
 // ─── Module Access ─────────────────────────────────────────────────────────────
@@ -812,6 +813,7 @@ export interface StaffProfile {
   salaryType?: 'DAILY' | 'MONTHLY'; monthlySalary?: number
   canAccessVehicles?: boolean
   canAccessEquipment?: boolean
+  canAccessLeases?: boolean
   isActive: boolean
   createdAt: string; updatedAt: string
 }

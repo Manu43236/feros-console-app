@@ -18,9 +18,10 @@ interface AuthState {
   moduleType: ModuleType | null
   /** Current active mode — only relevant when moduleType === 'BOTH' */
   currentMode: 'VEHICLES' | 'EQUIPMENT'
-  /** Null for ADMIN/SA. For staff roles: whether they can access vehicles/equipment */
+  /** Null for ADMIN/SA. For staff roles: whether they can access vehicles/equipment/leases */
   canAccessVehicles: boolean | null
   canAccessEquipment: boolean | null
+  canAccessLeases: boolean | null
 
   // Impersonation — saved SA session while impersonating
   saSession: {
@@ -56,6 +57,7 @@ export const useAuthStore = create<AuthState>()(
       currentMode:    'VEHICLES',
       canAccessVehicles: null,
       canAccessEquipment: null,
+      canAccessLeases: null,
       saSession:      null,
       sessionDisplaced: false,
 
@@ -78,6 +80,7 @@ export const useAuthStore = create<AuthState>()(
                             : 'VEHICLES',
           canAccessVehicles:  data.canAccessVehicles ?? null,
           canAccessEquipment: data.canAccessEquipment ?? null,
+          canAccessLeases:    data.canAccessLeases ?? null,
           saSession:      null,
         })
       },
@@ -87,7 +90,7 @@ export const useAuthStore = create<AuthState>()(
           token: null, userId: null, tenantId: null,
           phone: null, name: null, role: null, companyName: null, logoUrl: null,
           isAuthenticated: false, allowedModules: null, moduleType: null,
-          currentMode: 'VEHICLES', canAccessVehicles: null, canAccessEquipment: null,
+          currentMode: 'VEHICLES', canAccessVehicles: null, canAccessEquipment: null, canAccessLeases: null,
           saSession: null,
         })
       },
@@ -118,6 +121,7 @@ export const useAuthStore = create<AuthState>()(
           currentMode:    'VEHICLES',
           canAccessVehicles:  null,
           canAccessEquipment: null,
+          canAccessLeases:    null,
           saSession,
         })
       },
@@ -152,7 +156,7 @@ export const useAuthStore = create<AuthState>()(
         companyName: state.companyName, logoUrl: state.logoUrl,
         isAuthenticated: state.isAuthenticated, allowedModules: state.allowedModules,
         moduleType: state.moduleType, currentMode: state.currentMode,
-        canAccessVehicles: state.canAccessVehicles, canAccessEquipment: state.canAccessEquipment,
+        canAccessVehicles: state.canAccessVehicles, canAccessEquipment: state.canAccessEquipment, canAccessLeases: state.canAccessLeases,
         saSession: state.saSession,
         // sessionDisplaced intentionally excluded — must not survive page refresh
       }),

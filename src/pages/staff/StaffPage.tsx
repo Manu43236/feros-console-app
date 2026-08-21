@@ -72,6 +72,7 @@ const addStaffSchema = z.object({
   ),
   canAccessVehicles:  z.boolean().optional(),
   canAccessEquipment: z.boolean().optional(),
+  canAccessLeases:    z.boolean().optional(),
 }).refine(data => {
   // For SUPERVISOR in BOTH tenant, at least one access must be ON
   if (data.role === 'SUPERVISOR') {
@@ -93,7 +94,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AddStaffForm>({
     resolver: zodResolver(addStaffSchema) as Resolver<AddStaffForm>,
-    defaultValues: { salaryType: 'MONTHLY', canAccessVehicles: true, canAccessEquipment: false },
+    defaultValues: { salaryType: 'MONTHLY', canAccessVehicles: true, canAccessEquipment: false, canAccessLeases: false },
   })
 
   const hiddenRoles = moduleType === 'EQUIPMENT_ONLY' ? EQUIP_HIDDEN_ROLES
@@ -109,6 +110,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
   const isMonthly       = watch('salaryType') === 'MONTHLY'
   const showEquipToggle    = moduleType === 'BOTH' && EQUIP_TOGGLE_ROLES.includes(selectedRole) && selectedRole !== 'OPERATOR'
   const showVehicleToggle  = moduleType === 'BOTH' && selectedRole === 'SUPERVISOR'
+  const showLeasesToggle   = moduleType !== 'EQUIPMENT_ONLY' && selectedRole === 'SUPERVISOR'
 
   const mutation = useMutation({
     mutationFn: async (data: AddStaffForm) => {
@@ -116,6 +118,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
         name: data.name, phone: data.phone, role: data.role,
         canAccessVehicles: data.canAccessVehicles,
         canAccessEquipment: data.canAccessEquipment,
+        canAccessLeases: data.canAccessLeases,
         salaryType: !isDailyRole ? (data.salaryType ?? 'MONTHLY') : undefined,
         monthlySalary: !isDailyRole && data.salaryType === 'MONTHLY' ? data.monthlySalary : undefined,
       })
@@ -207,6 +210,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
                   setValue('monthlySalary', undefined)
                   setValue('canAccessVehicles', true)
                   setValue('canAccessEquipment', false)
+                  setValue('canAccessLeases', false)
                 }}
                 triggerClassName={errors.role ? 'border-red-400' : ''}
               />
@@ -237,6 +241,29 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
             )}
             {errors.canAccessVehicles && (
               <p className="text-red-500 text-xs">{errors.canAccessVehicles.message}</p>
+            )}
+
+            {/* Leases access toggle — SUPERVISOR only, non-equipment tenants */}
+            {showLeasesToggle && (
+              <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-green-900">Leases Access</p>
+                  <p className="text-xs text-green-700">Allow this supervisor to manage vehicle leases</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setValue('canAccessLeases', !watch('canAccessLeases'))}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                    watch('canAccessLeases') ? 'bg-green-600' : 'bg-gray-200'
+                  )}
+                >
+                  <span className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+                    watch('canAccessLeases') ? 'translate-x-5' : 'translate-x-0'
+                  )} />
+                </button>
+              </div>
             )}
 
             {/* Equipment access toggle — BOTH tenants only */}

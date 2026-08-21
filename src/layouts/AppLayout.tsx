@@ -587,6 +587,7 @@ export function AppLayout() {
   const setCurrentMode     = useAuthStore(s => s.setCurrentMode)
   const canAccessVehicles  = useAuthStore(s => s.canAccessVehicles)
   const canAccessEquipment = useAuthStore(s => s.canAccessEquipment)
+  const canAccessLeases    = useAuthStore(s => s.canAccessLeases)
   const navigate = useNavigate()
   const qc = useQueryClient()
 
@@ -692,7 +693,11 @@ export function AppLayout() {
       const flag = FEATURE_ROUTES[item.to]
       if (flag !== undefined && !flag) return false
     }
-    // 2. Check module access
+    // 2. Gate leases nav items for supervisors without lease access
+    if (role === 'SUPERVISOR' && (item.to === '/vehicles/leases' || item.to === '/vehicles/lease-invoices')) {
+      if (canAccessLeases === false) return false
+    }
+    // 3. Check module access
     return isModuleAllowed(item, allowedModules)
   }
 

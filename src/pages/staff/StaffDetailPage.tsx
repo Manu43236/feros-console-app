@@ -59,6 +59,7 @@ const profileSchema = z.object({
   ),
   canAccessVehicles:     z.boolean().optional(),
   canAccessEquipment:    z.boolean().optional(),
+  canAccessLeases:       z.boolean().optional(),
 })
 type ProfileFormData = z.infer<typeof profileSchema>
 
@@ -390,6 +391,7 @@ export function StaffDetailPage() {
         monthlySalary:         profile.monthlySalary,
         canAccessVehicles:     profile.canAccessVehicles ?? true,
         canAccessEquipment:    profile.canAccessEquipment ?? false,
+        canAccessLeases:       profile.canAccessLeases ?? false,
       })
     }
   }, [profile, reset])
@@ -826,6 +828,27 @@ export function StaffDetailPage() {
                   )} />
                 </button>
               </div>
+              {user?.role === 'SUPERVISOR' && (
+                <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-green-900">Leases Access</p>
+                    <p className="text-xs text-green-700">Can manage vehicle leases</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setValue('canAccessLeases', !watch('canAccessLeases'), { shouldDirty: true })}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                      watch('canAccessLeases') ? 'bg-green-600' : 'bg-gray-200'
+                    )}
+                  >
+                    <span className={cn(
+                      'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+                      watch('canAccessLeases') ? 'translate-x-5' : 'translate-x-0'
+                    )} />
+                  </button>
+                </div>
+              )}
               <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-amber-900">Equipment Access</p>
