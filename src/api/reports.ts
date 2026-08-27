@@ -1,6 +1,7 @@
 import apiClient from './client'
 import type { ApiResponse } from '@/types'
 import type {
+  DailyFleetAttendanceReport,
   VehicleMasterRow,
   FleetStatusRow,
   FuelMileageRow,
@@ -704,4 +705,7 @@ export const reportsApi = {
     const res = await apiClient.get('/reports/payroll/ytd/export', { params: { year, format }, responseType: 'blob' })
     triggerDownload(res.data as Blob, `payroll-ytd-${year}.${format}`)
   },
+
+  getDailyFleetAttendance: (date: string, scope: 'INTRA_STATE' | 'INTER_STATE') =>
+    apiClient.get<ApiResponse<DailyFleetAttendanceReport>>('/reports/vehicles/daily-fleet-attendance', { params: { date, scope } }).then(r => r.data),
 }

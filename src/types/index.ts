@@ -1892,6 +1892,24 @@ export interface FleetStatusRow {
   tripScope: string
 }
 
+export interface DailyFleetAttendanceRow {
+  registrationNumber: string
+  scope: string
+  vehicleType: string
+  driverName: string
+  cleanerName: string
+}
+
+export interface DailyFleetAttendanceReport {
+  date: string
+  scope: string
+  totalVehicles: number
+  drivers: number
+  cleaners: number
+  unassigned: number
+  rows: DailyFleetAttendanceRow[]
+}
+
 export interface FuelMileageRow {
   vehicleId: number
   registrationNumber: string

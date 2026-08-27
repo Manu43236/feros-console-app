@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, ClipboardList } from 'lucide-react'
+import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, ClipboardList, CalendarCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
+import { downloadDailyFleetAttendancePdf } from './DailyFleetAttendancePdf'
 import type {
   VehicleMasterRow, FleetStatusRow, FuelMileageRow,
   BreakdownReportRow, DocumentExpiryRow, MaintenanceServiceRow,
+  DailyFleetAttendanceReport,
 } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -27,12 +29,13 @@ const thisMonthStart = () => {
 
 // ── Tab config ─────────────────────────────────────────────────────────────────
 const TABS = [
-  { key: 'vehicle-master',  label: 'Vehicle Master',    icon: ClipboardList },
-  { key: 'fleet-status',    label: 'Fleet Status',      icon: Truck         },
-  { key: 'fuel-mileage',    label: 'Fuel & Mileage',    icon: Fuel          },
-  { key: 'breakdowns',      label: 'Breakdowns',        icon: AlertTriangle },
-  { key: 'doc-expiry',      label: 'Document Expiry',   icon: FileText      },
-  { key: 'maintenance',     label: 'Maintenance',       icon: Wrench        },
+  { key: 'vehicle-master',  label: 'Vehicle Master',       icon: ClipboardList  },
+  { key: 'fleet-status',    label: 'Fleet Status',         icon: Truck          },
+  { key: 'fuel-mileage',    label: 'Fuel & Mileage',       icon: Fuel           },
+  { key: 'breakdowns',      label: 'Breakdowns',           icon: AlertTriangle  },
+  { key: 'doc-expiry',      label: 'Document Expiry',      icon: FileText       },
+  { key: 'maintenance',     label: 'Maintenance',          icon: Wrench         },
+  { key: 'daily-fleet',     label: 'Daily Attendance',     icon: CalendarCheck  },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -217,6 +220,25 @@ function MaintenanceTable({ rows, loading }: { rows: MaintenanceServiceRow[]; lo
   />
 }
 
+function DailyFleetTable({ report, loading }: { report: DailyFleetAttendanceReport | undefined; loading: boolean }) {
+  return <ReportTable
+    loading={loading}
+    headers={['#', 'Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']}
+    rows={(report?.rows ?? []).map((r, i) => [
+      <span className="text-gray-400">{i + 1}</span>,
+      <span className="font-medium">{r.registrationNumber}</span>,
+      <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{r.scope}</span>,
+      dash(r.vehicleType),
+      r.driverName === '—'
+        ? <span className="text-gray-300">—</span>
+        : <span className="text-green-700 font-medium">{r.driverName}</span>,
+      r.cleanerName === '—'
+        ? <span className="text-gray-300">—</span>
+        : <span className="text-teal-700 font-medium">{r.cleanerName}</span>,
+    ])}
+  />
+}
+
 const STATUS_ORDER = ['AVAILABLE', 'ASSIGNED', 'ON_TRIP', 'IN_REPAIR', 'BREAKDOWN', 'OTHER']
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
@@ -227,6 +249,8 @@ export default function VehicleReportsPage() {
   const [endDate, setEndDate] = useState(todayStr())
   const [days, setDays] = useState(30)
   const [downloading, setDownloading] = useState(false)
+  const [fleetDate, setFleetDate] = useState(todayStr())
+  const [fleetScope, setFleetScope] = useState<'INTRA_STATE' | 'INTER_STATE'>('INTRA_STATE')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
   const [brandFilter, setBrandFilter] = useState('ALL')
@@ -286,15 +310,25 @@ const fuelQuery = useQuery({
     enabled: tab === 'maintenance',
   })
 
+  const dailyFleetQuery = useQuery({
+    queryKey: ['report-daily-fleet', fleetDate, fleetScope],
+    queryFn: () => reportsApi.getDailyFleetAttendance(fleetDate, fleetScope),
+    enabled: tab === 'daily-fleet',
+  })
+
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
       if (tab === 'vehicle-master') await reportsApi.exportVehicleMaster(format)
       else if (tab === 'fleet-status') await reportsApi.exportFleetStatus(todayStr(), format)
-else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, endDate, format)
+      else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, endDate, format)
       else if (tab === 'breakdowns') await reportsApi.exportBreakdowns(startDate, endDate, format)
       else if (tab === 'doc-expiry') await reportsApi.exportDocumentExpiry(days, format)
       else if (tab === 'maintenance') await reportsApi.exportMaintenanceService(startDate, endDate, format)
+      else if (tab === 'daily-fleet') {
+        const report = dailyFleetQuery.data?.data
+        if (report) await downloadDailyFleetAttendancePdf(report)
+      }
     } catch {
       toast.error('Export failed')
     } finally {
@@ -302,7 +336,7 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
     }
   }
 
-  const usesDateRange = tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'doc-expiry'
+  const usesDateRange = tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'doc-expiry' && tab !== 'daily-fleet'
 
   return (
     <div className="space-y-6">
@@ -418,8 +452,49 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
           )
         })()}
 
+        {/* Daily Fleet Attendance controls */}
+        {tab === 'daily-fleet' && (() => {
+          const report = dailyFleetQuery.data?.data
+          return (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                <Input type="date" value={fleetDate} onChange={e => setFleetDate(e.target.value)} className="w-40" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Scope</label>
+                <SearchableSelect
+                  value={fleetScope}
+                  onValueChange={v => setFleetScope(v as 'INTRA_STATE' | 'INTER_STATE')}
+                  options={[
+                    { value: 'INTRA_STATE', label: 'Local (Intra State)' },
+                    { value: 'INTER_STATE', label: 'Out Station (Inter State)' },
+                  ]}
+                  showSearch={false}
+                  className="w-52"
+                />
+              </div>
+              {report && (
+                <div className="flex gap-3 items-end">
+                  {[
+                    { label: 'Total Vehicles', value: report.totalVehicles, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+                    { label: 'Drivers',        value: report.drivers,       color: 'bg-green-50 text-green-700 border-green-200' },
+                    { label: 'Cleaners',       value: report.cleaners,      color: 'bg-teal-50 text-teal-700 border-teal-200' },
+                    { label: 'Unassigned',     value: report.unassigned,    color: 'bg-red-50 text-red-700 border-red-200' },
+                  ].map(s => (
+                    <div key={s.label} className={`border rounded-lg px-3 py-1.5 text-center min-w-[80px] ${s.color}`}>
+                      <div className="text-xs font-medium opacity-70">{s.label}</div>
+                      <div className="text-xl font-bold">{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )
+        })()}
+
         {/* Vehicle filter — tabs with date range */}
-        {tab !== 'vehicle-master' && tab !== 'fleet-status' && (() => {
+        {tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'daily-fleet' && (() => {
           const allRows: { registrationNumber: string }[] =
             tab === 'fuel-mileage' ? (fuelQuery.data?.data ?? []) :
             tab === 'breakdowns'   ? (breakdownQuery.data?.data ?? []) :
@@ -498,11 +573,18 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
 
         {/* Download buttons */}
         <div className="ml-auto flex items-end gap-2">
-          <Button variant="outline" size="sm" disabled={downloading} onClick={() => handleDownload('csv')} className="gap-1.5">
-            <Download size={14} />
-            CSV
-          </Button>
-          <Button variant="outline" size="sm" disabled={downloading} onClick={() => handleDownload('pdf')} className="gap-1.5">
+          {tab !== 'daily-fleet' && (
+            <Button variant="outline" size="sm" disabled={downloading} onClick={() => handleDownload('csv')} className="gap-1.5">
+              <Download size={14} />
+              CSV
+            </Button>
+          )}
+          <Button
+            variant="outline" size="sm"
+            disabled={downloading || (tab === 'daily-fleet' && !dailyFleetQuery.data?.data)}
+            onClick={() => handleDownload('pdf')}
+            className="gap-1.5"
+          >
             <Download size={14} />
             PDF
           </Button>
@@ -529,6 +611,7 @@ else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, e
       {tab === 'breakdowns'    && <BreakdownsTable  rows={(breakdownQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}   loading={breakdownQuery.isLoading} />}
       {tab === 'doc-expiry'    && <DocExpiryTable   rows={(docExpiryQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}   loading={docExpiryQuery.isLoading} />}
       {tab === 'maintenance'   && <MaintenanceTable rows={(maintenanceQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)} loading={maintenanceQuery.isLoading} />}
+      {tab === 'daily-fleet'   && <DailyFleetTable  report={dailyFleetQuery.data?.data} loading={dailyFleetQuery.isLoading} />}
     </div>
   )
 }
