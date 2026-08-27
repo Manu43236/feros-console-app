@@ -569,7 +569,7 @@ function CancelLrDialog({ lrId, open, onClose }: { lrId: number; open: boolean; 
       qc.invalidateQueries({ queryKey: ['lr', lrId] })
       qc.invalidateQueries({ queryKey: ['lrs'] })
       onClose()
-      navigate('/lrs')
+      navigate(-1)
     },
     onError: () => toast.error('Failed to cancel LR'),
   })
@@ -669,10 +669,10 @@ export function LrDetailPage() {
         <div className="relative px-6 py-6">
           {/* Back */}
           <button
-            onClick={() => navigate('/lrs')}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-blue-300 hover:text-white text-sm transition-colors mb-4"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to LR Register
+            <ArrowLeft className="h-4 w-4" /> Back
           </button>
 
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
