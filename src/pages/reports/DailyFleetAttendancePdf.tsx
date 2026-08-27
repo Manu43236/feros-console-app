@@ -24,8 +24,8 @@ const S = StyleSheet.create({
   },
   watermark: {
     position: 'absolute',
-    top: 190,
-    left: 105,
+    top: 316,
+    left: 192,
     width: 210,
     opacity: 0.08,
   },
