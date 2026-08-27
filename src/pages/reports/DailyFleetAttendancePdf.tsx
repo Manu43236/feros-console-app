@@ -2,7 +2,7 @@ import {
   Document, Page, Text, View, StyleSheet, Font, Image, pdf,
 } from '@react-pdf/renderer'
 import type { DailyFleetAttendanceReport } from '@/types'
-import ferosLogo from '@/assets/feros_transperant_logo.png'
+import ferosLogo from '@/assets/feros_solo_logo.png'
 
 Font.register({
   family: 'NotoSans',
@@ -24,10 +24,10 @@ const S = StyleSheet.create({
   },
   watermark: {
     position: 'absolute',
-    top: '30%',
-    left: '20%',
-    width: 280,
-    opacity: 0.06,
+    top: 190,
+    left: 105,
+    width: 210,
+    opacity: 0.08,
   },
   header: { marginBottom: 8 },
   title: { fontSize: 13, fontWeight: 'bold', color: NAVY, textAlign: 'center' },
@@ -69,9 +69,9 @@ const formatDate = (iso: string) => {
   return `${d}-${m}-${y}`
 }
 
-type Props = { report: DailyFleetAttendanceReport; tenantName?: string }
+type Props = { report: DailyFleetAttendanceReport; rows: DailyFleetAttendanceReport['rows']; filterLabel?: string; tenantName?: string }
 
-function FleetAttendanceDoc({ report, tenantName }: Props) {
+function FleetAttendanceDoc({ report, rows, filterLabel, tenantName }: Props) {
   return (
     <Document>
       <Page size="A4" style={S.page}>
@@ -82,7 +82,7 @@ function FleetAttendanceDoc({ report, tenantName }: Props) {
             Daily Fleet Staff Attendance Report — {report.scope}
           </Text>
           <Text style={S.subtitle}>
-            {tenantName ? `${tenantName}  |  ` : ''}Date: {formatDate(report.date)}
+            {tenantName ? `${tenantName}  |  ` : ''}Date: {formatDate(report.date)}{filterLabel ? `  |  Showing: ${filterLabel}` : ''}
           </Text>
         </View>
 
@@ -105,7 +105,7 @@ function FleetAttendanceDoc({ report, tenantName }: Props) {
           <Text style={[S.hCell, S.colCleaner]}>Cleaner</Text>
         </View>
 
-        {report.rows.map((row, i) => (
+        {rows.map((row, i) => (
           <View key={i} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
             <Text style={[S.cell, S.colNo]}>{i + 1}</Text>
             <Text style={[S.cell, S.colVehicle]}>{row.registrationNumber}</Text>
@@ -124,13 +124,18 @@ function FleetAttendanceDoc({ report, tenantName }: Props) {
 
 export async function downloadDailyFleetAttendancePdf(
   report: DailyFleetAttendanceReport,
+  rows: DailyFleetAttendanceReport['rows'],
+  filterLabel?: string,
   tenantName?: string,
 ) {
-  const blob = await pdf(<FleetAttendanceDoc report={report} tenantName={tenantName} />).toBlob()
+  const blob = await pdf(
+    <FleetAttendanceDoc report={report} rows={rows} filterLabel={filterLabel} tenantName={tenantName} />
+  ).toBlob()
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `fleet-attendance-${report.scope.replace(' ', '-').toLowerCase()}-${report.date}.pdf`
+  const suffix = filterLabel ? `-${filterLabel.toLowerCase().replace(/\s+/g, '-')}` : ''
+  a.download = `fleet-attendance-${report.scope.replace(' ', '-').toLowerCase()}-${report.date}${suffix}.pdf`
   a.click()
   URL.revokeObjectURL(url)
 }
