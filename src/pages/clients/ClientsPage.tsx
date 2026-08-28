@@ -259,7 +259,7 @@ function ClientDetailDrawer({ client, open, onClose, onEdit }: {
           {(client.gstin || client.panNumber) && (
             <div className="space-y-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tax</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Row label="GSTIN" value={client.gstin} />
                 <Row label="PAN" value={client.panNumber} />
               </div>
@@ -269,7 +269,7 @@ function ClientDetailDrawer({ client, open, onClose, onEdit }: {
           {/* Credit */}
           <div className="space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Credit</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {client.paymentTermsName && <Row label="Payment Terms" value={client.paymentTermsName} />}
               {client.creditLimit ? <Row label="Credit Limit" value={`₹${Number(client.creditLimit).toLocaleString('en-IN')}`} /> : null}
               {client.openingBalance ? <Row label="Opening Balance" value={`₹${Number(client.openingBalance).toLocaleString('en-IN')}`} /> : null}
@@ -397,7 +397,7 @@ function ClientForm({
           </div>
 
           {/* Basic info */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1.5">
               <Label>{clientCategory === 'INDIVIDUAL' ? 'Name' : 'Company Name'} *</Label>
               <Input placeholder={clientCategory === 'INDIVIDUAL' ? 'Raju Kumar' : 'ABC Logistics Pvt Ltd'} {...register('clientName')} />
@@ -438,7 +438,7 @@ function ClientForm({
           {/* Address */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Address</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1.5">
                 <Label>Street Address</Label>
                 <Input placeholder="123, Main Street" {...register('address')} />
@@ -490,7 +490,7 @@ function ClientForm({
           {/* Tax */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Tax Information</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>GSTIN</Label>
                 <Input placeholder="22AAAAA0000A1Z5" maxLength={15} className="uppercase" {...register('gstin')} />
@@ -507,7 +507,7 @@ function ClientForm({
           {/* Contact person */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Contact Person</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Name</Label>
                 <Input placeholder="Ramesh Kumar" {...register('contactPersonName')} />
@@ -523,7 +523,7 @@ function ClientForm({
           {/* Credit */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Credit Settings</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>Payment Terms</Label>
                 <Controller

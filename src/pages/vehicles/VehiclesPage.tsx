@@ -299,7 +299,7 @@ function VehicleDocStep({ vehicleId, onFinish, onBack }: { vehicleId: number; on
                 <span className="text-sm font-medium text-gray-700">{dt.name}</span>
                 {filled && <span className="text-[11px] font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Will save</span>}
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
                   type="text"
                   placeholder="Doc number"
@@ -556,7 +556,7 @@ export function VehicleForm({
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
 
           {/* Basic Info */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1.5">
               <Label>Registration Number <span className="text-red-500">*</span></Label>
               <Input placeholder="MH12AB1234" className={`uppercase ${errors.registrationNumber ? 'border-red-400' : ''}`} {...register('registrationNumber')} />
@@ -704,7 +704,7 @@ export function VehicleForm({
           {showOwnerSection && (
             <div className="border-t pt-4">
               <p className="text-sm font-medium text-gray-700 mb-3">Owner / Hired Details</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Owner Name</Label>
                   <Input placeholder="Ramesh Kumar" {...register('ownerName')} />
@@ -748,7 +748,7 @@ export function VehicleForm({
               </label>
             </div>
             {watchedFinanced && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-1.5">
                   <Label>Financer Name (Bank / NBFC)</Label>
                   <Input placeholder="e.g. HDFC Bank, Shriram Finance" {...register('financerName')} />
@@ -815,7 +815,7 @@ export function VehicleForm({
           {/* GPS & Notes */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">GPS & Notes</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>GPS Device No.</Label>
                 <Input placeholder="GPS001" {...register('gpsDeviceNumber')} />

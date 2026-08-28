@@ -49,7 +49,7 @@ function SparePartDialog({ part, categories, onClose }: { part?: SparePart | nul
             <Label>Name *</Label>
             <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Engine Oil Filter" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Part Number</Label>
               <Input value={form.partNumber} onChange={e => setForm(f => ({ ...f, partNumber: e.target.value }))} placeholder="Optional" />
@@ -66,7 +66,7 @@ function SparePartDialog({ part, categories, onClose }: { part?: SparePart | nul
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Unit *</Label>
               <select
@@ -172,7 +172,7 @@ export default function SparePartsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border p-4">
           <p className="text-xs text-gray-500">Total Parts</p>
           <p className="text-2xl font-bold text-gray-900">{parts.length}</p>

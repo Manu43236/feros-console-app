@@ -118,7 +118,7 @@ function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
             {errors.allocatedWeight && <p className="text-red-500 text-xs">{errors.allocatedWeight.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Expected Load Date *</Label>
               <Input type="date" {...register('expectedLoadDate')} />
@@ -397,7 +397,7 @@ function ReportBreakdownDialog({ orderId, allocationId, vehicleReg, open, onClos
           {/* Duration — SHORT / LONG */}
           <div className="space-y-1.5">
             <Label>Breakdown Duration *</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {BREAKDOWN_DURATIONS.map(d => (
                 <button
                   key={d.value}
@@ -1306,7 +1306,7 @@ export function OrderDetailPage() {
       </div>
 
       {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-gray-400 mb-2">
             <Package size={13} />

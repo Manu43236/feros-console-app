@@ -120,7 +120,7 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>{isEdit ? 'Edit Tyre' : 'Add Tyre'}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
               <Label>Serial Number *</Label>
               <Input value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} placeholder="TYR-001" required />
@@ -169,7 +169,7 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
           {!isEdit && (
             <div className="border-t pt-3 space-y-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Condition</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5 col-span-2">
                   <Label>Condition at Purchase</Label>
                   <select
@@ -199,7 +199,7 @@ function AddEditTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
           {/* Supplier / Invoice — always shown */}
           <div className="border-t pt-3 space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Reference</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Supplier Name</Label>
                 <Input value={form.supplierName} onChange={e => setForm(f => ({ ...f, supplierName: e.target.value }))} placeholder="e.g. MRF Tyres Ltd" />
@@ -319,7 +319,7 @@ function BulkAddTyreDialog({ open, onClose }: { open: boolean; onClose: () => vo
           {/* Common Specs */}
           <div className="border-t pt-4 space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Common Specs (applied to all)</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Brand *</Label>
                 <Input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} placeholder="MRF" required />
@@ -364,7 +364,7 @@ function BulkAddTyreDialog({ open, onClose }: { open: boolean; onClose: () => vo
           {/* Purchase Condition */}
           <div className="border-t pt-4 space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Condition</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5 col-span-2">
                 <Label>Condition at Purchase</Label>
                 <select
@@ -393,7 +393,7 @@ function BulkAddTyreDialog({ open, onClose }: { open: boolean; onClose: () => vo
           {/* Purchase Reference */}
           <div className="border-t pt-4 space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purchase Reference</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Supplier Name</Label>
                 <Input value={form.supplierName} onChange={e => setForm(f => ({ ...f, supplierName: e.target.value }))} placeholder="e.g. MRF Tyres Ltd" />
@@ -517,7 +517,7 @@ function FitTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () => 
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Odometer at Fitting (km) *</Label>
               <Input type="number" value={form.fittedAtKm} onChange={e => setForm(f => ({ ...f, fittedAtKm: e.target.value }))} placeholder="48230" />
@@ -607,7 +607,7 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
             />
           </div>
           {isRetread && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Retreader Name</Label>
                 <Input value={form.retreaderName} onChange={e => setForm(f => ({ ...f, retreaderName: e.target.value }))} placeholder="e.g. MRF Retread Centre" />
@@ -618,7 +618,7 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
               </div>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Odometer at Removal (km) *</Label>
               <Input type="number" value={form.removedAtKm} onChange={e => setForm(f => ({ ...f, removedAtKm: e.target.value }))} placeholder="52000" />
@@ -684,7 +684,7 @@ function BackToStockDialog({ open, onClose, tyre }: { open: boolean; onClose: ()
           <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
             Tyre has returned from retreading and will be marked as In Stock.
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Retreading Cost (₹)</Label>
               <Input type="number" value={form.retreadingCost} onChange={e => setForm(f => ({ ...f, retreadingCost: e.target.value }))} placeholder="e.g. 7500" />
@@ -883,7 +883,7 @@ function TyreDetailSheet({ tyre, open, onClose, onEdit, onFit, onRemove, onBackT
           )}
 
           {/* Stats row */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: 'Retreads', value: `${tyre.retreadCount}x` },
               { label: 'Total KM', value: `${Number(tyre.totalLifetimeKm).toLocaleString('en-IN')}` },
@@ -899,7 +899,7 @@ function TyreDetailSheet({ tyre, open, onClose, onEdit, onFit, onRemove, onBackT
           {/* Tyre details */}
           <div className="space-y-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Details</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
               {[
                 { label: 'Ply Rating', value: tyre.plyRating },
                 { label: 'Purchase Condition', value: PURCHASE_CONDITIONS.find(c => c.value === tyre.purchaseCondition)?.label },

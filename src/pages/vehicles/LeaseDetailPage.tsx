@@ -119,7 +119,7 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
               placeholder="Search by reg. number"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Rate per Vehicle *</Label>
               <Input type="number" value={ratePerVehicle}
@@ -673,7 +673,7 @@ export default function LeaseDetailPage() {
       </div>
 
       {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-gray-400 mb-2">
             <CalendarDays size={13} />

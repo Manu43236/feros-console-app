@@ -172,7 +172,7 @@ function EquipmentFormDialog({
         <form onSubmit={submit} className="space-y-4 mt-2">
 
           {/* Row 1: Make + Model */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Make <span className="text-red-500">*</span></Label>
               <SearchableSelect
@@ -221,7 +221,7 @@ function EquipmentFormDialog({
           </div>
 
           {/* Row 3: Serial + Registration */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Serial Number</Label>
               <Input className="mt-1" value={form.serialNumber ?? ''} onChange={e => set('serialNumber', e.target.value)} placeholder="e.g. SN123456" />
@@ -233,7 +233,7 @@ function EquipmentFormDialog({
           </div>
 
           {/* Row 4: Chassis + Engine */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Chassis Number</Label>
               <Input className="mt-1" value={form.chassisNumber ?? ''} onChange={e => set('chassisNumber', e.target.value)} placeholder="e.g. CH123456789" />
@@ -245,7 +245,7 @@ function EquipmentFormDialog({
           </div>
 
           {/* Row 5: Year + Color */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Manufacture Year</Label>
               <Input className="mt-1" type="number" min={1990} max={new Date().getFullYear()} value={form.manufactureYear ?? ''} onChange={e => set('manufactureYear', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 2022" />
@@ -257,7 +257,7 @@ function EquipmentFormDialog({
           </div>
 
           {/* Row 6: Fuel Type + Tank Capacity */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Fuel Type</Label>
               <SearchableSelect
@@ -275,7 +275,7 @@ function EquipmentFormDialog({
           </div>
 
           {/* Row 7: Current Meter Reading */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Current Meter Reading</Label>
               <Input className="mt-1" type="number" min={0} step="any" value={form.currentMeterReading ?? ''} onChange={e => set('currentMeterReading', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 1500" />
@@ -317,7 +317,7 @@ function EquipmentFormDialog({
                     <Label>Financer Name</Label>
                     <Input className="mt-1" value={form.financerName ?? ''} onChange={e => set('financerName', e.target.value)} placeholder="e.g. HDFC Bank" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label>Finance Start Date</Label>
                       <Input className="mt-1" type="date" value={form.financeStartDate ?? ''} onChange={e => set('financeStartDate', e.target.value)} />
@@ -341,7 +341,7 @@ function EquipmentFormDialog({
                 <Input className={`mt-1 ${errors.hiredFrom ? 'border-red-400' : ''}`} value={form.hiredFrom ?? ''} onChange={e => { set('hiredFrom', e.target.value); setErrors(er => ({ ...er, hiredFrom: undefined })) }} placeholder="Owner / company name" />
                 {errors.hiredFrom && <p className="text-red-500 text-xs mt-1">{errors.hiredFrom}</p>}
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Hire Start Date</Label>
                   <Input className="mt-1" type="date" value={form.hireStartDate ?? ''} onChange={e => set('hireStartDate', e.target.value)} />
@@ -351,7 +351,7 @@ function EquipmentFormDialog({
                   <Input className="mt-1" type="date" value={form.hireEndDate ?? ''} onChange={e => set('hireEndDate', e.target.value)} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Hire Rate (₹)</Label>
                   <Input className="mt-1" type="number" min={0} value={form.hireRate ?? ''} onChange={e => set('hireRate', e.target.value ? Number(e.target.value) : undefined)} placeholder="Amount" />
@@ -372,7 +372,7 @@ function EquipmentFormDialog({
 
           {/* Edit-only: Work Status + Active */}
           {editing && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Work Status</Label>
                 <SearchableSelect

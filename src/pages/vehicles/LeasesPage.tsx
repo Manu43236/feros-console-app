@@ -95,7 +95,7 @@ function NewLeaseDialog({ open, onClose }: { open: boolean; onClose: () => void 
             <Input {...register('site')} placeholder="e.g. Maa Maha Maya Port — Gate 3" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Start Date *</Label>
               <Input type="date" {...register('startDate')} />

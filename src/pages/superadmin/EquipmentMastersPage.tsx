@@ -322,7 +322,7 @@ function TypesSection({ makes }: { makes: EquipmentMake[] }) {
                 className="mt-1"
               />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <Label>Capacity</Label>
                 <Input type="number" min={0} step="0.1" placeholder="e.g. 14" value={capacity} onChange={e => setCapacity(e.target.value)} className="mt-1" />

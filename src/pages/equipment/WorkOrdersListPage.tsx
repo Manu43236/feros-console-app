@@ -126,7 +126,7 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
 
           {/* JOB fields */}
           {workOrderType === 'JOB' && (
-            <div className="grid grid-cols-2 gap-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
               <div className="space-y-1.5">
                 <Label>Agreed Job Amount (₹) *</Label>
                 <Input type="number" step="0.01" placeholder="50000" {...register('agreedJobAmount')} />
@@ -139,7 +139,7 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
           )}
 
           {/* Client + Site */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Client *</Label>
               <Controller name="clientId" control={control} render={({ field }) => (
@@ -161,7 +161,7 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
           {/* Dates & Charges */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Dates & Charges</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Start Date *</Label>
                 <Input type="date" {...register('startDate')} />
@@ -185,7 +185,7 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
           {/* Commercial T&C */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Commercial Terms <span className="text-gray-400 font-normal text-xs">(all optional)</span></p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>GST %</Label>
                 <Input type="number" step="0.01" placeholder="18" {...register('gstPercent')} />
@@ -239,7 +239,7 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
                 <Input type="number" step="0.1" placeholder="1.5" {...register('overtimeRateMultiplier')} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div className="space-y-1.5">
                 <Label>Escalation Clause</Label>
                 <Input placeholder="e.g. 10% p.a. after 12 months…" {...register('escalationClause')} />

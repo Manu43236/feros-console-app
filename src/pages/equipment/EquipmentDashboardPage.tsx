@@ -55,7 +55,7 @@ export function EquipmentDashboardPage() {
       </div>
 
       {/* ── Hours summary ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
           <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
             <Clock size={20} className="text-blue-500" />
@@ -92,7 +92,7 @@ export function EquipmentDashboardPage() {
       {/* ── Work Orders ── */}
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Work Orders</p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-3">
               <ClipboardList size={16} className="text-amber-500" />

@@ -154,7 +154,7 @@ function GenerateDialog({ open, onClose, users }: {
           </div>
 
           {/* Pay Cycle */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Pay Cycle Start <span className="text-red-500">*</span></Label>
               <Input type="date" {...register('from')} className={`mt-1 ${errors.from ? 'border-red-400' : ''}`} />
@@ -400,7 +400,7 @@ function PayrollRow({ payroll, onApprove, onEdit, onCancel }: {
       {expanded && (
         <tr className="bg-gray-50 border-b">
           <td colSpan={9} className="px-8 py-4">
-            <div className="grid grid-cols-3 gap-6 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Earnings</p>
                 <div className="space-y-1">
@@ -590,7 +590,7 @@ export function PayrollPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total Net Pay', value: fmt(totalNetPay), icon: Banknote, color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Pending Approval', value: String(draftCount), icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50' },

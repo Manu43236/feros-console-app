@@ -45,7 +45,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border p-4">
           <p className="text-xs text-gray-500">Stock In</p>
           <p className="text-2xl font-bold text-green-600">{inCount}</p>

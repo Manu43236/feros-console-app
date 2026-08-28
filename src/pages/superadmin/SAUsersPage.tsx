@@ -215,7 +215,7 @@ function BulkUploadUsersDialog({ open, onClose, tenants }: {
           {/* Result */}
           {result && (
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-lg bg-gray-50 border p-3 text-center">
                   <p className="text-xl font-bold text-gray-800">{result.totalRows}</p>
                   <p className="text-xs text-gray-500 mt-0.5">Total Rows</p>
@@ -351,7 +351,7 @@ export function SAUsersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Total',    value: users.length, icon: UserCog,     color: 'text-blue-600',  bg: 'bg-blue-50' },
           { label: 'Active',   value: active,       icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },

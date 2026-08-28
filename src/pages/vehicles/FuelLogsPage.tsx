@@ -271,7 +271,7 @@ function FuelLogDialog({
           </div>
 
           {/* Litres + Cost per litre */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Litres Filled *</Label>
               {maxFillable != null && (
@@ -294,7 +294,7 @@ function FuelLogDialog({
           </div>
 
           {/* Total cost + Odometer */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Total Cost (₹)</Label>
               <Input className="mt-1" type="number" step="0.01" placeholder="Auto-calculated"
@@ -310,7 +310,7 @@ function FuelLogDialog({
           </div>
 
           {/* Payment mode + Full tank */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Payment Mode</Label>
               <SearchableSelect
@@ -332,7 +332,7 @@ function FuelLogDialog({
           </div>
 
           {/* Station details */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Fuel Station Name</Label>
               <Input className="mt-1" placeholder="e.g. HP Petrol Pump"

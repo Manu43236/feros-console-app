@@ -438,7 +438,7 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
             </button>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <SmallDoc label="Estimate" url={service.estimateDocUrl} type="estimate" inputRef={estimateRef} />
           <SmallDoc label="Final Bill" url={service.billDocUrl} type="bill" inputRef={billRef} />
         </div>

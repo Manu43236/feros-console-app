@@ -275,7 +275,7 @@ function DocumentsTab({ userId, role }: { userId: number; role: string }) {
               <Label>Document Number</Label>
               <Input placeholder="e.g. DL-1234567890" {...register('documentNumber')} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Issue Date</Label>
                 <Input type="date" {...register('issueDate')} />
@@ -586,7 +586,7 @@ export function StaffDetailPage() {
               <Pencil size={14} className="text-gray-400" /> Personal Details
             </p>
             {isAdminOrAbove && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Name</Label>
                   <Input value={nameEdit} onChange={e => setNameEdit(e.target.value)} placeholder="Full name" />
@@ -597,7 +597,7 @@ export function StaffDetailPage() {
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Designation *</Label>
                 <select {...register('designationId')} disabled={isSupervisor} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm disabled:opacity-60 disabled:cursor-not-allowed">
@@ -653,7 +653,7 @@ export function StaffDetailPage() {
           {/* Address */}
           <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
             <p className="text-sm font-semibold text-gray-700">Address</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1.5">
                 <Label>Street Address</Label>
                 <Input placeholder="123, Main Street" {...register('address')} disabled={isSupervisor} />
@@ -686,7 +686,7 @@ export function StaffDetailPage() {
           {/* Emergency contact */}
           <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
             <p className="text-sm font-semibold text-gray-700">Emergency Contact</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Name</Label>
                 <Input placeholder="Ramesh Kumar" {...register('emergencyContactName')} disabled={isSupervisor} />
@@ -701,7 +701,7 @@ export function StaffDetailPage() {
           {/* Bank */}
           <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
             <p className="text-sm font-semibold text-gray-700">Bank Details</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Bank Name</Label>
                 <Input placeholder="SBI" {...register('bankName')} disabled={isSupervisor} />
@@ -728,7 +728,7 @@ export function StaffDetailPage() {
           {/* Aadhar & Nominee */}
           <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
             <p className="text-sm font-semibold text-gray-700">Aadhar &amp; Nominee</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Aadhar Number</Label>
                 <Input placeholder="1234 5678 9012" {...register('aadharNumber')} disabled={isSupervisor} />
@@ -759,7 +759,7 @@ export function StaffDetailPage() {
           {/* Payroll */}
           {!isSupervisor && <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
             <p className="text-sm font-semibold text-gray-700">Payroll</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Salary Type</Label>
                 <div className="flex gap-2 h-10 items-center">

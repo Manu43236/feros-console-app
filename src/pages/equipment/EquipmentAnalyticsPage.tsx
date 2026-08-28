@@ -82,7 +82,7 @@ export function EquipmentAnalyticsPage() {
       {data && (
         <>
           {/* Fleet summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {[
               { label: 'Avg Utilization', value: `${data.avgUtilizationPct.toFixed(1)}%`, icon: Clock,        color: pctColor(data.avgUtilizationPct) },
               { label: 'Avg Availability', value: `${data.avgAvailabilityPct.toFixed(1)}%`, icon: Wrench,      color: pctColor(data.avgAvailabilityPct) },

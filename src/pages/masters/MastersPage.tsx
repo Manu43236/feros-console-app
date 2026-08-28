@@ -767,7 +767,7 @@ function RoutesSection() {
               <Input {...register('name', { required: 'Required' })} className="mt-1" placeholder="e.g. Vizag to Hyderabad" />
               {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Source State</Label>
                 <SearchableSelect
@@ -810,7 +810,7 @@ function RoutesSection() {
               </div>
             </div>
             {cityError && <p className="text-xs text-red-500">Source and destination cities are required</p>}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Distance (km)</Label>
                 <Input type="number" step="0.1" {...register('distanceInKm')} className="mt-1" placeholder="0" />
@@ -1134,7 +1134,7 @@ function SettingsSection() {
           <p className="text-xs text-gray-500">
             Set targets for {now.toLocaleString('default', { month: 'long' })} {now.getFullYear()} — carries forward automatically each month.
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Number of Trips Target</Label>
               <Input
@@ -1176,7 +1176,7 @@ function SettingsSection() {
             className="mt-1"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>OT Threshold (hrs/day)</Label>
             <Input type="number" step="0.5" {...register('overtimeThresholdHours')} className="mt-1" />
@@ -1186,7 +1186,7 @@ function SettingsSection() {
             <Input type="number" step="0.1" {...register('overtimeRateMultiplier')} className="mt-1" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>Max Advance Amount (₹)</Label>
             <Input type="number" {...register('maxAdvanceAmount')} className="mt-1" />

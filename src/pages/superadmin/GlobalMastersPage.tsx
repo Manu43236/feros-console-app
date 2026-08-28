@@ -368,7 +368,7 @@ function VehicleTypesSection() {
               <Input value={name} onChange={e => { setName(e.target.value); setNameErr('') }} className={`mt-1 ${nameErr ? 'border-red-400' : ''}`} autoFocus />
               {nameErr && <p className="text-red-500 text-xs mt-1">{nameErr}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><Label>Capacity (tons)</Label><Input type="number" value={capacity} onChange={e => setCapacity(e.target.value)} className="mt-1" /></div>
               <div><Label>Tyre Count</Label><Input type="number" value={tyres} onChange={e => setTyres(e.target.value)} className="mt-1" /></div>
             </div>

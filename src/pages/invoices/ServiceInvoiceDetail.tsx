@@ -172,7 +172,7 @@ export function ServiceInvoiceDetail({ invoice }: { invoice: ServiceInvoice }) {
   return (
     <div className="space-y-4">
       {/* Meta */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm bg-gray-50 rounded-lg p-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm bg-gray-50 rounded-lg p-3">
         <Row label="Service #"  value={invoice.serviceNumber} />
         <Row label="Vehicle"    value={invoice.vehicleRegistrationNumber} />
         <Row label="Type"       value={<TypeBadge type={invoice.invoiceType} />} />

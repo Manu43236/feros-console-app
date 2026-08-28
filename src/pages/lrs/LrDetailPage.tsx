@@ -225,7 +225,7 @@ function AddCheckpostDialog({ lrId, open, onClose }: { lrId: number; open: boole
             <Label>Location</Label>
             <Input {...register('location')} placeholder="City / Highway name" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Fine Amount (₹)</Label>
               <Input type="number" step="0.01" min="0" {...register('fineAmount')} placeholder="0" />
@@ -523,7 +523,7 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
                 <Label>E-way Bill No.</Label>
                 <Input className="mt-1" placeholder="EWB123456789" value={ewayBillNumber} onChange={e => setEwayBillNumber(e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <Label>Bill Date</Label>
                   <Input className="mt-1" type="date" value={ewayBillDate} onChange={e => setEwayBillDate(e.target.value)} />

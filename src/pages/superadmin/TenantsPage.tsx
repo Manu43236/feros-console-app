@@ -127,7 +127,7 @@ function BulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => voi
           {/* Result */}
           {result && (
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-lg bg-gray-50 border p-3 text-center">
                   <p className="text-xl font-bold text-gray-800">{result.totalRows}</p>
                   <p className="text-xs text-gray-500 mt-0.5">Total Rows</p>
@@ -299,7 +299,7 @@ function TenantDialog({ open, onClose, tenant }: {
         <form onSubmit={handleSubmit(data => mutation.mutate(data))} className="space-y-5 mt-2">
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Basic Info</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Req label="Company Name" fk="companyName" />
               <Field label="Prefix (e.g. ABC)" fk="prefix" />
               <Req label="Email" fk="email" type="email" />
@@ -327,7 +327,7 @@ function TenantDialog({ open, onClose, tenant }: {
 
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Owner Details</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Req label="Owner Name" fk="ownerName" />
               <Req label="Owner Phone" fk="ownerPhone" />
               <Field label="Owner Email" fk="ownerEmail" type="email" />
@@ -336,7 +336,7 @@ function TenantDialog({ open, onClose, tenant }: {
 
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Legal / Tax</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="GSTIN" fk="gstin" />
               <Field label="PAN Number" fk="panNumber" />
               <Field label="TAN Number" fk="tanNumber" />
@@ -347,7 +347,7 @@ function TenantDialog({ open, onClose, tenant }: {
 
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Bank Details</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Bank Name" fk="bankName" />
               <Field label="Account Number" fk="accountNumber" />
               <Field label="IFSC Code" fk="ifscCode" />
@@ -442,7 +442,7 @@ function TenantRow({ tenant, onEdit, onDelete, onImpersonate }: {
       {expanded && (
         <tr className="bg-gray-50 border-b">
           <td colSpan={8} className="px-8 py-4">
-            <div className="grid grid-cols-3 gap-6 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Contact</p>
                 <div className="space-y-1 text-gray-600">
@@ -538,7 +538,7 @@ export function TenantsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {[
           { label: 'Total',    value: tenants.length,        icon: Building2,   color: 'text-blue-600',   bg: 'bg-blue-50' },
           { label: 'Active',   value: active,                icon: CheckCircle, color: 'text-green-600',  bg: 'bg-green-50' },

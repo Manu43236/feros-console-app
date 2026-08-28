@@ -254,7 +254,7 @@ function VideoDialog({ open, onClose, initial, onSave, isPending }: {
           <DialogTitle>{initial ? 'Edit Tutorial Video' : 'Add Tutorial Video'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4 mt-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Role <span className="text-red-500">*</span></Label>
               <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
@@ -289,7 +289,7 @@ function VideoDialog({ open, onClose, initial, onSave, isPending }: {
             {errors.youtubeUrl && <p className="text-red-500 text-xs mt-1">{errors.youtubeUrl}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
             <div>
               <Label>Sort Order</Label>
               <Input type="number" min={0} value={form.sortOrder}

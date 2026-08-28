@@ -188,7 +188,7 @@ export function CreateServiceDialog({
           {!breakdownId && (
             <div className="space-y-1.5">
               <Label>Reason / Trigger <span className="text-red-500">*</span></Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {([
                   { v: 'SCHEDULED',  label: '📅 Scheduled' },
                   { v: 'BREAKDOWN',  label: '⚡ Breakdown' },
@@ -219,7 +219,7 @@ export function CreateServiceDialog({
           {/* Service Location Type */}
           <div className="space-y-1.5">
             <Label>Service Location <span className="text-red-500">*</span></Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {([
                 { v: 'INTERNAL',    label: '🏭 Internal' },
                 { v: 'THIRD_PARTY', label: '🔧 3rd Party' },
@@ -239,7 +239,7 @@ export function CreateServiceDialog({
           {/* Payer Type */}
           <div className="space-y-1.5">
             <Label>Who Pays? <span className="text-red-500">*</span></Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {([
                 { v: 'OWN_EXPENSE',  label: '💰 Own Expense' },
                 { v: 'WARRANTY_OEM', label: '🔒 OEM Warranty' },
@@ -271,7 +271,7 @@ export function CreateServiceDialog({
 
           {/* Insurance fields */}
           {payerType === 'INSURANCE' && (
-            <div className="grid grid-cols-2 gap-3 bg-blue-50 rounded-lg p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-50 rounded-lg p-3">
               <div className="space-y-1.5">
                 <Label>Claim Number <span className="text-red-500">*</span></Label>
                 <Input placeholder="e.g. CLM/2026/001234" value={insuranceClaimNo} onChange={e => setInsuranceClaimNo(e.target.value)} />
@@ -285,7 +285,7 @@ export function CreateServiceDialog({
 
           {/* Compliance fields */}
           {triggeredBy === 'COMPLIANCE' && (
-            <div className="grid grid-cols-2 gap-3 bg-purple-50 rounded-lg p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-purple-50 rounded-lg p-3">
               <div className="space-y-1.5">
                 <Label>Certificate Number <span className="text-red-500">*</span></Label>
                 <Input placeholder="e.g. FC/AP/2026/00123" value={certificateNumber} onChange={e => setCertificateNumber(e.target.value)} />
@@ -311,7 +311,7 @@ export function CreateServiceDialog({
             <Input placeholder="e.g. Vizag highway, Depot yard" value={location} onChange={e => setLocation(e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Service Date</Label>
               <Input type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
@@ -428,7 +428,7 @@ export function CreateServiceDialog({
                           <X size={13} />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
                           <p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
                           <Input type="number" placeholder="0" className="h-7 text-xs"
@@ -467,7 +467,7 @@ export function CreateServiceDialog({
                         <X size={13} />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
                         <Input type="number" placeholder="0" className="h-7 text-xs"

@@ -230,7 +230,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
 
           {/* ── Client, Material, Weight, Dates ── */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Client *</Label>
               <SearchableSelect
@@ -286,7 +286,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
           {/* ── Source ── */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Source (From)</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>State *</Label>
                 <SearchableSelect
@@ -331,7 +331,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>State *</Label>
                 <SearchableSelect
@@ -369,7 +369,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
           {/* ── Freight ── */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Freight</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>Rate Type *</Label>
                 <SearchableSelect
@@ -408,7 +408,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
 
           {/* ── Remarks ── */}
           <div className="border-t pt-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Special Instructions</Label>
                 <Input placeholder="Handle with care…" {...register('specialInstructions')} />

@@ -81,7 +81,7 @@ export function EquipmentServiceDetailModal({ service, open, onClose }: { servic
         </DialogHeader>
 
         <div className="space-y-5 pt-1">
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <User size={13} className="text-gray-400 shrink-0" />
               <span>{service.serviceType === 'INTERNAL' ? 'Internal (Self)' : service.serviceType === 'OEM_CENTER' ? `OEM: ${service.vendorName ?? 'Service Center'}` : service.vendorName ?? '3rd Party'}</span>

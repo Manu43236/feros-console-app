@@ -486,7 +486,7 @@ export function EquipmentInvoiceDetailPage() {
       </div>
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           icon={<DollarSign className="h-4 w-4" />}
           label="Subtotal"
@@ -587,7 +587,7 @@ export function EquipmentInvoiceDetailPage() {
         </div>
 
         {/* Summary row */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
             <p className="text-xs text-gray-500">Invoice Total</p>
             <p className="text-sm font-bold text-gray-800">₹{fmt(total)}</p>

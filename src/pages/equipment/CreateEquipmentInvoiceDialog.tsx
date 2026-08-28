@@ -241,7 +241,7 @@ export function CreateEquipmentInvoiceDialog({
           </div>
 
           {/* ── Date row ── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div className="space-y-1.5">
               <Label>Invoice Date <span className="text-red-500">*</span></Label>
               <Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} />
@@ -421,7 +421,7 @@ export function CreateEquipmentInvoiceDialog({
               </div>
 
               {/* Retention + TDS */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Retention %</Label>
                   <Input className="h-8 text-sm" type="number" min={0} max={100} step="0.1"

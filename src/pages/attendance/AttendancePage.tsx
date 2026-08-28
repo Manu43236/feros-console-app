@@ -452,7 +452,7 @@ function AttendanceDialog({
           {isEdit && (
             <div className="border-t pt-3 space-y-3">
               <p className="text-xs text-gray-500 font-medium">Admin Correction — Sign-in / Sign-out Times</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Sign-in Time</Label>
                   <Input type="datetime-local" value={signInTime} onChange={e => setSignInTime(e.target.value)} className="mt-1 text-sm" />
@@ -639,7 +639,7 @@ function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: (
               <div className="flex-1"><Label>From</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1" /></div>
               <div className="flex-1"><Label>To</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1" /></div>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
                 { label: 'Present',  value: summary.present, color: 'text-green-700 bg-green-50'   },
                 { label: 'Absent',   value: summary.absent,  color: 'text-red-700 bg-red-50'       },

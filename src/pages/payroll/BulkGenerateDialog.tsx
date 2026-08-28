@@ -89,7 +89,7 @@ export function BulkGenerateDialog({ open, onClose, users }: {
         {result ? (
           /* ── Results Screen ── */
           <div className="space-y-4 overflow-y-auto flex-1 py-1">
-            <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
               <div className="rounded-lg bg-gray-50 border p-3">
                 <p className="text-2xl font-bold text-gray-700">{result.totalRequested}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Requested</p>
@@ -148,7 +148,7 @@ export function BulkGenerateDialog({ open, onClose, users }: {
           /* ── Config Screen ── */
           <div className="space-y-4 overflow-y-auto flex-1 py-1">
             {/* Pay Cycle */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Pay Cycle Start <span className="text-red-500">*</span></Label>
                 <Input type="date" value={from} onChange={e => setFrom(e.target.value)}

@@ -299,7 +299,7 @@ export default function PnlReportsPage() {
         <div className="text-center py-8 text-gray-400 text-sm">Loading summary…</div>
       ) : summary && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <SummaryCard label="Total Invoiced"   value={fmt(summary.totalInvoiced)}
               sub="LRs in period" color="bg-blue-50 border-blue-100" />
             <SummaryCard label="Total Collected"  value={fmt(summary.totalCollected)}
@@ -313,7 +313,7 @@ export default function PnlReportsPage() {
               sub="Invoiced − All Expenses"
               color={summary.netPnl >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'} />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
             <SummaryCard label="Trip Expenses"        value={fmt(summary.tripExpenses)}        color="bg-slate-50 border-slate-100" />
             <SummaryCard label="Fuel Expenses"        value={fmt(summary.fuelExpenses)}        color="bg-slate-50 border-slate-100" />
             <SummaryCard label="Maintenance Expenses" value={fmt(summary.maintenanceExpenses)} color="bg-slate-50 border-slate-100" />

@@ -150,7 +150,7 @@ function EditDocumentDialog({ vehicleId, doc, open, onClose }: { vehicleId: numb
               <Input placeholder="New India Assurance" {...register('issuerName')} />
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Issue Date</Label>
               <Input type="date" {...register('issueDate')} />
@@ -164,7 +164,7 @@ function EditDocumentDialog({ vehicleId, doc, open, onClose }: { vehicleId: numb
             <Label>Remarks</Label>
             <Input placeholder="Optional remarks" {...register('remarks')} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Cost (₹)</Label>
               <Input type="number" min="0" step="0.01" placeholder="0.00" {...register('cost')} />
@@ -330,7 +330,7 @@ function AddDocumentDialog({ vehicleId, open, onClose, existingDocs }: { vehicle
               )} />
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Issue Date</Label>
               <Input type="date" {...register('issueDate')} />
@@ -344,7 +344,7 @@ function AddDocumentDialog({ vehicleId, open, onClose, existingDocs }: { vehicle
             <Label>Remarks</Label>
             <Input placeholder="Optional remarks" {...register('remarks')} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Cost (₹)</Label>
               <Input type="number" min="0" step="0.01" placeholder="0.00" {...register('cost')} />
@@ -571,7 +571,7 @@ function CreateServiceDialog({
           {!breakdownId && (
             <div className="space-y-1.5">
               <Label>Reason / Trigger <span className="text-red-500">*</span></Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {([
                   { v: 'SCHEDULED',  label: '📅 Scheduled' },
                   { v: 'BREAKDOWN',  label: '⚡ Breakdown' },
@@ -601,7 +601,7 @@ function CreateServiceDialog({
           {/* Service Location Type */}
           <div className="space-y-1.5">
             <Label>Service Location <span className="text-red-500">*</span></Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {([
                 { v: 'INTERNAL',   label: '🏭 Internal' },
                 { v: 'THIRD_PARTY', label: '🔧 3rd Party' },
@@ -620,7 +620,7 @@ function CreateServiceDialog({
           {/* Payer Type */}
           <div className="space-y-1.5">
             <Label>Who Pays? <span className="text-red-500">*</span></Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {([
                 { v: 'OWN_EXPENSE',  label: '💰 Own Expense' },
                 { v: 'WARRANTY_OEM', label: '🔒 OEM Warranty' },
@@ -651,7 +651,7 @@ function CreateServiceDialog({
 
           {/* Insurance fields */}
           {payerType === 'INSURANCE' && (
-            <div className="grid grid-cols-2 gap-3 bg-blue-50 rounded-lg p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-50 rounded-lg p-3">
               <div className="space-y-1.5">
                 <Label>Claim Number <span className="text-red-500">*</span></Label>
                 <Input placeholder="e.g. CLM/2026/001234" value={insuranceClaimNo} onChange={e => setInsuranceClaimNo(e.target.value)} />
@@ -665,7 +665,7 @@ function CreateServiceDialog({
 
           {/* Compliance fields */}
           {triggeredBy === 'COMPLIANCE' && (
-            <div className="grid grid-cols-2 gap-3 bg-purple-50 rounded-lg p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-purple-50 rounded-lg p-3">
               <div className="space-y-1.5">
                 <Label>Certificate Number <span className="text-red-500">*</span></Label>
                 <Input placeholder="e.g. FC/AP/2026/00123" value={certificateNumber} onChange={e => setCertificateNumber(e.target.value)} />
@@ -692,7 +692,7 @@ function CreateServiceDialog({
           </div>
 
           {/* Date & Odometer */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Service Date</Label>
               <Input type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
@@ -817,7 +817,7 @@ function CreateServiceDialog({
                           <X size={13} />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
                           <p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
                           <Input type="number" placeholder="0" className="h-7 text-xs"
@@ -856,7 +856,7 @@ function CreateServiceDialog({
                         <X size={13} />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
                         <Input type="number" placeholder="0" className="h-7 text-xs"
@@ -1909,7 +1909,7 @@ function RemoveTyreDialog({ open, onClose, fitting, currentKm }: {
             />
           </div>
           {isRetread && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Retreader Name</Label>
                 <Input value={retreaderName} onChange={e => setRetreaderName(e.target.value)} placeholder="e.g. MRF Retread Centre" />
@@ -1920,7 +1920,7 @@ function RemoveTyreDialog({ open, onClose, fitting, currentKm }: {
               </div>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Odometer at Removal (km) *</Label>
               <Input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="e.g. 87000" />
@@ -1991,7 +1991,7 @@ function ManagePositionsDialog({ open, onClose, vehicleId }: { open: boolean; on
         <div className="space-y-4 pt-2">
           <div className="border rounded-lg p-3 space-y-3 bg-gray-50">
             <p className="text-xs font-semibold text-gray-500 uppercase">Add Position</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Code *</Label>
                 <Input value={newCode} onChange={e => setNewCode(e.target.value.toUpperCase())} placeholder="FL" className="h-8 text-xs" />
@@ -2072,7 +2072,7 @@ function RotationDialog({ open, onClose, vehicleId, positions, currentKm }: {
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Perform Tyre Rotation</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Odometer (km) *</Label>
               <Input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="e.g. 87000" />
@@ -2631,7 +2631,7 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Date & Time *</Label>
                 <Input type="datetime-local" {...register('fillDate')} />
@@ -2852,7 +2852,7 @@ function AssignToOrderDialog({ vehicleId, eligibleOrders, open, onClose, onSucce
             <Label>Allocated Weight (tons) <span className="text-red-500">*</span></Label>
             <Input type="number" step="0.01" min="0" placeholder="e.g. 20" value={allocatedWeight} onChange={e => setAllocatedWeight(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Expected Load Date</Label>
               <Input type="date" value={expectedLoadDate} onChange={e => setExpectedLoadDate(e.target.value)} />
@@ -3084,7 +3084,7 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
                     </div>
                   </div>
                   <div className="px-4 py-3 space-y-3">
-                    <div className="grid grid-cols-3 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                       <div><span className="text-gray-500">Weight: </span><span className="font-medium">{allocation.allocatedWeight} T</span></div>
                       <div><span className="text-gray-500">Load: </span><span className="font-medium">{fmtDate(allocation.expectedLoadDate)}</span></div>
                       <div><span className="text-gray-500">Delivery: </span><span className="font-medium">{fmtDate(allocation.expectedDeliveryDate)}</span></div>
@@ -4126,7 +4126,7 @@ function BreakdownFormDialog({ vehicleReg, open, onClose, onSubmit, isPending }:
           {/* Duration */}
           <div className="space-y-1.5">
             <Label>Duration *</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {BD_DURATIONS.map(d => (
                 <button key={d.value} type="button"
                   onClick={() => setValue('breakdownDuration', d.value, { shouldValidate: true })}

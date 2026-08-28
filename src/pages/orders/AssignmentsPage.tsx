@@ -214,7 +214,7 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Expected Load Date</Label>
               <Input type="date" value={expectedLoadDate} onChange={e => setExpectedLoadDate(e.target.value)} />
@@ -337,7 +337,7 @@ function AssignDriverDialog({ open, onClose, orders, drivers }: {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Expected Start Date</Label>
               <Input type="date" value={expectedStartDate} onChange={e => setExpectedStartDate(e.target.value)} />

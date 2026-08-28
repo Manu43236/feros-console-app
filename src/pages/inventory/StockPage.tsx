@@ -58,7 +58,7 @@ function QuickCreatePartDialog({
               placeholder="e.g. Hydraulic Oil 68"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Unit *</Label>
               <select
@@ -154,7 +154,7 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
               onCreateNew={canCreatePart ? (name) => setQuickCreateName(name) : undefined}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Quantity *</Label>
               <Input
@@ -344,7 +344,7 @@ export default function StockPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border p-4">
           <p className="text-xs text-gray-500">Total Items</p>
           <p className="text-2xl font-bold text-gray-900">{items.length}</p>

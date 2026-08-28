@@ -220,13 +220,13 @@ export function SupervisorDashboardPage() {
 
       {/* ── KPI Cards ── */}
       {loadingSummary ? (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="bg-white rounded-2xl h-32 animate-pulse border border-gray-100" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <KpiCard
             label="Orders"
             value={fmt(s?.orders.total)}
@@ -272,7 +272,7 @@ export function SupervisorDashboardPage() {
           </div>
           <p className="text-xs text-gray-400 mb-3">{fmt(s.orders.total)} orders total</p>
           <SegmentedBar segments={orderSegments} />
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 sm:grid-cols-5 gap-2 mt-4">
             {[
               { label: 'Pending',   value: s.orders.pending,   dot: 'bg-gray-300',   status: 'PENDING' },
               { label: 'Active',    value: s.orders.active,    dot: 'bg-orange-400', status: 'IN_TRANSIT' },

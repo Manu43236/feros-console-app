@@ -438,7 +438,7 @@ function FuelLogDialog({
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>{editing ? 'Edit Fuel Log' : 'Add Fuel Log'}</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Date *</Label>
               <Input type="date" className="mt-1" value={form.fillDate} onChange={e => set('fillDate', e.target.value)} />
@@ -451,7 +451,7 @@ function FuelLogDialog({
               }} placeholder="e.g. 120" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">HMR at Fill</Label>
               <Input type="number" step="0.01" min={0} className="mt-1" value={form.hmrAtFill ?? ''} onChange={e => set('hmrAtFill', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 1540" />
@@ -464,7 +464,7 @@ function FuelLogDialog({
               }} placeholder="e.g. 95" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Total Cost (₹)</Label>
               <Input type="number" step="0.01" min={0} className="mt-1" value={form.totalCost ?? ''} onChange={e => set('totalCost', e.target.value ? Number(e.target.value) : undefined)} placeholder="auto or manual" />
@@ -479,7 +479,7 @@ function FuelLogDialog({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Fuel Station</Label>
               <Input className="mt-1" value={form.fuelStation ?? ''} onChange={e => set('fuelStation', e.target.value || undefined)} placeholder="Optional" />
@@ -793,7 +793,7 @@ export function ServiceDialog({
           {/* Trigger */}
           <div className="space-y-1.5">
             <Label>Reason / Trigger <span className="text-red-500">*</span></Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(['SCHEDULED', 'BREAKDOWN', 'ACCIDENT', 'COMPLIANCE', 'WARRANTY'] as ServiceTriggeredBy[]).map(v => (
                 <button key={v} type="button" onClick={() => set('triggeredBy', v)} className={btnCls(form.triggeredBy === v)}>
                   {TRIGGER_LABELS[v]}
@@ -825,7 +825,7 @@ export function ServiceDialog({
           {/* Service Type */}
           <div className="space-y-1.5">
             <Label>Service Location <span className="text-red-500">*</span></Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(['INTERNAL', 'THIRD_PARTY', 'OEM_CENTER'] as EquipmentServiceType[]).map(v => (
                 <button key={v} type="button" onClick={() => set('serviceType', v)} className={btnCls(form.serviceType === v)}>
                   {SVC_TYPE_LABELS[v]}
@@ -837,7 +837,7 @@ export function ServiceDialog({
           {/* Payer */}
           <div className="space-y-1.5">
             <Label>Who Pays?</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(['OWN_EXPENSE', 'WARRANTY_OEM', 'WARRANTY_ANC', 'INSURANCE', 'AMC'] as ServicePayerType[]).map(v => (
                 <button key={v} type="button" onClick={() => set('payerType', v)} className={btnCls(form.payerType === v)}>
                   {PAYER_LABELS[v]}
@@ -856,7 +856,7 @@ export function ServiceDialog({
 
           {/* Insurance */}
           {form.payerType === 'INSURANCE' && (
-            <div className="grid grid-cols-2 gap-3 bg-blue-50 rounded-lg p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-50 rounded-lg p-3">
               <div className="space-y-1.5">
                 <Label>Claim Number <span className="text-red-500">*</span></Label>
                 <Input value={form.insuranceClaimNo} onChange={e => set('insuranceClaimNo', e.target.value)} />
@@ -870,7 +870,7 @@ export function ServiceDialog({
 
           {/* Compliance */}
           {form.triggeredBy === 'COMPLIANCE' && (
-            <div className="grid grid-cols-2 gap-3 bg-purple-50 rounded-lg p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-purple-50 rounded-lg p-3">
               <div className="space-y-1.5">
                 <Label>Certificate Number <span className="text-red-500">*</span></Label>
                 <Input value={form.certificateNumber} onChange={e => set('certificateNumber', e.target.value)} />
@@ -895,7 +895,7 @@ export function ServiceDialog({
             <Input value={form.location} onChange={e => set('location', e.target.value)} placeholder="e.g. Site yard, Vizag" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Service Date</Label>
               <Input type="date" value={form.serviceDate} onChange={e => set('serviceDate', e.target.value)} />
@@ -949,7 +949,7 @@ export function ServiceDialog({
                         <span className="text-sm font-medium text-[#1C1400]">{t?.name}</span>
                         <button type="button" onClick={() => toggleTask(id)} className="text-gray-300 hover:text-red-500 transition-colors ml-2">✕</button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div><p className="text-xs text-gray-400 mb-1">Cost (₹)</p>
                           <Input type="number" placeholder="0" className="h-7 text-xs" value={d?.cost ?? ''} onChange={e => updateDraft(id, { cost: e.target.value || undefined })} /></div>
                         <div><p className="text-xs text-gray-400 mb-1">Recurring?</p>
@@ -1522,7 +1522,7 @@ function DocDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Document Number</Label>
               <Input placeholder="e.g. INS-2024-001" value={form.documentNumber ?? ''} onChange={e => set({ documentNumber: e.target.value })} />
@@ -1532,7 +1532,7 @@ function DocDialog({
               <Input placeholder="Issuing authority" value={form.issuerName ?? ''} onChange={e => set({ issuerName: e.target.value })} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Issue Date</Label>
               <Input type="date" value={form.issueDate ?? ''} onChange={e => set({ issueDate: e.target.value })} />
@@ -1542,7 +1542,7 @@ function DocDialog({
               <Input type="date" value={form.expiryDate ?? ''} onChange={e => set({ expiryDate: e.target.value })} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Cost (₹)</Label>
               <Input type="number" placeholder="0" value={form.cost ?? ''} onChange={e => set({ cost: e.target.value ? Number(e.target.value) : undefined })} />

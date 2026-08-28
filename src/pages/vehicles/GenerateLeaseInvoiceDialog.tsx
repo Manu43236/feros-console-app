@@ -156,7 +156,7 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
 
         <div className="space-y-5 mt-2">
           {/* Billing period */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Billing Period From *</Label>
               <Input type="date" value={from} max={today}
@@ -298,7 +298,7 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
           )}
 
           {/* Invoice meta */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Invoice Date *</Label>
               <Input type="date" value={invoiceDate} max={today}

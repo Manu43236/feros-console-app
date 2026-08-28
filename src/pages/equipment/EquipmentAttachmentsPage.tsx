@@ -64,7 +64,7 @@ function AttachmentDialog({
           <DialogTitle>{isEdit ? 'Edit Attachment' : 'Add Attachment'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 pt-1">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Name *</Label>
               <Input placeholder="e.g. 600mm Bucket" value={form.name} onChange={e => set({ name: e.target.value })} />
@@ -79,7 +79,7 @@ function AttachmentDialog({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Serial Number</Label>
               <Input placeholder="S/N" value={form.serialNumber ?? ''} onChange={e => set({ serialNumber: e.target.value })} />
@@ -102,7 +102,7 @@ function AttachmentDialog({
                 <Label>Hired From</Label>
                 <Input placeholder="Vendor name" value={form.hiredFrom ?? ''} onChange={e => set({ hiredFrom: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Hire Start</Label>
                   <Input type="date" value={form.hireStartDate ?? ''} onChange={e => set({ hireStartDate: e.target.value })} />
@@ -115,7 +115,7 @@ function AttachmentDialog({
             </>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Default Rate (₹)</Label>
               <Input type="number" placeholder="0" value={form.defaultRate ?? ''} onChange={e => set({ defaultRate: e.target.value ? Number(e.target.value) : undefined })} />

@@ -141,7 +141,7 @@ function RecordPaymentDialog({ invoiceId, balanceDue, open, onClose }: {
               Balance due: <span className="font-bold">₹{balanceDue.toLocaleString('en-IN')}</span>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Amount (₹) *</Label>
               <Input type="number" step="0.01" min="0" {...register('amount')} placeholder="0.00" autoFocus />

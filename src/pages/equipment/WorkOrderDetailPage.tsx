@@ -129,7 +129,7 @@ function AddMachineDialog({ woId, open, onClose, workOrderType }: { woId: number
           {!isJobWo && (
             <div className="border-t border-gray-100 pt-3 space-y-3">
               <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Rate <span className="normal-case font-normal">(optional)</span></p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Rate Type</Label>
                   <select
@@ -372,7 +372,7 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Add Daily Log</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Machine</Label>
               <select className="w-full border rounded-md px-3 py-2 text-sm"
@@ -420,7 +420,7 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Fuel (L)</Label>
               <Input type="number" step="0.01" placeholder="45" value={form.fuelConsumed}
@@ -440,7 +440,7 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
           {/* E4 — Hour Breakdown */}
           <div className="border-t pt-3 space-y-2">
             <Label className="text-xs text-gray-500 uppercase tracking-wide">Hour Breakdown (optional)</Label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {([['Working', 'workingHours'], ['Idle', 'idleHours'], ['Standby', 'standbyHours'], ['Breakdown', 'breakdownHours']] as const).map(([label, key]) => (
                 <div key={key} className="space-y-1">
                   <Label className="text-xs">{label}</Label>
@@ -608,7 +608,7 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Fuel (L)</Label>
               <Input type="number" step="0.01" value={form.fuelConsumed}
@@ -628,7 +628,7 @@ function EditLogDialog({ woId, clientId, log, open, onClose }: {
           {/* E4 — Hour Breakdown */}
           <div className="border-t pt-3 space-y-2">
             <Label className="text-xs text-gray-500 uppercase tracking-wide">Hour Breakdown (optional)</Label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {([['Working', 'workingHours'], ['Idle', 'idleHours'], ['Standby', 'standbyHours'], ['Breakdown', 'breakdownHours']] as const).map(([label, key]) => (
                 <div key={key} className="space-y-1">
                   <Label className="text-xs">{label}</Label>
@@ -1259,7 +1259,7 @@ function EditTermsDialog({ woId, wo, open, onClose }: {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Edit Commercial Terms</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[['GST %', 'gstPercent', '18'], ['TDS %', 'tdsPercent', '2'], ['Retention %', 'retentionPercent', '5']].map(([label, key, ph]) => (
               <div key={key} className="space-y-1.5">
                 <Label>{label}</Label>
@@ -1297,7 +1297,7 @@ function EditTermsDialog({ woId, wo, open, onClose }: {
               <Input type="number" step="0.1" placeholder="1.5" value={form.overtimeRateMultiplier} onChange={e => set('overtimeRateMultiplier', e.target.value)} />
             </div>
           </div>
-          <div className="border-t pt-3 grid grid-cols-2 gap-3">
+          <div className="border-t pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Mobilization (₹)</Label>
               <Input type="number" step="0.01" placeholder="0" value={form.mobilizationCharge} onChange={e => set('mobilizationCharge', e.target.value)} />
@@ -1307,7 +1307,7 @@ function EditTermsDialog({ woId, wo, open, onClose }: {
               <Input type="number" step="0.01" placeholder="0" value={form.demobilizationCharge} onChange={e => set('demobilizationCharge', e.target.value)} />
             </div>
           </div>
-          <div className="border-t pt-3 grid grid-cols-2 gap-3">
+          <div className="border-t pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Escalation Clause</Label>
               <Input placeholder="e.g. 10% p.a. after 12 months" value={form.escalationClause} onChange={e => set('escalationClause', e.target.value)} />
@@ -1383,7 +1383,7 @@ function MachineTermsDialog({ woId, assignment, open, onClose }: {
           <DialogTitle>Machine Terms — {assignment.serialNumber ?? `#${assignment.equipmentId}`}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 pt-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Hire Type</Label>
               <Select value={form.hireType} onValueChange={v => set('hireType', v)}>
@@ -1564,7 +1564,7 @@ function ConditionSurveyDialog({ woId, assignment, open, onClose }: {
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Condition Survey — {assignment.serialNumber ?? `#${assignment.equipmentId}`}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Survey Type *</Label>
               <Select value={surveyType} onValueChange={v => setSurveyType(v as typeof surveyType)}>
@@ -1882,7 +1882,7 @@ export function WorkOrderDetailPage() {
       </div>
 
       {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-gray-400 mb-2">
             <Gauge size={13} />
@@ -2542,7 +2542,7 @@ export function WorkOrderDetailPage() {
                 <Landmark className="h-4 w-4 text-feros-equip-sidebar" />
                 <span className="font-semibold text-gray-800">Reconciliation Summary</span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                 {[
                   { label: 'Gross Billed', value: receivablesSummary.grossBilled, color: 'text-gray-800' },
                   { label: 'Received', value: receivablesSummary.totalReceived, color: 'text-green-700' },

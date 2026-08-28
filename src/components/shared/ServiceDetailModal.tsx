@@ -222,7 +222,7 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
         <div className="space-y-5 pt-1">
 
           {/* ── Info row ── */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <User size={13} className="text-gray-400 shrink-0" />
               <span>
@@ -419,7 +419,7 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
               <FileText size={12} /> Documents
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <DocUploadCard
                 label="Estimate"
                 url={service.estimateDocUrl}

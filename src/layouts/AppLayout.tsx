@@ -10,7 +10,7 @@ import { authApi } from '@/api/auth'
 import {
   LayoutDashboard, Users, Truck, ClipboardList, FileText,
   Receipt, UserCheck, Calendar, Wallet, Settings,
-  LogOut, Menu, X, Building2, Globe,
+  LogOut, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
   Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin, ScrollText,
@@ -336,15 +336,14 @@ function isSectionedNav(nav: SectionedNav | FlatNav): nav is SectionedNav {
   return !Array.isArray(nav)
 }
 
-/** Returns true if the nav item should be shown based on allowedModules. */
 function isModuleAllowed(item: NavItem, allowedModules: string[] | null): boolean {
-  if (allowedModules === null) return true          // ADMIN/SA — all visible
-  if (!item.moduleKey) return true                   // no moduleKey = always-on item
+  if (allowedModules === null) return true
+  if (!item.moduleKey) return true
   return allowedModules.includes(item.moduleKey)
 }
 
 // ─── Notification Nav Link ───────────────────────────────────────────────────────
-function NotifNavLink() {
+function NotifNavLink({ collapsed }: { collapsed?: boolean }) {
   const { data: countRes } = useQuery({
     queryKey: ['notif-count'],
     queryFn: () => notificationsApi.getUnreadCount(),
@@ -355,26 +354,32 @@ function NotifNavLink() {
   return (
     <NavLink
       to="/notifications"
+      title={collapsed ? 'Notifications' : undefined}
       className={({ isActive }) => cn(
-        'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+        'relative flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+        collapsed && 'justify-center px-0',
         isActive
           ? 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
       <Bell size={18} className="shrink-0" />
-      <span>Notifications</span>
+      {!collapsed && <span>Notifications</span>}
       {count > 0 && (
-        <span className="ml-auto min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-          {count > 9 ? '9+' : count}
-        </span>
+        collapsed ? (
+          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+        ) : (
+          <span className="ml-auto min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+            {count > 9 ? '9+' : count}
+          </span>
+        )
       )}
     </NavLink>
   )
 }
 
 // ─── Demo Requests Nav Link ──────────────────────────────────────────────────────
-function DemoRequestsNavLink({ onClick }: { onClick?: () => void }) {
+function DemoRequestsNavLink({ onClick, collapsed }: { onClick?: () => void; collapsed?: boolean }) {
   const { data: countRes } = useQuery({
     queryKey: ['demo-requests-count'],
     queryFn: () => demoRequestsApi.countNew(),
@@ -386,50 +391,67 @@ function DemoRequestsNavLink({ onClick }: { onClick?: () => void }) {
     <NavLink
       to="/sa/demo-requests"
       onClick={onClick}
+      title={collapsed ? 'Demo Requests' : undefined}
       className={({ isActive }) => cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+        'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+        collapsed && 'justify-center px-0',
         isActive
           ? 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
       <ClipboardList size={18} className="shrink-0" />
-      <span>Demo Requests</span>
+      {!collapsed && <span>Demo Requests</span>}
       {count > 0 && (
-        <span className="ml-auto min-w-[20px] h-5 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-          {count > 9 ? '9+' : count}
-        </span>
+        collapsed ? (
+          <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
+        ) : (
+          <span className="ml-auto min-w-[20px] h-5 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+            {count > 9 ? '9+' : count}
+          </span>
+        )
       )}
     </NavLink>
   )
 }
 
 // ─── Nav item ────────────────────────────────────────────────────────────────────
-function NavItemLink({ to, label, icon: Icon, onClick }: NavItem & { onClick?: () => void }) {
+function NavItemLink({ to, label, icon: Icon, onClick, collapsed }: NavItem & { onClick?: () => void; collapsed?: boolean }) {
   return (
     <NavLink
       to={to}
       end
       onClick={onClick}
+      title={collapsed ? label : undefined}
       className={({ isActive }) => cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+        collapsed && 'justify-center px-0 py-2.5',
         isActive
           ? 'bg-feros-orange text-white'
           : 'text-gray-300 hover:bg-white/10 hover:text-white'
       )}
     >
       <Icon size={18} className="shrink-0" />
-      {label}
+      {!collapsed && label}
     </NavLink>
   )
 }
 
 // ─── Collapsible section ─────────────────────────────────────────────────────────
 function NavSectionGroup({
-  section, icon: SectionIcon, items, open, onToggle, onNavClick,
-}: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void }) {
+  section, icon: SectionIcon, items, open, onToggle, onNavClick, collapsed,
+}: NavSection & { open: boolean; onToggle: () => void; onNavClick?: () => void; collapsed?: boolean }) {
   const { pathname } = useLocation()
   const isSectionActive = items.some(item => pathname === item.to || pathname.startsWith(item.to + '/'))
+
+  // Collapsed: show all items flat as icons (no section header)
+  if (collapsed) {
+    return (
+      <div className="space-y-0.5 mt-1">
+        {items.map(item => <NavItemLink key={item.to} {...item} onClick={onNavClick} collapsed />)}
+      </div>
+    )
+  }
 
   if (section === '') {
     return (
@@ -466,54 +488,60 @@ function NavSectionGroup({
   )
 }
 
-
-// ─── Sidebar panel (defined outside AppLayout to keep stable identity) ───────────
+// ─── Sidebar panel ───────────────────────────────────────────────────────────────
 type SidebarPanelProps = {
-  mobile?: boolean
+  collapsed?: boolean
   logoUrl: string | null
   companyName: string | null
   nav: SectionedNav | FlatNav
   openSections: Set<string>
   onToggleSection: (section: string) => void
   isRouteAllowed: (item: NavItem) => boolean
-  onCloseMobile?: () => void
   onOpenLogout: () => void
   isEquipmentMode: boolean
 }
 
 function SidebarPanel({
-  mobile = false,
+  collapsed = false,
   logoUrl,
   companyName,
   nav,
   openSections,
   onToggleSection,
   isRouteAllowed,
-  onCloseMobile,
   onOpenLogout,
   isEquipmentMode,
 }: SidebarPanelProps) {
   return (
-    <aside className={cn('flex flex-col h-full', isEquipmentMode ? 'bg-feros-equip-sidebar' : 'bg-feros-sidebar', mobile ? 'w-72' : 'w-64')}>
+    <aside className={cn(
+      'flex flex-col h-full',
+      isEquipmentMode ? 'bg-feros-equip-sidebar' : 'bg-feros-sidebar',
+      collapsed ? 'w-14' : 'w-64'
+    )}>
       {/* Logo */}
-      <div className="flex items-center justify-center h-16 px-5 border-b border-white/10 shrink-0 relative">
-        {logoUrl ? (
+      <div className={cn(
+        'flex items-center h-16 border-b border-white/10 shrink-0',
+        collapsed ? 'justify-center' : 'justify-center px-5'
+      )}>
+        {collapsed ? (
+          <div className={cn(
+            'w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm',
+            isEquipmentMode ? 'bg-orange-500' : 'bg-feros-orange'
+          )}>
+            F
+          </div>
+        ) : logoUrl ? (
           <img src={logoUrl} alt={companyName ?? 'Logo'} className="h-9 w-auto object-contain max-w-[160px]" />
         ) : (
           <img src={leftMenuLogo} alt="FEROS" className="h-9 w-auto object-contain" />
         )}
-        {mobile && (
-          <button onClick={onCloseMobile} className="absolute right-4 text-gray-400 hover:text-white">
-            <X size={20} />
-          </button>
-        )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
+      <nav className={cn('flex-1 overflow-y-auto py-4', collapsed ? 'px-2' : 'px-3')}>
         {isSectionedNav(nav) ? (
           <>
-            <NavItemLink {...nav.dashboard} onClick={onCloseMobile} />
+            <NavItemLink {...nav.dashboard} collapsed={collapsed} />
             {nav.sections.map(({ section, icon, items }) => {
               const allowed = items.filter(i => isRouteAllowed(i))
               if (allowed.length === 0) return null
@@ -525,8 +553,7 @@ function SidebarPanel({
                   items={allowed}
                   open={openSections.has(section)}
                   onToggle={() => onToggleSection(section)}
-                  onNavClick={onCloseMobile}
-                 
+                  collapsed={collapsed}
                 />
               )
             })}
@@ -535,22 +562,26 @@ function SidebarPanel({
           <div className="space-y-0.5">
             {(nav as FlatNav).filter(i => isRouteAllowed(i)).map(item =>
               item.to === '/sa/demo-requests'
-                ? <DemoRequestsNavLink key={item.to} onClick={onCloseMobile} />
-                : <NavItemLink key={item.to} {...item} onClick={onCloseMobile} />
+                ? <DemoRequestsNavLink key={item.to} collapsed={collapsed} />
+                : <NavItemLink key={item.to} {...item} collapsed={collapsed} />
             )}
           </div>
         )}
       </nav>
 
       {/* Footer */}
-      <div className="shrink-0 p-3 border-t border-white/10 space-y-0.5">
-        <NotifNavLink />
+      <div className={cn('shrink-0 border-t border-white/10 space-y-0.5', collapsed ? 'p-2' : 'p-3')}>
+        <NotifNavLink collapsed={collapsed} />
         <button
           onClick={onOpenLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+          title={collapsed ? 'Sign Out' : undefined}
+          className={cn(
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors',
+            collapsed && 'justify-center px-0'
+          )}
         >
           <LogOut size={18} />
-          Sign Out
+          {!collapsed && 'Sign Out'}
         </button>
       </div>
     </aside>
@@ -559,19 +590,18 @@ function SidebarPanel({
 
 function getRoleLabel(role: string | null) {
   if (!role) return ''
-  if (role === 'SUPER_ADMIN')  return 'Super Admin'
-  if (role === 'ADMIN')        return 'Admin'
-  if (role === 'OFFICE_STAFF') return 'Office Staff'
-  if (role === 'SUPERVISOR')   return 'Supervisor'
-  if (role === 'DRIVER')       return 'Driver'
-  if (role === 'CLEANER')      return 'Cleaner'
-  if (role === 'STORE_KEEPER') return 'Store Keeper'
+  if (role === 'SUPER_ADMIN')     return 'Super Admin'
+  if (role === 'ADMIN')           return 'Admin'
+  if (role === 'OFFICE_STAFF')    return 'Office Staff'
+  if (role === 'SUPERVISOR')      return 'Supervisor'
+  if (role === 'DRIVER')          return 'Driver'
+  if (role === 'CLEANER')         return 'Cleaner'
+  if (role === 'STORE_KEEPER')    return 'Store Keeper'
   if (role === 'SERVICE_MANAGER') return 'Service Manager'
   return role
 }
 
 export function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
   const phone              = useAuthStore(s => s.phone)
   const name               = useAuthStore(s => s.name)
@@ -609,8 +639,6 @@ export function AppLayout() {
     moduleType === 'EQUIPMENT_ONLY' ||
     (moduleType === 'BOTH' && currentMode === 'EQUIPMENT')
 
-  // Service managers get a visible Equipment Services item when the tenant has equipment.
-  // canAccessEquipment is null unless a staff profile sets it, so gate on tenant moduleType.
   const smHasEquipment =
     (moduleType === 'BOTH' || moduleType === 'EQUIPMENT_ONLY') && canAccessEquipment !== false
   const serviceManagerNav: FlatNav = smHasEquipment
@@ -688,20 +716,17 @@ export function AppLayout() {
   }
 
   function isRouteAllowed(item: NavItem) {
-    // 1. Check subscription feature flags
     if (role !== 'SUPER_ADMIN' && subFeatures !== undefined) {
       const flag = FEATURE_ROUTES[item.to]
       if (flag !== undefined && !flag) return false
     }
-    // 2. Gate leases nav items for supervisors without lease access
     if (role === 'SUPERVISOR' && (item.to === '/vehicles/leases' || item.to === '/vehicles/lease-invoices')) {
       if (canAccessLeases === false) return false
     }
-    // 3. Check module access
     return isModuleAllowed(item, allowedModules)
   }
 
-  const sidebarProps: Omit<SidebarPanelProps, 'mobile' | 'onCloseMobile'> = {
+  const sidebarProps: Omit<SidebarPanelProps, 'collapsed'> = {
     logoUrl,
     companyName,
     nav,
@@ -714,20 +739,15 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
-      {/* Desktop sidebar */}
+      {/* Mobile: always-visible icon rail */}
+      <div className="flex md:hidden shrink-0">
+        <SidebarPanel {...sidebarProps} collapsed />
+      </div>
+
+      {/* Desktop: full sidebar */}
       <div className="hidden md:flex shrink-0">
         <SidebarPanel {...sidebarProps} />
       </div>
-
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 flex md:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <div className="relative z-50">
-            <SidebarPanel {...sidebarProps} mobile onCloseMobile={() => setSidebarOpen(false)} />
-          </div>
-        </div>
-      )}
 
       <ConfirmDialog
         open={logoutOpen}
@@ -742,18 +762,9 @@ export function AppLayout() {
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Header */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 shrink-0 gap-2">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100"
-          >
-            <Menu size={20} />
-          </button>
-
-          {/* Module toggle — two overlapping circles, swap with text expand/collapse */}
+          {/* Module toggle */}
           {moduleType === 'BOTH' && canAccessVehicles !== false && canAccessEquipment !== false && role !== 'SERVICE_MANAGER' && (() => {
             const isVehicles = currentMode === 'VEHICLES'
-            // active:   left-7 (28px), w-[128px] pill, z-10, shadow
-            // inactive: left-0, w-9 circle, opacity-50, z-0
             const pillCls = (active: boolean, bg: string) => cn(
               'absolute top-0.5 h-9 rounded-full flex items-center overflow-hidden transition-all duration-300 ease-in-out',
               bg,
@@ -763,7 +774,6 @@ export function AppLayout() {
             )
             return (
               <div className="relative shrink-0 h-10 w-[160px]">
-                {/* Lorry / Vehicles */}
                 <button
                   onClick={() => { setCurrentMode('VEHICLES'); navigate('/dashboard') }}
                   className={pillCls(isVehicles, 'bg-feros-navy')}
@@ -775,7 +785,6 @@ export function AppLayout() {
                     isVehicles ? 'max-w-[80px] opacity-100 ml-2' : 'max-w-0 opacity-0 ml-0'
                   )}>Vehicles</span>
                 </button>
-                {/* Equipment */}
                 <button
                   onClick={() => { setCurrentMode('EQUIPMENT'); navigate('/equipment/dashboard') }}
                   className={pillCls(!isVehicles, 'bg-feros-equip-sidebar')}
@@ -791,7 +800,6 @@ export function AppLayout() {
             )
           })()}
 
-          {/* Spacer */}
           <div className="flex-1" />
 
           <button
@@ -848,7 +856,7 @@ export function AppLayout() {
         )}
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-3 sm:p-6">
           <SubscriptionContext.Provider value={{ locked, isEquipmentMode }}>
             <Outlet />
           </SubscriptionContext.Provider>

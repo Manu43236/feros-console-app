@@ -300,7 +300,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-600">
                   <div><span className="text-gray-400 block">Vehicles</span>{tenant.currentVehicleCount ?? '—'}</div>
                   <div>
                     <span className="text-gray-400 block">Expiry</span>
@@ -317,7 +317,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
             ) : st === 'TRIAL' ? (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
                 <p className="text-sm font-medium text-blue-700">Trial · Free</p>
-                <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-600">
                   <div><span className="text-gray-400 block">Vehicles</span>{tenant.currentVehicleCount ?? '—'}</div>
                   <div><span className="text-gray-400 block">Expiry</span><ExpiryCell date={tenant.trialEndDate} /></div>
                   <div><span className="text-gray-400 block">Billing</span>—</div>
@@ -344,7 +344,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                   placeholder={latestActive?.planName ?? 'e.g. Growth'} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Vehicle count */}
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">
@@ -596,7 +596,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                     placeholder="e.g. Growth, Enterprise, Custom" />
                   {actionErrs.planName && <p className="text-red-500 text-xs mt-1">{actionErrs.planName}</p>}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Vehicle Count <span className="text-red-500">*</span></label>
                     <input type="number" min={1}
@@ -635,7 +635,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                     onChange={e => { setActionForm(f => ({ ...f, startDate: e.target.value })); setActionErrs(v => ({ ...v, startDate: '' })) }} />
                   {actionErrs.startDate && <p className="text-red-500 text-xs mt-1">{actionErrs.startDate}</p>}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Amount Override (₹, optional)</label>
                     <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
@@ -681,7 +681,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                     <p>Billing: {cycleLabel(latestActive.billingCycle)} · Ends: {latestActive.endDate ?? 'N/A'}</p>
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-600 mb-1 block">Vehicle Count <span className="text-gray-400">(keep {latestActive?.vehicleCount ?? '—'} if blank)</span></label>
                     <input type="number" min={1} className="w-full border rounded-lg px-3 py-2 text-sm"
@@ -1218,7 +1218,7 @@ function ProformaDialog({ tenantId: initTenantId, tenants, invoice, onClose, onS
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-gray-600 mb-1 block">From Date</label>
             <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"

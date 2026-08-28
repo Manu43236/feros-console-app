@@ -162,7 +162,7 @@ function MonthlyTargetCard({ data, type, isFlipped }: {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 mt-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
               {[
                 { label: 'Completed', value: completedNum,  color: 'text-green-400' },
                 { label: 'Pending',   value: pending,       color: 'text-yellow-400' },
@@ -281,7 +281,7 @@ function BreakdownCard({ title, total, totalLabel, href, icon: Icon, accentTw, i
             <Icon size={18} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
           {items.map(({ label, value, dot, href: itemHref }) => (
             <div
               key={label}
@@ -341,7 +341,7 @@ function AttendanceCard({ att, href }: {
             <UserCheck size={18} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
           {rows.map(({ label, value, dot }) => (
             <div key={label} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg">
               <div className="flex items-center gap-1.5 min-w-0">

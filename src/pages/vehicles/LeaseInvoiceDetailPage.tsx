@@ -176,7 +176,7 @@ export function LeaseInvoiceDetailPage() {
       </div>
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard icon={<DollarSign className="h-4 w-4" />} label="Subtotal" value={`₹${fmt(subtotal)}`} />
         <StatCard icon={<Percent className="h-4 w-4" />}   label={taxLabel}   value={`₹${fmt(taxAmount)}`} />
         <StatCard icon={<Receipt className="h-4 w-4" />}   label="Total"      value={`₹${fmt(total)}`} />

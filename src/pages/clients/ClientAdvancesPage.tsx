@@ -78,7 +78,7 @@ function AddAdvanceDialog({ open, onClose }: { open: boolean; onClose: () => voi
             {errors.clientId && <p className="text-xs text-red-500 mt-1">{errors.clientId.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Received Date *</Label>
               <Input type="date" {...register('receivedDate')} className="mt-1" />
@@ -91,7 +91,7 @@ function AddAdvanceDialog({ open, onClose }: { open: boolean; onClose: () => voi
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Payment Mode *</Label>
               <Controller
