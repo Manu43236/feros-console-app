@@ -323,7 +323,12 @@ export function LrsPage() {
                     onClick={() => navigate(`/lrs/${lr.id}`)}
                     className="hover:bg-blue-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-blue-700 whitespace-nowrap">{lr.lrNumber}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="font-medium text-blue-700">{lr.lrNumber}</span>
+                      {lr.paperLrNumber && (
+                        <p className="text-xs text-gray-400 mt-0.5">Paper: {lr.paperLrNumber}</p>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{lr.orderNumber}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.clientName || '—'}</td>
                     <td className="px-4 py-3 text-gray-800 font-medium whitespace-nowrap">

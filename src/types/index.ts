@@ -632,6 +632,7 @@ export interface Order {
   totalFreightAmount?: number; orderStatus: OrderStatus; orderPaymentStatus: OrderPaymentStatus
   specialInstructions?: string; remarks?: string
   vehicleAllocations?: VehicleAllocation[]
+  isPol?: boolean
   isActive: boolean; createdAt: string; updatedAt: string
 }
 
@@ -712,7 +713,7 @@ export interface Breakdown {
 export type LrStatus = 'CREATED'|'WEIGHT_LOADED'|'IN_TRANSIT'|'DELIVERED'|'CANCELLED'
 
 export interface Lr {
-  id: number; tenantId: number; lrNumber: string
+  id: number; tenantId: number; lrNumber: string; paperLrNumber?: string
   orderId: number; orderNumber: string
   vehicleAllocationId: number
   vehicleId?: number; vehicleRegistrationNumber: string; vehicleTypeName?: string
@@ -752,7 +753,7 @@ export type PaymentMode = 'CASH'|'CHEQUE'|'NEFT'|'UPI'|'RTGS'|'OTHER'
 
 export interface InvoiceLrItem {
   id: number
-  lrId: number; lrNumber: string; lrDate?: string
+  lrId: number; lrNumber: string; paperLrNumber?: string; lrDate?: string
   orderId: number; orderNumber: string
   vehicleRegistrationNumber: string
   materialTypeName?: string

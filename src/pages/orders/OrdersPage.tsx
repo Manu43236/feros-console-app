@@ -4,13 +4,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { ordersApi } from '@/api/orders'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi } from '@/api/masters'
 import { toast } from 'sonner'
-import { Plus, Search, ArrowRight, Package } from 'lucide-react'
+import { Plus, Search, ArrowRight, Package, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -490,9 +490,27 @@ export function OrdersPage() {
           <p className="text-gray-500 text-sm mt-0.5">Manage and track all orders</p>
         </div>
         {!locked && !isSupervisor && (
-          <Button onClick={() => setFormOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
-            <Plus size={16} /> New Order
-          </Button>
+          <div className="relative group">
+            <Button className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
+              <Plus size={16} /> New Order <ChevronDown size={14} />
+            </Button>
+            <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-gray-100 rounded-lg shadow-lg z-10 hidden group-focus-within:block group-hover:block">
+              <button
+                onClick={() => setFormOpen(true)}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50 rounded-t-lg"
+              >
+                <span className="font-medium">Live Order</span>
+                <p className="text-xs text-gray-400 mt-0.5">Real-time order entry</p>
+              </button>
+              <Link
+                to="/orders/pol"
+                className="block w-full text-left px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50 rounded-b-lg border-t border-gray-100"
+              >
+                <span className="font-medium">Post Order Log (POL)</span>
+                <p className="text-xs text-gray-400 mt-0.5">Enter past trips retrospectively</p>
+              </Link>
+            </div>
+          </div>
         )}
       </div>
 

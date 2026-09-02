@@ -30,6 +30,7 @@ import TyreRequestsPage        from '@/pages/inventory/TyreRequestsPage'
 import { OrdersPage }       from '@/pages/orders/OrdersPage'
 import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
 import AssignmentsPage      from '@/pages/orders/AssignmentsPage'
+import PolOrderPage         from '@/pages/orders/PolOrderPage'
 import { LrsPage }           from '@/pages/lrs/LrsPage'
 import { LrDetailPage }     from '@/pages/lrs/LrDetailPage'
 import { TripExpensesPage } from '@/pages/lrs/TripExpensesPage'
@@ -162,6 +163,7 @@ export default function App() {
 
           {/* Orders & LRs */}
           <Route path="orders"          element={<OrdersPage />} />
+          <Route path="orders/pol"      element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PolOrderPage /></ProtectedRoute>} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="assignments"     element={<AssignmentsPage />} />
           <Route path="lrs"              element={<LrsPage />} />

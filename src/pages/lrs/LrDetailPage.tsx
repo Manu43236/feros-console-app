@@ -678,7 +678,12 @@ export function LrDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold text-white tracking-wide">{lr.lrNumber}</h1>
+                <div>
+                  <h1 className="text-2xl font-bold text-white tracking-wide">{lr.lrNumber}</h1>
+                  {lr.paperLrNumber && (
+                    <p className="text-white/60 text-sm mt-0.5">Paper LR: {lr.paperLrNumber}</p>
+                  )}
+                </div>
                 <StatusBadge status={lr.lrStatus} />
                 {lr.invoiceId ? (
                   <span className="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-200 px-2.5 py-1 rounded-full text-xs font-medium">
