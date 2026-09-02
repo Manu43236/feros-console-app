@@ -487,8 +487,8 @@ export function OrdersPage() {
           <p className="text-gray-500 text-sm mt-0.5">Manage and track all orders</p>
         </div>
         {!locked && !isSupervisor && (
-          <Button onClick={() => navigate('/orders/new')} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
-            <Plus size={16} /> New Order
+          <Button onClick={() => navigate('/orders/new')} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+            <Plus size={16} />
           </Button>
         )}
       </div>
