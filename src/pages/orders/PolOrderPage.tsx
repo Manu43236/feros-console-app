@@ -26,8 +26,10 @@ const schema = z.object({
   customMaterialName:  z.string().optional(),
   totalWeight:         z.coerce.number().positive('Required'),
   orderDate:           z.string().min(1, 'Order date is required'),
+  sourceAddress:       z.string().optional(),
   sourceStateId:       z.coerce.number().min(1, 'Required'),
   sourceCityId:        z.coerce.number().min(1, 'Required'),
+  destinationAddress:  z.string().optional(),
   destinationStateId:  z.coerce.number().min(1, 'Required'),
   destinationCityId:   z.coerce.number().min(1, 'Required'),
   freightRateType:     z.enum(['PER_TON', 'PER_TRIP', 'PER_KM']),
@@ -109,8 +111,10 @@ export default function PolOrderPage() {
         clientId:           data.clientId,
         totalWeight:        data.totalWeight,
         orderDate:          data.orderDate,
+        sourceAddress:      data.sourceAddress,
         sourceStateId:      data.sourceStateId,
         sourceCityId:       data.sourceCityId,
+        destinationAddress: data.destinationAddress,
         destinationStateId: data.destinationStateId,
         destinationCityId:  data.destinationCityId,
         freightRateType:    data.freightRateType,
@@ -262,6 +266,7 @@ export default function PolOrderPage() {
                   placeholder="Select city"
                 />
                 {errors.sourceCityId && <p className="text-red-500 text-xs">{errors.sourceCityId.message}</p>}
+                <Input placeholder="Address (optional)" {...register('sourceAddress')} />
               </div>
             </div>
 
@@ -282,6 +287,7 @@ export default function PolOrderPage() {
                   placeholder="Select city"
                 />
                 {errors.destinationCityId && <p className="text-red-500 text-xs">{errors.destinationCityId.message}</p>}
+                <Input placeholder="Address (optional)" {...register('destinationAddress')} />
               </div>
             </div>
           </div>
