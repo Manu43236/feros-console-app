@@ -593,6 +593,7 @@ export interface Vehicle {
   coverImageUrl?: string
   isInTransit?: boolean; activeLrId?: number; activeLrNumber?: string
   activeOrderId?: number; activeOrderNumber?: string
+  activeLeaseNumber?: string
 }
 
 export interface VehicleDocument {
@@ -679,6 +680,8 @@ export interface StaffAssignmentHistory {
   action: 'Assigned' | 'Unassigned'
   actionByName?: string; actionAt?: string
   orderNumber?: string
+  type?: 'VEHICLE_ASSIGNMENT' | 'ORDER_ALLOCATION' | 'LEASE_ASSIGNMENT'
+  leaseNumber?: string
 }
 
 // ─── Breakdown ────────────────────────────────────────────────────────────────

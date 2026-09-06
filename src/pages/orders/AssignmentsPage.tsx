@@ -42,6 +42,8 @@ interface HistoryRow {
   subject: string        // vehicle reg or staff name
   subjectRole?: string   // DRIVER/CLEANER for staff
   orderNumber?: string
+  leaseNumber?: string
+  assignmentRefType?: 'VEHICLE_ASSIGNMENT' | 'ORDER_ALLOCATION' | 'LEASE_ASSIGNMENT'
   vehicleRegNumber?: string
   actionByName?: string
   actionAt?: string
@@ -501,6 +503,8 @@ export default function AssignmentsPage() {
       subjectRole: r.userRole,
       vehicleRegNumber: r.vehicleRegistrationNumber,
       orderNumber: r.orderNumber,
+      leaseNumber: r.leaseNumber,
+      assignmentRefType: r.type,
       actionByName: r.actionByName,
       actionAt: r.actionAt,
     }))
@@ -948,7 +952,11 @@ export default function AssignmentsPage() {
                           <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.vehicleRegNumber ?? '—'}</td>
                         )}
                         {hTab === 'staff' && (
-                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">{row.orderNumber ?? '—'}</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">
+                            {row.assignmentRefType === 'LEASE_ASSIGNMENT'
+                              ? <span className="inline-flex items-center gap-1"><span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-medium text-xs">Lease</span>{row.leaseNumber ?? '—'}</span>
+                              : (row.orderNumber ?? '—')}
+                          </td>
                         )}
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.actionByName ?? '—'}</td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{fmtDateTime(row.actionAt)}</td>

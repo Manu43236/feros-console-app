@@ -1364,12 +1364,15 @@ export function VehiclesPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
-                        {v.currentStatusType && ['ASSIGNED', 'ON_TRIP'].includes(v.currentStatusType) ? (
+                        {v.currentStatusType && ['ASSIGNED', 'ON_TRIP', 'ON_LEASE'].includes(v.currentStatusType) ? (
                           <div className="flex flex-col gap-0.5">
                             <span className={`text-xs px-2 py-1 rounded-full font-medium w-fit ${vehicleStatusBadge[v.currentStatusType as VehicleStatusType]}`}>
                               {v.currentStatusName}
                             </span>
-                            {v.assignedOrderNumber && (
+                            {v.currentStatusType === 'ON_LEASE' && v.activeLeaseNumber && (
+                              <span className="text-xs text-gray-400 font-mono pl-1">{v.activeLeaseNumber}</span>
+                            )}
+                            {v.currentStatusType !== 'ON_LEASE' && v.assignedOrderNumber && (
                               <span className="text-xs text-gray-400 font-mono pl-1">{v.assignedOrderNumber}</span>
                             )}
                           </div>

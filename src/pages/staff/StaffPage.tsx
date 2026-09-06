@@ -529,6 +529,7 @@ interface MergedStaff {
   roleName: string; isActive: boolean; pin: string | null
   designationName?: string; completedTripsCount: number
   isAssigned: boolean; activeOrderNumber: string | null
+  assignmentType: string | null; activeLeaseNumber: string | null
   profile?: StaffProfile
 }
 
@@ -605,6 +606,8 @@ export function StaffPage() {
     completedTripsCount: u.completedTripsCount ?? 0,
     isAssigned:          u.isAssigned ?? false,
     activeOrderNumber:   u.activeOrderNumber ?? null,
+    assignmentType:      u.assignmentType ?? null,
+    activeLeaseNumber:   u.activeLeaseNumber ?? null,
     profile:            profileMap[u.id],
   }))
 
@@ -783,8 +786,15 @@ export function StaffPage() {
                         <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-500 w-fit">Inactive</span>
                       ) : s.isAssigned ? (
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-50 text-orange-700 w-fit">On Trip</span>
-                          {s.activeOrderNumber && (
+                          {s.assignmentType === 'LEASE' ? (
+                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-purple-50 text-purple-700 w-fit">On Lease</span>
+                          ) : (
+                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-50 text-orange-700 w-fit">On Trip</span>
+                          )}
+                          {s.assignmentType === 'LEASE' && s.activeLeaseNumber && (
+                            <span className="text-xs text-gray-400 font-mono">{s.activeLeaseNumber}</span>
+                          )}
+                          {s.assignmentType !== 'LEASE' && s.activeOrderNumber && (
                             <span className="text-xs text-gray-400 font-mono">{s.activeOrderNumber}</span>
                           )}
                         </div>

@@ -79,7 +79,12 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
     enabled: open,
   })
 
-  const vehicles = vehiclesRes?.data ?? []
+  const allVehicles = vehiclesRes?.data ?? []
+  // Hide ON_TRIP — backend blocks them anyway, no need to show them
+  const vehicles = allVehicles.filter(v => v.currentStatusType !== 'ON_TRIP')
+
+  const selectedVehicle = vehicles.find(v => String(v.id) === vehicleId)
+  const isNonAvailable = selectedVehicle && selectedVehicle.currentStatusType !== 'AVAILABLE'
 
   const mutation = useMutation({
     mutationFn: () => vehicleLeasesApi.addVehicle(leaseId, {
@@ -110,14 +115,24 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
           <div>
             <Label>Vehicle *</Label>
             <SearchableSelect
-              options={vehicles.map(v => ({
-                value: String(v.id),
-                label: `${v.registrationNumber}${v.vehicleTypeName ? ` — ${v.vehicleTypeName}` : ''}`,
-              }))}
+              options={vehicles.map(v => {
+                const statusSuffix = v.currentStatusType === 'ASSIGNED' ? ' (Assigned to Order)'
+                  : v.currentStatusType === 'ON_LEASE' ? ' (On Lease)'
+                  : ''
+                return {
+                  value: String(v.id),
+                  label: `${v.registrationNumber}${v.vehicleTypeName ? ` — ${v.vehicleTypeName}` : ''}${statusSuffix}`,
+                }
+              })}
               value={vehicleId}
               onValueChange={setVehicleId}
               placeholder="Search by reg. number"
             />
+            {isNonAvailable && (
+              <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+                This vehicle is currently {selectedVehicle?.currentStatusType === 'ON_LEASE' ? 'on another lease' : 'assigned to an order'}. Saving will unassign it first.
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
