@@ -68,11 +68,12 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10))
   const [odometerAtStart, setOdometerAtStart] = useState('')
   const [clientDriver, setClientDriver] = useState(true)
+  const [clientDriverName, setClientDriverName] = useState('')
 
   function reset() {
     setVehicleId(''); setRatePerVehicle('')
     setStartDate(new Date().toISOString().slice(0, 10)); setOdometerAtStart('')
-    setClientDriver(true)
+    setClientDriver(true); setClientDriverName('')
   }
 
   const { data: vehiclesRes } = useQuery({
@@ -95,6 +96,7 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
       startDate,
       odometerAtStart: odometerAtStart ? Number(odometerAtStart) : undefined,
       driverStaffId: null,
+      clientDriverName: clientDriver ? (clientDriverName.trim() || undefined) : undefined,
     }),
     onSuccess: () => {
       toast.success('Vehicle added to lease')
@@ -169,6 +171,15 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
                 Our Staff
               </button>
             </div>
+            {clientDriver && (
+              <div className="mt-2">
+                <Input
+                  value={clientDriverName}
+                  onChange={e => setClientDriverName(e.target.value)}
+                  placeholder="Client driver name (optional)"
+                />
+              </div>
+            )}
             {!clientDriver && (
               <p className="text-xs text-gray-500 mt-1">Assign the specific driver from the vehicle card after adding.</p>
             )}
@@ -194,13 +205,15 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
   const qc = useQueryClient()
   const [clientDriver, setClientDriver] = useState(!assignment.driverName)
   const [driverUserId, setDriverUserId] = useState('')
+  const [clientDriverName, setClientDriverName] = useState(assignment.clientDriverName ?? '')
 
   useEffect(() => {
     if (open) {
       setClientDriver(!assignment.driverName)
       setDriverUserId('')
+      setClientDriverName(assignment.clientDriverName ?? '')
     }
-  }, [open, assignment.driverName])
+  }, [open, assignment.driverName, assignment.clientDriverName])
 
   const { data: staffRes } = useQuery({
     queryKey: ['staff'],
@@ -210,10 +223,10 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
   const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
 
   const mutation = useMutation({
-    mutationFn: () => vehicleLeasesApi.assignDriver(
-      leaseId, assignment.id,
-      clientDriver ? null : (driverUserId ? Number(driverUserId) : null)
-    ),
+    mutationFn: () => vehicleLeasesApi.assignDriver(leaseId, assignment.id, {
+      driverStaffId: clientDriver ? null : (driverUserId ? Number(driverUserId) : null),
+      clientDriverName: clientDriver ? (clientDriverName.trim() || undefined) : undefined,
+    }),
     onSuccess: () => {
       toast.success('Driver updated')
       qc.invalidateQueries({ queryKey: ['lease-vehicles', leaseId] })
@@ -246,6 +259,15 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
                 Our Staff
               </button>
             </div>
+            {clientDriver && (
+              <div className="mt-2">
+                <Input
+                  value={clientDriverName}
+                  onChange={e => setClientDriverName(e.target.value)}
+                  placeholder="Client driver name (optional)"
+                />
+              </div>
+            )}
             {!clientDriver && (
               <div className="mt-2">
                 <SearchableSelect
@@ -920,7 +942,7 @@ export default function LeaseDetailPage() {
                         {activeSession.divisionName && <span>· {activeSession.divisionName}</span>}
                         <span className="opacity-60">·</span>
                         <User size={10} />
-                        <span>{activeSession.driverName ?? "Client's driver"}</span>
+                        <span>{activeSession.driverName ?? a.clientDriverName ?? "Client's driver"}</span>
                         <span className="ml-auto opacity-60">
                           since {new Date(activeSession.startTime).toLocaleTimeString('en-IN', { timeStyle: 'short' })}
                         </span>
@@ -941,6 +963,8 @@ export default function LeaseDetailPage() {
                           <User size={12} />
                           {(activeSession !== null ? activeSession.driverName : a.driverName)
                             ? <span className="font-medium text-gray-700">{activeSession !== null ? activeSession.driverName : a.driverName}</span>
+                            : a.clientDriverName
+                            ? <span className="text-gray-700">{a.clientDriverName}</span>
                             : <span className="text-gray-400 italic">Client's driver</span>
                           }
                         </span>
