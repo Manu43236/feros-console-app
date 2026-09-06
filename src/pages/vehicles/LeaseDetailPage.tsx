@@ -68,12 +68,11 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10))
   const [odometerAtStart, setOdometerAtStart] = useState('')
   const [clientDriver, setClientDriver] = useState(true)
-  const [driverUserId, setDriverUserId] = useState('')
 
   function reset() {
     setVehicleId(''); setRatePerVehicle('')
     setStartDate(new Date().toISOString().slice(0, 10)); setOdometerAtStart('')
-    setClientDriver(true); setDriverUserId('')
+    setClientDriver(true)
   }
 
   const { data: vehiclesRes } = useQuery({
@@ -81,16 +80,10 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
     queryFn: () => vehiclesApi.getAll(),
     enabled: open,
   })
-  const { data: staffRes } = useQuery({
-    queryKey: ['staff'],
-    queryFn: () => staffApi.getAll(),
-    enabled: open && !clientDriver,
-  })
 
   const allVehicles = vehiclesRes?.data ?? []
   // Hide ON_TRIP — backend blocks them anyway, no need to show them
   const vehicles = allVehicles.filter(v => v.currentStatusType !== 'ON_TRIP')
-  const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
 
   const selectedVehicle = vehicles.find(v => String(v.id) === vehicleId)
   const isNonAvailable = selectedVehicle && selectedVehicle.currentStatusType !== 'AVAILABLE'
@@ -101,7 +94,7 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
       ratePerVehicle: Number(ratePerVehicle),
       startDate,
       odometerAtStart: odometerAtStart ? Number(odometerAtStart) : undefined,
-      driverStaffId: clientDriver ? null : (driverUserId ? Number(driverUserId) : null),
+      driverStaffId: null,
     }),
     onSuccess: () => {
       toast.success('Vehicle added to lease')
@@ -163,29 +156,21 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
           <div>
             <Label>Driver</Label>
             <div className="flex gap-2 mt-1">
-              <Button type="button" size="sm" variant={clientDriver ? 'default' : 'outline'}
-                className={clientDriver ? 'bg-feros-navy text-white' : ''}
-                onClick={() => { setClientDriver(true); setDriverUserId('') }}>
+              <button type="button"
+                onClick={() => setClientDriver(true)}
+                className={cn('px-3 py-1.5 rounded-lg text-xs border transition-colors',
+                  clientDriver ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-500 hover:bg-gray-50')}>
                 Client's Driver
-              </Button>
-              <Button type="button" size="sm" variant={!clientDriver ? 'default' : 'outline'}
-                className={!clientDriver ? 'bg-feros-navy text-white' : ''}
-                onClick={() => setClientDriver(false)}>
+              </button>
+              <button type="button"
+                onClick={() => setClientDriver(false)}
+                className={cn('px-3 py-1.5 rounded-lg text-xs border transition-colors',
+                  !clientDriver ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-500 hover:bg-gray-50')}>
                 Our Staff
-              </Button>
+              </button>
             </div>
             {!clientDriver && (
-              <div className="mt-2">
-                <SearchableSelect
-                  options={drivers.map(d => ({
-                    value: String(d.userId),
-                    label: d.userName,
-                  }))}
-                  value={driverUserId}
-                  onValueChange={setDriverUserId}
-                  placeholder="Search driver"
-                />
-              </div>
+              <p className="text-xs text-gray-500 mt-1">Assign the specific driver from the vehicle card after adding.</p>
             )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -194,6 +179,91 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
               onClick={() => mutation.mutate()}
               className="bg-feros-navy hover:bg-feros-navy/90 text-white">
               {mutation.isPending ? 'Adding…' : 'Add Vehicle'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Assign Driver Dialog ────────────────────────────────────────────────────────
+function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
+  leaseId: number; assignment: LeaseVehicleAssignment; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [clientDriver, setClientDriver] = useState(!assignment.driverName)
+  const [driverUserId, setDriverUserId] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setClientDriver(!assignment.driverName)
+      setDriverUserId('')
+    }
+  }, [open, assignment.driverName])
+
+  const { data: staffRes } = useQuery({
+    queryKey: ['staff'],
+    queryFn: () => staffApi.getAll(),
+    enabled: open && !clientDriver,
+  })
+  const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
+
+  const mutation = useMutation({
+    mutationFn: () => vehicleLeasesApi.assignDriver(
+      leaseId, assignment.id,
+      clientDriver ? null : (driverUserId ? Number(driverUserId) : null)
+    ),
+    onSuccess: () => {
+      toast.success('Driver updated')
+      qc.invalidateQueries({ queryKey: ['lease-vehicles', leaseId] })
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to update driver')
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Assign Driver — {assignment.registrationNumber}</DialogTitle></DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div>
+            <Label>Driver</Label>
+            <div className="flex gap-2 mt-1.5">
+              <button type="button"
+                onClick={() => { setClientDriver(true); setDriverUserId('') }}
+                className={cn('px-3 py-1.5 rounded-lg text-xs border transition-colors',
+                  clientDriver ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-500 hover:bg-gray-50')}>
+                Client's Driver
+              </button>
+              <button type="button"
+                onClick={() => setClientDriver(false)}
+                className={cn('px-3 py-1.5 rounded-lg text-xs border transition-colors',
+                  !clientDriver ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-500 hover:bg-gray-50')}>
+                Our Staff
+              </button>
+            </div>
+            {!clientDriver && (
+              <div className="mt-2">
+                <SearchableSelect
+                  options={drivers.map(d => ({ value: String(d.userId), label: d.userName }))}
+                  value={driverUserId}
+                  onValueChange={setDriverUserId}
+                  placeholder="Select driver"
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button
+              disabled={(!clientDriver && !driverUserId) || mutation.isPending}
+              onClick={() => mutation.mutate()}
+              className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+              {mutation.isPending ? 'Saving…' : 'Save'}
             </Button>
           </div>
         </div>
@@ -570,6 +640,7 @@ export default function LeaseDetailPage() {
   const [showExtend, setShowExtend] = useState(false)
   const [closingAssignment, setClosingAssignment] = useState<LeaseVehicleAssignment | null>(null)
   const [assigningDivisionFor, setAssigningDivisionFor] = useState<LeaseVehicleAssignment | null>(null)
+  const [assigningDriverFor, setAssigningDriverFor] = useState<LeaseVehicleAssignment | null>(null)
   const [startingSessionFor, setStartingSessionFor] = useState<LeaseVehicleAssignment | null>(null)
   const [endingSessionFor, setEndingSessionFor] = useState<LeaseVehicleAssignment | null>(null)
 
@@ -881,11 +952,18 @@ export default function LeaseDetailPage() {
                         )}
                       </div>
                       {canEdit && a.isActive && (
-                        <Button size="sm" variant="ghost"
-                          className="text-xs h-6 px-2 text-feros-navy"
-                          onClick={() => setAssigningDivisionFor(a)}>
-                          {a.divisionName ? 'Change Division' : 'Assign Division'}
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost"
+                            className="text-xs h-6 px-2 text-feros-navy"
+                            onClick={() => setAssigningDriverFor(a)}>
+                            {a.driverName ? 'Change Driver' : 'Assign Driver'}
+                          </Button>
+                          <Button size="sm" variant="ghost"
+                            className="text-xs h-6 px-2 text-feros-navy"
+                            onClick={() => setAssigningDivisionFor(a)}>
+                            {a.divisionName ? 'Change Division' : 'Assign Division'}
+                          </Button>
+                        </div>
                       )}
                     </div>
 
@@ -1192,6 +1270,14 @@ export default function LeaseDetailPage() {
         open={!!assigningDivisionFor}
         onClose={() => setAssigningDivisionFor(null)}
       />
+      {assigningDriverFor && (
+        <AssignDriverDialog
+          leaseId={leaseId}
+          assignment={assigningDriverFor}
+          open={!!assigningDriverFor}
+          onClose={() => setAssigningDriverFor(null)}
+        />
+      )}
       <StartSessionDialog
         leaseId={leaseId}
         clientId={lease.clientId}
