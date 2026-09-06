@@ -67,10 +67,13 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
   const [ratePerVehicle, setRatePerVehicle] = useState('')
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10))
   const [odometerAtStart, setOdometerAtStart] = useState('')
+  const [clientDriver, setClientDriver] = useState(true)
+  const [driverUserId, setDriverUserId] = useState('')
 
   function reset() {
     setVehicleId(''); setRatePerVehicle('')
     setStartDate(new Date().toISOString().slice(0, 10)); setOdometerAtStart('')
+    setClientDriver(true); setDriverUserId('')
   }
 
   const { data: vehiclesRes } = useQuery({
@@ -78,10 +81,16 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
     queryFn: () => vehiclesApi.getAll(),
     enabled: open,
   })
+  const { data: staffRes } = useQuery({
+    queryKey: ['staff'],
+    queryFn: () => staffApi.getAll(),
+    enabled: open && !clientDriver,
+  })
 
   const allVehicles = vehiclesRes?.data ?? []
   // Hide ON_TRIP — backend blocks them anyway, no need to show them
   const vehicles = allVehicles.filter(v => v.currentStatusType !== 'ON_TRIP')
+  const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
 
   const selectedVehicle = vehicles.find(v => String(v.id) === vehicleId)
   const isNonAvailable = selectedVehicle && selectedVehicle.currentStatusType !== 'AVAILABLE'
@@ -92,6 +101,7 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
       ratePerVehicle: Number(ratePerVehicle),
       startDate,
       odometerAtStart: odometerAtStart ? Number(odometerAtStart) : undefined,
+      driverStaffId: clientDriver ? null : (driverUserId ? Number(driverUserId) : null),
     }),
     onSuccess: () => {
       toast.success('Vehicle added to lease')
@@ -149,6 +159,34 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
             <Label>Odometer at Start (km)</Label>
             <Input type="number" value={odometerAtStart}
               onChange={e => setOdometerAtStart(e.target.value)} placeholder="e.g. 45200" />
+          </div>
+          <div>
+            <Label>Driver</Label>
+            <div className="flex gap-2 mt-1">
+              <Button type="button" size="sm" variant={clientDriver ? 'default' : 'outline'}
+                className={clientDriver ? 'bg-feros-navy text-white' : ''}
+                onClick={() => { setClientDriver(true); setDriverUserId('') }}>
+                Client's Driver
+              </Button>
+              <Button type="button" size="sm" variant={!clientDriver ? 'default' : 'outline'}
+                className={!clientDriver ? 'bg-feros-navy text-white' : ''}
+                onClick={() => setClientDriver(false)}>
+                Our Staff
+              </Button>
+            </div>
+            {!clientDriver && (
+              <div className="mt-2">
+                <SearchableSelect
+                  options={drivers.map(d => ({
+                    value: String(d.userId),
+                    label: d.userName,
+                  }))}
+                  value={driverUserId}
+                  onValueChange={setDriverUserId}
+                  placeholder="Search driver"
+                />
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
