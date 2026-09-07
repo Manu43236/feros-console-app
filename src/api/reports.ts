@@ -58,6 +58,7 @@ import type {
   AdvanceRegisterRow,
   PayrollByRoleRow,
   PayrollYtdRow,
+  VehiclePayrollCostResponse,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -704,6 +705,18 @@ export const reportsApi = {
   exportPayrollYtd: async (year: number, format: 'csv' | 'pdf') => {
     const res = await apiClient.get('/reports/payroll/ytd/export', { params: { year, format }, responseType: 'blob' })
     triggerDownload(res.data as Blob, `payroll-ytd-${year}.${format}`)
+  },
+
+  getVehiclePayrollCost: (vehicleId: number, role: string, startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<VehiclePayrollCostResponse>>('/reports/payroll/vehicle-cost', {
+      params: { vehicleId, role, startDate, endDate }
+    }).then(r => r.data),
+
+  exportVehiclePayrollCost: async (vehicleId: number, role: string, startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/payroll/vehicle-cost/export', {
+      params: { vehicleId, role, startDate, endDate, format }, responseType: 'blob'
+    })
+    triggerDownload(res.data as Blob, `vehicle-payroll-cost-${startDate}-${endDate}.${format}`)
   },
 
   getDailyFleetAttendance: (date: string, scope: 'INTRA_STATE' | 'INTER_STATE') =>

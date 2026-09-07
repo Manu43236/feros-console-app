@@ -2662,6 +2662,23 @@ export interface PayrollYtdRow {
   accountHolderName: string | null
 }
 
+export interface VehiclePayrollCostRow {
+  date: string
+  vehicleNumber: string
+  staffName: string
+  role: string
+  dailyPay: number
+  payrollStatus: string
+}
+
+export interface VehiclePayrollCostResponse {
+  vehicleNumber: string
+  startDate: string
+  endDate: string
+  rows: VehiclePayrollCostRow[]
+  totalAmount: number
+}
+
 // ─── GPS Integration ───────────────────────────────────────────────────────────
 export type GpsProviderType = 'TATA_FLEET_EDGE' | 'BLACKBUCK' | 'VAMOSYS' | 'FLEETX' | 'CUSTOM'
 export type GpsVehicleStatus = 'MOVING' | 'IDLE' | 'STOPPED' | 'OFFLINE'

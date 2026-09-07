@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, DollarSign, BookOpen, TrendingDown, Users, CalendarRange } from 'lucide-react'
+import { Download, DollarSign, BookOpen, TrendingDown, Users, CalendarRange, Truck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
+import { vehiclesApi } from '@/api/vehicles'
 import type {
   PayrollSummaryReportRow, SalaryRegisterRow,
   AdvanceRegisterRow, PayrollByRoleRow, PayrollYtdRow,
+  VehiclePayrollCostRow,
 } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -26,6 +28,7 @@ const TABS = [
   { key: 'advances',        label: 'Advance Register', icon: TrendingDown },
   { key: 'by-role',         label: 'By Role',          icon: Users },
   { key: 'ytd',             label: 'Year-to-Date',     icon: CalendarRange },
+  { key: 'vehicle-cost',    label: 'Vehicle Cost',     icon: Truck },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'this-month' | 'custom'
@@ -496,6 +499,142 @@ function YtdTab() {
   )
 }
 
+// ── Vehicle Cost Tab ───────────────────────────────────────────────────────────
+const ROLE_OPTIONS = [
+  { value: 'ALL', label: 'All' },
+  { value: 'DRIVER', label: 'Driver' },
+  { value: 'CLEANER', label: 'Cleaner' },
+]
+
+function VehicleCostTab() {
+  const today = todayStr()
+  const [vehicleId, setVehicleId] = useState<number | null>(null)
+  const [role, setRole] = useState('ALL')
+  const [start, setStart] = useState(thisMonthStart())
+  const [end, setEnd] = useState(today)
+  const [exportLoading, setExportLoading] = useState(false)
+
+  const { data: vehiclesData } = useQuery({
+    queryKey: ['vehicles-list'],
+    queryFn: () => vehiclesApi.getAll(),
+  })
+  const vehicles = vehiclesData?.data ?? []
+
+  const enabled = vehicleId !== null && !!start && !!end
+  const { data, isLoading } = useQuery({
+    queryKey: ['vehicle-payroll-cost', vehicleId, role, start, end],
+    queryFn: () => reportsApi.getVehiclePayrollCost(vehicleId!, role, start, end),
+    enabled,
+  })
+  const result = data?.data
+  const rows: VehiclePayrollCostRow[] = result?.rows ?? []
+
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    if (!vehicleId) return
+    setExportLoading(true)
+    try { await reportsApi.exportVehiclePayrollCost(vehicleId, role, start, end, format) }
+    catch { toast.error('Export failed') }
+    finally { setExportLoading(false) }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-gray-500">Vehicle</label>
+          <select
+            value={vehicleId ?? ''}
+            onChange={e => setVehicleId(e.target.value ? Number(e.target.value) : null)}
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white min-w-[200px]"
+          >
+            <option value="">— Select Vehicle —</option>
+            {vehicles.map((v: any) => (
+              <option key={v.id} value={v.id}>{v.registrationNumber}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-gray-500">Role</label>
+          <div className="flex gap-1">
+            {ROLE_OPTIONS.map(o => (
+              <button key={o.value} onClick={() => setRole(o.value)}
+                className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors',
+                  role === o.value ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-gray-500">From</label>
+          <Input type="date" value={start} onChange={e => setStart(e.target.value)} className="w-40" />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-gray-500">To</label>
+          <Input type="date" value={end} max={today} onChange={e => setEnd(e.target.value)} className="w-40" />
+        </div>
+
+        <ExportBtn onExport={handleExport} loading={exportLoading} />
+      </div>
+
+      {/* Table */}
+      {!enabled ? (
+        <div className="bg-white border rounded-xl p-12 text-center text-sm text-gray-400">
+          Select a vehicle and date range to view payroll cost.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <Th>Date</Th>
+                <Th>Vehicle No.</Th>
+                <Th>Name</Th>
+                <Th>Role</Th>
+                <Th right>Daily Pay</Th>
+                <Th>Payroll Status</Th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {isLoading ? (
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">No payroll records found for this vehicle and period.</td></tr>
+              ) : rows.map((r, i) => (
+                <tr key={i} className="hover:bg-gray-50">
+                  <Td>{r.date}</Td>
+                  <Td><span className="font-medium">{r.vehicleNumber}</span></Td>
+                  <Td>{r.staffName}</Td>
+                  <Td muted>{r.role}</Td>
+                  <Td right><span className="font-medium">{fmt(r.dailyPay)}</span></Td>
+                  <Td>{statusBadge(r.payrollStatus)}</Td>
+                </tr>
+              ))}
+            </tbody>
+            {rows.length > 0 && (
+              <tfoot>
+                <tr className="bg-feros-navy/5">
+                  <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-gray-700 text-right">
+                    Total Payroll Cost
+                  </td>
+                  <td className="px-4 py-3 text-sm font-bold text-green-700 text-right">
+                    {fmt(result?.totalAmount)}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function PayrollReportsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('summary')
@@ -536,6 +675,7 @@ export default function PayrollReportsPage() {
         {activeTab === 'advances'        && <AdvancesTab />}
         {activeTab === 'by-role'         && <ByRoleTab />}
         {activeTab === 'ytd'             && <YtdTab />}
+        {activeTab === 'vehicle-cost'    && <VehicleCostTab />}
       </div>
     </div>
   )
