@@ -21,7 +21,7 @@ import type { VehicleAssignmentHistory, FuelLog, FuelPaymentMode, Tyre, TyrePosi
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
-  ArrowLeft, Truck, Shield, MapPin, Fuel,
+  ArrowLeft, Truck, Shield, Fuel,
   AlertTriangle, Pencil, Power, Camera,
   ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, CircleDot, Gauge, Users,
@@ -70,7 +70,7 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 }
 
 // ── tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tyres', 'Meter Readings', 'GPS & Notes', 'Assignments', 'Order History', 'Trip History'] as const
+const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tyres', 'Meter Readings', 'Assignments', 'Order History', 'Trip History'] as const
 type Tab = typeof TABS[number]
 
 // ── edit document dialog ───────────────────────────────────────────────────────
@@ -3671,7 +3671,6 @@ export function VehicleDetailPage() {
               {t === 'Basic Info'     && <Truck size={14} />}
               {t === 'Compliance'     && <Shield size={14} />}
               {t === 'Fuel'           && <Fuel size={14} />}
-              {t === 'GPS & Notes'    && <MapPin size={14} />}
               {t === 'Documents'      && <FileText size={14} />}
               {t === 'Service'        && <Wrench size={14} />}
               {t === 'Tyres'          && <CircleDot size={14} />}
@@ -3942,35 +3941,6 @@ export function VehicleDetailPage() {
           {/* ── Meter Readings ── */}
           {tab === 'Meter Readings' && v && (
             <MeterReadingsTabContent vehicleId={v.id} latestOdometer={v.currentOdometerReading ? Number(v.currentOdometerReading) : undefined} />
-          )}
-
-          {/* ── GPS & Notes ── */}
-          {tab === 'GPS & Notes' && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">GPS & Notes</p>
-                {!isSupervisor && (
-                  <Button size="sm" onClick={() => setEditOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-8 text-xs">
-                    <Pencil size={13} /> Edit
-                  </Button>
-                )}
-              </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">GPS Tracking</p>
-                <InfoRow label="Device No."   value={v.gpsDeviceNumber} />
-                <InfoRow label="IMEI"         value={v.gpsDeviceImei} />
-                <InfoRow label="Provider"     value={v.gpsProvider} />
-                <InfoRow label="Odometer"     value={v.currentOdometerReading ? `${v.currentOdometerReading.toLocaleString('en-IN')} km` : null} />
-              </div>
-              {v.notes && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Notes</p>
-                  <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-4">{v.notes}</p>
-                </div>
-              )}
-            </div>
-            </div>
           )}
 
           {/* ── Assignments ── */}

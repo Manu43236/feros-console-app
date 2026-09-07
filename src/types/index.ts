@@ -579,7 +579,6 @@ export interface Vehicle {
   chassisNumber?: string; engineNumber?: string
   ownerName?: string; ownerPhone?: string; ownerPan?: string; ownerAddress?: string
   agreementStartDate?: string; agreementEndDate?: string; agreementAmount?: number
-  gpsDeviceNumber?: string; gpsDeviceImei?: string; gpsProvider?: string
   currentOdometerReading?: number; fuelTankCapacity?: number; currentFuelLevel?: number; notes?: string
   tyreRotationIntervalKm?: number
   isFinanced?: boolean; financerName?: string; financeStartDate?: string; financeEndDate?: string; financeMonthsRemaining?: number
@@ -2677,72 +2676,6 @@ export interface VehiclePayrollCostResponse {
   endDate: string
   rows: VehiclePayrollCostRow[]
   totalAmount: number
-}
-
-// ─── GPS Integration ───────────────────────────────────────────────────────────
-export type GpsProviderType = 'TATA_FLEET_EDGE' | 'BLACKBUCK' | 'VAMOSYS' | 'FLEETX' | 'CUSTOM'
-export type GpsVehicleStatus = 'MOVING' | 'IDLE' | 'STOPPED' | 'OFFLINE'
-export type GpsSyncStatus = 'NEVER' | 'OK' | 'ERROR'
-
-export interface GpsProviderConfig {
-  id: number
-  providerType: GpsProviderType
-  displayName: string | null
-  apiBaseUrl: string | null
-  isActive: boolean
-  lastSyncAt: string | null
-  syncStatus: GpsSyncStatus
-  syncErrorMsg: string | null
-  createdAt: string
-}
-
-export interface GpsProviderVehicle {
-  providerVehicleId: string
-  registrationNumber: string
-  vehicleModel: string | null
-  ferosVehicleId: number | null
-  autoMatched: boolean
-}
-
-export interface VehicleGpsMapping {
-  id: number
-  vehicleId: number
-  registrationNumber: string
-  gpsProviderConfigId: number
-  providerType: GpsProviderType
-  providerDisplayName: string | null
-  providerVehicleId: string
-  providerRegNumber: string | null
-  isActive: boolean
-}
-
-export interface GpsFleetVehicle {
-  vehicleId: number
-  registrationNumber: string
-  driverName: string | null
-  latitude: number | null
-  longitude: number | null
-  speedKmh: number | null
-  ignitionOn: boolean | null
-  gpsStatus: GpsVehicleStatus
-  lastUpdatedAt: string | null
-  providerType: GpsProviderType
-  providerVehicleId: string
-}
-
-export interface GpsProviderConfigRequest {
-  providerType: GpsProviderType
-  displayName?: string
-  clientId: string
-  clientSecret: string
-  apiBaseUrl?: string
-}
-
-export interface VehicleGpsMappingRequest {
-  vehicleId: number
-  gpsProviderConfigId: number
-  providerVehicleId: string
-  providerRegNumber?: string
 }
 
 // ─── Pagination ───────────────────────────────────────────────────────────────

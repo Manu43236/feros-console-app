@@ -27,9 +27,9 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 
 // ── bulk upload dialog ────────────────────────────────────────────────────────
 const CSV_TEMPLATE = [
-  'registrationNumber,vehicleType,brand,fuelType,ownershipType,capacityInTons,manufactureYear,color,model,grossVehicleWeight,chassisNumber,engineNumber,currentOdometerReading,fuelTankCapacity,currentFuelLevel,tyreRotationIntervalKm,gpsDeviceNumber,gpsDeviceImei,gpsProvider,isFinanced,financerName,financeStartDate,financeEndDate,ownerName,ownerPhone,ownerAddress,ownerPan,agreementStartDate,agreementEndDate,agreementAmount,notes,Registration Certificate (RC) Number,Registration Certificate (RC) Issue Date,Registration Certificate (RC) Expiry Date,Insurance Certificate Number,Insurance Certificate Issue Date,Insurance Certificate Expiry Date,Fitness Certificate Number,Fitness Certificate Issue Date,Fitness Certificate Expiry Date,National Permit Number,National Permit Issue Date,National Permit Expiry Date,State Permit Number,State Permit Issue Date,State Permit Expiry Date,Pollution Under Control (PUC) Number,Pollution Under Control (PUC) Issue Date,Pollution Under Control (PUC) Expiry Date,Road Tax Receipt Number,Road Tax Receipt Issue Date,Road Tax Receipt Expiry Date',
-  'MH12AB1234,18 Wheeler,Tata Motors,Diesel,Owned,36,2022,White,SIGNA 4825.TK,52,CH123456789,ENG987654321,15000,400,50,20000,,,,false,,,,,,,,,,,,MH12AB1234,01.01.2022,31.12.2030,INS123456,01.06.2024,31.05.2026,FIT123456,01.04.2024,31.03.2026,,,,MH12AB1234,01.01.2024,31.12.2028,,,MH12AB1234,01.01.2025,31.12.2025',
-  'MH14CD5678,10 Wheeler,Ashok Leyland,Diesel,Owned,25,2019,Blue,Prima 4940,49,,,,,,,,,,false,,,,,,,,,,,,,MH14CD5678,01.01.2019,31.12.2034,INS654321,01.06.2024,31.05.2026,FIT654321,01.04.2024,31.03.2026,,,,MH14CD5678,01.01.2024,31.12.2028,,,MH14CD5678,01.01.2025,31.12.2025',
+  'registrationNumber,vehicleType,brand,fuelType,ownershipType,capacityInTons,manufactureYear,color,model,grossVehicleWeight,chassisNumber,engineNumber,currentOdometerReading,fuelTankCapacity,currentFuelLevel,tyreRotationIntervalKm,isFinanced,financerName,financeStartDate,financeEndDate,ownerName,ownerPhone,ownerAddress,ownerPan,agreementStartDate,agreementEndDate,agreementAmount,notes,Registration Certificate (RC) Number,Registration Certificate (RC) Issue Date,Registration Certificate (RC) Expiry Date,Insurance Certificate Number,Insurance Certificate Issue Date,Insurance Certificate Expiry Date,Fitness Certificate Number,Fitness Certificate Issue Date,Fitness Certificate Expiry Date,National Permit Number,National Permit Issue Date,National Permit Expiry Date,State Permit Number,State Permit Issue Date,State Permit Expiry Date,Pollution Under Control (PUC) Number,Pollution Under Control (PUC) Issue Date,Pollution Under Control (PUC) Expiry Date,Road Tax Receipt Number,Road Tax Receipt Issue Date,Road Tax Receipt Expiry Date',
+  'MH12AB1234,18 Wheeler,Tata Motors,Diesel,Owned,36,2022,White,SIGNA 4825.TK,52,CH123456789,ENG987654321,15000,400,50,20000,false,,,,,,,,,,MH12AB1234,01.01.2022,31.12.2030,INS123456,01.06.2024,31.05.2026,FIT123456,01.04.2024,31.03.2026,,,,MH12AB1234,01.01.2024,31.12.2028,,,MH12AB1234,01.01.2025,31.12.2025',
+  'MH14CD5678,10 Wheeler,Ashok Leyland,Diesel,Owned,25,2019,Blue,Prima 4940,49,,,,,,,false,,,,,,,,,,,,MH14CD5678,01.01.2019,31.12.2034,INS654321,01.06.2024,31.05.2026,FIT654321,01.04.2024,31.03.2026,,,,MH14CD5678,01.01.2024,31.12.2028,,,MH14CD5678,01.01.2025,31.12.2025',
 ].join('\n')
 
 function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -84,7 +84,6 @@ function VehicleBulkUploadDialog({ open, onClose }: { open: boolean; onClose: ()
             <p>Required: <code className="bg-blue-100 px-1 rounded">registrationNumber</code></p>
             <p><span className="font-medium">Vehicle info:</span> vehicleType, brand, fuelType, ownershipType, capacityInTons, manufactureYear, color, model, grossVehicleWeight, chassisNumber, engineNumber</p>
             <p><span className="font-medium">Operational:</span> currentOdometerReading, fuelTankCapacity, currentFuelLevel, tyreRotationIntervalKm</p>
-            <p><span className="font-medium">GPS:</span> gpsDeviceNumber, gpsDeviceImei, gpsProvider</p>
             <p><span className="font-medium">Finance:</span> isFinanced (true/false), financerName, financeStartDate, financeEndDate</p>
             <p><span className="font-medium">Owner (hired):</span> ownerName, ownerPhone, ownerAddress, ownerPan, agreementStartDate, agreementEndDate, agreementAmount</p>
             <p><span className="font-medium">Notes:</span> notes</p>
@@ -189,10 +188,6 @@ const schema = z.object({
   agreementStartDate:       z.string().optional(),
   agreementEndDate:         z.string().optional(),
   agreementAmount:          z.coerce.number().optional(),
-  // GPS & misc
-  gpsDeviceNumber:          z.string().optional(),
-  gpsDeviceImei:            z.string().optional(),
-  gpsProvider:              z.string().optional(),
   currentOdometerReading:   z.coerce.number().optional(),
   fuelTankCapacity:         z.coerce.number().optional(),
   tyreRotationIntervalKm:   z.coerce.number().optional(),
@@ -436,8 +431,6 @@ export function VehicleForm({
       agreementStartDate: vehicle.agreementStartDate ?? '',
       agreementEndDate: vehicle.agreementEndDate ?? '',
       agreementAmount: vehicle.agreementAmount,
-      gpsDeviceNumber: vehicle.gpsDeviceNumber ?? '',
-      gpsDeviceImei: vehicle.gpsDeviceImei ?? '', gpsProvider: vehicle.gpsProvider ?? '',
       currentOdometerReading: vehicle.currentOdometerReading,
       fuelTankCapacity: vehicle.fuelTankCapacity,
       currentFuelLevel: vehicle.currentFuelLevel,
@@ -469,8 +462,6 @@ export function VehicleForm({
         agreementStartDate: vehicle.agreementStartDate ?? '',
         agreementEndDate: vehicle.agreementEndDate ?? '',
         agreementAmount: vehicle.agreementAmount,
-        gpsDeviceNumber: vehicle.gpsDeviceNumber ?? '',
-        gpsDeviceImei: vehicle.gpsDeviceImei ?? '', gpsProvider: vehicle.gpsProvider ?? '',
         currentOdometerReading: vehicle.currentOdometerReading,
         fuelTankCapacity: vehicle.fuelTankCapacity,
         currentFuelLevel: vehicle.currentFuelLevel,
@@ -812,22 +803,10 @@ export function VehicleForm({
             </div>
           </div>
 
-          {/* GPS & Notes */}
+          {/* Fuel & Notes */}
           <div className="border-t pt-4">
-            <p className="text-sm font-medium text-gray-700 mb-3">GPS & Notes</p>
+            <p className="text-sm font-medium text-gray-700 mb-3">Fuel & Notes</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>GPS Device No.</Label>
-                <Input placeholder="GPS001" {...register('gpsDeviceNumber')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>GPS Provider</Label>
-                <Input placeholder="TrackOn" {...register('gpsProvider')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>GPS IMEI</Label>
-                <Input placeholder="359012345678901" {...register('gpsDeviceImei')} />
-              </div>
               <div className="space-y-1.5">
                 <Label>Tank Capacity (litres)</Label>
                 <Input type="number" placeholder="300" {...register('fuelTankCapacity')} />

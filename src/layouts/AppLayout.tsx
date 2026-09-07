@@ -60,7 +60,6 @@ const ADMIN_NAV: SectionedNav = {
       icon: Truck,
       items: [
         { to: '/vehicles',         label: 'Vehicles',       icon: Truck },
-        { to: '/gps',              label: 'GPS Tracker',    icon: MapPin },
         { to: '/fuel-logs',        label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',   label: 'Meter Readings', icon: Gauge },
       ],
@@ -140,7 +139,6 @@ const OFFICE_STAFF_NAV: SectionedNav = {
       icon: Truck,
       items: [
         { to: '/vehicles',        label: 'Vehicles',       icon: Truck },
-        { to: '/gps',             label: 'GPS Tracker',    icon: MapPin },
         { to: '/fuel-logs',       label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',  label: 'Meter Readings', icon: Gauge },
       ],
@@ -207,7 +205,6 @@ const SUPERVISOR_NAV: SectionedNav = {
       icon: Truck,
       items: [
         { to: '/vehicles',        label: 'Vehicles',       icon: Truck },
-        { to: '/gps',             label: 'GPS Tracker',    icon: MapPin },
         { to: '/fuel-logs',       label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',  label: 'Meter Readings', icon: Gauge },
       ],
