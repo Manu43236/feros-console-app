@@ -247,7 +247,17 @@ function DailyFleetTable({ report, filter, loading }: { report: DailyFleetAttend
   />
 }
 
-const STATUS_ORDER = ['AVAILABLE', 'ASSIGNED', 'ON_TRIP', 'IN_REPAIR', 'BREAKDOWN', 'OTHER']
+const STATUS_ORDER = ['AVAILABLE', 'ASSIGNED', 'ON_TRIP', 'IN_REPAIR', 'BREAKDOWN', 'ON_LEASE', 'OTHER']
+
+const STATUS_CHIP_COLORS: Record<string, { base: string; active: string }> = {
+  AVAILABLE: { base: 'bg-green-50 text-green-700 border-green-200',   active: 'bg-green-700 text-white border-green-700' },
+  ASSIGNED:  { base: 'bg-blue-50 text-blue-700 border-blue-200',     active: 'bg-blue-700 text-white border-blue-700' },
+  ON_TRIP:   { base: 'bg-orange-50 text-orange-700 border-orange-200', active: 'bg-orange-700 text-white border-orange-700' },
+  IN_REPAIR: { base: 'bg-yellow-50 text-yellow-700 border-yellow-200', active: 'bg-yellow-700 text-white border-yellow-700' },
+  BREAKDOWN: { base: 'bg-red-50 text-red-700 border-red-200',         active: 'bg-red-700 text-white border-red-700' },
+  ON_LEASE:  { base: 'bg-purple-50 text-purple-700 border-purple-200', active: 'bg-purple-700 text-white border-purple-700' },
+  OTHER:     { base: 'bg-gray-50 text-gray-600 border-gray-200',      active: 'bg-gray-600 text-white border-gray-600' },
+}
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function VehicleReportsPage() {
@@ -439,29 +449,29 @@ const fuelQuery = useQuery({
           )
         })()}
 
-        {/* Fleet Status — status filter only (always today) */}
+        {/* Fleet Status — chip filters (always today, no date picker) */}
         {tab === 'fleet-status' && (() => {
           const allRows = fleetQuery.data?.data ?? []
           const counts = allRows.reduce<Record<string, number>>((acc, r) => {
             acc[r.currentStatus] = (acc[r.currentStatus] ?? 0) + 1
             return acc
           }, {})
-          const statusOptions = [
-            { value: 'ALL', label: `All (${allRows.length})` },
+          const chips = [
+            { value: 'ALL', label: 'All', count: allRows.length, colors: { base: 'bg-feros-navy/10 text-feros-navy border-feros-navy/20', active: 'bg-feros-navy text-white border-feros-navy' } },
             ...[...STATUS_ORDER, ...Object.keys(counts).filter(s => !STATUS_ORDER.includes(s))]
               .filter(s => counts[s] != null)
-              .map(s => ({ value: s, label: `${s.replace(/_/g, ' ')} (${counts[s]})` })),
+              .map(s => ({ value: s, label: s.replace(/_/g, ' '), count: counts[s], colors: STATUS_CHIP_COLORS[s] ?? { base: 'bg-gray-50 text-gray-600 border-gray-200', active: 'bg-gray-600 text-white border-gray-600' } })),
           ]
           return (
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-              <SearchableSelect
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-                options={statusOptions}
-                showSearch={false}
-                className="w-52"
-              />
+            <div className="flex flex-wrap gap-2">
+              {chips.map(c => (
+                <button key={c.value} onClick={() => setStatusFilter(c.value)}
+                  className={cn('border rounded-lg px-3 py-1.5 text-center min-w-[80px] transition-colors',
+                    statusFilter === c.value ? c.colors.active : c.colors.base)}>
+                  <div className="text-xs font-medium opacity-80">{c.label}</div>
+                  <div className="text-xl font-bold">{c.count}</div>
+                </button>
+              ))}
             </div>
           )
         })()}
