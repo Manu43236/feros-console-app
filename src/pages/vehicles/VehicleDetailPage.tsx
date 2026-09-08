@@ -3749,6 +3749,14 @@ export function VehicleDetailPage() {
                 </div>
               </div>
             )}
+            {v.cleanerExtraPayEnabled && (
+              <div className="border-t pt-5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Cleaner Extra Pay</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                  <InfoRow label="Extra Pay / Day" value={v.cleanerExtraPayPerDay != null ? `₹${v.cleanerExtraPayPerDay.toLocaleString('en-IN')}` : '—'} />
+                </div>
+              </div>
+            )}
             {v.isFinanced && (
               <div className="border-t pt-5">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Finance Details</p>
