@@ -583,7 +583,7 @@ export interface Vehicle {
   tyreRotationIntervalKm?: number
   isFinanced?: boolean; financerName?: string; financeStartDate?: string; financeEndDate?: string; financeMonthsRemaining?: number
   extraPayEnabled?: boolean; extraPayPerDay?: number
-  cleanerExtraPayEnabled?: boolean; cleanerExtraPayPerDay?: number
+  cleanerExtraPayPerDay?: number
   tripScope?: 'INTRA_STATE' | 'INTER_STATE'
   isIot?: boolean
   isActive: boolean; createdAt: string; updatedAt: string

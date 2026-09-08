@@ -200,7 +200,6 @@ const schema = z.object({
   // Extra pay
   extraPayEnabled:          z.boolean().optional(),
   extraPayPerDay:           z.coerce.number().min(0).optional(),
-  cleanerExtraPayEnabled:   z.boolean().optional(),
   cleanerExtraPayPerDay:    z.coerce.number().min(0).optional(),
   notes:                    z.string().optional(),
   tripScope:                z.enum(['INTRA_STATE', 'INTER_STATE']).optional(),
@@ -443,8 +442,7 @@ export function VehicleForm({
       financeEndDate: vehicle.financeEndDate ?? '',
       extraPayEnabled: vehicle.extraPayEnabled ?? false,
       extraPayPerDay: vehicle.extraPayPerDay,
-      cleanerExtraPayEnabled: vehicle.cleanerExtraPayEnabled ?? false,
-      cleanerExtraPayPerDay: vehicle.cleanerExtraPayPerDay,
+      cleanerExtraPayPerDay: vehicle.cleanerExtraPayPerDay ?? 0,
       notes: vehicle.notes ?? '',
       tripScope: vehicle.tripScope ?? undefined,
       isIot: vehicle.isIot ?? false,
@@ -476,8 +474,7 @@ export function VehicleForm({
         financeEndDate: vehicle.financeEndDate ?? '',
         extraPayEnabled: vehicle.extraPayEnabled ?? false,
         extraPayPerDay: vehicle.extraPayPerDay,
-        cleanerExtraPayEnabled: vehicle.cleanerExtraPayEnabled ?? false,
-        cleanerExtraPayPerDay: vehicle.cleanerExtraPayPerDay,
+        cleanerExtraPayPerDay: vehicle.cleanerExtraPayPerDay ?? 0,
         notes: vehicle.notes ?? '',
         tripScope: vehicle.tripScope ?? undefined,
         isIot: vehicle.isIot ?? false,
@@ -490,7 +487,6 @@ export function VehicleForm({
   const watchedTypeId    = watch('vehicleTypeId')
   const watchedFinanced  = watch('isFinanced')
   const watchedExtraPay        = watch('extraPayEnabled')
-  const watchedCleanerExtraPay = watch('cleanerExtraPayEnabled')
   const watchedIot             = watch('isIot')
   useEffect(() => {
     if (!watchedTypeId) return
@@ -783,23 +779,9 @@ export function VehicleForm({
             )}
           </div>
 
-          <div className="border-t pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-medium text-gray-700">Cleaner Extra Pay</p>
-                <p className="text-xs text-gray-400 mt-0.5">Additional pay for the cleaner assigned to this vehicle</p>
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <span className="text-sm text-gray-500">Enable extra pay</span>
-                <input type="checkbox" className="w-4 h-4 accent-feros-navy" {...register('cleanerExtraPayEnabled')} />
-              </label>
-            </div>
-            {watchedCleanerExtraPay && (
-              <div className="space-y-1.5">
-                <Label>Cleaner Extra Pay Per Day (₹)</Label>
-                <Input type="number" placeholder="e.g. 100" {...register('cleanerExtraPayPerDay')} />
-              </div>
-            )}
+          <div className="border-t pt-4 space-y-1.5">
+            <Label>Cleaner Extra Pay Per Day (₹)</Label>
+            <Input type="number" placeholder="0" defaultValue={0} {...register('cleanerExtraPayPerDay')} />
           </div>
 
           {/* IoT */}
