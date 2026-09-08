@@ -10,7 +10,7 @@ import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 import {
   Plus, ChevronDown, ChevronRight, CheckCircle, XCircle,
-  Banknote, TrendingUp, AlertCircle, Receipt, Download, Eye, Pencil, Users,
+  Banknote, TrendingUp, AlertCircle, Receipt, Download, Eye, Pencil, Users, Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -290,11 +290,13 @@ function ApproveDialog({ open, onClose, payroll }: {
 }
 
 // ── Payroll Detail Row ────────────────────────────────────────────────────────
-function PayrollRow({ payroll, onApprove, onEdit, onCancel }: {
+function PayrollRow({ payroll, onApprove, onEdit, onCancel, checked, onCheck }: {
   payroll: Payroll
   onApprove: (p: Payroll) => void
   onEdit: (p: Payroll) => void
   onCancel: (p: Payroll) => void
+  checked: boolean
+  onCheck: (checked: boolean) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [downloading, setDownloading] = useState(false)
@@ -335,9 +337,12 @@ function PayrollRow({ payroll, onApprove, onEdit, onCancel }: {
     <>
       <tr className="hover:bg-gray-50 border-b">
         <td className="px-4 py-3">
-          <button onClick={() => setExpanded(e => !e)} className="text-gray-400 hover:text-gray-600">
-            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" className="w-4 h-4 accent-feros-navy" checked={checked} onChange={e => onCheck(e.target.checked)} />
+            <button onClick={() => setExpanded(e => !e)} className="text-gray-400 hover:text-gray-600">
+              {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </button>
+          </div>
         </td>
         <td className="px-4 py-3">
           <p className="text-sm font-medium text-gray-800">{p.userName}</p>
@@ -528,13 +533,25 @@ export function PayrollPage() {
   const [advOpen, setAdvOpen]       = useState(false)
   const [dlg, setDlg]               = useState<{ title: string; desc: string; onOk: () => void } | null>(null)
   const [search, setSearch]         = useState('')
+  const [statusFilter, setStatus]   = useState('')
+  const [roleFilter, setRole]       = useState('')
+  const [monthFilter, setMonth]     = useState('')
+  const [yearFilter, setYear]       = useState('')
   const [page, setPage]             = useState(0)
+  const [selected, setSelected]     = useState<Set<number>>(new Set())
 
-  function handleSearch(v: string) { setSearch(v); setPage(0) }
+  function resetPage() { setPage(0); setSelected(new Set()) }
 
   const { data: payrollsData, isLoading: loadingPayrolls } = useQuery({
-    queryKey: ['payrolls', page, search],
-    queryFn: () => payrollApi.getAll({ page, size: 20, search: search || undefined }),
+    queryKey: ['payrolls', page, search, statusFilter, roleFilter, monthFilter, yearFilter],
+    queryFn: () => payrollApi.getAll({
+      page, size: 20,
+      search: search || undefined,
+      status: statusFilter || undefined,
+      role: roleFilter || undefined,
+      month: monthFilter ? Number(monthFilter) : undefined,
+      year: yearFilter ? Number(yearFilter) : undefined,
+    }),
   })
   const pageData   = payrollsData?.data
   const payrolls: Payroll[] = pageData?.content ?? []
@@ -552,6 +569,18 @@ export function PayrollPage() {
   const cancelMutation = useMutation({
     mutationFn: (id: number) => payrollApi.cancel(id),
     onSuccess: () => { toast.success('Payroll cancelled'); qc.invalidateQueries({ queryKey: ['payrolls'] }) },
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
+  })
+
+  const bulkApproveMutation = useMutation({
+    mutationFn: (ids: number[]) => payrollApi.bulkApprove(ids),
+    onSuccess: () => { toast.success('Payrolls approved'); setSelected(new Set()); qc.invalidateQueries({ queryKey: ['payrolls'] }) },
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
+  })
+
+  const bulkCancelMutation = useMutation({
+    mutationFn: (ids: number[]) => payrollApi.bulkCancel(ids),
+    onSuccess: () => { toast.success('Payrolls cancelled'); setSelected(new Set()); qc.invalidateQueries({ queryKey: ['payrolls'] }) },
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
@@ -621,41 +650,104 @@ export function PayrollPage() {
 
       {/* Payrolls Tab */}
       {tab === 'payrolls' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          {/* Search + Pagination */}
-          <div className="px-4 py-3 border-b flex items-center gap-3">
-            <Input
-              placeholder="Search by staff name…"
-              value={search}
-              onChange={e => handleSearch(e.target.value)}
-              className="max-w-xs border-0 shadow-none focus-visible:ring-0 p-0 h-auto text-sm"
-            />
-            <div className="ml-auto flex items-center gap-2 text-sm text-gray-500">
-              <button
-                onClick={() => setPage(p => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50"
-              >Prev</button>
-              <span className="text-xs">{page + 1} / {Math.max(1, totalPages)}</span>
-              <button
-                onClick={() => setPage(p => p + 1)}
-                disabled={page + 1 >= totalPages}
-                className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50"
-              >Next</button>
+        <>
+          {/* Filters */}
+          <div className="flex gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-48">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search by staff name…"
+                value={search}
+                onChange={e => { setSearch(e.target.value); resetPage() }}
+                className="pl-9"
+              />
             </div>
+            <select
+              value={monthFilter}
+              onChange={e => { setMonth(e.target.value); resetPage() }}
+              className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+            >
+              <option value="">All Months</option>
+              {['January','February','March','April','May','June','July','August','September','October','November','December']
+                .map((m, i) => <option key={i+1} value={String(i+1)}>{m}</option>)}
+            </select>
+            <select
+              value={yearFilter}
+              onChange={e => { setYear(e.target.value); resetPage() }}
+              className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+            >
+              <option value="">All Years</option>
+              {[2024, 2025, 2026, 2027].map(y => <option key={y} value={String(y)}>{y}</option>)}
+            </select>
+            <select
+              value={statusFilter}
+              onChange={e => { setStatus(e.target.value); resetPage() }}
+              className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+            >
+              <option value="">All Status</option>
+              <option value="DRAFT">Draft</option>
+              <option value="PAID">Paid</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+            <select
+              value={roleFilter}
+              onChange={e => { setRole(e.target.value); resetPage() }}
+              className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+            >
+              <option value="">All Roles</option>
+              <option value="DRIVER">Driver</option>
+              <option value="CLEANER">Cleaner</option>
+              <option value="SUPERVISOR">Supervisor</option>
+              <option value="SERVICE_MANAGER">Service Manager</option>
+              <option value="TECHNICIAN">Technician</option>
+              <option value="STORE_KEEPER">Store Keeper</option>
+            </select>
+          </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* Bulk action bar */}
+          {selected.size > 0 && (
+            <div className="px-4 py-2.5 bg-blue-50 border-b border-blue-100 flex items-center gap-3">
+              <span className="text-sm font-medium text-blue-700">{selected.size} selected</span>
+              <Button size="sm" variant="outline" className="h-7 text-xs"
+                onClick={() => setDlg({ title: 'Bulk Approve', desc: `Approve ${selected.size} payroll(s)? They will be marked as PAID.`, onOk: () => bulkApproveMutation.mutate([...selected]) })}>
+                <CheckCircle size={13} className="mr-1" />Approve All
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => setDlg({ title: 'Bulk Cancel', desc: `Cancel ${selected.size} payroll(s)? This cannot be undone.`, onOk: () => bulkCancelMutation.mutate([...selected]) })}>
+                <XCircle size={13} className="mr-1" />Cancel All
+              </Button>
+              <button className="ml-auto text-xs text-gray-500 hover:text-gray-700" onClick={() => setSelected(new Set())}>Clear</button>
+            </div>
+          )}
+          {/* Pagination bar */}
+          <div className="px-4 py-2.5 border-b flex items-center justify-end gap-2 text-sm text-gray-500">
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+            <span className="text-xs">{page + 1} / {Math.max(1, totalPages)}</span>
+            <button onClick={() => setPage(p => p + 1)} disabled={page + 1 >= totalPages}
+              className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
           </div>
           {loadingPayrolls ? (
             <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
           ) : payrolls.length === 0 ? (
             <div className="py-12 text-center">
               <Receipt size={36} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-sm text-gray-400">No payrolls yet. Generate one to get started.</p>
+              <p className="text-sm text-gray-400">No payrolls found.</p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="w-8 px-4 py-3" />
+                  <th className="w-10 px-4 py-3">
+                    <input type="checkbox" className="w-4 h-4 accent-feros-navy"
+                      checked={payrolls.length > 0 && payrolls.every(p => selected.has(p.id))}
+                      onChange={e => {
+                        if (e.target.checked) setSelected(new Set(payrolls.map(p => p.id)))
+                        else setSelected(new Set())
+                      }}
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Staff</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pay Cycle</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Days</th>
@@ -670,6 +762,8 @@ export function PayrollPage() {
                 {payrolls.map(p => (
                   <PayrollRow
                     key={p.id}
+                    checked={selected.has(p.id)}
+                    onCheck={checked => setSelected(prev => { const s = new Set(prev); checked ? s.add(p.id) : s.delete(p.id); return s })}
                     payroll={p}
                     onApprove={setApprove}
                     onEdit={setEdit}
@@ -680,6 +774,7 @@ export function PayrollPage() {
             </table>
           )}
         </div>
+        </>
       )}
 
       {/* Advances Tab */}

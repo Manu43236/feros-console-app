@@ -9,8 +9,10 @@ export const payrollApi = {
   generate:           (data: unknown) => apiClient.post<ApiResponse<Payroll>>('/payroll/generate', data).then(r => r.data),
   generateRange:      (data: unknown) => apiClient.post<ApiResponse<Payroll[]>>('/payroll/generate-range', data).then(r => r.data),
   bulkGenerate:       (data: unknown) => apiClient.post<ApiResponse<BulkPayrollResult>>('/payroll/bulk-generate', data).then(r => r.data),
-  getAll:             (params?: { page?: number; size?: number; search?: string }) =>
+  getAll:             (params?: { page?: number; size?: number; search?: string; status?: string; role?: string; month?: number; year?: number }) =>
                         apiClient.get<ApiResponse<PageResponse<Payroll>>>('/payroll', { params }).then(r => r.data),
+  bulkApprove:        (ids: number[]) => apiClient.put<ApiResponse<string>>('/payroll/bulk-approve', ids).then(r => r.data),
+  bulkCancel:         (ids: number[]) => apiClient.put<ApiResponse<string>>('/payroll/bulk-cancel', ids).then(r => r.data),
   getById:            (id: number) => apiClient.get<ApiResponse<Payroll>>(`/payroll/${id}`).then(r => r.data),
   getByUser:          (userId: number) => apiClient.get<ApiResponse<Payroll[]>>(`/payroll/user/${userId}`).then(r => r.data),
   update:             (id: number, data: unknown) => apiClient.put<ApiResponse<Payroll>>(`/payroll/${id}`, data).then(r => r.data),
