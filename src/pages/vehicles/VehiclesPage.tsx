@@ -6,6 +6,10 @@ import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi } from '@/api/vehicles'
+import { gpsDevicesApi } from '@/api/gpsDevices'
+import type { GpsDevice } from '@/api/gpsDevices'
+import { gpsHardwareApi } from '@/api/gpsHardware'
+import type { GpsDeviceModel } from '@/api/gpsHardware'
 import { staffApi } from '@/api/staff'
 import { watchlistApi } from '@/api/watchlist'
 import { globalMastersApi, tenantMastersApi } from '@/api/masters'
@@ -483,7 +487,7 @@ export function VehicleForm({
       })
       setOwnershipTypeId(vehicle.ownershipTypeId)
     }
-    if (!open) { reset({}); setStep(1); setCreatedVehicleId(null) }
+    if (!open) { reset({}); setStep(1); setCreatedVehicleId(null); setGpsForm({ modelId: '', deviceIdentifier: '', credentials: '', notes: '' }); setGpsErrors({}) }
   }, [open])
 
   const watchedTypeId    = watch('vehicleTypeId')
@@ -495,6 +499,43 @@ export function VehicleForm({
     const vehicleType = (typesRes?.data ?? []).find(t => t.id === watchedTypeId)
     if (vehicleType?.capacityInTons) setValue('capacityInTons', Number(vehicleType.capacityInTons))
   }, [watchedTypeId])
+
+  // ── GPS device state ────────────────────────────────────────────────────────
+  const [gpsForm, setGpsForm] = useState({ modelId: '', deviceIdentifier: '', credentials: '', notes: '' })
+  const [gpsErrors, setGpsErrors] = useState<Record<string, string>>({})
+
+  const { data: gpsModelsRes } = useQuery({
+    queryKey: ['gps-models-active'],
+    queryFn: gpsHardwareApi.getAllActive,
+    enabled: !!watchedIot,
+  })
+  const gpsModels: GpsDeviceModel[] = gpsModelsRes?.data ?? []
+  const selectedGpsModel = gpsModels.find(m => m.id === Number(gpsForm.modelId)) ?? null
+
+  const { data: existingDeviceRes } = useQuery({
+    queryKey: ['gps-device-vehicle', vehicle?.id],
+    queryFn: () => gpsDevicesApi.getByVehicle(vehicle!.id),
+    enabled: isEdit && !!vehicle,
+  })
+  const existingDevice: GpsDevice | null = existingDeviceRes?.data ?? null
+
+  useEffect(() => {
+    if (existingDevice) {
+      setGpsForm(f => ({
+        ...f,
+        modelId: String(existingDevice.modelId),
+        deviceIdentifier: existingDevice.deviceIdentifier,
+        notes: existingDevice.notes ?? '',
+      }))
+    }
+  }, [existingDevice?.id])
+
+  function buildGpsCredentials(): string {
+    if (!selectedGpsModel) return '{}'
+    if (selectedGpsModel.connectionType === 'TCP') return JSON.stringify({ imei: gpsForm.deviceIdentifier })
+    if (selectedGpsModel.connectionType === 'WEBHOOK') return JSON.stringify({ webhookSecret: gpsForm.credentials })
+    return gpsForm.credentials || '{}'
+  }
 
   function handleClose() {
     // If vehicle was already created (step 2 or skip), refresh the list
@@ -513,6 +554,29 @@ export function VehicleForm({
     },
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['vehicles'] })
+      const savedVehicleId = isEdit ? vehicle!.id : res.data.id
+
+      // Handle GPS device
+      if (watchedIot && gpsForm.modelId) {
+        const payload = {
+          vehicleId: savedVehicleId,
+          modelId: Number(gpsForm.modelId),
+          deviceIdentifier: gpsForm.deviceIdentifier.trim(),
+          credentials: buildGpsCredentials(),
+          notes: gpsForm.notes,
+        }
+        const gpsCall = existingDevice
+          ? gpsDevicesApi.update(existingDevice.id, payload)
+          : gpsDevicesApi.register(payload)
+        gpsCall
+          .then(() => qc.invalidateQueries({ queryKey: ['gps-device-vehicle', savedVehicleId] }))
+          .catch((e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'GPS device setup failed'))
+      } else if (!watchedIot && existingDevice) {
+        gpsDevicesApi.deactivate(existingDevice.id)
+          .then(() => qc.invalidateQueries({ queryKey: ['gps-device-vehicle', savedVehicleId] }))
+          .catch(() => toast.error('Failed to deactivate GPS device'))
+      }
+
       if (isEdit) {
         toast.success('Vehicle updated successfully')
         onSuccessExtra?.()
@@ -549,7 +613,19 @@ export function VehicleForm({
 
         {/* ── Step 1: Vehicle Info ── */}
         {step === 1 && (
-        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
+        <form onSubmit={handleSubmit(d => {
+          if (watchedIot) {
+            const errs: Record<string, string> = {}
+            if (!gpsForm.modelId) errs.modelId = 'Select a device model'
+            if (!gpsForm.deviceIdentifier.trim()) errs.deviceIdentifier = 'Required'
+            if (selectedGpsModel?.connectionType === 'TCP' && !/^\d{15}$/.test(gpsForm.deviceIdentifier.trim())) {
+              errs.deviceIdentifier = 'IMEI must be exactly 15 digits'
+            }
+            if (Object.keys(errs).length) { setGpsErrors(errs); return }
+          }
+          setGpsErrors({})
+          mutation.mutate(d)
+        })} className="space-y-5 pt-2">
 
           {/* Basic Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -828,6 +904,102 @@ export function VehicleForm({
               </button>
             </div>
           </div>
+
+          {/* GPS Device — shown when IoT is enabled */}
+          {watchedIot && (
+            <div className="border rounded-lg p-4 bg-blue-50/50 space-y-3">
+              <p className="text-sm font-medium text-gray-700">GPS Device</p>
+
+              <div>
+                <Label>Device Model <span className="text-red-500">*</span></Label>
+                <select
+                  className={`mt-1 w-full text-sm border rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ring ${gpsErrors.modelId ? 'border-red-400' : 'border-input'}`}
+                  value={gpsForm.modelId}
+                  onChange={e => setGpsForm(f => ({ ...f, modelId: e.target.value, deviceIdentifier: '', credentials: '' }))}
+                >
+                  <option value="">Select company & model…</option>
+                  {gpsModels.map(m => (
+                    <option key={m.id} value={m.id}>{m.companyName} — {m.modelName} ({m.connectionType})</option>
+                  ))}
+                </select>
+                {gpsErrors.modelId && <p className="text-red-500 text-xs mt-1">{gpsErrors.modelId}</p>}
+              </div>
+
+              {selectedGpsModel?.connectionType === 'TCP' && (
+                <div>
+                  <Label>IMEI Number <span className="text-red-500">*</span></Label>
+                  <Input
+                    className={`mt-1 font-mono ${gpsErrors.deviceIdentifier ? 'border-red-400' : ''}`}
+                    value={gpsForm.deviceIdentifier}
+                    onChange={e => setGpsForm(f => ({ ...f, deviceIdentifier: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
+                    placeholder="15-digit IMEI"
+                    maxLength={15}
+                  />
+                  <p className="text-gray-400 text-xs mt-1">{gpsForm.deviceIdentifier.length}/15 digits</p>
+                  {gpsErrors.deviceIdentifier && <p className="text-red-500 text-xs mt-1">{gpsErrors.deviceIdentifier}</p>}
+                </div>
+              )}
+
+              {selectedGpsModel?.connectionType === 'REST_API' && (
+                <div className="space-y-3">
+                  <div>
+                    <Label>Client / Account Identifier <span className="text-red-500">*</span></Label>
+                    <Input
+                      className={`mt-1 ${gpsErrors.deviceIdentifier ? 'border-red-400' : ''}`}
+                      value={gpsForm.deviceIdentifier}
+                      onChange={e => setGpsForm(f => ({ ...f, deviceIdentifier: e.target.value }))}
+                      placeholder="e.g. client ID or account ID"
+                    />
+                    {gpsErrors.deviceIdentifier && <p className="text-red-500 text-xs mt-1">{gpsErrors.deviceIdentifier}</p>}
+                  </div>
+                  <div>
+                    <Label>Credentials (JSON)</Label>
+                    <textarea
+                      className="mt-1 w-full text-xs font-mono border border-input rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                      rows={3}
+                      value={gpsForm.credentials}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setGpsForm(f => ({ ...f, credentials: e.target.value }))}
+                      placeholder='{"accessToken": "xxx", "baseUrl": "https://..."}'
+                    />
+                  </div>
+                </div>
+              )}
+
+              {selectedGpsModel?.connectionType === 'WEBHOOK' && (
+                <div className="space-y-3">
+                  <div>
+                    <Label>Webhook Identifier <span className="text-red-500">*</span></Label>
+                    <Input
+                      className={`mt-1 ${gpsErrors.deviceIdentifier ? 'border-red-400' : ''}`}
+                      value={gpsForm.deviceIdentifier}
+                      onChange={e => setGpsForm(f => ({ ...f, deviceIdentifier: e.target.value }))}
+                      placeholder="e.g. vehicle ID in their system"
+                    />
+                    {gpsErrors.deviceIdentifier && <p className="text-red-500 text-xs mt-1">{gpsErrors.deviceIdentifier}</p>}
+                  </div>
+                  <div>
+                    <Label>Webhook Secret</Label>
+                    <Input
+                      className="mt-1 font-mono"
+                      value={gpsForm.credentials}
+                      onChange={e => setGpsForm(f => ({ ...f, credentials: e.target.value }))}
+                      placeholder="Shared secret to verify payloads"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label>Notes</Label>
+                <Input
+                  className="mt-1"
+                  value={gpsForm.notes}
+                  onChange={e => setGpsForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Fuel & Notes */}
           <div className="border-t pt-4">
