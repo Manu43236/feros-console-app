@@ -3431,7 +3431,7 @@ export function VehicleDetailPage() {
                     <span className="text-xs text-yellow-300 font-mono">{v.assignedOrderNumber}</span>
                   )}
                   <SearchableSelect
-                    value={v.isAssigned ? 'assigned' : v.currentStatusType === 'ON_TRIP' ? 'ontrip' : String(v.currentStatusId ?? '')}
+                    value={v.isAssigned ? 'assigned' : v.currentStatusType === 'ON_TRIP' ? 'ontrip' : v.currentStatusType === 'IN_SERVICE' ? 'inservice' : String(v.currentStatusId ?? '')}
                     onValueChange={v2 => {
                       const id = Number(v2)
                       if (!id || id === v.currentStatusId) return
@@ -3450,6 +3450,11 @@ export function VehicleDetailPage() {
                         ? [{ value: 'assigned', label: 'Assigned to Order', color: 'text-blue-400 font-medium' }]
                         : v.currentStatusType === 'ON_TRIP'
                           ? [{ value: 'ontrip', label: v.currentStatusName ?? 'On Trip', color: 'text-orange-400 font-medium' }]
+                          : v.currentStatusType === 'IN_SERVICE'
+                          ? [
+                              { value: 'inservice', label: v.currentStatusName ?? 'In Service', color: 'text-blue-400 font-medium' },
+                              ...(statusRes?.data ?? []).filter(s => s.statusType === 'AVAILABLE').map(s => ({ value: String(s.id), label: s.name, color: vehicleStatusOptionColor[s.statusType as VehicleStatusType] })),
+                            ]
                           : [
                               ...(!v.currentStatusId ? [{ value: '', label: '— Set Status —' }] : []),
                               ...(statusRes?.data ?? [])
