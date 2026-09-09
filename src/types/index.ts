@@ -1889,11 +1889,8 @@ export interface FleetStatusRow {
   vehicleId: number
   registrationNumber: string
   vehicleType: string
-  ownershipType: string
   currentStatus: string
-  currentDriverName: string
-  currentCleanerName: string
-  tripScope: string
+  inRepairType?: 'BREAKDOWN' | 'GENERAL'
 }
 
 export interface DailyFleetAttendanceRow {
