@@ -3519,6 +3519,7 @@ export function VehicleDetailPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
               {[
+                { label: 'Body Type', value: v.bodyTypeName ?? '—' },
                 { label: 'Type',      value: v.vehicleTypeName ?? '—' },
                 { label: 'Capacity',  value: v.capacityInTons ? `${v.capacityInTons} tons` : '—' },
                 { label: 'Ownership', value: v.ownershipTypeName ?? '—' },
@@ -3714,6 +3715,7 @@ export function VehicleDetailPage() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Vehicle Details</p>
                 <InfoRow label="Brand"           value={v.brandName} />
                 <InfoRow label="Model"           value={v.model} />
+                <InfoRow label="Body Type"       value={v.bodyTypeName} />
                 <InfoRow label="Vehicle Type"    value={v.vehicleTypeName} />
                 <InfoRow label="Trip Scope"      value={v.tripScope === 'INTRA_STATE' ? 'Intra-State' : v.tripScope === 'INTER_STATE' ? 'Inter-State' : null} />
                 <InfoRow label="Fuel Type"       value={v.fuelTypeName} />
