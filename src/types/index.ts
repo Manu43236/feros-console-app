@@ -891,7 +891,7 @@ export interface DashboardResponse {
   }
   vehicles: {
     total: number; available: number; assigned: number; onTrip: number
-    underMaintenance: number; breakdown: number; inactive: number
+    underMaintenance: number; inService: number; breakdown: number; inactive: number
   }
   invoices: {
     draft: number; sent: number; partiallyPaid: number; overdue: number; paid: number

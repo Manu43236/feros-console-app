@@ -585,7 +585,7 @@ export function VehicleForm({
                   <SearchableSelect
                     value={field.value ? String(field.value) : ''}
                     onValueChange={v => field.onChange(v ? Number(v) : undefined)}
-                    options={(typesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.tyreCount ? `${t.name} – ${t.capacityInTons}T` : t.name }))}
+                    options={(typesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name }))}
                     placeholder="Select type"
                     className="mt-1"
                   />

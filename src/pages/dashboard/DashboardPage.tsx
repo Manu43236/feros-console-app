@@ -512,7 +512,8 @@ export function DashboardPage() {
               { label: 'Available',      value: fmt(s.vehicles.available),        dot: 'bg-green-400',  href: '/vehicles?status=AVAILABLE' },
               { label: 'Assigned',       value: fmt(s.vehicles.assigned),         dot: 'bg-blue-400',   href: '/vehicles?status=ASSIGNED' },
               { label: 'On Trip',        value: fmt(s.vehicles.onTrip),           dot: 'bg-orange-400', href: '/vehicles?status=ON_TRIP' },
-              { label: 'Maintenance',    value: fmt(s.vehicles.underMaintenance), dot: 'bg-yellow-400', href: '/vehicles?status=IN_REPAIR' },
+              { label: 'In Repair',      value: fmt(s.vehicles.underMaintenance), dot: 'bg-yellow-400', href: '/vehicles?status=IN_REPAIR' },
+              { label: 'In Service',     value: fmt(s.vehicles.inService),        dot: 'bg-purple-400', href: '/vehicles?status=IN_SERVICE' },
               { label: 'Breakdown',      value: fmt(s.vehicles.breakdown),        dot: 'bg-red-400',    href: '/vehicles?status=BREAKDOWN' },
               { label: 'Inactive',       value: fmt(s.vehicles.inactive),         dot: 'bg-gray-300',   href: '/vehicles?active=inactive' },
             ]}
