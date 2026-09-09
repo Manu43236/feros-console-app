@@ -135,19 +135,8 @@ export default function PolOrderPage() {
       remarks:            order.remarks ?? '',
     })
 
-    setRows(lrs.map(lr => ({
-      vehicleId:       lr.vehicleId ?? 0,
-      driverId:        lr.driverId  ?? 0,
-      cleanerId:       lr.cleanerId ?? undefined,
-      paperLrNumber:   lr.paperLrNumber ?? '',
-      vehicleCapacity: Number(lr.vehicleCapacity ?? 0),
-      allocatedWeight: Number(lr.allocatedWeight ?? 0),
-      loadedWeight:    Number(lr.loadedWeight    ?? 0),
-      deliveredWeight: Number(lr.deliveredWeight ?? 0),
-      lrDate:          lr.lrDate ?? '',
-      ewayBillNumber:  lr.ewayBillNumber ?? '',
-      remarks:         lr.remarks ?? '',
-    })))
+    // In edit mode rows = new LRs to append; existing LRs shown read-only separately
+    setRows([])
   }, [existingOrderRes?.data, existingLrsRes?.data])
 
   const attendance: Attendance[] = attendanceRes?.data ?? []
@@ -166,6 +155,19 @@ export default function PolOrderPage() {
 
   const mutation = useMutation({
     mutationFn: (data: FormData) => {
+      const lrRows = rows.map(r => ({
+        vehicleId:       r.vehicleId,
+        driverId:        r.driverId,
+        cleanerId:       r.cleanerId || undefined,
+        paperLrNumber:   r.paperLrNumber || undefined,
+        vehicleCapacity: r.vehicleCapacity,
+        allocatedWeight: r.allocatedWeight,
+        loadedWeight:    r.loadedWeight,
+        deliveredWeight: r.deliveredWeight,
+        lrDate:          r.lrDate || undefined,
+        ewayBillNumber:  r.ewayBillNumber || undefined,
+        remarks:         r.remarks || undefined,
+      }))
       const payload: Record<string, unknown> = {
         clientId:           data.clientId,
         totalWeight:        data.totalWeight,
@@ -180,19 +182,7 @@ export default function PolOrderPage() {
         freightRate:        data.freightRate,
         billingOn:          data.billingOn,
         remarks:            data.remarks,
-        lrs: rows.map(r => ({
-          vehicleId:       r.vehicleId,
-          driverId:        r.driverId,
-          cleanerId:       r.cleanerId || undefined,
-          paperLrNumber:   r.paperLrNumber || undefined,
-          vehicleCapacity: r.vehicleCapacity,
-          allocatedWeight: r.allocatedWeight,
-          loadedWeight:    r.loadedWeight,
-          deliveredWeight: r.deliveredWeight,
-          lrDate:          r.lrDate || undefined,
-          ewayBillNumber:  r.ewayBillNumber || undefined,
-          remarks:         r.remarks || undefined,
-        })),
+        ...(isEdit ? { newLrs: lrRows } : { lrs: lrRows }),
       }
       if (isOtherMaterial) {
         payload.customMaterialName = data.customMaterialName
@@ -231,7 +221,7 @@ export default function PolOrderPage() {
   }
 
   function onSubmit(data: FormData): void {
-    if (!validateRows()) { toast.error('Fix LR row errors before saving'); return }
+    if (rows.length > 0 && !validateRows()) { toast.error('Fix LR row errors before saving'); return }
     mutation.mutate(data)
   }
 
@@ -389,19 +379,41 @@ export default function PolOrderPage() {
           </div>
         </div>
 
+        {/* ── Existing LRs (edit mode only, read-only) ── */}
+        {isEdit && (existingLrsRes?.data ?? []).length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <h2 className="font-semibold text-gray-800">Existing LRs <span className="text-xs font-normal text-gray-400">(already saved)</span></h2>
+            {(existingLrsRes?.data ?? []).map((lr) => (
+              <div key={lr.id} className="border border-gray-100 rounded-lg p-3 bg-gray-50 text-sm text-gray-700 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div><span className="text-xs text-gray-400 block">LR #</span>{lr.lrNumber}</div>
+                <div><span className="text-xs text-gray-400 block">Vehicle</span>{lr.vehicleRegistrationNumber}</div>
+                <div><span className="text-xs text-gray-400 block">Driver</span>{lr.driverName}</div>
+                <div><span className="text-xs text-gray-400 block">Date</span>{lr.lrDate}</div>
+                <div><span className="text-xs text-gray-400 block">Allocated (T)</span>{lr.allocatedWeight}</div>
+                <div><span className="text-xs text-gray-400 block">Loaded (T)</span>{lr.loadedWeight ?? '—'}</div>
+                <div><span className="text-xs text-gray-400 block">Delivered (T)</span>{lr.deliveredWeight ?? '—'}</div>
+                {lr.paperLrNumber && <div><span className="text-xs text-gray-400 block">Paper LR</span>{lr.paperLrNumber}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── LR Rows ── */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-800">LR Details</h2>
+            <h2 className="font-semibold text-gray-800">{isEdit ? 'Add More LRs' : 'LR Details'}</h2>
             {!watchedOrderDate && (
               <p className="text-xs text-amber-600">Select order date first to filter drivers/cleaners by attendance</p>
             )}
           </div>
+          {isEdit && rows.length === 0 && (
+            <p className="text-sm text-gray-400">No new LRs added yet. Click "Add LR" below to append more trips.</p>
+          )}
 
           {rows.map((row, i) => (
             <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-3 relative">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-sm font-medium text-gray-700">LR #{i + 1}</p>
+                <p className="text-sm font-medium text-gray-700">LR #{(existingLrsRes?.data?.length ?? 0) + i + 1}</p>
                 {rows.length > 1 && (
                   <button type="button" onClick={() => setRows(prev => prev.filter((_, idx) => idx !== i))}
                     className="text-red-400 hover:text-red-600">
