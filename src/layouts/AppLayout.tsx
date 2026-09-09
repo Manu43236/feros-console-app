@@ -626,7 +626,7 @@ export function AppLayout() {
   const { data: mySubRes } = useQuery({
     queryKey: ['my-subscription', tenantId],
     queryFn: () => subscriptionsApi.getMy(),
-    enabled: role !== 'SUPER_ADMIN' && tenantId != null,
+    enabled: (role !== 'SUPER_ADMIN' || isImpersonating) && tenantId != null,
     retry: false,
   })
   const subStatus = mySubRes?.data?.status

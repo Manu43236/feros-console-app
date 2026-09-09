@@ -159,7 +159,8 @@ export default function App() {
           {/* Orders & LRs */}
           <Route path="orders"          element={<OrdersPage />} />
           <Route path="orders/new"      element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><NewOrderPage /></ProtectedRoute>} />
-          <Route path="orders/pol"      element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PolOrderPage /></ProtectedRoute>} />
+          <Route path="orders/pol"        element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PolOrderPage /></ProtectedRoute>} />
+          <Route path="orders/pol/:id/edit" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PolOrderPage /></ProtectedRoute>} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
           <Route path="assignments"     element={<AssignmentsPage />} />
           <Route path="lrs"              element={<LrsPage />} />

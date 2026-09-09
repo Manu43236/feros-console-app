@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
@@ -16,6 +16,7 @@ import { clientsApi } from '@/api/clients'
 import { vehiclesApi } from '@/api/vehicles'
 import { globalMastersApi } from '@/api/masters'
 import { attendanceApi } from '@/api/attendance'
+import { lrsApi } from '@/api/lrs'
 import type { Attendance } from '@/types'
 
 const MATERIAL_OTHER = 0
@@ -58,12 +59,16 @@ function emptyRow(): LrRow {
 export default function PolOrderPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { id } = useParams<{ id?: string }>()
+  const editId = id ? Number(id) : undefined
+  const isEdit = !!editId
+
   const [srcState, setSrcState] = useState<number | undefined>()
   const [dstState, setDstState] = useState<number | undefined>()
   const [rows, setRows] = useState<LrRow[]>([emptyRow()])
   const [rowErrors, setRowErrors] = useState<Record<number, Record<string, string>>>({})
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: { freightRateType: 'PER_TON', billingOn: 'LOADED_WEIGHT', materialTypeId: MATERIAL_OTHER },
   })
@@ -90,6 +95,60 @@ export default function PolOrderPage() {
     queryFn: () => attendanceApi.getByDate(watchedOrderDate),
     enabled: !!watchedOrderDate,
   })
+
+  // Edit mode: load existing order + LRs
+  const { data: existingOrderRes } = useQuery({
+    queryKey: ['order', editId],
+    queryFn: () => ordersApi.getById(editId!),
+    enabled: isEdit,
+  })
+  const { data: existingLrsRes } = useQuery({
+    queryKey: ['lrs-by-order', editId],
+    queryFn: () => lrsApi.getByOrder(editId!),
+    enabled: isEdit,
+  })
+
+  useEffect(() => {
+    const order = existingOrderRes?.data
+    const lrs   = existingLrsRes?.data
+    if (!order || !lrs) return
+
+    const srcSt = order.sourceStateId
+    const dstSt = order.destinationStateId
+    setSrcState(srcSt)
+    setDstState(dstSt)
+
+    reset({
+      clientId:           order.clientId,
+      materialTypeId:     order.materialTypeId ?? MATERIAL_OTHER,
+      totalWeight:        Number(order.totalWeight),
+      orderDate:          order.orderDate,
+      sourceAddress:      order.sourceAddress ?? '',
+      sourceStateId:      srcSt,
+      sourceCityId:       order.sourceCityId,
+      destinationAddress: order.destinationAddress ?? '',
+      destinationStateId: dstSt,
+      destinationCityId:  order.destinationCityId,
+      freightRateType:    order.freightRateType as 'PER_TON' | 'PER_TRIP' | 'PER_KM',
+      freightRate:        Number(order.freightRate),
+      billingOn:          (order.billingOn ?? 'LOADED_WEIGHT') as 'LOADED_WEIGHT' | 'DELIVERED_WEIGHT',
+      remarks:            order.remarks ?? '',
+    })
+
+    setRows(lrs.map(lr => ({
+      vehicleId:       lr.vehicleId ?? 0,
+      driverId:        lr.driverId  ?? 0,
+      cleanerId:       lr.cleanerId ?? undefined,
+      paperLrNumber:   lr.paperLrNumber ?? '',
+      vehicleCapacity: Number(lr.vehicleCapacity ?? 0),
+      allocatedWeight: Number(lr.allocatedWeight ?? 0),
+      loadedWeight:    Number(lr.loadedWeight    ?? 0),
+      deliveredWeight: Number(lr.deliveredWeight ?? 0),
+      lrDate:          lr.lrDate ?? '',
+      ewayBillNumber:  lr.ewayBillNumber ?? '',
+      remarks:         lr.remarks ?? '',
+    })))
+  }, [existingOrderRes?.data, existingLrsRes?.data])
 
   const attendance: Attendance[] = attendanceRes?.data ?? []
   const drivers  = attendance.filter(a => a.roleName === 'DRIVER'  && a.approvalStatus !== 'REJECTED')
@@ -140,16 +199,18 @@ export default function PolOrderPage() {
       } else {
         payload.materialTypeId = data.materialTypeId
       }
-      return ordersApi.createPol(payload)
+      return isEdit ? ordersApi.updatePol(editId!, payload) : ordersApi.createPol(payload)
     },
     onSuccess: (res) => {
-      toast.success('POL order created successfully')
+      toast.success(isEdit ? 'POL order updated successfully' : 'POL order created successfully')
       qc.invalidateQueries({ queryKey: ['orders'] })
+      qc.invalidateQueries({ queryKey: ['order', editId] })
+      qc.invalidateQueries({ queryKey: ['lrs-by-order', editId] })
       navigate(`/orders/${res.data?.id}`)
     },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to create POL order')
+      toast.error(msg ?? (isEdit ? 'Failed to update POL order' : 'Failed to create POL order'))
     },
   })
 
@@ -193,7 +254,7 @@ export default function PolOrderPage() {
           <ArrowLeft className="h-4 w-4" /> Orders
         </button>
         <span className="text-gray-300">/</span>
-        <h1 className="text-xl font-bold text-gray-900">Post Order Log (POL)</h1>
+        <h1 className="text-xl font-bold text-gray-900">{isEdit ? 'Edit POL Order' : 'Post Order Log (POL)'}</h1>
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
@@ -490,7 +551,7 @@ export default function PolOrderPage() {
         <div className="flex items-center gap-3 justify-end">
           <Button type="button" variant="outline" onClick={() => navigate('/orders')}>Cancel</Button>
           <Button type="submit" disabled={mutation.isPending} className="bg-feros-navy hover:bg-feros-navy/90 text-white px-8">
-            {mutation.isPending ? 'Saving…' : 'Save POL Order'}
+            {mutation.isPending ? 'Saving…' : isEdit ? 'Update POL Order' : 'Save POL Order'}
           </Button>
         </div>
       </form>

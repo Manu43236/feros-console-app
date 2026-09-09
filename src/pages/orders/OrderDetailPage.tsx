@@ -1290,6 +1290,15 @@ export function OrderDetailPage() {
                   <Pencil size={14} /> Edit
                 </Button>
               )}
+              {order.isPol && (isSuperAdmin || !isSupervisor) && (
+                <Button
+                  size="sm"
+                  onClick={() => navigate(`/orders/pol/${order.id}/edit`)}
+                  className="bg-white/20 hover:bg-white/30 text-white gap-1.5"
+                >
+                  <Pencil size={14} /> Edit POL
+                </Button>
+              )}
             </div>
           </div>
           <div className="mt-5">
