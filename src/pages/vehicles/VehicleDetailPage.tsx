@@ -16,6 +16,10 @@ import { breakdownsApi } from '@/api/breakdowns'
 import { fuelLogsApi } from '@/api/fuelLogs'
 import { tyresApi } from '@/api/tyres'
 import { meterReadingsApi } from '@/api/meterReadings'
+import { gpsDevicesApi } from '@/api/gpsDevices'
+import { gpsHardwareApi } from '@/api/gpsHardware'
+import type { GpsDevice } from '@/api/gpsDevices'
+import type { GpsDeviceModel, GpsConnectionType } from '@/api/gpsHardware'
 import { compressIfNeeded } from '@/lib/imageCompressor'
 import type { VehicleAssignmentHistory, FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading, Order, VehicleAllocation, StaffAllocation } from '@/types'
 import { toast } from 'sonner'
@@ -70,7 +74,7 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 }
 
 // ── tabs ─────────────────────────────────────────────────────────────────────
-const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tyres', 'Meter Readings', 'Assignments', 'Order History', 'Trip History'] as const
+const TABS = ['Basic Info', 'Compliance', 'Documents', 'Service', 'Fuel', 'Tyres', 'Meter Readings', 'Assignments', 'Order History', 'Trip History', 'GPS'] as const
 type Tab = typeof TABS[number]
 
 // ── edit document dialog ───────────────────────────────────────────────────────
@@ -1132,6 +1136,284 @@ function AddPartDialog({ serviceId, onClose }: { serviceId: number; onClose: () 
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ── GPS tab ───────────────────────────────────────────────────────────────────
+
+const CONNECTION_LABEL: Record<GpsConnectionType, string> = {
+  TCP: 'TCP (Raw Socket)',
+  REST_API: 'REST API',
+  WEBHOOK: 'Webhook',
+}
+
+const EMPTY_GPS_FORM = { modelId: '', deviceIdentifier: '', credentials: '{}', notes: '' }
+
+function GpsTabContent({ vehicleId }: { vehicleId: number }) {
+  const qc = useQueryClient()
+  const role = useAuthStore(s => s.role)
+  const isAdmin = role === 'ADMIN'
+
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState(EMPTY_GPS_FORM)
+  const [errs, setErrs] = useState<Record<string, string>>({})
+  const [editId, setEditId] = useState<number | null>(null)
+
+  const { data: deviceRes, isLoading } = useQuery({
+    queryKey: ['gps-device-vehicle', vehicleId],
+    queryFn: () => gpsDevicesApi.getByVehicle(vehicleId),
+  })
+  const device: GpsDevice | null = deviceRes?.data ?? null
+
+  const { data: modelsRes } = useQuery({
+    queryKey: ['gps-models-active'],
+    queryFn: () => gpsHardwareApi.getAllActive(),
+    enabled: open,
+  })
+  const models: GpsDeviceModel[] = modelsRes?.data ?? []
+  const selectedModel = models.find(m => m.id === Number(form.modelId)) ?? null
+
+  const mutRegister = useMutation({
+    mutationFn: (d: Parameters<typeof gpsDevicesApi.register>[0]) => gpsDevicesApi.register(d),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['gps-device-vehicle', vehicleId] }); setOpen(false); toast.success('GPS device registered') },
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+  })
+  const mutUpdate = useMutation({
+    mutationFn: ({ id, d }: { id: number; d: Parameters<typeof gpsDevicesApi.update>[1] }) => gpsDevicesApi.update(id, d),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['gps-device-vehicle', vehicleId] }); setOpen(false); toast.success('GPS device updated') },
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+  })
+  const mutDeactivate = useMutation({
+    mutationFn: (id: number) => gpsDevicesApi.deactivate(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['gps-device-vehicle', vehicleId] }); toast.success('GPS device deactivated') },
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+  })
+
+  function openRegister() {
+    setEditId(null)
+    setForm(EMPTY_GPS_FORM)
+    setErrs({})
+    setOpen(true)
+  }
+
+  function openEdit(d: GpsDevice) {
+    setEditId(d.id)
+    setForm({ modelId: String(d.modelId), deviceIdentifier: d.deviceIdentifier, credentials: '{}', notes: d.notes ?? '' })
+    setErrs({})
+    setOpen(true)
+  }
+
+  function buildCredentials(): string {
+    if (!selectedModel) return '{}'
+    if (selectedModel.connectionType === 'TCP') {
+      return JSON.stringify({ imei: form.deviceIdentifier })
+    }
+    if (selectedModel.connectionType === 'REST_API') {
+      try { return form.credentials } catch { return form.credentials }
+    }
+    if (selectedModel.connectionType === 'WEBHOOK') {
+      return JSON.stringify({ webhookSecret: form.credentials })
+    }
+    return form.credentials
+  }
+
+  function submit(ev: React.FormEvent) {
+    ev.preventDefault()
+    const e: Record<string, string> = {}
+    if (!form.modelId) e.modelId = 'Select a device model'
+    if (!form.deviceIdentifier.trim()) e.deviceIdentifier = 'Required'
+    if (selectedModel?.connectionType === 'TCP' && !/^\d{15}$/.test(form.deviceIdentifier.trim())) {
+      e.deviceIdentifier = 'IMEI must be exactly 15 digits'
+    }
+    setErrs(e)
+    if (Object.keys(e).length) return
+
+    const payload = {
+      vehicleId,
+      modelId: Number(form.modelId),
+      deviceIdentifier: form.deviceIdentifier.trim(),
+      credentials: buildCredentials(),
+      notes: form.notes,
+    }
+    if (editId) mutUpdate.mutate({ id: editId, d: payload })
+    else mutRegister.mutate(payload)
+  }
+
+  if (isLoading) return <div className="py-10 text-center text-sm text-gray-400">Loading…</div>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">GPS Device</p>
+        {isAdmin && !device && (
+          <Button size="sm" onClick={openRegister} className="bg-feros-navy hover:bg-feros-navy/90 text-white h-8 text-xs gap-1.5">
+            <Plus size={13} /> Register Device
+          </Button>
+        )}
+      </div>
+
+      {!device ? (
+        <div className="py-10 text-center text-gray-400 border-2 border-dashed rounded-xl">
+          <Wifi size={32} className="mx-auto mb-3 text-gray-200" />
+          <p className="text-sm font-medium text-gray-500">No GPS device registered</p>
+          <p className="text-xs mt-1">Register a device to enable live tracking for this vehicle.</p>
+        </div>
+      ) : (
+        <div className="border rounded-xl p-4 space-y-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-semibold text-gray-800">{device.companyName} — {device.modelName}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{CONNECTION_LABEL[device.connectionType]} · {device.parserKey}</p>
+            </div>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${device.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              {device.status}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-gray-400">Device Identifier</p>
+              <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 mt-0.5 inline-block">{device.deviceIdentifier}</code>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Last Ping</p>
+              <p className="text-sm text-gray-700 mt-0.5">{device.lastPingAt ? format(parseISO(device.lastPingAt), 'dd MMM yyyy HH:mm') : '—'}</p>
+            </div>
+            {device.notes && (
+              <div className="col-span-2">
+                <p className="text-xs text-gray-400">Notes</p>
+                <p className="text-sm text-gray-600 mt-0.5">{device.notes}</p>
+              </div>
+            )}
+          </div>
+
+          {isAdmin && (
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => openEdit(device)}>
+                <Pencil size={11} /> Edit
+              </Button>
+              {device.status === 'ACTIVE' && (
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-500 border-red-200 hover:bg-red-50"
+                  onClick={() => mutDeactivate.mutate(device.id)} disabled={mutDeactivate.isPending}>
+                  Deactivate
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Register / Edit dialog */}
+      <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editId ? 'Edit GPS Device' : 'Register GPS Device'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submit} className="space-y-4 mt-2">
+
+            {/* Model selector */}
+            <div>
+              <Label>Device Model <span className="text-red-500">*</span></Label>
+              <select
+                className={`mt-1 w-full text-sm border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring ${errs.modelId ? 'border-red-400' : 'border-input'}`}
+                value={form.modelId}
+                onChange={e => setForm(f => ({ ...f, modelId: e.target.value, deviceIdentifier: '', credentials: '{}' }))}
+              >
+                <option value="">Select company & model…</option>
+                {models.map(m => (
+                  <option key={m.id} value={m.id}>{m.companyName} — {m.modelName} ({CONNECTION_LABEL[m.connectionType]})</option>
+                ))}
+              </select>
+              {errs.modelId && <p className="text-red-500 text-xs mt-1">{errs.modelId}</p>}
+            </div>
+
+            {/* Dynamic credential fields based on connection type */}
+            {selectedModel?.connectionType === 'TCP' && (
+              <div>
+                <Label>IMEI Number <span className="text-red-500">*</span></Label>
+                <Input
+                  className={`mt-1 font-mono ${errs.deviceIdentifier ? 'border-red-400' : ''}`}
+                  value={form.deviceIdentifier}
+                  onChange={e => setForm(f => ({ ...f, deviceIdentifier: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
+                  placeholder="15-digit IMEI"
+                  maxLength={15}
+                />
+                <p className="text-gray-400 text-xs mt-1">{form.deviceIdentifier.length}/15 digits</p>
+                {errs.deviceIdentifier && <p className="text-red-500 text-xs mt-1">{errs.deviceIdentifier}</p>}
+              </div>
+            )}
+
+            {selectedModel?.connectionType === 'REST_API' && (
+              <div className="space-y-3">
+                <div>
+                  <Label>Client / Account Identifier <span className="text-red-500">*</span></Label>
+                  <Input
+                    className={`mt-1 ${errs.deviceIdentifier ? 'border-red-400' : ''}`}
+                    value={form.deviceIdentifier}
+                    onChange={e => setForm(f => ({ ...f, deviceIdentifier: e.target.value }))}
+                    placeholder="e.g. client ID or account ID"
+                  />
+                  {errs.deviceIdentifier && <p className="text-red-500 text-xs mt-1">{errs.deviceIdentifier}</p>}
+                </div>
+                <div>
+                  <Label>Credentials (JSON) <span className="text-red-500">*</span></Label>
+                  <textarea
+                    className="mt-1 w-full text-xs font-mono border border-input rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={3}
+                    value={form.credentials}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setForm(f => ({ ...f, credentials: e.target.value }))}
+                    placeholder='{"accessToken": "xxx", "baseUrl": "https://..."}'
+                  />
+                  <p className="text-gray-400 text-xs mt-1">Enter access token, base URL, etc. as JSON.</p>
+                </div>
+              </div>
+            )}
+
+            {selectedModel?.connectionType === 'WEBHOOK' && (
+              <div className="space-y-3">
+                <div>
+                  <Label>Webhook Identifier <span className="text-red-500">*</span></Label>
+                  <Input
+                    className={`mt-1 ${errs.deviceIdentifier ? 'border-red-400' : ''}`}
+                    value={form.deviceIdentifier}
+                    onChange={e => setForm(f => ({ ...f, deviceIdentifier: e.target.value }))}
+                    placeholder="e.g. vehicle ID in their system"
+                  />
+                  {errs.deviceIdentifier && <p className="text-red-500 text-xs mt-1">{errs.deviceIdentifier}</p>}
+                </div>
+                <div>
+                  <Label>Webhook Secret</Label>
+                  <Input
+                    className="mt-1 font-mono"
+                    value={form.credentials}
+                    onChange={e => setForm(f => ({ ...f, credentials: e.target.value }))}
+                    placeholder="Shared secret to verify payloads"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            <div>
+              <Label>Notes</Label>
+              <Input
+                className="mt-1"
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="Optional"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" size="sm" className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+                {editId ? 'Update' : 'Register'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
 
@@ -3686,6 +3968,7 @@ export function VehicleDetailPage() {
               {t === 'Assignments'    && <Users size={14} />}
               {t === 'Order History'  && <ClipboardList size={14} />}
               {t === 'Trip History'   && <Route size={14} />}
+              {t === 'GPS'           && <Wifi size={14} />}
               {t}
               {t === 'Compliance' && alertCount > 0 && (
                 <span className="ml-1 text-xs bg-red-100 text-red-600 rounded-full px-1.5 py-0.5 font-semibold">
@@ -3977,6 +4260,11 @@ export function VehicleDetailPage() {
               <p className="text-sm font-medium text-gray-500">Trip History</p>
               <p className="text-xs mt-1">Completed trips and LRs for this vehicle will appear here.</p>
             </div>
+          )}
+
+          {/* ── GPS ── */}
+          {tab === 'GPS' && (
+            <GpsTabContent vehicleId={Number(vehicleId)} />
           )}
 
         </div>
