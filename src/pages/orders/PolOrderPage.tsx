@@ -41,6 +41,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 type LrRow = {
+  id?: number          // present for existing saved LRs
   vehicleId: number; driverId: number; cleanerId?: number
   paperLrNumber: string; vehicleCapacity: number; allocatedWeight: number
   loadedWeight: number; deliveredWeight: number; lrDate: string
@@ -135,8 +136,21 @@ export default function PolOrderPage() {
       remarks:            order.remarks ?? '',
     })
 
-    // In edit mode rows = new LRs to append; existing LRs shown read-only separately
-    setRows([])
+    // Non-invoiced LRs → editable rows (with their id); invoiced ones shown locked separately
+    setRows(lrs.filter(lr => !lr.invoiceId).map(lr => ({
+      id:              lr.id,
+      vehicleId:       lr.vehicleId ?? 0,
+      driverId:        lr.driverId  ?? 0,
+      cleanerId:       lr.cleanerId ?? undefined,
+      paperLrNumber:   lr.paperLrNumber ?? '',
+      vehicleCapacity: Number(lr.vehicleCapacity ?? 0),
+      allocatedWeight: Number(lr.allocatedWeight ?? 0),
+      loadedWeight:    Number(lr.loadedWeight    ?? 0),
+      deliveredWeight: Number(lr.deliveredWeight ?? 0),
+      lrDate:          lr.lrDate ?? '',
+      ewayBillNumber:  lr.ewayBillNumber ?? '',
+      remarks:         lr.remarks ?? '',
+    })))
   }, [existingOrderRes?.data, existingLrsRes?.data])
 
   const attendance: Attendance[] = attendanceRes?.data ?? []
@@ -156,6 +170,7 @@ export default function PolOrderPage() {
   const mutation = useMutation({
     mutationFn: (data: FormData) => {
       const lrRows = rows.map(r => ({
+        id:              r.id ?? undefined,
         vehicleId:       r.vehicleId,
         driverId:        r.driverId,
         cleanerId:       r.cleanerId || undefined,
@@ -182,7 +197,7 @@ export default function PolOrderPage() {
         freightRate:        data.freightRate,
         billingOn:          data.billingOn,
         remarks:            data.remarks,
-        ...(isEdit ? { newLrs: lrRows } : { lrs: lrRows }),
+        lrs: lrRows,
       }
       if (isOtherMaterial) {
         payload.customMaterialName = data.customMaterialName
@@ -379,12 +394,14 @@ export default function PolOrderPage() {
           </div>
         </div>
 
-        {/* ── Existing LRs (edit mode only, read-only) ── */}
-        {isEdit && (existingLrsRes?.data ?? []).length > 0 && (
+        {/* ── Invoiced LRs (locked, read-only) ── */}
+        {isEdit && (existingLrsRes?.data ?? []).some(lr => lr.invoiceId) && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
-            <h2 className="font-semibold text-gray-800">Existing LRs <span className="text-xs font-normal text-gray-400">(already saved)</span></h2>
-            {(existingLrsRes?.data ?? []).map((lr) => (
-              <div key={lr.id} className="border border-gray-100 rounded-lg p-3 bg-gray-50 text-sm text-gray-700 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <h2 className="font-semibold text-gray-800">
+              Invoiced LRs <span className="text-xs font-normal text-gray-400">(cannot be edited)</span>
+            </h2>
+            {(existingLrsRes?.data ?? []).filter(lr => lr.invoiceId).map((lr) => (
+              <div key={lr.id} className="border border-gray-100 rounded-lg p-3 bg-gray-50 text-sm text-gray-700 grid grid-cols-2 sm:grid-cols-4 gap-2 opacity-70">
                 <div><span className="text-xs text-gray-400 block">LR #</span>{lr.lrNumber}</div>
                 <div><span className="text-xs text-gray-400 block">Vehicle</span>{lr.vehicleRegistrationNumber}</div>
                 <div><span className="text-xs text-gray-400 block">Driver</span>{lr.driverName}</div>
@@ -392,7 +409,7 @@ export default function PolOrderPage() {
                 <div><span className="text-xs text-gray-400 block">Allocated (T)</span>{lr.allocatedWeight}</div>
                 <div><span className="text-xs text-gray-400 block">Loaded (T)</span>{lr.loadedWeight ?? '—'}</div>
                 <div><span className="text-xs text-gray-400 block">Delivered (T)</span>{lr.deliveredWeight ?? '—'}</div>
-                {lr.paperLrNumber && <div><span className="text-xs text-gray-400 block">Paper LR</span>{lr.paperLrNumber}</div>}
+                <div><span className="text-xs text-gray-400 block">Invoice</span>{lr.invoiceNumber}</div>
               </div>
             ))}
           </div>
@@ -401,19 +418,22 @@ export default function PolOrderPage() {
         {/* ── LR Rows ── */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-800">{isEdit ? 'Add More LRs' : 'LR Details'}</h2>
+            <h2 className="font-semibold text-gray-800">{isEdit ? 'LR Details' : 'LR Details'}</h2>
             {!watchedOrderDate && (
               <p className="text-xs text-amber-600">Select order date first to filter drivers/cleaners by attendance</p>
             )}
           </div>
           {isEdit && rows.length === 0 && (
-            <p className="text-sm text-gray-400">No new LRs added yet. Click "Add LR" below to append more trips.</p>
+            <p className="text-sm text-gray-400">All existing LRs are invoiced or none exist yet. Click "Add LR" to append more trips.</p>
           )}
 
           {rows.map((row, i) => (
             <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-3 relative">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-sm font-medium text-gray-700">LR #{(existingLrsRes?.data?.length ?? 0) + i + 1}</p>
+                <p className="text-sm font-medium text-gray-700">
+                  LR #{(existingLrsRes?.data?.filter(l => l.invoiceId)?.length ?? 0) + i + 1}
+                  {row.id && <span className="ml-1.5 text-xs font-normal text-blue-500">editing</span>}
+                </p>
                 {rows.length > 1 && (
                   <button type="button" onClick={() => setRows(prev => prev.filter((_, idx) => idx !== i))}
                     className="text-red-400 hover:text-red-600">
