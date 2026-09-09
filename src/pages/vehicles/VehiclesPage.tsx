@@ -1374,9 +1374,9 @@ export function VehiclesPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <p className="text-sm text-gray-700">{v.vehicleTypeName ?? '—'}</p>
+                        <p className="text-sm text-gray-700">{v.bodyTypeName ?? v.vehicleTypeName ?? '—'}</p>
                         <p className="text-xs text-gray-400">
-                          {[v.bodyTypeName, v.capacityInTons ? `${v.capacityInTons}T` : null, v.fuelTypeName].filter(Boolean).join(' · ') || '—'}
+                          {[v.vehicleTypeName, v.capacityInTons ? `${v.capacityInTons}T` : null, v.fuelTypeName].filter(Boolean).join(' · ') || '—'}
                         </p>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
