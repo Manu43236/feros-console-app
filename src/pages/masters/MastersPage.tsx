@@ -42,19 +42,21 @@ const VEHICLE_STATUS_TYPES: { value: VehicleStatusType; label: string }[] = [
   { value: 'ASSIGNED',   label: 'Assigned'   },
   { value: 'ON_TRIP',    label: 'On Trip'    },
   { value: 'IN_REPAIR',  label: 'In Repair'  },
+  { value: 'IN_SERVICE', label: 'In Service' },
   { value: 'BREAKDOWN',  label: 'Breakdown'  },
   { value: 'ON_LEASE',   label: 'On Lease'   },
   { value: 'OTHER',      label: 'Other'      },
 ]
 
 const vehicleStatusBadge: Record<VehicleStatusType, string> = {
-  AVAILABLE:  'bg-green-100 text-green-700',
-  ASSIGNED:   'bg-blue-100 text-blue-700',
-  ON_TRIP:    'bg-orange-100 text-orange-700',
-  IN_REPAIR:  'bg-yellow-100 text-yellow-700',
-  BREAKDOWN:  'bg-red-100 text-red-700',
-  ON_LEASE:   'bg-purple-100 text-purple-700',
-  OTHER:      'bg-gray-100 text-gray-600',
+  AVAILABLE:   'bg-green-100 text-green-700',
+  ASSIGNED:    'bg-blue-100 text-blue-700',
+  ON_TRIP:     'bg-orange-100 text-orange-700',
+  IN_REPAIR:   'bg-yellow-100 text-yellow-700',
+  IN_SERVICE:  'bg-violet-100 text-violet-700',
+  BREAKDOWN:   'bg-red-100 text-red-700',
+  ON_LEASE:    'bg-purple-100 text-purple-700',
+  OTHER:       'bg-gray-100 text-gray-600',
 }
 
 // ── Vehicle Status Section ─────────────────────────────────────────────────────

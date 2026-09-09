@@ -1065,13 +1065,14 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
 }
 
 const vehicleStatusBadge: Record<VehicleStatusType, string> = {
-  AVAILABLE:  'bg-green-100 text-green-700',
-  ASSIGNED:   'bg-blue-100 text-blue-700',
-  ON_TRIP:    'bg-orange-100 text-orange-700',
-  IN_REPAIR:  'bg-yellow-100 text-yellow-700',
-  BREAKDOWN:  'bg-red-100 text-red-700',
-  ON_LEASE:   'bg-purple-100 text-purple-700',
-  OTHER:      'bg-gray-100 text-gray-600',
+  AVAILABLE:   'bg-green-100 text-green-700',
+  ASSIGNED:    'bg-blue-100 text-blue-700',
+  ON_TRIP:     'bg-orange-100 text-orange-700',
+  IN_REPAIR:   'bg-yellow-100 text-yellow-700',
+  IN_SERVICE:  'bg-violet-100 text-violet-700',
+  BREAKDOWN:   'bg-red-100 text-red-700',
+  ON_LEASE:    'bg-purple-100 text-purple-700',
+  OTHER:       'bg-gray-100 text-gray-600',
 }
 
 // ── main page ─────────────────────────────────────────────────────────────────
@@ -1235,6 +1236,7 @@ export function VehiclesPage() {
             { value: 'ASSIGNED',   label: 'Assigned' },
             { value: 'ON_TRIP',    label: 'On Trip' },
             { value: 'IN_REPAIR',  label: 'In Repair' },
+            { value: 'IN_SERVICE', label: 'In Service' },
             { value: 'BREAKDOWN',  label: 'Breakdown' },
             { value: 'ON_LEASE',   label: 'On Lease' },
             { value: 'OTHER',      label: 'Other' },
@@ -1312,8 +1314,9 @@ export function VehiclesPage() {
                             <div className={cn(
                               'w-8 h-8 rounded-full flex items-center justify-center overflow-hidden',
                               !v.coverImageUrl && (
-                                v.currentStatusType === 'BREAKDOWN' ? 'bg-red-100' :
-                                v.currentStatusType === 'IN_REPAIR'  ? 'bg-yellow-100' :
+                                v.currentStatusType === 'BREAKDOWN'  ? 'bg-red-100' :
+                                v.currentStatusType === 'IN_REPAIR'   ? 'bg-yellow-100' :
+                                v.currentStatusType === 'IN_SERVICE'  ? 'bg-violet-100' :
                                 'bg-feros-navy/10'
                               )
                             )}>
@@ -1321,8 +1324,9 @@ export function VehiclesPage() {
                                 <img src={v.coverImageUrl} alt={v.registrationNumber} className="w-full h-full object-cover" />
                               ) : (
                                 <Truck size={14} className={
-                                  v.currentStatusType === 'BREAKDOWN' ? 'text-red-600' :
-                                  v.currentStatusType === 'IN_REPAIR'  ? 'text-yellow-600' :
+                                  v.currentStatusType === 'BREAKDOWN'  ? 'text-red-600' :
+                                  v.currentStatusType === 'IN_REPAIR'   ? 'text-yellow-600' :
+                                  v.currentStatusType === 'IN_SERVICE'  ? 'text-violet-600' :
                                   'text-feros-navy'
                                 } />
                               )}

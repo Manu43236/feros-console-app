@@ -77,7 +77,7 @@ export interface DocumentTypeItem extends MasterItem { applicableFor: 'VEHICLE' 
 export interface TaxItem extends MasterItem { rate: number; taxType: string }
 
 // Vehicle status type enum
-export type VehicleStatusType = 'AVAILABLE' | 'ASSIGNED' | 'ON_TRIP' | 'IN_REPAIR' | 'BREAKDOWN' | 'ON_LEASE' | 'OTHER'
+export type VehicleStatusType = 'AVAILABLE' | 'ASSIGNED' | 'ON_TRIP' | 'IN_REPAIR' | 'IN_SERVICE' | 'BREAKDOWN' | 'ON_LEASE' | 'OTHER'
 
 // ── Vehicle Leases ────────────────────────────────────────────────────────────
 export type LeaseStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED'
