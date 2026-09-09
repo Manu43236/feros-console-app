@@ -124,6 +124,11 @@ export const globalMastersWriteApi = {
   updateVehicleType:  (id: number, data: { name: string; capacityInTons?: number; tyreCount?: number }) => apiClient.put<ApiResponse<VehicleTypeItem>>(`/masters/global/vehicle-types/${id}`, data).then(r => r.data),
   deleteVehicleType:  (id: number) => apiClient.delete(`/masters/global/vehicle-types/${id}`),
 
+  // Vehicle Body Types
+  createVehicleBodyType: (data: { name: string }) => apiClient.post<ApiResponse<MasterItem>>('/masters/global/vehicle-body-types', data).then(r => r.data),
+  updateVehicleBodyType: (id: number, data: { name: string }) => apiClient.put<ApiResponse<MasterItem>>(`/masters/global/vehicle-body-types/${id}`, data).then(r => r.data),
+  deleteVehicleBodyType: (id: number) => apiClient.delete(`/masters/global/vehicle-body-types/${id}`),
+
   // Fuel Types
   createFuelType:  (data: { name: string }) => apiClient.post<ApiResponse<MasterItem>>('/masters/global/fuel-types', data).then(r => r.data),
   updateFuelType:  (id: number, data: { name: string }) => apiClient.put<ApiResponse<MasterItem>>(`/masters/global/fuel-types/${id}`, data).then(r => r.data),

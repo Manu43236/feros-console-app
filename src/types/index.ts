@@ -572,6 +572,7 @@ export interface Vehicle {
   registrationNumber: string
   brandId?: number; brandName?: string; model?: string
   vehicleTypeId?: number; vehicleTypeName?: string
+  bodyTypeId?: number; bodyTypeName?: string
   fuelTypeId?: number; fuelTypeName?: string
   ownershipTypeId?: number; ownershipTypeName?: string
   currentStatusId?: number; currentStatusName?: string; currentStatusType?: VehicleStatusType

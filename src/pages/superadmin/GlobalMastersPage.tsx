@@ -610,20 +610,22 @@ const OwnershipTypesSection   = makeSimpleSection('Ownership Types',   'g-owners
 const DeductionTypesSection   = makeSimpleSection('Deduction Types',   'g-deduction-types',   globalMastersApi.getDeductionTypes,    globalMastersWriteApi.createDeductionType, globalMastersWriteApi.updateDeductionType, globalMastersWriteApi.deleteDeductionType)
 const PaymentStatusesSection  = makeSimpleSection('Payment Statuses',  'g-payment-statuses',  globalMastersApi.getPaymentStatuses,   globalMastersWriteApi.createPaymentStatus, globalMastersWriteApi.updatePaymentStatus, globalMastersWriteApi.deletePaymentStatus)
 const PartCategoriesSection   = makeSimpleSection('Part Categories',   'g-part-categories',   globalMastersApi.getPartCategories,    globalMastersWriteApi.createPartCategory,  globalMastersWriteApi.updatePartCategory,  globalMastersWriteApi.deletePartCategory)
+const VehicleBodyTypesSection = makeSimpleSection('Vehicle Body Types','g-vehicle-body-types', globalMastersApi.getVehicleBodyTypes,  globalMastersWriteApi.createVehicleBodyType, globalMastersWriteApi.updateVehicleBodyType, globalMastersWriteApi.deleteVehicleBodyType)
 
 // ── Section registry ──────────────────────────────────────────────────────────
 type SectionId =
-  | 'states' | 'cities' | 'vehicleBrands' | 'vehicleTypes' | 'fuelTypes'
+  | 'states' | 'cities' | 'vehicleBrands' | 'vehicleTypes' | 'vehicleBodyTypes' | 'fuelTypes'
   | 'materialTypes' | 'documentTypes' | 'attendanceTypes' | 'leaveTypes'
   | 'employmentTypes' | 'ownershipTypes' | 'deductionTypes' | 'taxes' | 'paymentStatuses'
   | 'partCategories'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
-  { id: 'states',          label: 'States' },
-  { id: 'cities',          label: 'Cities' },
-  { id: 'vehicleBrands',   label: 'Vehicle Brands' },
-  { id: 'vehicleTypes',    label: 'Vehicle Types' },
-  { id: 'fuelTypes',       label: 'Fuel Types' },
+  { id: 'states',           label: 'States' },
+  { id: 'cities',           label: 'Cities' },
+  { id: 'vehicleBrands',    label: 'Vehicle Brands' },
+  { id: 'vehicleTypes',     label: 'Vehicle Types' },
+  { id: 'vehicleBodyTypes', label: 'Vehicle Body Types' },
+  { id: 'fuelTypes',        label: 'Fuel Types' },
   { id: 'materialTypes',   label: 'Material Types' },
   { id: 'documentTypes',   label: 'Document Types' },
   { id: 'attendanceTypes', label: 'Attendance Types' },
@@ -646,9 +648,10 @@ export function GlobalMastersPage() {
   const content: Record<SectionId, React.ReactNode> = {
     states:          <StatesSection />,
     cities:          <CitiesSection states={states} />,
-    vehicleBrands:   <VehicleBrandsSection />,
-    vehicleTypes:    <VehicleTypesSection />,
-    fuelTypes:       <FuelTypesSection />,
+    vehicleBrands:    <VehicleBrandsSection />,
+    vehicleTypes:     <VehicleTypesSection />,
+    vehicleBodyTypes: <VehicleBodyTypesSection />,
+    fuelTypes:        <FuelTypesSection />,
     materialTypes:   <MaterialTypesSection />,
     documentTypes:   <DocumentTypesSection />,
     attendanceTypes: <AttendanceTypesSection />,

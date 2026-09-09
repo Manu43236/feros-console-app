@@ -170,6 +170,7 @@ const schema = z.object({
   registrationNumber:       z.string().min(1, 'Registration number is required').max(10, 'Max 10 characters allowed'),
   brandId:                  z.coerce.number().optional(),
   vehicleTypeId:            z.coerce.number().optional(),
+  bodyTypeId:               z.coerce.number().optional(),
   fuelTypeId:               z.coerce.number().optional(),
   ownershipTypeId:          z.coerce.number().optional(),
   currentStatusId:          z.coerce.number().optional(),
@@ -408,9 +409,10 @@ export function VehicleForm({
   const [createdVehicleId, setCreatedVehicleId] = useState<number | null>(null)
   const [ownershipTypeId, setOwnershipTypeId] = useState<number | undefined>(vehicle?.ownershipTypeId)
 
-  const { data: brandsRes }        = useQuery({ queryKey: ['vehicle-brands'],    queryFn: globalMastersApi.getVehicleBrands })
-  const { data: typesRes }         = useQuery({ queryKey: ['vehicle-types'],     queryFn: globalMastersApi.getVehicleTypes })
-  const { data: fuelRes }          = useQuery({ queryKey: ['fuel-types'],        queryFn: globalMastersApi.getFuelTypes })
+  const { data: brandsRes }        = useQuery({ queryKey: ['vehicle-brands'],      queryFn: globalMastersApi.getVehicleBrands })
+  const { data: typesRes }         = useQuery({ queryKey: ['vehicle-types'],       queryFn: globalMastersApi.getVehicleTypes })
+  const { data: bodyTypesRes }     = useQuery({ queryKey: ['vehicle-body-types'],  queryFn: globalMastersApi.getVehicleBodyTypes })
+  const { data: fuelRes }          = useQuery({ queryKey: ['fuel-types'],          queryFn: globalMastersApi.getFuelTypes })
   const { data: ownershipRes }     = useQuery({ queryKey: ['ownership-types'],   queryFn: globalMastersApi.getOwnershipTypes })
   const { data: statusRes }        = useQuery({ queryKey: ['vehicle-statuses'],  queryFn: tenantMastersApi.getVehicleStatuses })
 
@@ -421,7 +423,7 @@ export function VehicleForm({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: vehicle ? {
       registrationNumber: vehicle.registrationNumber,
-      brandId: vehicle.brandId, vehicleTypeId: vehicle.vehicleTypeId,
+      brandId: vehicle.brandId, vehicleTypeId: vehicle.vehicleTypeId, bodyTypeId: vehicle.bodyTypeId,
       fuelTypeId: vehicle.fuelTypeId, ownershipTypeId: vehicle.ownershipTypeId,
       currentStatusId: vehicle.currentStatusId, capacityInTons: vehicle.capacityInTons,
       grossVehicleWeight: vehicle.grossVehicleWeight, model: vehicle.model ?? '',
@@ -453,7 +455,7 @@ export function VehicleForm({
     if (open && vehicle) {
       reset({
         registrationNumber: vehicle.registrationNumber,
-        brandId: vehicle.brandId, vehicleTypeId: vehicle.vehicleTypeId,
+        brandId: vehicle.brandId, vehicleTypeId: vehicle.vehicleTypeId, bodyTypeId: vehicle.bodyTypeId,
         fuelTypeId: vehicle.fuelTypeId, ownershipTypeId: vehicle.ownershipTypeId,
         currentStatusId: vehicle.currentStatusId, capacityInTons: vehicle.capacityInTons,
         grossVehicleWeight: vehicle.grossVehicleWeight, model: vehicle.model ?? '',
@@ -587,6 +589,22 @@ export function VehicleForm({
                     onValueChange={v => field.onChange(v ? Number(v) : undefined)}
                     options={(typesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name }))}
                     placeholder="Select type"
+                    className="mt-1"
+                  />
+                )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Body Type</Label>
+              <Controller
+                name="bodyTypeId"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={v => field.onChange(v ? Number(v) : undefined)}
+                    options={(bodyTypesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name }))}
+                    placeholder="Select body type"
                     className="mt-1"
                   />
                 )}
@@ -1089,7 +1107,8 @@ export function VehiclesPage() {
   const [formOpen, setFormOpen]       = useState(false)
   const [bulkOpen, setBulkOpen]       = useState(false)
   const [searchParams] = useSearchParams()
-  const [typeFilter, setTypeFilter]   = useState('')
+  const [typeFilter, setTypeFilter]         = useState('')
+  const [bodyTypeFilter, setBodyTypeFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('active') ?? '')
   const [vehicleStatusFilter, setVehicleStatusFilter] = useState(() => searchParams.get('status') ?? '')
   const [scopeFilter, setScopeFilter] = useState('')
@@ -1101,7 +1120,8 @@ export function VehiclesPage() {
     queryKey: ['vehicles'],
     queryFn: () => vehiclesApi.getAll(),
   })
-  const { data: typesRes }        = useQuery({ queryKey: ['vehicle-types'],    queryFn: globalMastersApi.getVehicleTypes })
+  const { data: typesRes }        = useQuery({ queryKey: ['vehicle-types'],      queryFn: globalMastersApi.getVehicleTypes })
+  const { data: bodyTypesRes }    = useQuery({ queryKey: ['vehicle-body-types'], queryFn: globalMastersApi.getVehicleBodyTypes })
 
   const { data: wlIdsRes }        = useQuery({
     queryKey: ['vehicle-watchlist-ids'],
@@ -1138,11 +1158,12 @@ export function VehiclesPage() {
                         (v.brandName ?? '').toLowerCase().includes(q) ||
                         (v.vehicleTypeName ?? '').toLowerCase().includes(q)
     const matchType          = !typeFilter          || String(v.vehicleTypeId) === typeFilter
+    const matchBodyType      = !bodyTypeFilter      || String(v.bodyTypeId) === bodyTypeFilter
     const matchStatus        = !statusFilter        || (statusFilter === 'active' ? v.isActive : !v.isActive)
     const matchVehicleStatus = !vehicleStatusFilter || v.currentStatusType === vehicleStatusFilter
     const matchScope         = !scopeFilter         || v.tripScope === scopeFilter
     const matchWatchlist     = activeTab === 'all'  || watchlistedIds.has(v.id)
-    return matchSearch && matchType && matchStatus && matchVehicleStatus && matchScope && matchWatchlist
+    return matchSearch && matchType && matchBodyType && matchStatus && matchVehicleStatus && matchScope && matchWatchlist
   })
   const totalPages = Math.max(1, Math.ceil(vehicles.length / PAGE_SIZE))
   const pageRows   = vehicles.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -1224,6 +1245,15 @@ export function VehiclesPage() {
           options={[
             { value: '', label: 'All Types' },
             ...(typesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name })),
+          ]}
+          className="h-10 w-36"
+        />
+        <SearchableSelect
+          value={bodyTypeFilter}
+          onValueChange={v => { setBodyTypeFilter(v); setPage(0) }}
+          options={[
+            { value: '', label: 'All Body Types' },
+            ...(bodyTypesRes?.data ?? []).map(t => ({ value: String(t.id), label: t.name })),
           ]}
           className="h-10 w-36"
         />
@@ -1345,9 +1375,9 @@ export function VehiclesPage() {
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <p className="text-sm text-gray-700">{v.vehicleTypeName ?? '—'}</p>
-                        {v.capacityInTons && (
-                          <p className="text-xs text-gray-400">{v.capacityInTons}T · {v.fuelTypeName ?? ''}</p>
-                        )}
+                        <p className="text-xs text-gray-400">
+                          {[v.bodyTypeName, v.capacityInTons ? `${v.capacityInTons}T` : null, v.fuelTypeName].filter(Boolean).join(' · ') || '—'}
+                        </p>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <span className="text-xs bg-gray-50 text-gray-700 px-2 py-1 rounded-full">

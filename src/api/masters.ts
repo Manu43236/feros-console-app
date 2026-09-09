@@ -9,6 +9,7 @@ export const globalMastersApi = {
   getCities:           (stateId?: number) => apiClient.get<ApiResponse<CityItem[]>>(stateId ? `/masters/global/cities/state/${stateId}` : '/masters/global/cities').then(r => r.data),
   getVehicleBrands:    () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/vehicle-brands').then(r => r.data),
   getVehicleTypes:     () => apiClient.get<ApiResponse<VehicleTypeItem[]>>('/masters/global/vehicle-types').then(r => r.data),
+  getVehicleBodyTypes: () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/vehicle-body-types').then(r => r.data),
   getFuelTypes:        () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/fuel-types').then(r => r.data),
   getMaterialTypes:    () => apiClient.get<ApiResponse<MasterItem[]>>('/masters/global/material-types').then(r => r.data),
   getDocumentTypes:    () => apiClient.get<ApiResponse<DocumentTypeItem[]>>('/masters/global/document-types').then(r => r.data),
