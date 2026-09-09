@@ -72,6 +72,7 @@ import { AttendanceLocationsPage }   from '@/pages/superadmin/AttendanceLocation
 import { SASettingsPage }            from '@/pages/superadmin/SASettingsPage'
 import { SAMouPage }          from '@/pages/superadmin/SAMouPage'
 import DemoRequestsPage       from '@/pages/superadmin/DemoRequestsPage'
+import { GpsHardwarePage }    from '@/pages/superadmin/GpsHardwarePage'
 
 // Subscription
 import { SubscriptionPage } from '@/pages/subscription/SubscriptionPage'
@@ -200,6 +201,7 @@ export default function App() {
           <Route path="sa/attendance-locations" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AttendanceLocationsPage /></ProtectedRoute>} />
           <Route path="sa/settings"              element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SASettingsPage /></ProtectedRoute>} />
           <Route path="sa/mou"            element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SAMouPage /></ProtectedRoute>} />
+          <Route path="sa/gps-hardware"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><GpsHardwarePage /></ProtectedRoute>} />
 
           {/* Subscription */}
           <Route path="subscription" element={<SubscriptionPage />} />

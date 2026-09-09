@@ -14,7 +14,7 @@ import {
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
   Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin, ScrollText,
-  Construction, KeyRound,
+  Construction, KeyRound, Cpu,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWebPush } from '@/hooks/useWebPush'
@@ -183,6 +183,7 @@ const SUPER_ADMIN_NAV: FlatNav = [
   { to: '/sa/equipment-masters',    label: 'Equipment Masters',   icon: Construction },
   { to: '/sa/attendance-locations', label: 'Attendance Locations', icon: MapPin },
   { to: '/sa/mou',                   label: 'MOU Generator',        icon: ScrollText },
+  { to: '/sa/gps-hardware',         label: 'GPS Hardware',         icon: Cpu },
   { to: '/sa/settings',       label: 'Settings',       icon: Settings },
 ]
 
