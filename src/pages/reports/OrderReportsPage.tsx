@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, ClipboardList, AlertCircle, Users, AlertTriangle, Scale, MapPin, CreditCard } from 'lucide-react'
+import { Download, ClipboardList, AlertCircle, Users, AlertTriangle, Scale, MapPin, CreditCard, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
+import { ordersApi } from '@/api/orders'
+import { lrsApi } from '@/api/lrs'
+import { downloadOrderSummaryPdf } from './OrderSummaryPdf'
 import type {
   OrderRegisterRow, OpenOrderRow, OrderClientSummaryRow,
   OverdueOrderRow, WeightFulfillmentRow, OrderRouteSummaryRow, OrderPaymentStatusRow,
@@ -33,6 +36,7 @@ const TABS = [
   { key: 'fulfillment',     label: 'Weight Fulfillment', icon: Scale },
   { key: 'route-summary',   label: 'Route Summary',      icon: MapPin },
   { key: 'payment-status',  label: 'Payment Status',     icon: CreditCard },
+  { key: 'order-summary',   label: 'Order Summary',      icon: FileText },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -208,6 +212,65 @@ function PaymentStatusTable({ rows, loading }: { rows: OrderPaymentStatusRow[]; 
   />
 }
 
+// ── Order Summary Tab ──────────────────────────────────────────────────────────
+function OrderSummaryTab() {
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('')
+  const [downloading, setDownloading] = useState(false)
+
+  const ordersQuery = useQuery({
+    queryKey: ['orders-for-summary'],
+    queryFn: () => ordersApi.getAll({ size: 500 }),
+  })
+
+  const orders = ordersQuery.data?.data?.content ?? []
+  const orderOptions = [
+    { value: '', label: 'Select an order…' },
+    ...orders.map(o => ({ value: String(o.id), label: `${o.orderNumber} — ${o.clientName}` })),
+  ]
+
+  async function handleDownload() {
+    if (!selectedOrderId) return
+    setDownloading(true)
+    try {
+      const [orderRes, lrsRes] = await Promise.all([
+        ordersApi.getById(Number(selectedOrderId)),
+        lrsApi.getByOrder(Number(selectedOrderId)),
+      ])
+      await downloadOrderSummaryPdf(orderRes.data, lrsRes.data)
+    } catch {
+      toast.error('Failed to generate PDF')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  return (
+    <div className="bg-white border rounded-xl p-6 flex flex-col gap-4 max-w-xl">
+      <p className="text-sm text-gray-500">
+        Select an order to download a full summary PDF — vehicle assignments, staff, LR timeline, and trip durations.
+      </p>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Order</label>
+        <SearchableSelect
+          value={selectedOrderId}
+          onValueChange={setSelectedOrderId}
+          options={orderOptions}
+          className="w-full"
+          placeholder="Search by order number or client…"
+        />
+      </div>
+      <Button
+        onClick={handleDownload}
+        disabled={!selectedOrderId || downloading}
+        className="self-start gap-2"
+      >
+        <Download size={15} />
+        {downloading ? 'Generating…' : 'Download PDF'}
+      </Button>
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function OrderReportsPage() {
   const [tab, setTab] = useState<TabKey>('register')
@@ -346,8 +409,8 @@ export default function OrderReportsPage() {
         ))}
       </div>
 
-      {/* Controls */}
-      <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
+      {/* Controls — hidden for order-summary tab */}
+      {tab !== 'order-summary' && <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
 
         {/* Status filter — register tab */}
         {tab === 'register' && (
@@ -455,7 +518,7 @@ export default function OrderReportsPage() {
             <Download size={14} />PDF
           </Button>
         </div>
-      </div>
+      </div>}
 
       {/* Tables */}
       {tab === 'register'       && <OrderRegisterTable  rows={registerRows}                            loading={registerQuery.isLoading} />}
@@ -465,6 +528,7 @@ export default function OrderReportsPage() {
       {tab === 'fulfillment'    && <FulfillmentTable      rows={fulfillmentQuery.data?.data ?? []}       loading={fulfillmentQuery.isLoading} />}
       {tab === 'route-summary'  && <RouteSummaryTable     rows={routeSummaryQuery.data?.data ?? []}      loading={routeSummaryQuery.isLoading} />}
       {tab === 'payment-status' && <PaymentStatusTable    rows={paymentRows}                             loading={paymentQuery.isLoading} />}
+      {tab === 'order-summary'  && <OrderSummaryTab />}
     </div>
   )
 }
