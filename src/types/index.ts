@@ -2072,6 +2072,7 @@ export interface OrderRegisterRow {
   totalFreightAmount?: number
   orderStatus: string
   orderPaymentStatus: string
+  vehicleCount: number
 }
 
 export interface OpenOrderRow {

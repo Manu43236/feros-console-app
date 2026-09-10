@@ -361,7 +361,17 @@ const fuelQuery = useQuery({
         if (report) {
           const filtered = applyFleetFilter(report.rows, fleetFilter)
           const label = fleetFilter !== 'all' ? fleetFilter.charAt(0).toUpperCase() + fleetFilter.slice(1) : undefined
-          await downloadDailyFleetAttendancePdf(report, filtered, label)
+          if (format === 'csv') {
+            const header = ['#', 'Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']
+            const csvRows = filtered.map((r, i) => [i + 1, r.registrationNumber, r.scope, r.vehicleType ?? '—', r.driverName, r.cleanerName])
+            const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+            a.download = `fleet-attendance-${report.scope.replace(' ', '-').toLowerCase()}-${report.date}${label ? `-${label.toLowerCase()}` : ''}.csv`
+            a.click()
+          } else {
+            await downloadDailyFleetAttendancePdf(report, filtered, label)
+          }
         }
       }
     } catch {
@@ -630,12 +640,15 @@ const fuelQuery = useQuery({
 
         {/* Download buttons */}
         <div className="ml-auto flex items-end gap-2">
-          {tab !== 'daily-fleet' && (
-            <Button variant="outline" size="sm" disabled={downloading} onClick={() => handleDownload('csv')} className="gap-1.5">
-              <Download size={14} />
-              CSV
-            </Button>
-          )}
+          <Button
+            variant="outline" size="sm"
+            disabled={downloading || (tab === 'daily-fleet' && !dailyFleetQuery.data?.data)}
+            onClick={() => handleDownload('csv')}
+            className="gap-1.5"
+          >
+            <Download size={14} />
+            CSV
+          </Button>
           <Button
             variant="outline" size="sm"
             disabled={downloading || (tab === 'daily-fleet' && !dailyFleetQuery.data?.data)}
