@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, FileText, AlertTriangle, Clock, Truck, Users } from 'lucide-react'
+import { Download, FileText, AlertTriangle, Clock, Truck, Users, Route } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { LrRegisterRow, WeightDiscrepancyRow, DelayedDeliveryRow, VehicleTripSummaryRow, ClientTripSummaryRow } from '@/types'
+import { downloadTripSummaryPdf } from './DailyFleetAttendancePdf'
+import type { LrRegisterRow, WeightDiscrepancyRow, DelayedDeliveryRow, VehicleTripSummaryRow, ClientTripSummaryRow, TripSummaryRow } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -28,6 +30,7 @@ const TABS = [
   { key: 'delayed-deliveries', label: 'Delayed Deliveries',  icon: Clock },
   { key: 'vehicle-summary',    label: 'Vehicle Summary',     icon: Truck },
   { key: 'client-summary',     label: 'Client Summary',      icon: Users },
+  { key: 'trip-summary',       label: 'Trip Summary',        icon: Route },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -217,6 +220,47 @@ function ClientSummaryTable({ rows, loading }: { rows: ClientTripSummaryRow[]; l
   />
 }
 
+function fmtDuration(hours: number | null) {
+  if (hours == null) return '—'
+  const h = Math.floor(hours)
+  const m = Math.round((hours - h) * 60)
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
+
+const LR_STATUS_COLORS: Record<string, string> = {
+  CREATED:       'bg-gray-100 text-gray-600',
+  WEIGHT_LOADED: 'bg-blue-100 text-blue-700',
+  IN_TRANSIT:    'bg-amber-100 text-amber-700',
+  DELIVERED:     'bg-green-100 text-green-700',
+  CANCELLED:     'bg-red-100 text-red-700',
+}
+
+function TripSummaryTable({ rows, loading }: { rows: TripSummaryRow[]; loading: boolean }) {
+  return <ReportTable
+    loading={loading}
+    headers={['Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Trip Start', 'Trip End', 'Duration', 'Driver', 'Status']}
+    rows={rows.map(r => {
+      const cls = LR_STATUS_COLORS[r.lrStatus] ?? 'bg-gray-100 text-gray-600'
+      return [
+        <span className="font-medium text-feros-navy">{r.orderNumber}</span>,
+        fmtDateTime(r.orderCreatedAt),
+        dash(r.material),
+        <span className="font-medium text-feros-navy">{r.lrNumber}</span>,
+        fmtDateTime(r.lrCreatedAt),
+        r.registrationNumber,
+        fmtDateTime(r.vehicleAssignedAt),
+        fmtDateTime(r.tripStartTime),
+        fmtDateTime(r.tripEndTime),
+        <span className={cn('font-medium', r.durationHours == null ? 'text-gray-400' : r.durationHours > 24 ? 'text-red-600' : 'text-gray-700')}>
+          {fmtDuration(r.durationHours)}
+        </span>,
+        r.driverName,
+        <span className={`px-2 py-0.5 rounded text-xs font-medium ${cls}`}>{r.lrStatus.replace(/_/g, ' ')}</span>,
+      ]
+    })}
+  />
+}
+
 // ── Status summary cards ───────────────────────────────────────────────────────
 const STATUS_CARDS = [
   { key: 'total',        label: 'Total',         color: 'bg-slate-100 text-slate-700',  border: 'border-slate-200' },
@@ -253,12 +297,14 @@ export default function TripReportsPage() {
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
   const [orderFilter, setOrderFilter] = useState('ALL')
   const [thresholdDays, setThresholdDays] = useState(3)
+  const [orderNumberFilter, setOrderNumberFilter] = useState('')
 
   function handleTabChange(key: TabKey) {
     setTab(key)
     setClientFilter('ALL')
     setVehicleFilter('ALL')
     setOrderFilter('ALL')
+    setOrderNumberFilter('')
   }
 
   function applyPreset(p: DatePreset) {
@@ -294,6 +340,11 @@ export default function TripReportsPage() {
     queryFn: () => reportsApi.getClientTripSummary(startDate, endDate),
     enabled: tab === 'client-summary',
   })
+  const tripSummaryQuery = useQuery({
+    queryKey: ['report-trip-summary', startDate, endDate, orderNumberFilter],
+    queryFn: () => reportsApi.getTripSummary(startDate, endDate, orderNumberFilter || undefined),
+    enabled: tab === 'trip-summary',
+  })
 
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
@@ -307,8 +358,26 @@ export default function TripReportsPage() {
         await reportsApi.exportDelayedDeliveries(startDate, endDate, thresholdDays, format)
       } else if (tab === 'vehicle-summary') {
         await reportsApi.exportVehicleTripSummary(startDate, endDate, format)
-      } else {
+      } else if (tab === 'client-summary') {
         await reportsApi.exportClientTripSummary(startDate, endDate, format)
+      } else if (tab === 'trip-summary') {
+        const rows = tripSummaryQuery.data?.data ?? []
+        if (format === 'csv') {
+          const header = ['#', 'Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Trip Start', 'Trip End', 'Duration (hrs)', 'Driver', 'Status']
+          const csvRows = rows.map((r, i) => [
+            i + 1, r.orderNumber, fmtDateTime(r.orderCreatedAt) ?? '—', r.material,
+            r.lrNumber, fmtDateTime(r.lrCreatedAt) ?? '—', r.registrationNumber,
+            fmtDateTime(r.vehicleAssignedAt) ?? '—', fmtDateTime(r.tripStartTime) ?? '—',
+            fmtDateTime(r.tripEndTime) ?? '—', r.durationHours ?? '—', r.driverName, r.lrStatus,
+          ])
+          const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+          a.download = `trip-summary-${startDate}-${endDate}.csv`
+          a.click()
+        } else {
+          await downloadTripSummaryPdf(rows, startDate, endDate)
+        }
       }
     } catch {
       toast.error('Export failed')
@@ -390,8 +459,21 @@ export default function TripReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
+        {/* Trip Summary — order number filter */}
+        {tab === 'trip-summary' && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Order Number</label>
+            <Input
+              placeholder="Search order…"
+              value={orderNumberFilter}
+              onChange={e => setOrderNumberFilter(e.target.value)}
+              className="w-52"
+            />
+          </div>
+        )}
+
         {/* Vehicle filter — detail tabs only */}
-        {tab !== 'client-summary' && (
+        {tab !== 'client-summary' && tab !== 'trip-summary' && tab !== 'vehicle-summary' && (
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
             <SearchableSelect
@@ -505,6 +587,7 @@ export default function TripReportsPage() {
       {tab === 'delayed-deliveries' && <DelayedDeliveriesTable rows={filteredDelayedRows}                         loading={delayedQuery.isLoading} />}
       {tab === 'vehicle-summary'    && <VehicleSummaryTable    rows={vehicleSummaryQuery.data?.data ?? []}        loading={vehicleSummaryQuery.isLoading} />}
       {tab === 'client-summary'     && <ClientSummaryTable     rows={clientSummaryQuery.data?.data ?? []}         loading={clientSummaryQuery.isLoading} />}
+      {tab === 'trip-summary'       && <TripSummaryTable       rows={tripSummaryQuery.data?.data ?? []}           loading={tripSummaryQuery.isLoading} />}
     </div>
   )
 }

@@ -1,17 +1,17 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, ClipboardList, CalendarCheck, Route } from 'lucide-react'
+import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, ClipboardList, CalendarCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import { downloadDailyFleetAttendancePdf, downloadFleetStatusPdf, downloadTripSummaryPdf } from './DailyFleetAttendancePdf'
+import { downloadDailyFleetAttendancePdf, downloadFleetStatusPdf } from './DailyFleetAttendancePdf'
 import type {
   VehicleMasterRow, FleetStatusRow, FuelMileageRow,
   BreakdownReportRow, DocumentExpiryRow, MaintenanceServiceRow,
-  DailyFleetAttendanceReport, TripSummaryRow,
+  DailyFleetAttendanceReport,
 } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -36,7 +36,6 @@ const TABS = [
   { key: 'doc-expiry',      label: 'Document Expiry',      icon: FileText       },
   { key: 'maintenance',     label: 'Maintenance',          icon: Wrench         },
   { key: 'daily-fleet',     label: 'Daily Attendance',     icon: CalendarCheck  },
-  { key: 'trip-summary',    label: 'Trip Summary',         icon: Route          },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -168,32 +167,6 @@ function FleetTable({ rows, loading }: { rows: FleetStatusRow[]; loading: boolea
 }
 
 
-const fmtDT = (iso: string | null | undefined) => {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-    + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-}
-
-function TripSummaryTable({ rows, loading }: { rows: TripSummaryRow[]; loading: boolean }) {
-  return <ReportTable
-    loading={loading}
-    headers={['Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle No.', 'Vehicle Assigned', 'Trip Start', 'Trip End', 'Driver']}
-    rows={rows.map(r => [
-      <span className="font-medium">{r.orderNumber}</span>,
-      fmtDT(r.orderCreatedAt),
-      dash(r.material),
-      <span className="font-medium">{r.lrNumber}</span>,
-      fmtDT(r.lrCreatedAt),
-      r.registrationNumber,
-      fmtDT(r.vehicleAssignedAt),
-      fmtDT(r.tripStartTime),
-      fmtDT(r.tripEndTime),
-      r.driverName,
-    ])}
-  />
-}
-
 function FuelMileageTable({ rows, loading }: { rows: FuelMileageRow[]; loading: boolean }) {
   return <ReportTable
     loading={loading}
@@ -310,7 +283,6 @@ export default function VehicleReportsPage() {
   const [fleetFilter, setFleetFilter] = useState<'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty'>('all')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
-  const [orderNumberFilter, setOrderNumberFilter] = useState('')
   const [brandFilter, setBrandFilter] = useState('ALL')
   const [fuelTypeFilter, setFuelTypeFilter] = useState('ALL')
   const [ownershipFilter, setOwnershipFilter] = useState('ALL')
@@ -375,11 +347,6 @@ const fuelQuery = useQuery({
     enabled: tab === 'daily-fleet',
   })
 
-  const tripSummaryQuery = useQuery({
-    queryKey: ['report-trip-summary', startDate, endDate, orderNumberFilter],
-    queryFn: () => reportsApi.getTripSummary(startDate, endDate, orderNumberFilter || undefined),
-    enabled: tab === 'trip-summary',
-  })
 
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
@@ -426,24 +393,6 @@ const fuelQuery = useQuery({
           } else {
             await downloadDailyFleetAttendancePdf(report, filtered, label)
           }
-        }
-      }
-      else if (tab === 'trip-summary') {
-        const rows = tripSummaryQuery.data?.data ?? []
-        const header = ['#', 'Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle No.', 'Vehicle Assigned', 'Trip Start', 'Trip End', 'Driver']
-        const csvRows = rows.map((r, i) => [
-          i + 1, r.orderNumber, fmtDT(r.orderCreatedAt), r.material,
-          r.lrNumber, fmtDT(r.lrCreatedAt), r.registrationNumber,
-          fmtDT(r.vehicleAssignedAt), fmtDT(r.tripStartTime), fmtDT(r.tripEndTime), r.driverName,
-        ])
-        if (format === 'csv') {
-          const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
-          const a = document.createElement('a')
-          a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
-          a.download = `trip-summary-${startDate}-${endDate}.csv`
-          a.click()
-        } else {
-          await downloadTripSummaryPdf(rows, startDate, endDate)
         }
       }
     } catch {
@@ -633,7 +582,7 @@ const fuelQuery = useQuery({
         })()}
 
         {/* Vehicle filter — tabs with date range */}
-        {tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'daily-fleet' && tab !== 'trip-summary' && (() => {
+        {tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'daily-fleet' && (() => {
           const allRows: { registrationNumber: string }[] =
             tab === 'fuel-mileage' ? (fuelQuery.data?.data ?? []) :
             tab === 'breakdowns'   ? (breakdownQuery.data?.data ?? []) :
@@ -656,19 +605,6 @@ const fuelQuery = useQuery({
             </div>
           )
         })()}
-
-        {/* Trip Summary — order number filter */}
-        {tab === 'trip-summary' && (
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Order Number</label>
-            <Input
-              placeholder="e.g. ASHLAR_ORD_..."
-              value={orderNumberFilter}
-              onChange={e => setOrderNumberFilter(e.target.value)}
-              className="w-52"
-            />
-          </div>
-        )}
 
         {/* Document Expiry — days ahead */}
         {tab === 'doc-expiry' && (
@@ -772,7 +708,6 @@ const fuelQuery = useQuery({
       {tab === 'doc-expiry'    && <DocExpiryTable   rows={(docExpiryQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}   loading={docExpiryQuery.isLoading} />}
       {tab === 'maintenance'   && <MaintenanceTable rows={(maintenanceQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)} loading={maintenanceQuery.isLoading} />}
       {tab === 'daily-fleet'   && <DailyFleetTable  report={dailyFleetQuery.data?.data} filter={fleetFilter} loading={dailyFleetQuery.isLoading} />}
-      {tab === 'trip-summary'  && <TripSummaryTable rows={tripSummaryQuery.data?.data ?? []} loading={tripSummaryQuery.isLoading} />}
     </div>
   )
 }

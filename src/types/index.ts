@@ -2050,6 +2050,8 @@ export interface TripSummaryRow {
   tripStartTime: string | null
   tripEndTime: string | null
   driverName: string
+  lrStatus: string
+  durationHours: number | null
 }
 
 export interface DelayedDeliveryRow {
