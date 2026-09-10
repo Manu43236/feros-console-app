@@ -1909,6 +1909,7 @@ export interface DailyFleetAttendanceReport {
   drivers: number
   cleaners: number
   unassigned: number
+  empty: number
   rows: DailyFleetAttendanceRow[]
 }
 
