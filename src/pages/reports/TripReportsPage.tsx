@@ -217,6 +217,31 @@ function ClientSummaryTable({ rows, loading }: { rows: ClientTripSummaryRow[]; l
   />
 }
 
+// ── Status summary cards ───────────────────────────────────────────────────────
+const STATUS_CARDS = [
+  { key: 'total',        label: 'Total',         color: 'bg-slate-100 text-slate-700',  border: 'border-slate-200' },
+  { key: 'CREATED',      label: 'Created',        color: 'bg-gray-100 text-gray-600',    border: 'border-gray-200' },
+  { key: 'WEIGHT_LOADED',label: 'Weight Loaded',  color: 'bg-blue-50 text-blue-700',     border: 'border-blue-200' },
+  { key: 'IN_TRANSIT',   label: 'In Transit',     color: 'bg-amber-50 text-amber-700',   border: 'border-amber-200' },
+  { key: 'DELIVERED',    label: 'Delivered',      color: 'bg-green-50 text-green-700',   border: 'border-green-200' },
+  { key: 'CANCELLED',    label: 'Cancelled',      color: 'bg-red-50 text-red-600',       border: 'border-red-200' },
+] as const
+
+function TripStatusCards({ rows }: { rows: LrRegisterRow[] }) {
+  const counts: Record<string, number> = { total: rows.length }
+  rows.forEach(r => { counts[r.lrStatus] = (counts[r.lrStatus] ?? 0) + 1 })
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      {STATUS_CARDS.map(({ key, label, color, border }) => (
+        <div key={key} className={`rounded-xl border p-3 ${border} bg-white`}>
+          <div className={`text-xs font-medium mb-1 ${color.split(' ')[1]}`}>{label}</div>
+          <div className={`text-2xl font-bold ${color.split(' ')[1]}`}>{counts[key] ?? 0}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function TripReportsPage() {
   const [tab, setTab] = useState<TabKey>('lr-register')
@@ -226,12 +251,14 @@ export default function TripReportsPage() {
   const [downloading, setDownloading] = useState(false)
   const [clientFilter, setClientFilter] = useState('ALL')
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
+  const [orderFilter, setOrderFilter] = useState('ALL')
   const [thresholdDays, setThresholdDays] = useState(3)
 
   function handleTabChange(key: TabKey) {
     setTab(key)
     setClientFilter('ALL')
     setVehicleFilter('ALL')
+    setOrderFilter('ALL')
   }
 
   function applyPreset(p: DatePreset) {
@@ -315,10 +342,17 @@ export default function TripReportsPage() {
     ...clients.map(c => ({ value: c, label: c })),
   ]
 
+  const orders = Array.from(new Set(lrRows.map(r => r.orderNumber).filter(Boolean))).sort()
+  const orderOptions = [
+    { value: 'ALL', label: `All Orders (${lrRows.length})` },
+    ...orders.map(o => ({ value: o, label: o })),
+  ]
+
   // ── Apply filters ──
   const filteredLrRows = lrRows.filter(r =>
     (clientFilter === 'ALL' || r.clientName === clientFilter) &&
-    (vehicleFilter === 'ALL' || r.vehicleRegistrationNumber === vehicleFilter)
+    (vehicleFilter === 'ALL' || r.vehicleRegistrationNumber === vehicleFilter) &&
+    (orderFilter === 'ALL' || r.orderNumber === orderFilter)
   )
   const filteredWeightRows = weightRows.filter(r =>
     vehicleFilter === 'ALL' || r.vehicleRegistrationNumber === vehicleFilter
@@ -377,6 +411,19 @@ export default function TripReportsPage() {
               value={clientFilter}
               onValueChange={setClientFilter}
               options={clientOptions}
+              className="w-44"
+            />
+          </div>
+        )}
+
+        {/* Order filter — only on LR Register */}
+        {tab === 'lr-register' && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Order No.</label>
+            <SearchableSelect
+              value={orderFilter}
+              onValueChange={setOrderFilter}
+              options={orderOptions}
               className="w-44"
             />
           </div>
@@ -446,6 +493,11 @@ export default function TripReportsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Status cards — LR Register only */}
+      {tab === 'lr-register' && !lrRegisterQuery.isLoading && (
+        <TripStatusCards rows={filteredLrRows} />
+      )}
 
       {/* Tables */}
       {tab === 'lr-register'        && <LrRegisterTable        rows={filteredLrRows}                              loading={lrRegisterQuery.isLoading} />}
