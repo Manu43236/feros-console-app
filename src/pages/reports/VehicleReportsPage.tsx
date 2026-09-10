@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import { downloadDailyFleetAttendancePdf } from './DailyFleetAttendancePdf'
+import { downloadDailyFleetAttendancePdf, downloadFleetStatusPdf } from './DailyFleetAttendancePdf'
 import type {
   VehicleMasterRow, FleetStatusRow, FuelMileageRow,
   BreakdownReportRow, DocumentExpiryRow, MaintenanceServiceRow,
@@ -351,7 +351,27 @@ const fuelQuery = useQuery({
     setDownloading(true)
     try {
       if (tab === 'vehicle-master') await reportsApi.exportVehicleMaster(format)
-      else if (tab === 'fleet-status') await reportsApi.exportFleetStatus(todayStr(), format)
+      else if (tab === 'fleet-status') {
+        const allRows = fleetQuery.data?.data ?? []
+        const filtered = allRows.filter(r => {
+          if (statusFilter === 'ALL') return true
+          if (statusFilter === 'IN_REPAIR_BREAKDOWN') return r.currentStatus === 'IN_REPAIR' && r.inRepairType === 'BREAKDOWN'
+          if (statusFilter === 'IN_REPAIR_MAINTENANCE') return r.currentStatus === 'IN_REPAIR' && r.inRepairType !== 'BREAKDOWN'
+          return r.currentStatus === statusFilter
+        })
+        const label = statusFilter !== 'ALL' ? statusFilter.replace(/_/g, ' ') : 'ALL'
+        if (format === 'csv') {
+          const header = ['#', 'Vehicle No.', 'Tyre Type', 'Status']
+          const csvRows = filtered.map((r, i) => [i + 1, r.registrationNumber, r.vehicleType ?? '—', fleetStatusLabel(r)])
+          const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+          a.download = `fleet-status-${todayStr()}-${label.toLowerCase().replace(/ /g, '-')}.csv`
+          a.click()
+        } else {
+          await downloadFleetStatusPdf(filtered, label, todayStr())
+        }
+      }
       else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, endDate, format)
       else if (tab === 'breakdowns') await reportsApi.exportBreakdowns(startDate, endDate, format)
       else if (tab === 'doc-expiry') await reportsApi.exportDocumentExpiry(days, format)

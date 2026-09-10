@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, ClipboardList, AlertCircle, Users, AlertTriangle, Scale, MapPin, CreditCard, FileText } from 'lucide-react'
+import { Download, ClipboardList, Users, AlertTriangle, Scale, MapPin, CreditCard, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
@@ -10,7 +10,7 @@ import { ordersApi } from '@/api/orders'
 import { lrsApi } from '@/api/lrs'
 import { downloadOrderSummaryPdf } from './OrderSummaryPdf'
 import type {
-  OrderRegisterRow, OpenOrderRow, OrderClientSummaryRow,
+  OrderRegisterRow, OrderClientSummaryRow,
   OverdueOrderRow, WeightFulfillmentRow, OrderRouteSummaryRow, OrderPaymentStatusRow,
 } from '@/types'
 
@@ -30,7 +30,6 @@ const thisMonthStart = () => {
 // ── Tab config ─────────────────────────────────────────────────────────────────
 const TABS = [
   { key: 'register',        label: 'Order Register',     icon: ClipboardList },
-  { key: 'open',            label: 'Open Orders',        icon: AlertCircle },
   { key: 'client-summary',  label: 'Client Summary',     icon: Users },
   { key: 'overdue',         label: 'Overdue Orders',     icon: AlertTriangle },
   { key: 'fulfillment',     label: 'Weight Fulfillment', icon: Scale },
@@ -122,20 +121,6 @@ function OrderRegisterTable({ rows, loading }: { rows: OrderRegisterRow[]; loadi
   />
 }
 
-function OpenOrderTable({ rows, loading }: { rows: OpenOrderRow[]; loading: boolean }) {
-  return <ReportTable loading={loading}
-    headers={['Order No.', 'Date', 'Exp. Delivery', 'Client', 'Material', 'From', 'To',
-      'Total Wt', 'Fulfilled Wt', 'Pending Wt', 'Status']}
-    rows={rows.map(r => [
-      <span className="font-medium text-feros-navy">{r.orderNumber}</span>,
-      r.orderDate, dash(r.expectedDeliveryDate), r.clientName, r.materialType,
-      r.fromCity, r.toCity,
-      dash(r.totalWeight), dash(r.totalWeightFulfilled),
-      <span className="text-amber-600 font-medium">{dash(r.pendingWeight)}</span>,
-      <StatusBadge status={r.orderStatus} colorMap={STATUS_COLORS} />,
-    ])}
-  />
-}
 
 function ClientSummaryTable({ rows, loading }: { rows: OrderClientSummaryRow[]; loading: boolean }) {
   return <ReportTable loading={loading}
@@ -459,12 +444,7 @@ export default function OrderReportsPage() {
     queryFn: () => reportsApi.getOrderRegister(startDate, endDate),
     enabled: tab === 'register',
   })
-  const openQuery = useQuery({
-    queryKey: ['report-open-orders'],
-    queryFn: () => reportsApi.getOpenOrders(),
-    enabled: tab === 'open',
-  })
-  const clientSummaryQuery = useQuery({
+const clientSummaryQuery = useQuery({
     queryKey: ['report-order-client-summary', startDate, endDate],
     queryFn: () => reportsApi.getOrderClientSummary(startDate, endDate),
     enabled: tab === 'client-summary',
@@ -494,8 +474,7 @@ export default function OrderReportsPage() {
     setDownloading(true)
     try {
       if      (tab === 'register')       await reportsApi.exportOrderRegister(startDate, endDate, format)
-      else if (tab === 'open')           await reportsApi.exportOpenOrders(format)
-      else if (tab === 'client-summary') await reportsApi.exportOrderClientSummary(startDate, endDate, format)
+else if (tab === 'client-summary') await reportsApi.exportOrderClientSummary(startDate, endDate, format)
       else if (tab === 'overdue')        await reportsApi.exportOverdueOrders(thresholdDays, format)
       else if (tab === 'fulfillment')    await reportsApi.exportWeightFulfillment(startDate, endDate, format)
       else if (tab === 'route-summary')  await reportsApi.exportOrderRouteSummary(startDate, endDate, format)
@@ -509,7 +488,6 @@ export default function OrderReportsPage() {
 
   // ── Apply filters ──
   const allRegisterRows  = registerQuery.data?.data ?? []
-  const allOpenRows      = openQuery.data?.data ?? []
   const allOverdueRows   = overdueQuery.data?.data ?? []
   const allPaymentRows   = paymentQuery.data?.data ?? []
 
@@ -517,10 +495,7 @@ export default function OrderReportsPage() {
     (statusFilter === 'ALL' || r.orderStatus === statusFilter) &&
     (clientFilter === 'ALL' || r.clientName === clientFilter)
   )
-  const openRows = allOpenRows.filter(r =>
-    clientFilter === 'ALL' || r.clientName === clientFilter
-  )
-  const overdueRows = allOverdueRows.filter(r =>
+const overdueRows = allOverdueRows.filter(r =>
     clientFilter === 'ALL' || r.clientName === clientFilter
   )
   const paymentRows = allPaymentRows.filter(r =>
@@ -531,17 +506,16 @@ export default function OrderReportsPage() {
   // ── Client options per tab ──
   const tabClientSource: string[] =
     tab === 'register'      ? allRegisterRows.map(r => r.clientName) :
-    tab === 'open'          ? allOpenRows.map(r => r.clientName) :
     tab === 'overdue'       ? allOverdueRows.map(r => r.clientName) :
     tab === 'payment-status'? allPaymentRows.map(r => r.clientName) : []
   const clientOptions = [
     { value: 'ALL', label: 'All Clients' },
     ...Array.from(new Set(tabClientSource.filter(Boolean))).sort().map(c => ({ value: c, label: c })),
   ]
-  const showClientFilter = ['register', 'open', 'overdue', 'payment-status'].includes(tab)
+  const showClientFilter = ['register', 'overdue', 'payment-status'].includes(tab)
 
   // ── Date-range tabs (show/hide date controls) ──
-  const noDateFilter = tab === 'open' || tab === 'overdue'
+  const noDateFilter = tab === 'overdue'
 
   return (
     <div className="space-y-6">
@@ -678,7 +652,6 @@ export default function OrderReportsPage() {
 
       {/* Tables */}
       {tab === 'register'       && <OrderRegisterTable  rows={registerRows}                            loading={registerQuery.isLoading} />}
-      {tab === 'open'           && <OpenOrderTable       rows={openRows}                                loading={openQuery.isLoading} />}
       {tab === 'client-summary' && <ClientSummaryTable   rows={clientSummaryQuery.data?.data ?? []}     loading={clientSummaryQuery.isLoading} />}
       {tab === 'overdue'        && <OverdueTable          rows={overdueRows}                             loading={overdueQuery.isLoading} />}
       {tab === 'fulfillment'    && <FulfillmentTable      rows={fulfillmentQuery.data?.data ?? []}       loading={fulfillmentQuery.isLoading} />}
