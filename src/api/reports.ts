@@ -59,6 +59,7 @@ import type {
   PayrollByRoleRow,
   PayrollYtdRow,
   VehiclePayrollCostResponse,
+  TripSummaryRow,
 } from '@/types'
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -721,4 +722,9 @@ export const reportsApi = {
 
   getDailyFleetAttendance: (date: string, scope: 'INTRA_STATE' | 'INTER_STATE') =>
     apiClient.get<ApiResponse<DailyFleetAttendanceReport>>('/reports/vehicles/daily-fleet-attendance', { params: { date, scope } }).then(r => r.data),
+
+  getTripSummary: (startDate: string, endDate: string, orderNumber?: string) =>
+    apiClient.get<ApiResponse<TripSummaryRow[]>>('/reports/trips/summary', {
+      params: { startDate, endDate, ...(orderNumber ? { orderNumber } : {}) },
+    }).then(r => r.data),
 }

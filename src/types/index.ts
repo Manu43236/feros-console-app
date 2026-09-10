@@ -2039,6 +2039,19 @@ export interface ClientTripSummaryRow {
   totalDeliveredWeight: number
 }
 
+export interface TripSummaryRow {
+  orderNumber: string
+  orderCreatedAt: string
+  material: string
+  lrNumber: string
+  lrCreatedAt: string
+  registrationNumber: string
+  vehicleAssignedAt: string | null
+  tripStartTime: string | null
+  tripEndTime: string | null
+  driverName: string
+}
+
 export interface DelayedDeliveryRow {
   lrId: number
   lrNumber: string
