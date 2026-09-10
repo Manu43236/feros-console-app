@@ -181,8 +181,11 @@ function TripSummaryDoc({ rows, startDate, endDate }: { rows: TripSummaryRow[]; 
         </View>
         {rows.map((r, i) => {
           const h = r.durationHours == null ? '—' : (() => {
-            const hrs = Math.floor(r.durationHours)
-            const mins = Math.round((r.durationHours - hrs) * 60)
+            const totalMins = Math.round(r.durationHours * 60)
+            const d = Math.floor(totalMins / 1440)
+            const hrs = Math.floor((totalMins % 1440) / 60)
+            const mins = totalMins % 60
+            if (d > 0) return [d > 0 && `${d}d`, hrs > 0 && `${hrs}h`, mins > 0 && `${mins}m`].filter(Boolean).join(' ')
             return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`
           })()
           return (

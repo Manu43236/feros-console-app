@@ -222,8 +222,11 @@ function ClientSummaryTable({ rows, loading }: { rows: ClientTripSummaryRow[]; l
 
 function fmtDuration(hours: number | null) {
   if (hours == null) return '—'
-  const h = Math.floor(hours)
-  const m = Math.round((hours - h) * 60)
+  const totalMins = Math.round(hours * 60)
+  const d = Math.floor(totalMins / 1440)
+  const h = Math.floor((totalMins % 1440) / 60)
+  const m = totalMins % 60
+  if (d > 0) return [d > 0 && `${d}d`, h > 0 && `${h}h`, m > 0 && `${m}m`].filter(Boolean).join(' ')
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
