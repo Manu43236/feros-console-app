@@ -175,7 +175,7 @@ function TripSummaryDoc({ rows, startDate, endDate }: { rows: TripSummaryRow[]; 
         </View>
         <View style={S.divider} />
         <View style={S.tableHeader}>
-          {['#', 'Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned', 'Loaded At', 'Delivered At', 'Duration', 'Driver', 'Status'].map((h, i) => (
+          {['#', 'Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned', 'Trip Start', 'Delivery Time', 'Duration', 'Driver', 'Status'].map((h, i) => (
             <Text key={i} style={[S.hCell, { width: i === 0 ? '3%' : i === 3 ? '7%' : i === 10 ? '6%' : i === 12 ? '8%' : '9%' }]}>{h}</Text>
           ))}
         </View>
