@@ -95,6 +95,9 @@ import { EquipmentServicesPage }    from '@/pages/equipment/EquipmentServicesPag
 import { EquipmentAttachmentsPage } from '@/pages/equipment/EquipmentAttachmentsPage'
 import { EquipmentAnalyticsPage }   from '@/pages/equipment/EquipmentAnalyticsPage'
 
+// GPS
+import { GpsFleetMapPage } from '@/pages/gps/GpsFleetMapPage'
+
 // Staff portal pages
 import { MyTripsPage }      from '@/pages/staff-portal/MyTripsPage'
 import { MyAttendancePage } from '@/pages/staff-portal/MyAttendancePage'
@@ -220,6 +223,9 @@ export default function App() {
           <Route path="equipment/invoices/:id"      element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentInvoiceDetailPage /></ProtectedRoute>} />
           <Route path="equipment/attachments"       element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><EquipmentAttachmentsPage /></ProtectedRoute>} />
           <Route path="equipment/analytics"        element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF']}><EquipmentAnalyticsPage /></ProtectedRoute>} />
+
+          {/* GPS */}
+          <Route path="gps/fleet" element={<ProtectedRoute allowedRoles={['ADMIN','OFFICE_STAFF','SUPERVISOR']}><GpsFleetMapPage /></ProtectedRoute>} />
 
           {/* Notifications */}
           <Route path="notifications" element={<NotificationsPage />} />

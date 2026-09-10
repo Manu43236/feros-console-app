@@ -14,7 +14,7 @@ import {
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
   Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin, ScrollText,
-  Construction, KeyRound, Cpu,
+  Construction, KeyRound, Cpu, Radio,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWebPush } from '@/hooks/useWebPush'
@@ -62,6 +62,7 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/vehicles',         label: 'Vehicles',       icon: Truck },
         { to: '/fuel-logs',        label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',   label: 'Meter Readings', icon: Gauge },
+        { to: '/gps/fleet',        label: 'Live Map',       icon: Radio },
       ],
     },
     {
@@ -141,6 +142,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/vehicles',        label: 'Vehicles',       icon: Truck },
         { to: '/fuel-logs',       label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',  label: 'Meter Readings', icon: Gauge },
+        { to: '/gps/fleet',       label: 'Live Map',       icon: Radio },
       ],
     },
     {
@@ -208,6 +210,7 @@ const SUPERVISOR_NAV: SectionedNav = {
         { to: '/vehicles',        label: 'Vehicles',       icon: Truck },
         { to: '/fuel-logs',       label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',  label: 'Meter Readings', icon: Gauge },
+        { to: '/gps/fleet',       label: 'Live Map',       icon: Radio },
       ],
     },
     {

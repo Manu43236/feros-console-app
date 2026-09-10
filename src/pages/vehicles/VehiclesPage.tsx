@@ -912,16 +912,13 @@ export function VehicleForm({
 
               <div>
                 <Label>Device Model <span className="text-red-500">*</span></Label>
-                <select
-                  className={`mt-1 w-full text-sm border rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ring ${gpsErrors.modelId ? 'border-red-400' : 'border-input'}`}
+                <SearchableSelect
+                  className={`mt-1 ${gpsErrors.modelId ? 'border-red-400' : ''}`}
                   value={gpsForm.modelId}
-                  onChange={e => setGpsForm(f => ({ ...f, modelId: e.target.value, deviceIdentifier: '', credentials: '' }))}
-                >
-                  <option value="">Select company & model…</option>
-                  {gpsModels.map(m => (
-                    <option key={m.id} value={m.id}>{m.companyName} — {m.modelName} ({m.connectionType})</option>
-                  ))}
-                </select>
+                  onValueChange={v => setGpsForm(f => ({ ...f, modelId: v, deviceIdentifier: '', credentials: '' }))}
+                  options={gpsModels.map(m => ({ value: String(m.id), label: `${m.companyName} — ${m.modelName} (${m.connectionType})` }))}
+                  placeholder="Select company & model…"
+                />
                 {gpsErrors.modelId && <p className="text-red-500 text-xs mt-1">{gpsErrors.modelId}</p>}
               </div>
 

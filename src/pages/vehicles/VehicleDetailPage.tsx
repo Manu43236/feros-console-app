@@ -8,6 +8,7 @@ import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi, vehicleServicesApi } from '@/api/vehicles'
+import { gpsTrackingApi } from '@/api/gpsTracking'
 import { ordersApi } from '@/api/orders'
 import { staffApi } from '@/api/staff'
 import { servicePartsApi, sparePartsApi } from '@/api/inventory'
@@ -25,7 +26,7 @@ import {
   AlertTriangle, Pencil, Power, Camera,
   ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, CircleDot, Gauge, Users,
-  Clock, Wifi, Upload,
+  Clock, Wifi, Upload, MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -3276,6 +3277,75 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
 }
 
 // ── page ─────────────────────────────────────────────────────────────────────
+function GpsLiveCard({ vehicleId }: { vehicleId: number }) {
+  const { data } = useQuery({
+    queryKey: ['gps-latest', vehicleId],
+    queryFn: () => gpsTrackingApi.getLatest(vehicleId),
+    refetchInterval: 30_000,
+  })
+  const gps = data?.data
+
+  if (!gps) {
+    return (
+      <div className="border-t pt-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">GPS Live</p>
+        <p className="text-sm text-gray-400">No GPS data yet — device has not pinged.</p>
+      </div>
+    )
+  }
+
+  const mapsUrl = `https://www.google.com/maps?q=${gps.latitude},${gps.longitude}`
+
+  return (
+    <div className="border-t pt-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">GPS Live</p>
+        <span className={cn(
+          'text-xs px-2 py-0.5 rounded-full font-medium',
+          gps.isLive
+            ? 'bg-green-100 text-green-700'
+            : 'bg-gray-100 text-gray-500'
+        )}>
+          {gps.isLive ? 'Live' : 'Last known'}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+        <div className="flex justify-between py-2.5 border-b border-gray-50">
+          <span className="text-sm text-gray-500">Location</span>
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1"
+          >
+            <MapPin size={13} />
+            {Number(gps.latitude).toFixed(5)}, {Number(gps.longitude).toFixed(5)}
+          </a>
+        </div>
+        <div className="flex justify-between py-2.5 border-b border-gray-50">
+          <span className="text-sm text-gray-500">Speed</span>
+          <span className="text-sm font-medium text-gray-800">
+            {gps.speedKmh != null ? `${Number(gps.speedKmh).toFixed(1)} km/h` : '—'}
+          </span>
+        </div>
+        <div className="flex justify-between py-2.5 border-b border-gray-50">
+          <span className="text-sm text-gray-500">Ignition</span>
+          <span className={cn(
+            'text-xs px-2 py-0.5 rounded-full font-medium',
+            gps.ignitionOn ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+          )}>
+            {gps.ignitionOn ? 'ON' : 'OFF'}
+          </span>
+        </div>
+        <div className="flex justify-between py-2.5 border-b border-gray-50">
+          <span className="text-sm text-gray-500">Last Ping (IST)</span>
+          <span className="text-sm font-medium text-gray-800">{gps.lastPingIst}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate      = useNavigate()
@@ -3803,6 +3873,7 @@ export function VehicleDetailPage() {
                 </div>
               </div>
             </div>
+            {v.isIot && <GpsLiveCard vehicleId={v.id} />}
             </div>
           )}
 
