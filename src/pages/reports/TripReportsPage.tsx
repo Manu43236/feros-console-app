@@ -238,7 +238,7 @@ const LR_STATUS_COLORS: Record<string, string> = {
 function TripSummaryTable({ rows, loading }: { rows: TripSummaryRow[]; loading: boolean }) {
   return <ReportTable
     loading={loading}
-    headers={['Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Trip Start', 'Trip End', 'Duration', 'Driver', 'Status']}
+    headers={['Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Loaded At', 'Delivered At', 'Duration', 'Driver', 'Status']}
     rows={rows.map(r => {
       const cls = LR_STATUS_COLORS[r.lrStatus] ?? 'bg-gray-100 text-gray-600'
       return [
