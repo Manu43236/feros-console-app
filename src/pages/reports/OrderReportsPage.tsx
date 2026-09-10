@@ -102,11 +102,13 @@ const dash = (v: unknown) => (v != null && v !== '' ? String(v) : '—')
 // ── Table renderers ────────────────────────────────────────────────────────────
 function OrderRegisterTable({ rows, loading }: { rows: OrderRegisterRow[]; loading: boolean }) {
   return <ReportTable loading={loading}
-    headers={['Order No.', 'Date', 'Exp. Delivery', 'Client', 'Material', 'From', 'To',
+    headers={['Order No.', 'Date', 'Exp. Delivery', 'Duration', 'Client', 'Material', 'From', 'To',
       'Total Wt', 'Fulfilled Wt', 'Freight Amt', 'Vehicles', 'Status', 'Payment']}
     rows={rows.map(r => [
       <span className="font-medium text-feros-navy">{r.orderNumber}</span>,
-      r.orderDate, dash(r.expectedDeliveryDate), r.clientName, r.materialType,
+      r.orderDate, dash(r.expectedDeliveryDate),
+      r.durationDays != null ? <span className="text-gray-600">{r.durationDays}d</span> : <span className="text-gray-300">—</span>,
+      r.clientName, r.materialType,
       `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`,
       dash(r.totalWeight), dash(r.totalWeightFulfilled), dash(r.totalFreightAmount),
       <span className="font-medium">{r.vehicleCount}</span>,

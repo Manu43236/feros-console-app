@@ -2073,6 +2073,7 @@ export interface OrderRegisterRow {
   orderStatus: string
   orderPaymentStatus: string
   vehicleCount: number
+  durationDays?: number
 }
 
 export interface OpenOrderRow {
