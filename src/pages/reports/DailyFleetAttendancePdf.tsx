@@ -93,6 +93,7 @@ function FleetAttendanceDoc({ report, rows, filterLabel, tenantName }: Props) {
           <StatBox label="Drivers"        value={report.drivers} />
           <StatBox label="Cleaners"       value={report.cleaners} />
           <StatBox label="Unassigned"     value={report.unassigned} />
+          <StatBox label="Empty"          value={report.empty} />
         </View>
 
         {/* Table header */}
