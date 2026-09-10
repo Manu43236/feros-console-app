@@ -192,7 +192,7 @@ function OrderSummaryDoc({ order, lrs }: { order: Order; lrs: Lr[] }) {
           <Text style={{ fontSize: 8, color: '#888' }}>No vehicles assigned to this order yet.</Text>
         )}
 
-        {allocs.map((alloc, idx) => {
+        {allocs.map((alloc) => {
           const lr = lrByAlloc.get(alloc.id)
           const regNum = alloc.vehicleRegistrationNumber ?? alloc.registrationNumber ?? '—'
           const assignedAt = alloc.createdAt
