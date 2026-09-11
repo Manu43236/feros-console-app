@@ -5,20 +5,18 @@ import L from 'leaflet'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 
-// Custom marker icon using divIcon — avoids webpack/vite default icon path issues
+// Custom marker: truck PNG + status dot (green=live+on, red=live+off, gray=stale)
 function makeVehicleIcon(ignitionOn: boolean | null, isLive: boolean) {
-  const color = !isLive ? '#9ca3af' : ignitionOn ? '#22c55e' : '#ef4444'
+  const dot = !isLive ? '#9ca3af' : ignitionOn ? '#22c55e' : '#ef4444'
   return L.divIcon({
     className: '',
-    html: `<div style="
-      width:32px;height:32px;border-radius:50% 50% 50% 0;
-      background:${color};border:2px solid white;
-      box-shadow:0 2px 6px rgba(0,0,0,.35);
-      transform:rotate(-45deg);
-    "></div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -34],
+    html: `<div style="position:relative;width:52px;height:38px;">
+      <img src="/vehicle-tracker.png" style="width:52px;height:38px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));" />
+      <span style="position:absolute;top:-3px;right:-3px;width:13px;height:13px;background:${dot};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.35);"></span>
+    </div>`,
+    iconSize: [52, 38],
+    iconAnchor: [26, 38],
+    popupAnchor: [0, -42],
   })
 }
 
