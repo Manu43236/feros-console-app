@@ -104,6 +104,9 @@ function VehicleCard({ item, onClick }: { item: GpsFleetItem; onClick: () => voi
         </span>
         <span>{item.lastPingIst}</span>
       </div>
+      {item.odometer != null && (
+        <p className="text-xs text-gray-400 mt-0.5">ODO: {Number(item.odometer).toFixed(1)} km</p>
+      )}
     </button>
   )
 }

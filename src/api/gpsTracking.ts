@@ -24,6 +24,7 @@ export interface GpsFleetItem {
   ignitionOn: boolean | null
   lastPingIst: string
   isLive: boolean
+  odometer: number | null
 }
 
 export interface GpsPingItem {
