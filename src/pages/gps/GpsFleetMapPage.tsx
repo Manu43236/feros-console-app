@@ -50,7 +50,7 @@ function AnimatedMarker({ item, onNavigate }: { item: GpsFleetItem; onNavigate: 
       const lat = from[0] + (to[0] - from[0]) * p
       const lng = from[1] + (to[1] - from[1]) * p
       currentPos.current = [lat, lng]
-      marker.setLatLng([lat, lng])
+      marker!.setLatLng([lat, lng])
       if (p < 1) rafRef.current = requestAnimationFrame(tick)
     }
 
