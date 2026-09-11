@@ -3538,12 +3538,13 @@ function TripHistoryTab({ vehicleId, isIot }: { vehicleId: number; isIot: boolea
                   {lr.driverName && <><span className="text-gray-300">•</span><span>{lr.driverName}</span></>}
                   {lr.allocatedWeight > 0 && <><span className="text-gray-300">•</span><span>{lr.allocatedWeight} t</span></>}
                 </div>
-                {(lr.loadedAt || lr.deliveredAt) && (
-                  <div className="mt-0.5 text-xs text-gray-400">
-                    {lr.loadedAt    && <span>Loaded: {format(parseISO(lr.loadedAt),    'dd MMM HH:mm')}</span>}
-                    {lr.deliveredAt && <span className="ml-3">Delivered: {format(parseISO(lr.deliveredAt), 'dd MMM HH:mm')}</span>}
-                  </div>
-                )}
+                <div className="mt-0.5 text-xs text-gray-400">
+                  {lr.loadedAt
+                    ? <span>Started: {format(parseISO(lr.loadedAt), 'dd MMM HH:mm')}</span>
+                    : <span className="text-gray-300">Start not recorded</span>
+                  }
+                  {lr.deliveredAt && <span className="ml-3">Delivered: {format(parseISO(lr.deliveredAt), 'dd MMM HH:mm')}</span>}
+                </div>
               </div>
               {canPlayback && (
                 <button
