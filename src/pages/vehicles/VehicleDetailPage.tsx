@@ -3541,7 +3541,9 @@ function TripHistoryTab({ vehicleId, isIot }: { vehicleId: number; isIot: boolea
                 <div className="mt-0.5 text-xs text-gray-400">
                   {lr.loadedAt
                     ? <span>Started: {format(parseISO(lr.loadedAt), 'dd MMM HH:mm')}</span>
-                    : <span className="text-gray-300">Start not recorded</span>
+                    : lr.lrDate
+                      ? <span className="text-gray-400">Started: {format(parseISO(lr.lrDate), 'dd MMM')} <span className="text-gray-300">(time not recorded)</span></span>
+                      : null
                   }
                   {lr.deliveredAt && <span className="ml-3">Delivered: {format(parseISO(lr.deliveredAt), 'dd MMM HH:mm')}</span>}
                 </div>
