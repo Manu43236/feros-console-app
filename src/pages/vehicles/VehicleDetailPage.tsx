@@ -3376,8 +3376,8 @@ function RoutePlaybackModal({ vehicleId, lr, onClose }: {
   const [playIdx, setPlayIdx]     = useState(0)
   const intervalRef               = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const from = lr.loadedAt ?? (lr.lrDate ? `${lr.lrDate}T00:00:00` : '')
-  const to   = lr.deliveredAt ?? new Date().toISOString().slice(0, 19)
+  const from = lr.loadedAt ?? lr.startOdometerRecordedAt ?? (lr.lrDate ? `${lr.lrDate}T00:00:00` : '')
+  const to   = lr.deliveredAt ?? lr.endOdometerRecordedAt ?? new Date().toISOString().slice(0, 19)
 
   const { data, isLoading } = useQuery({
     queryKey: ['gps-route', vehicleId, from, to],
@@ -3539,13 +3539,17 @@ function TripHistoryTab({ vehicleId, isIot }: { vehicleId: number; isIot: boolea
                   {lr.allocatedWeight > 0 && <><span className="text-gray-300">•</span><span>{lr.allocatedWeight} t</span></>}
                 </div>
                 <div className="mt-0.5 text-xs text-gray-400">
-                  {lr.loadedAt
-                    ? <span>Started: {format(parseISO(lr.loadedAt), 'dd MMM HH:mm')}</span>
-                    : lr.lrDate
-                      ? <span className="text-gray-400">Started: {format(parseISO(lr.lrDate), 'dd MMM')} <span className="text-gray-300">(time not recorded)</span></span>
-                      : null
-                  }
-                  {lr.deliveredAt && <span className="ml-3">Delivered: {format(parseISO(lr.deliveredAt), 'dd MMM HH:mm')}</span>}
+                  {(() => {
+                    const startTime = lr.loadedAt ?? lr.startOdometerRecordedAt
+                    return startTime
+                      ? <span>Started: {format(parseISO(startTime), 'dd MMM HH:mm')}</span>
+                      : lr.lrDate
+                        ? <span>Started: {format(parseISO(lr.lrDate), 'dd MMM')}</span>
+                        : null
+                  })()}
+                  {(lr.deliveredAt ?? lr.endOdometerRecordedAt) && (
+                    <span className="ml-3">Delivered: {format(parseISO((lr.deliveredAt ?? lr.endOdometerRecordedAt)!), 'dd MMM HH:mm')}</span>
+                  )}
                 </div>
               </div>
               {canPlayback && (
