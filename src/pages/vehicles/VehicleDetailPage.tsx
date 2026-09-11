@@ -3376,12 +3376,8 @@ function RoutePlaybackModal({ vehicleId, lr, onClose }: {
   const [playIdx, setPlayIdx]     = useState(0)
   const intervalRef               = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const from = lr.loadedAt
-    ? lr.loadedAt.replace('T', ' ')
-    : lr.lrDate ? `${lr.lrDate} 00:00:00` : ''
-  const to   = lr.deliveredAt
-    ? lr.deliveredAt.replace('T', ' ')
-    : new Date().toISOString().replace('T', ' ').slice(0, 19)
+  const from = lr.loadedAt ?? (lr.lrDate ? `${lr.lrDate}T00:00:00` : '')
+  const to   = lr.deliveredAt ?? new Date().toISOString().slice(0, 19)
 
   const { data, isLoading } = useQuery({
     queryKey: ['gps-route', vehicleId, from, to],
