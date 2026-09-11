@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { gpsTrackingApi, type GpsFleetItem } from '@/api/gpsTracking'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
@@ -21,6 +22,66 @@ function makeVehicleIcon(ignitionOn: boolean | null, isLive: boolean, heading: n
     iconAnchor: [26, 38],
     popupAnchor: [0, -42],
   })
+}
+
+// Animates marker smoothly between GPS pings instead of jumping.
+// stablePos ref never changes so react-leaflet won't call setLatLng — we own all updates.
+function AnimatedMarker({ item, onNavigate }: { item: GpsFleetItem; onNavigate: (id: number) => void }) {
+  const markerRef = useRef<L.Marker>(null)
+  const rafRef    = useRef<number | null>(null)
+  const currentPos = useRef<[number, number]>([Number(item.latitude), Number(item.longitude)])
+  const stablePos  = useRef<[number, number]>(currentPos.current)
+
+  useEffect(() => {
+    const marker = markerRef.current
+    if (!marker) return
+
+    const from: [number, number] = [...currentPos.current]
+    const to:   [number, number] = [Number(item.latitude), Number(item.longitude)]
+    if (from[0] === to[0] && from[1] === to[1]) return
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+
+    const duration = 4000
+    const t0 = performance.now()
+
+    function tick(now: number) {
+      const p = Math.min((now - t0) / duration, 1)
+      const lat = from[0] + (to[0] - from[0]) * p
+      const lng = from[1] + (to[1] - from[1]) * p
+      currentPos.current = [lat, lng]
+      marker.setLatLng([lat, lng])
+      if (p < 1) rafRef.current = requestAnimationFrame(tick)
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [item.latitude, item.longitude])
+
+  return (
+    <Marker
+      ref={markerRef}
+      position={stablePos.current}
+      icon={makeVehicleIcon(item.ignitionOn, item.isLive, item.heading)}
+    >
+      <Popup>
+        <div className="text-sm">
+          <p className="font-semibold">{item.registrationNumber}</p>
+          <p className="text-gray-600 mt-1">
+            Speed: {item.speedKmh != null ? `${Number(item.speedKmh).toFixed(0)} km/h` : '—'}
+          </p>
+          <p className="text-gray-600">Ignition: {item.ignitionOn ? 'ON' : 'OFF'}</p>
+          <p className="text-gray-500 text-xs mt-1">{item.lastPingIst}</p>
+          <button
+            onClick={() => onNavigate(item.vehicleId)}
+            className="mt-2 text-xs text-blue-600 hover:underline"
+          >
+            View vehicle →
+          </button>
+        </div>
+      </Popup>
+    </Marker>
+  )
 }
 
 function VehicleCard({ item, onClick }: { item: GpsFleetItem; onClick: () => void }) {
@@ -113,30 +174,11 @@ export function GpsFleetMapPage() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
           {fleet.map(item => (
-            <Marker
+            <AnimatedMarker
               key={item.vehicleId}
-              position={[Number(item.latitude), Number(item.longitude)]}
-              icon={makeVehicleIcon(item.ignitionOn, item.isLive, item.heading)}
-            >
-              <Popup>
-                <div className="text-sm">
-                  <p className="font-semibold">{item.registrationNumber}</p>
-                  <p className="text-gray-600 mt-1">
-                    Speed: {item.speedKmh != null ? `${Number(item.speedKmh).toFixed(0)} km/h` : '—'}
-                  </p>
-                  <p className="text-gray-600">
-                    Ignition: {item.ignitionOn ? 'ON' : 'OFF'}
-                  </p>
-                  <p className="text-gray-500 text-xs mt-1">{item.lastPingIst}</p>
-                  <button
-                    onClick={() => navigate(`/vehicles/${item.vehicleId}`)}
-                    className="mt-2 text-xs text-blue-600 hover:underline"
-                  >
-                    View vehicle →
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
+              item={item}
+              onNavigate={(id) => navigate(`/vehicles/${id}`)}
+            />
           ))}
         </MapContainer>
       </div>
