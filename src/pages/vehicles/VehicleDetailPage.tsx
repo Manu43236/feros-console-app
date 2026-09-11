@@ -8,7 +8,7 @@ import { useForm, Controller, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehiclesApi, vehicleServicesApi } from '@/api/vehicles'
-import { gpsTrackingApi } from '@/api/gpsTracking'
+import { gpsTrackingApi, type GpsRoutePoint } from '@/api/gpsTracking'
 import { ordersApi } from '@/api/orders'
 import { staffApi } from '@/api/staff'
 import { servicePartsApi, sparePartsApi } from '@/api/inventory'
@@ -17,8 +17,9 @@ import { breakdownsApi } from '@/api/breakdowns'
 import { fuelLogsApi } from '@/api/fuelLogs'
 import { tyresApi } from '@/api/tyres'
 import { meterReadingsApi } from '@/api/meterReadings'
+import { lrsApi } from '@/api/lrs'
 import { compressIfNeeded } from '@/lib/imageCompressor'
-import type { VehicleAssignmentHistory, FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading, Order, VehicleAllocation, StaffAllocation } from '@/types'
+import type { Lr, LrStatus, VehicleAssignmentHistory, FuelLog, FuelPaymentMode, Tyre, TyrePosition, TyreFitting, TyreRotationLog, TyreRemovalReason, TyrePositionType, MeterReading, Order, VehicleAllocation, StaffAllocation } from '@/types'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInDays, isValid } from 'date-fns'
 import {
@@ -26,8 +27,10 @@ import {
   AlertTriangle, Pencil, Power, Camera,
   ClipboardList, Route, FileText, Plus, Wrench, Droplets, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, ExternalLink, Paperclip, Trash2,
   Calendar, IndianRupee, RotateCcw, Check, Search, X, Package, CircleDot, Gauge, Users,
-  Clock, Wifi, Upload, MapPin,
+  Clock, Wifi, Upload, MapPin, Play, Pause,
 } from 'lucide-react'
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet'
+import L from 'leaflet'
 import { Button } from '@/components/ui/button'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -3346,6 +3349,244 @@ function GpsLiveCard({ vehicleId }: { vehicleId: number }) {
   )
 }
 
+// ── LR status config ──────────────────────────────────────────────────────────
+const LR_STATUS_CFG: Record<LrStatus, { label: string; bg: string; text: string }> = {
+  CREATED:       { label: 'Created',       bg: 'bg-blue-100',   text: 'text-blue-800'   },
+  WEIGHT_LOADED: { label: 'Weight Loaded', bg: 'bg-purple-100', text: 'text-purple-800' },
+  IN_TRANSIT:    { label: 'In Transit',    bg: 'bg-amber-100',  text: 'text-amber-800'  },
+  DELIVERED:     { label: 'Delivered',     bg: 'bg-green-100',  text: 'text-green-800'  },
+  CANCELLED:     { label: 'Cancelled',     bg: 'bg-red-100',    text: 'text-red-800'    },
+}
+
+// ── Route playback modal ──────────────────────────────────────────────────────
+function FitBounds({ points }: { points: [number, number][] }) {
+  const map = useMap()
+  useEffect(() => {
+    if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [30, 30] })
+  }, [map, points])
+  return null
+}
+
+function RoutePlaybackModal({ vehicleId, lr, onClose }: {
+  vehicleId: number
+  lr: Lr
+  onClose: () => void
+}) {
+  const [playing, setPlaying]     = useState(false)
+  const [playIdx, setPlayIdx]     = useState(0)
+  const intervalRef               = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const from = lr.loadedAt   ? lr.loadedAt.replace('T', ' ')   : ''
+  const to   = lr.deliveredAt ? lr.deliveredAt.replace('T', ' ') : new Date().toISOString().replace('T', ' ').slice(0, 19)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['gps-route', vehicleId, from, to],
+    queryFn:  () => gpsTrackingApi.getRoute(vehicleId, from, to),
+    enabled:  !!from,
+  })
+
+  const points: GpsRoutePoint[] = data?.data ?? []
+  const latLngs: [number, number][] = points.map(p => [Number(p.latitude), Number(p.longitude)])
+
+  const played  = latLngs.slice(0, playIdx + 1)
+  const current = latLngs[playIdx]
+
+  useEffect(() => {
+    if (!playing) { if (intervalRef.current) clearInterval(intervalRef.current); return }
+    intervalRef.current = setInterval(() => {
+      setPlayIdx(i => {
+        if (i >= latLngs.length - 1) { setPlaying(false); return i }
+        return i + 1
+      })
+    }, 120)
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [playing, latLngs.length])
+
+  const togglePlay = () => {
+    if (playIdx >= latLngs.length - 1) setPlayIdx(0)
+    setPlaying(p => !p)
+  }
+
+  const headingIcon = (heading: number | null) => L.divIcon({
+    className: '',
+    html: `<div style="width:20px;height:30px;position:relative;">
+      <img src="/tracking-truck.png" style="width:20px;height:30px;transform:rotate(${heading ?? 0}deg);transform-origin:center;" />
+    </div>`,
+    iconSize: [20, 30],
+    iconAnchor: [10, 30],
+  })
+
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-3xl p-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-4 pb-3 border-b">
+          <DialogTitle className="text-sm font-semibold">
+            Route Playback — {lr.lrNumber}
+            <span className="ml-2 text-xs text-gray-400 font-normal">
+              {lr.fromCity ?? '?'} → {lr.toCity ?? '?'}
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="relative h-[440px]">
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
+              <p className="text-sm text-gray-500">Loading route…</p>
+            </div>
+          )}
+          {!isLoading && latLngs.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <p className="text-sm text-gray-400">No route data for this LR's time window.</p>
+            </div>
+          )}
+          {latLngs.length > 0 && (
+            <MapContainer
+              center={latLngs[0]}
+              zoom={10}
+              style={{ height: '100%', width: '100%' }}
+              zoomControl={true}
+            >
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <FitBounds points={latLngs} />
+              {/* full route (faint) */}
+              <Polyline positions={latLngs} color="#d1d5db" weight={2} />
+              {/* played portion */}
+              <Polyline positions={played} color="#1e3a5f" weight={4} />
+              {/* moving marker */}
+              {current && (
+                <Marker
+                  position={current}
+                  icon={headingIcon(points[playIdx]?.heading ?? null)}
+                />
+              )}
+            </MapContainer>
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-t flex items-center gap-4 bg-gray-50">
+          <button
+            onClick={togglePlay}
+            disabled={latLngs.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-feros-navy text-white text-sm font-medium rounded-lg hover:bg-feros-navy/90 disabled:opacity-40"
+          >
+            {playing ? <Pause size={14} /> : <Play size={14} />}
+            {playing ? 'Pause' : playIdx > 0 && playIdx < latLngs.length - 1 ? 'Resume' : 'Play'}
+          </button>
+          <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+            <div
+              className="bg-feros-navy h-1.5 rounded-full transition-all"
+              style={{ width: latLngs.length > 1 ? `${(playIdx / (latLngs.length - 1)) * 100}%` : '0%' }}
+            />
+          </div>
+          <span className="text-xs text-gray-500 shrink-0">
+            {playIdx + 1} / {latLngs.length} pts
+          </span>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Trip History tab ──────────────────────────────────────────────────────────
+function TripHistoryTab({ vehicleId, isIot }: { vehicleId: number; isIot: boolean }) {
+  const [page, setPage]         = useState(0)
+  const [playbackLr, setPlaybackLr] = useState<Lr | null>(null)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['vehicle-trip-history', vehicleId, page],
+    queryFn:  () => lrsApi.getByVehicle(vehicleId, { page, size: 15 }),
+  })
+
+  const lrs    = data?.data?.content ?? []
+  const total  = data?.data?.totalElements ?? 0
+  const pages  = data?.data?.totalPages ?? 1
+
+  if (isLoading) return <p className="text-sm text-gray-400 p-6">Loading…</p>
+
+  if (lrs.length === 0) return (
+    <div className="py-12 text-center text-gray-400">
+      <Route size={32} className="mx-auto mb-3 text-gray-200" />
+      <p className="text-sm font-medium text-gray-500">No trips yet</p>
+      <p className="text-xs mt-1">Completed LRs for this vehicle will appear here.</p>
+    </div>
+  )
+
+  return (
+    <div>
+      <div className="divide-y divide-gray-50">
+        {lrs.map((lr: Lr) => {
+          const cfg = LR_STATUS_CFG[lr.lrStatus] ?? { label: lr.lrStatus, bg: 'bg-gray-100', text: 'text-gray-700' }
+          const canPlayback = isIot && !!lr.loadedAt
+          return (
+            <div key={lr.id} className="flex items-start gap-3 py-3.5 px-4 hover:bg-gray-50/50">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-gray-800 font-mono">{lr.lrNumber}</span>
+                  {lr.paperLrNumber && (
+                    <span className="text-xs text-gray-400">({lr.paperLrNumber})</span>
+                  )}
+                  <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', cfg.bg, cfg.text)}>
+                    {cfg.label}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+                  {(lr.fromCity || lr.toCity) && (
+                    <span>{lr.fromCity ?? '?'} → {lr.toCity ?? '?'}</span>
+                  )}
+                  {lr.fromCity && <span className="text-gray-300">•</span>}
+                  <span>{lr.lrDate ? format(parseISO(lr.lrDate), 'dd MMM yyyy') : '—'}</span>
+                  {lr.driverName && <><span className="text-gray-300">•</span><span>{lr.driverName}</span></>}
+                  {lr.allocatedWeight > 0 && <><span className="text-gray-300">•</span><span>{lr.allocatedWeight} t</span></>}
+                </div>
+                {(lr.loadedAt || lr.deliveredAt) && (
+                  <div className="mt-0.5 text-xs text-gray-400">
+                    {lr.loadedAt    && <span>Loaded: {format(parseISO(lr.loadedAt),    'dd MMM HH:mm')}</span>}
+                    {lr.deliveredAt && <span className="ml-3">Delivered: {format(parseISO(lr.deliveredAt), 'dd MMM HH:mm')}</span>}
+                  </div>
+                )}
+              </div>
+              {canPlayback && (
+                <button
+                  onClick={() => setPlaybackLr(lr)}
+                  title="View route playback"
+                  className="shrink-0 p-1.5 rounded-lg text-feros-navy hover:bg-feros-navy/10 transition-colors"
+                >
+                  <MapPin size={16} />
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {pages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
+          <span>{total} total LRs</span>
+          <div className="flex gap-2">
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+              className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50">
+              Prev
+            </button>
+            <span className="px-2 py-1">{page + 1} / {pages}</span>
+            <button onClick={() => setPage(p => Math.min(pages - 1, p + 1))} disabled={page >= pages - 1}
+              className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50">
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {playbackLr && (
+        <RoutePlaybackModal
+          vehicleId={vehicleId}
+          lr={playbackLr}
+          onClose={() => setPlaybackLr(null)}
+        />
+      )}
+    </div>
+  )
+}
+
 export function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate      = useNavigate()
@@ -3587,17 +3828,17 @@ export function VehicleDetailPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+            <div className="flex flex-wrap gap-2 mt-3">
               {[
-                { label: 'Body Type', value: v.bodyTypeName ?? '—' },
-                { label: 'Type',      value: v.vehicleTypeName ?? '—' },
-                { label: 'Capacity',  value: v.capacityInTons ? `${v.capacityInTons} tons` : '—' },
-                { label: 'Ownership', value: v.ownershipTypeName ?? '—' },
-                { label: 'Odometer',  value: v.currentOdometerReading ? `${v.currentOdometerReading.toLocaleString('en-IN')} km` : '—' },
-              ].map(({ label, value }) => (
-                <div key={label} className="bg-white/10 rounded-lg px-3 py-2.5">
-                  <p className="text-xs text-blue-300">{label}</p>
-                  <p className="text-sm font-semibold text-white mt-0.5 truncate">{value}</p>
+                { label: 'Body Type', value: v.bodyTypeName },
+                { label: 'Type',      value: v.vehicleTypeName },
+                { label: 'Capacity',  value: v.capacityInTons ? `${v.capacityInTons} tons` : null },
+                { label: 'Ownership', value: v.ownershipTypeName },
+                { label: 'Odometer',  value: v.currentOdometerReading ? `${v.currentOdometerReading.toLocaleString('en-IN')} km` : null },
+              ].filter(c => c.value).map(({ label, value }) => (
+                <div key={label} className="bg-white/10 rounded-md px-2.5 py-1">
+                  <span className="text-[10px] text-blue-300 uppercase tracking-wide block leading-none">{label}</span>
+                  <span className="text-xs font-semibold text-white">{value}</span>
                 </div>
               ))}
             </div>
@@ -4043,11 +4284,7 @@ export function VehicleDetailPage() {
 
           {/* ── Trip History ── */}
           {tab === 'Trip History' && (
-            <div className="py-10 text-center text-gray-400">
-              <Route size={32} className="mx-auto mb-3 text-gray-200" />
-              <p className="text-sm font-medium text-gray-500">Trip History</p>
-              <p className="text-xs mt-1">Completed trips and LRs for this vehicle will appear here.</p>
-            </div>
+            <TripHistoryTab vehicleId={v.id} isIot={v.isIot ?? false} />
           )}
 
         </div>
