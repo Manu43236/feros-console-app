@@ -20,6 +20,7 @@ export interface GpsFleetItem {
   latitude: number
   longitude: number
   speedKmh: number | null
+  heading: number | null
   ignitionOn: boolean | null
   lastPingIst: string
   isLive: boolean
