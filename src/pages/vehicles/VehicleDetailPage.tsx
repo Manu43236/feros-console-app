@@ -3376,8 +3376,12 @@ function RoutePlaybackModal({ vehicleId, lr, onClose }: {
   const [playIdx, setPlayIdx]     = useState(0)
   const intervalRef               = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const from = lr.loadedAt   ? lr.loadedAt.replace('T', ' ')   : ''
-  const to   = lr.deliveredAt ? lr.deliveredAt.replace('T', ' ') : new Date().toISOString().replace('T', ' ').slice(0, 19)
+  const from = lr.loadedAt
+    ? lr.loadedAt.replace('T', ' ')
+    : lr.lrDate ? `${lr.lrDate} 00:00:00` : ''
+  const to   = lr.deliveredAt
+    ? lr.deliveredAt.replace('T', ' ')
+    : new Date().toISOString().replace('T', ' ').slice(0, 19)
 
   const { data, isLoading } = useQuery({
     queryKey: ['gps-route', vehicleId, from, to],
@@ -3516,7 +3520,7 @@ function TripHistoryTab({ vehicleId, isIot }: { vehicleId: number; isIot: boolea
       <div className="divide-y divide-gray-50">
         {lrs.map((lr: Lr) => {
           const cfg = LR_STATUS_CFG[lr.lrStatus] ?? { label: lr.lrStatus, bg: 'bg-gray-100', text: 'text-gray-700' }
-          const canPlayback = isIot && !!lr.loadedAt
+          const canPlayback = isIot
           return (
             <div key={lr.id} className="flex items-start gap-3 py-3.5 px-4 hover:bg-gray-50/50">
               <div className="flex-1 min-w-0">
