@@ -3367,14 +3367,17 @@ function FitBounds({ points }: { points: [number, number][] }) {
   return null
 }
 
+const SPEEDS = [{ label: '0.5x', ms: 240 }, { label: '1x', ms: 120 }, { label: '2x', ms: 60 }]
+
 function RoutePlaybackModal({ vehicleId, lr, onClose }: {
   vehicleId: number
   lr: Lr
   onClose: () => void
 }) {
-  const [playing, setPlaying]     = useState(false)
-  const [playIdx, setPlayIdx]     = useState(0)
-  const intervalRef               = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [playIdx, setPlayIdx] = useState(0)
+  const [speedIdx, setSpeedIdx] = useState(1) // default 1x
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const from = lr.loadedAt ?? lr.startOdometerRecordedAt ?? (lr.lrDate ? `${lr.lrDate}T00:00:00` : '')
   const to   = lr.deliveredAt ?? lr.endOdometerRecordedAt ?? new Date().toISOString().slice(0, 19)
@@ -3390,6 +3393,7 @@ function RoutePlaybackModal({ vehicleId, lr, onClose }: {
 
   const played  = latLngs.slice(0, playIdx + 1)
   const current = latLngs[playIdx]
+  const intervalMs = SPEEDS[speedIdx].ms
 
   useEffect(() => {
     if (!playing) { if (intervalRef.current) clearInterval(intervalRef.current); return }
@@ -3398,9 +3402,9 @@ function RoutePlaybackModal({ vehicleId, lr, onClose }: {
         if (i >= latLngs.length - 1) { setPlaying(false); return i }
         return i + 1
       })
-    }, 120)
+    }, intervalMs)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [playing, latLngs.length])
+  }, [playing, latLngs.length, intervalMs])
 
   const togglePlay = () => {
     if (playIdx >= latLngs.length - 1) setPlayIdx(0)
@@ -3409,12 +3413,14 @@ function RoutePlaybackModal({ vehicleId, lr, onClose }: {
 
   const headingIcon = (heading: number | null) => L.divIcon({
     className: '',
-    html: `<div style="width:20px;height:30px;position:relative;">
-      <img src="/tracking-truck.png" style="width:20px;height:30px;transform:rotate(${heading ?? 0}deg);transform-origin:center;" />
+    html: `<div style="width:24px;height:36px;">
+      <img src="/tracking-truck.png" style="width:24px;height:36px;transform:rotate(${heading ?? 0}deg);transform-origin:center;" />
     </div>`,
-    iconSize: [20, 30],
-    iconAnchor: [10, 30],
+    iconSize: [24, 36],
+    iconAnchor: [12, 36],
   })
+
+  const pct = latLngs.length > 1 ? (playIdx / (latLngs.length - 1)) * 100 : 0
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
@@ -3448,39 +3454,64 @@ function RoutePlaybackModal({ vehicleId, lr, onClose }: {
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               <FitBounds points={latLngs} />
-              {/* full route (faint) */}
-              <Polyline positions={latLngs} color="#d1d5db" weight={2} />
-              {/* played portion */}
-              <Polyline positions={played} color="#1e3a5f" weight={4} />
-              {/* moving marker */}
+              {/* full route always visible */}
+              <Polyline positions={latLngs} color="#94a3b8" weight={3} dashArray="6 4" />
+              {/* played portion in navy */}
+              {playIdx > 0 && <Polyline positions={played} color="#1e3a5f" weight={4} />}
+              {/* truck marker */}
               {current && (
-                <Marker
-                  position={current}
-                  icon={headingIcon(points[playIdx]?.heading ?? null)}
-                />
+                <Marker position={current} icon={headingIcon(points[playIdx]?.heading ?? null)} />
               )}
             </MapContainer>
           )}
         </div>
 
-        <div className="px-5 py-3 border-t flex items-center gap-4 bg-gray-50">
-          <button
-            onClick={togglePlay}
-            disabled={latLngs.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-feros-navy text-white text-sm font-medium rounded-lg hover:bg-feros-navy/90 disabled:opacity-40"
+        <div className="px-5 py-3 border-t bg-gray-50 space-y-2">
+          {/* progress bar — clickable scrub */}
+          <div
+            className="w-full bg-gray-200 rounded-full h-2 cursor-pointer"
+            onClick={e => {
+              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+              const ratio = (e.clientX - rect.left) / rect.width
+              setPlayIdx(Math.round(ratio * (latLngs.length - 1)))
+            }}
           >
-            {playing ? <Pause size={14} /> : <Play size={14} />}
-            {playing ? 'Pause' : playIdx > 0 && playIdx < latLngs.length - 1 ? 'Resume' : 'Play'}
-          </button>
-          <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-            <div
-              className="bg-feros-navy h-1.5 rounded-full transition-all"
-              style={{ width: latLngs.length > 1 ? `${(playIdx / (latLngs.length - 1)) * 100}%` : '0%' }}
-            />
+            <div className="bg-feros-navy h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
           </div>
-          <span className="text-xs text-gray-500 shrink-0">
-            {playIdx + 1} / {latLngs.length} pts
-          </span>
+
+          <div className="flex items-center gap-3">
+            {/* play / pause */}
+            <button
+              onClick={togglePlay}
+              disabled={latLngs.length === 0}
+              className="flex items-center gap-2 px-4 py-1.5 bg-feros-navy text-white text-sm font-medium rounded-lg hover:bg-feros-navy/90 disabled:opacity-40"
+            >
+              {playing ? <Pause size={14} /> : <Play size={14} />}
+              {playing ? 'Pause' : playIdx > 0 && playIdx < latLngs.length - 1 ? 'Resume' : 'Play'}
+            </button>
+
+            {/* speed buttons */}
+            <div className="flex items-center gap-1">
+              {SPEEDS.map((s, i) => (
+                <button
+                  key={s.label}
+                  onClick={() => setSpeedIdx(i)}
+                  className={cn(
+                    'px-2.5 py-1 text-xs font-medium rounded border transition-colors',
+                    i === speedIdx
+                      ? 'bg-feros-navy text-white border-feros-navy'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-feros-navy hover:text-feros-navy'
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            <span className="ml-auto text-xs text-gray-400">
+              {playIdx + 1} / {latLngs.length} pts
+            </span>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
