@@ -174,7 +174,7 @@ const schema = z.object({
   registrationNumber:       z.string().min(1, 'Registration number is required').max(10, 'Max 10 characters allowed'),
   brandId:                  z.coerce.number().optional(),
   vehicleTypeId:            z.coerce.number().optional(),
-  bodyTypeId:               z.coerce.number().optional(),
+  bodyTypeId:               z.number().optional(),
   fuelTypeId:               z.coerce.number().optional(),
   ownershipTypeId:          z.coerce.number().optional(),
   currentStatusId:          z.coerce.number().optional(),
