@@ -1890,6 +1890,7 @@ export interface FleetStatusRow {
   vehicleId: number
   registrationNumber: string
   vehicleType: string
+  vehicleBodyType?: string
   currentStatus: string
   inRepairType?: 'BREAKDOWN' | 'GENERAL'
 }

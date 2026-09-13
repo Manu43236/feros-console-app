@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import { downloadDailyFleetAttendancePdf, downloadFleetStatusPdf } from './DailyFleetAttendancePdf'
+import { downloadDailyFleetAttendancePdf, downloadFleetStatusPdf, downloadFleetStatusSummaryPdf } from './DailyFleetAttendancePdf'
 import type {
   VehicleMasterRow, FleetStatusRow, FuelMileageRow,
   BreakdownReportRow, DocumentExpiryRow, MaintenanceServiceRow,
@@ -153,19 +153,72 @@ function fleetStatusLabel(r: FleetStatusRow) {
   return r.currentStatus
 }
 
+const tyreNum = (s: string) => parseInt(s) || 0
+
 function FleetTable({ rows, loading }: { rows: FleetStatusRow[]; loading: boolean }) {
-  const sorted = [...rows].sort((a, b) => (a.vehicleType ?? '').localeCompare(b.vehicleType ?? ''))
+  const sorted = [...rows].sort((a, b) => tyreNum(a.vehicleType ?? '') - tyreNum(b.vehicleType ?? ''))
   return <ReportTable
     loading={loading}
-    headers={['Vehicle No.', 'Tyre Type', 'Status']}
+    headers={['Vehicle No.', 'Tyre Type', 'Body Type', 'Status']}
     rows={sorted.map(r => [
       <span className="font-medium">{r.registrationNumber}</span>,
       dash(r.vehicleType),
+      dash(r.vehicleBodyType ?? r.vehicleType),
       <Badge label={fleetStatusLabel(r)} />,
     ])}
   />
 }
 
+
+interface FleetSummaryRow {
+  vehicleType: string; vehicleBodyType: string
+  total: number; available: number; assigned: number; onTrip: number
+  onLease: number; breakdown: number; breakdownInRepair: number; inService: number; utilization: number
+}
+
+function buildFleetSummary(rows: FleetStatusRow[]): FleetSummaryRow[] {
+  const map = new Map<string, FleetSummaryRow>()
+  for (const r of rows) {
+    const vt = r.vehicleType ?? '—'
+    const bt = r.vehicleBodyType ?? vt
+    const key = `${vt}||${bt}`
+    if (!map.has(key)) map.set(key, { vehicleType: vt, vehicleBodyType: bt, total: 0, available: 0, assigned: 0, onTrip: 0, onLease: 0, breakdown: 0, breakdownInRepair: 0, inService: 0, utilization: 0 })
+    const s = map.get(key)!
+    s.total++
+    const lbl = fleetStatusLabel(r)
+    if (lbl === 'AVAILABLE') s.available++
+    else if (lbl === 'ASSIGNED') s.assigned++
+    else if (lbl === 'ON_TRIP') s.onTrip++
+    else if (lbl === 'ON_LEASE') s.onLease++
+    else if (lbl === 'BREAKDOWN') s.breakdown++
+    else if (lbl === 'BREAKDOWN IN REPAIR') s.breakdownInRepair++
+    else if (lbl === 'MAINTENANCE IN REPAIR') s.inService++
+  }
+  return [...map.values()]
+    .map(s => ({ ...s, utilization: s.total > 0 ? Math.round((s.assigned + s.onTrip + s.onLease) / s.total * 100) : 0 }))
+    .sort((a, b) => tyreNum(a.vehicleType) - tyreNum(b.vehicleType) || a.vehicleBodyType.localeCompare(b.vehicleBodyType))
+}
+
+function FleetSummaryTable({ rows, loading }: { rows: FleetStatusRow[]; loading: boolean }) {
+  const summary = buildFleetSummary(rows)
+  return <ReportTable
+    loading={loading}
+    headers={['Vehicle Type', 'Body Type', 'Total', 'Available', 'Assigned', 'On Trip', 'On Lease', 'Breakdown', 'BDN In Repair', 'In Service', 'Utilization%']}
+    rows={summary.map(s => [
+      <span className="font-medium">{s.vehicleType}</span>,
+      s.vehicleBodyType,
+      <span className="font-bold">{s.total}</span>,
+      <span className="text-green-700 font-medium">{s.available || '—'}</span>,
+      <span className="text-blue-700 font-medium">{s.assigned || '—'}</span>,
+      <span className="text-orange-700 font-medium">{s.onTrip || '—'}</span>,
+      <span className="text-purple-700 font-medium">{s.onLease || '—'}</span>,
+      <span className="text-red-700 font-medium">{s.breakdown || '—'}</span>,
+      <span className="text-red-700 font-medium">{s.breakdownInRepair || '—'}</span>,
+      <span className="text-yellow-700 font-medium">{s.inService || '—'}</span>,
+      <span className={s.utilization >= 70 ? 'text-green-700 font-bold' : s.utilization >= 40 ? 'text-orange-600 font-medium' : 'text-red-600 font-medium'}>{s.utilization}%</span>,
+    ])}
+  />
+}
 
 function FuelMileageTable({ rows, loading }: { rows: FuelMileageRow[]; loading: boolean }) {
   return <ReportTable
@@ -281,6 +334,7 @@ export default function VehicleReportsPage() {
   const [fleetDate, setFleetDate] = useState(todayStr())
   const [fleetScope, setFleetScope] = useState<'INTRA_STATE' | 'INTER_STATE'>('INTRA_STATE')
   const [fleetFilter, setFleetFilter] = useState<'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty'>('all')
+  const [fleetView, setFleetView] = useState<'detail' | 'summary'>('detail')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
   const [brandFilter, setBrandFilter] = useState('ALL')
@@ -299,6 +353,7 @@ export default function VehicleReportsPage() {
     setIotFilter('ALL')
     setFinanceFilter('ALL')
     setFleetFilter('all')
+    setFleetView('detail')
   }
 
   function applyPreset(p: DatePreset) {
@@ -354,23 +409,38 @@ const fuelQuery = useQuery({
       if (tab === 'vehicle-master') await reportsApi.exportVehicleMaster(format)
       else if (tab === 'fleet-status') {
         const allRows = fleetQuery.data?.data ?? []
-        const filtered = allRows.filter(r => {
-          if (statusFilter === 'ALL') return true
-          if (statusFilter === 'IN_REPAIR_BREAKDOWN') return r.currentStatus === 'IN_REPAIR' && r.inRepairType === 'BREAKDOWN'
-          if (statusFilter === 'IN_REPAIR_MAINTENANCE') return r.currentStatus === 'IN_REPAIR' && r.inRepairType !== 'BREAKDOWN'
-          return r.currentStatus === statusFilter
-        })
-        const label = statusFilter !== 'ALL' ? statusFilter.replace(/_/g, ' ') : 'ALL'
-        if (format === 'csv') {
-          const header = ['#', 'Vehicle No.', 'Tyre Type', 'Status']
-          const csvRows = filtered.map((r, i) => [i + 1, r.registrationNumber, r.vehicleType ?? '—', fleetStatusLabel(r)])
-          const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
-          const a = document.createElement('a')
-          a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
-          a.download = `fleet-status-${todayStr()}-${label.toLowerCase().replace(/ /g, '-')}.csv`
-          a.click()
+        if (fleetView === 'summary') {
+          const summary = buildFleetSummary(allRows)
+          if (format === 'csv') {
+            const header = ['Vehicle Type', 'Body Type', 'Total', 'Available', 'Assigned', 'On Trip', 'On Lease', 'Breakdown', 'BDN In Repair', 'In Service', 'Utilization%']
+            const csvRows = summary.map(s => [s.vehicleType, s.vehicleBodyType, s.total, s.available, s.assigned, s.onTrip, s.onLease, s.breakdown, s.breakdownInRepair, s.inService, `${s.utilization}%`])
+            const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+            a.download = `fleet-status-summary-${todayStr()}.csv`
+            a.click()
+          } else {
+            await downloadFleetStatusSummaryPdf(summary, todayStr())
+          }
         } else {
-          await downloadFleetStatusPdf(filtered, label, todayStr())
+          const filtered = allRows.filter(r => {
+            if (statusFilter === 'ALL') return true
+            if (statusFilter === 'IN_REPAIR_BREAKDOWN') return r.currentStatus === 'IN_REPAIR' && r.inRepairType === 'BREAKDOWN'
+            if (statusFilter === 'IN_REPAIR_MAINTENANCE') return r.currentStatus === 'IN_REPAIR' && r.inRepairType !== 'BREAKDOWN'
+            return r.currentStatus === statusFilter
+          })
+          const label = statusFilter !== 'ALL' ? statusFilter.replace(/_/g, ' ') : 'ALL'
+          if (format === 'csv') {
+            const header = ['#', 'Vehicle No.', 'Tyre Type', 'Body Type', 'Status']
+            const csvRows = filtered.map((r, i) => [i + 1, r.registrationNumber, r.vehicleType ?? '—', r.vehicleBodyType ?? r.vehicleType ?? '—', fleetStatusLabel(r)])
+            const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+            a.download = `fleet-status-${todayStr()}-${label.toLowerCase().replace(/ /g, '-')}.csv`
+            a.click()
+          } else {
+            await downloadFleetStatusPdf(filtered, label, todayStr())
+          }
         }
       }
       else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, endDate, format)
@@ -491,10 +561,9 @@ const fuelQuery = useQuery({
           )
         })()}
 
-        {/* Fleet Status — chip filters (always today, no date picker) */}
+        {/* Fleet Status — Detail/Summary sub-tabs + chip filters */}
         {tab === 'fleet-status' && (() => {
           const allRows = fleetQuery.data?.data ?? []
-          // count by chip key, splitting IN_REPAIR into two
           const counts: Record<string, number> = {}
           for (const r of allRows) {
             if (r.currentStatus === 'IN_REPAIR') {
@@ -507,7 +576,7 @@ const fuelQuery = useQuery({
           const CHIP_ORDER = ['AVAILABLE', 'ASSIGNED', 'ON_TRIP', 'IN_REPAIR_BREAKDOWN', 'IN_REPAIR_MAINTENANCE', 'BREAKDOWN', 'ON_LEASE', 'OTHER']
           const CHIP_LABELS: Record<string, string> = {
             IN_REPAIR_BREAKDOWN:   'Breakdown In Repair',
-            IN_REPAIR_MAINTENANCE: 'Maintenance In Repair',
+            IN_REPAIR_MAINTENANCE: 'In Service',
           }
           const chips = [
             { value: 'ALL', label: 'All', count: allRows.length, colors: { base: 'bg-feros-navy/10 text-feros-navy border-feros-navy/20', active: 'bg-feros-navy text-white border-feros-navy' } },
@@ -516,15 +585,30 @@ const fuelQuery = useQuery({
               .map(s => ({ value: s, label: CHIP_LABELS[s] ?? s.replace(/_/g, ' '), count: counts[s], colors: STATUS_CHIP_COLORS[s] ?? { base: 'bg-gray-50 text-gray-600 border-gray-200', active: 'bg-gray-600 text-white border-gray-600' } })),
           ]
           return (
-            <div className="flex flex-wrap gap-2">
-              {chips.map(c => (
-                <button key={c.value} onClick={() => setStatusFilter(c.value)}
-                  className={cn('border rounded-lg px-3 py-1.5 text-center min-w-[80px] transition-colors',
-                    statusFilter === c.value ? c.colors.active : c.colors.base)}>
-                  <div className="text-xs font-medium opacity-80">{c.label}</div>
-                  <div className="text-xl font-bold">{c.count}</div>
-                </button>
-              ))}
+            <div className="flex flex-col gap-3 w-full">
+              {/* Detail / Summary sub-tabs */}
+              <div className="flex gap-1">
+                {(['detail', 'summary'] as const).map(v => (
+                  <button key={v} onClick={() => setFleetView(v)}
+                    className={cn('px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                      fleetView === v ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
+                    {v === 'detail' ? 'Detail' : 'Summary'}
+                  </button>
+                ))}
+              </div>
+              {/* Chip filter — only for detail view */}
+              {fleetView === 'detail' && (
+                <div className="flex flex-wrap gap-2">
+                  {chips.map(c => (
+                    <button key={c.value} onClick={() => setStatusFilter(c.value)}
+                      className={cn('border rounded-lg px-3 py-1.5 text-center min-w-[80px] transition-colors',
+                        statusFilter === c.value ? c.colors.active : c.colors.base)}>
+                      <div className="text-xs font-medium opacity-80">{c.label}</div>
+                      <div className="text-xl font-bold">{c.count}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })()}
@@ -694,13 +778,17 @@ const fuelQuery = useQuery({
         )}
         loading={vehicleMasterQuery.isLoading}
       />}
-      {tab === 'fleet-status'  && <FleetTable
+      {tab === 'fleet-status' && fleetView === 'detail' && <FleetTable
         rows={(fleetQuery.data?.data ?? []).filter(r => {
           if (statusFilter === 'ALL') return true
           if (statusFilter === 'IN_REPAIR_BREAKDOWN') return r.currentStatus === 'IN_REPAIR' && r.inRepairType === 'BREAKDOWN'
           if (statusFilter === 'IN_REPAIR_MAINTENANCE') return r.currentStatus === 'IN_REPAIR' && r.inRepairType !== 'BREAKDOWN'
           return r.currentStatus === statusFilter
         })}
+        loading={fleetQuery.isLoading}
+      />}
+      {tab === 'fleet-status' && fleetView === 'summary' && <FleetSummaryTable
+        rows={fleetQuery.data?.data ?? []}
         loading={fleetQuery.isLoading}
       />}
 {tab === 'fuel-mileage'  && <FuelMileageTable rows={(fuelQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}        loading={fuelQuery.isLoading} />}
