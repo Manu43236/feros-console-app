@@ -29,6 +29,13 @@ const S = StyleSheet.create({
     width: 210,
     opacity: 0.08,
   },
+  watermarkLandscape: {
+    position: 'absolute',
+    top: 192,
+    left: 316,
+    width: 210,
+    opacity: 0.08,
+  },
   header: { marginBottom: 8 },
   title: { fontSize: 13, fontWeight: 'bold', color: NAVY, textAlign: 'center' },
   subtitle: { fontSize: 9, textAlign: 'center', color: '#555', marginTop: 2 },
@@ -179,7 +186,7 @@ function FleetStatusSummaryDoc({ rows, date }: { rows: FleetSummaryRow[]; date: 
   return (
     <Document>
       <Page size="A4" orientation="landscape" style={S.page}>
-        <Image src={ferosLogo} style={S.watermark} />
+        <Image src={ferosLogo} style={S.watermarkLandscape} />
         <View style={S.header}>
           <Text style={S.title}>Fleet Status Summary Report</Text>
           <Text style={S.subtitle}>Date: {formatDate(date)}</Text>
@@ -230,7 +237,7 @@ function TripSummaryDoc({ rows, startDate, endDate }: { rows: TripSummaryRow[]; 
   return (
     <Document>
       <Page size="A4" orientation="landscape" style={S.page}>
-        <Image src={ferosLogo} style={S.watermark} />
+        <Image src={ferosLogo} style={S.watermarkLandscape} />
         <View style={S.header}>
           <Text style={S.title}>Trip Summary Report</Text>
           <Text style={S.subtitle}>{formatDate(startDate)} to {formatDate(endDate)} · {rows.length} records</Text>
