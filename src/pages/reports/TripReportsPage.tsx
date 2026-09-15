@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Download, FileText, AlertTriangle, Clock, Truck, Users, Route } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { SearchableSelect, MultiSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
@@ -322,18 +321,18 @@ export default function TripReportsPage() {
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
   const [orderFilter, setOrderFilter] = useState('ALL')
   const [thresholdDays, setThresholdDays] = useState(3)
-  const [orderNumberFilter, setOrderNumberFilter] = useState('')
   const [tsClientFilters, setTsClientFilters] = useState<string[]>([])
   const [tsOrderFilters, setTsOrderFilters] = useState<string[]>([])
+  const [tsStatusFilters, setTsStatusFilters] = useState<string[]>([])
 
   function handleTabChange(key: TabKey) {
     setTab(key)
     setClientFilter('ALL')
     setVehicleFilter('ALL')
     setOrderFilter('ALL')
-    setOrderNumberFilter('')
     setTsClientFilters([])
     setTsOrderFilters([])
+    setTsStatusFilters([])
   }
 
   function applyPreset(p: DatePreset) {
@@ -370,8 +369,8 @@ export default function TripReportsPage() {
     enabled: tab === 'client-summary',
   })
   const tripSummaryQuery = useQuery({
-    queryKey: ['report-trip-summary', startDate, endDate, orderNumberFilter],
-    queryFn: () => reportsApi.getTripSummary(startDate, endDate, orderNumberFilter || undefined),
+    queryKey: ['report-trip-summary', startDate, endDate],
+    queryFn: () => reportsApi.getTripSummary(startDate, endDate, undefined),
     enabled: tab === 'trip-summary',
   })
 
@@ -464,9 +463,12 @@ export default function TripReportsPage() {
   const tsClientOptions = tsClients.map(c => ({ value: c, label: c }))
   const tsOrders = Array.from(new Set(allTripSummaryRows.map(r => r.orderNumber).filter(Boolean))).sort()
   const tsOrderOptions = tsOrders.map(o => ({ value: o, label: o }))
+  const tsStatuses = Array.from(new Set(allTripSummaryRows.map(r => r.lrStatus).filter(Boolean))).sort()
+  const tsStatusOptions = tsStatuses.map(s => ({ value: s, label: s.replace(/_/g, ' ') }))
   const filteredTripSummaryRows = allTripSummaryRows.filter(r =>
     (tsClientFilters.length === 0 || tsClientFilters.includes(r.clientName)) &&
-    (tsOrderFilters.length === 0 || tsOrderFilters.includes(r.orderNumber))
+    (tsOrderFilters.length === 0 || tsOrderFilters.includes(r.orderNumber)) &&
+    (tsStatusFilters.length === 0 || tsStatusFilters.includes(r.lrStatus))
   )
 
   return (
@@ -502,15 +504,6 @@ export default function TripReportsPage() {
         {tab === 'trip-summary' && (
           <>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Order Number</label>
-              <Input
-                placeholder="Search order…"
-                value={orderNumberFilter}
-                onChange={e => setOrderNumberFilter(e.target.value)}
-                className="w-52"
-              />
-            </div>
-            <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Client</label>
               <MultiSelect
                 values={tsClientFilters}
@@ -528,6 +521,16 @@ export default function TripReportsPage() {
                 options={tsOrderOptions}
                 placeholder="All Orders"
                 className="w-48"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+              <MultiSelect
+                values={tsStatusFilters}
+                onValuesChange={setTsStatusFilters}
+                options={tsStatusOptions}
+                placeholder="All Statuses"
+                className="w-44"
               />
             </div>
           </>
