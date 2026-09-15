@@ -82,3 +82,14 @@ export const vehicleServicesApi = {
   deleteVendorItem:     (id: number, itemId: number) =>
     apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}/vendor-items/${itemId}`).then(r => r.data),
 }
+
+export const vehicleBreakdownApi = {
+  report: (vehicleId: number, data: {
+    breakdownType: string
+    breakdownDuration: string
+    breakdownDate: string
+    reason: string
+    location?: string
+    notes?: string
+  }) => apiClient.post<ApiResponse<unknown>>(`/vehicles/${vehicleId}/breakdown`, data).then(r => r.data),
+}
