@@ -1411,6 +1411,13 @@ export interface VehicleServiceTask {
   mechanicClosedAt?: string
 }
 
+export interface ServiceAttachment {
+  id: number | null  // null = legacy single-url entry (not deletable)
+  type: 'ESTIMATE' | 'BILL'
+  url: string
+  uploadedAt?: string
+}
+
 export interface VehicleServiceRecord {
   id: number
   tenantId: number
@@ -1435,6 +1442,8 @@ export interface VehicleServiceRecord {
   completedCost?: number
   estimateDocUrl?: string
   billDocUrl?: string
+  estimateAttachments?: ServiceAttachment[]
+  billAttachments?: ServiceAttachment[]
   insuranceClaimNo?: string
   insuranceClaimAmt?: number
   certificateNumber?: string
@@ -1638,6 +1647,8 @@ export interface SmServiceItem {
   totalCost?: number
   estimateDocUrl?: string
   billDocUrl?: string
+  estimateAttachments?: ServiceAttachment[]
+  billAttachments?: ServiceAttachment[]
   vendorItems?: Array<{ id: number; description: string; cost?: number }>
   tasks: SmTaskItem[]
 }

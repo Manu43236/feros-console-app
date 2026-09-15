@@ -139,6 +139,8 @@ function svcToBoard(s: SmServiceItem): BoardService {
     totalCost: s.totalCost,
     estimateDocUrl: s.estimateDocUrl,
     billDocUrl: s.billDocUrl,
+    estimateAttachments: s.estimateAttachments,
+    billAttachments: s.billAttachments,
     vendorItems: s.vendorItems,
     tasks: s.tasks.map(t => ({
       id: t.taskId,
@@ -213,16 +215,18 @@ function VehicleServiceManagerView() {
     onRequestPart: (serviceId, taskId, body) => servicePartsApi.request(serviceId, { ...body, taskId }),
     onComplete: (serviceId, body) => vehicleServicesApi.complete(serviceId, { completedDate: body.completedDate, odometer: body.odometer, completedCost: body.completedCost }),
     onUploadBillDoc: async (serviceId, file) => {
-      const res = await vehicleServicesApi.uploadBillDoc(serviceId, await compressImage(file))
+      const res = await vehicleServicesApi.addAttachment(serviceId, 'BILL', await compressImage(file))
       qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
-      return res.data?.billDocUrl
+      return res.data?.url
     },
     onLogService: (b) => setLogService({ vehicleId: b.assetId, vehicleReg: b.assetName, breakdownId: b.id }),
     onCreateGeneralService: openVehiclePicker,
-    onUploadDoc: async (serviceId, type, file) => {
-      const compressed = await compressImage(file)
-      const fn = type === 'estimate' ? vehicleServicesApi.uploadEstimateDoc : vehicleServicesApi.uploadBillDoc
-      await fn(serviceId, compressed)
+    onAddAttachment: async (serviceId, type, file) => {
+      await vehicleServicesApi.addAttachment(serviceId, type, await compressImage(file))
+      qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
+    },
+    onDeleteAttachment: async (serviceId, attachmentId) => {
+      await vehicleServicesApi.deleteAttachment(serviceId, attachmentId)
       qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
     },
     onOpenPdf: (id) => window.open(`/vehicle-services/${id}/pdf`, '_blank'),

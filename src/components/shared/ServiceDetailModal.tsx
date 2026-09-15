@@ -4,13 +4,13 @@ import { format, parseISO, isValid } from 'date-fns'
 import {
   Wrench, MapPin, Calendar, IndianRupee, FileText,
   CheckCircle, Clock, Circle, Package, User, Play, CheckCircle2,
-  Upload, ExternalLink, FileImage, Download,
+  ExternalLink, FileImage, Download, Trash2, Plus,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { servicePartsApi } from '@/api/inventory'
 import { vehicleServicesApi } from '@/api/vehicles'
 import { toast } from 'sonner'
-import type { VehicleServiceRecord, ServicePart } from '@/types'
+import type { VehicleServiceRecord, ServicePart, ServiceAttachment } from '@/types'
 import { cn } from '@/lib/utils'
 
 function calcDuration(start?: string | null, end?: string | null): string | null {
@@ -98,44 +98,50 @@ interface Props {
   onClose: () => void
 }
 
-function DocUploadCard({
-  label, url, onUpload, uploading,
-}: { label: string; url?: string; onUpload: (f: File) => void; uploading: boolean }) {
+function MultiDocUploadCard({
+  label, attachments, onAdd, onDelete, uploading,
+}: {
+  label: string
+  attachments: ServiceAttachment[]
+  onAdd: (f: File) => void
+  onDelete: (id: number) => void
+  uploading: boolean
+}) {
   const ref = useRef<HTMLInputElement>(null)
-  const isImage = url && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url)
   return (
     <div className="border border-gray-100 rounded-lg p-3 space-y-2">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
         <FileImage size={12} /> {label}
       </p>
-      {url ? (
-        <div className="space-y-2">
-          {isImage
-            ? <img src={url} alt={label} className="w-full rounded max-h-40 object-contain bg-gray-50" />
-            : (
-              <a href={url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline">
-                <ExternalLink size={12} /> View {label}
+      {attachments.length > 0 && (
+        <div className="space-y-1.5">
+          {attachments.map((a, i) => (
+            <div key={a.id ?? `legacy-${i}`} className="flex items-center gap-2 group">
+              <a href={a.url} target="_blank" rel="noopener noreferrer"
+                className="flex-1 flex items-center gap-1.5 text-xs text-blue-600 hover:underline truncate">
+                <ExternalLink size={11} className="shrink-0" />
+                <span className="truncate">{label} {attachments.length > 1 ? i + 1 : ''}</span>
               </a>
-            )
-          }
-          <button
-            onClick={() => ref.current?.click()}
-            disabled={uploading}
-            className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-            <Upload size={11} /> Replace
-          </button>
+              {a.id !== null && (
+                <button
+                  onClick={() => onDelete(a.id!)}
+                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  title="Remove">
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
-      ) : (
-        <button
-          onClick={() => ref.current?.click()}
-          disabled={uploading}
-          className="w-full border-2 border-dashed border-gray-200 rounded-lg py-3 text-xs text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-1.5">
-          <Upload size={12} /> {uploading ? 'Uploading…' : `Upload ${label}`}
-        </button>
       )}
+      <button
+        onClick={() => ref.current?.click()}
+        disabled={uploading}
+        className="w-full border-2 border-dashed border-gray-200 rounded-lg py-2 text-xs text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-1.5">
+        <Plus size={12} /> {uploading ? 'Uploading…' : `Add ${label}`}
+      </button>
       <input ref={ref} type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = '' }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) onAdd(f); e.target.value = '' }} />
     </div>
   )
 }
@@ -143,7 +149,8 @@ function DocUploadCard({
 export function ServiceDetailModal({ service, open, onClose }: Props) {
   const qc = useQueryClient()
   const [uploadingEstimate, setUploadingEstimate] = useState(false)
-  const [uploadingBill, setUploadingBill]         = useState(false)
+  const [uploadingBill, setUploadingBill] = useState(false)
+  const [, setDeletingId] = useState<number | null>(null)
 
   const { data: partsData } = useQuery({
     queryKey: ['service-parts', service?.id],
@@ -152,19 +159,32 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
   })
   const parts: ServicePart[] = partsData?.data ?? []
 
-  async function handleUpload(type: 'estimate' | 'bill', file: File) {
+  async function handleAdd(type: 'ESTIMATE' | 'BILL', file: File) {
     if (!service) return
-    const setter = type === 'estimate' ? setUploadingEstimate : setUploadingBill
+    const setter = type === 'ESTIMATE' ? setUploadingEstimate : setUploadingBill
     setter(true)
     try {
-      const fn = type === 'estimate' ? vehicleServicesApi.uploadEstimateDoc : vehicleServicesApi.uploadBillDoc
-      await fn(service.id, file)
+      await vehicleServicesApi.addAttachment(service.id, type, file)
       qc.invalidateQueries({ queryKey: ['vehicle-services'] })
-      toast.success(`${type === 'estimate' ? 'Estimate' : 'Bill'} document uploaded`)
+      toast.success(`${type === 'ESTIMATE' ? 'Estimate' : 'Bill'} uploaded`)
     } catch {
       toast.error('Upload failed')
     } finally {
       setter(false)
+    }
+  }
+
+  async function handleDeleteAttachment(attachmentId: number) {
+    if (!service) return
+    setDeletingId(attachmentId)
+    try {
+      await vehicleServicesApi.deleteAttachment(service.id, attachmentId)
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+      toast.success('Attachment removed')
+    } catch {
+      toast.error('Failed to remove attachment')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -420,17 +440,19 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
               <FileText size={12} /> Documents
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <DocUploadCard
+              <MultiDocUploadCard
                 label="Estimate"
-                url={service.estimateDocUrl}
+                attachments={service.estimateAttachments ?? []}
                 uploading={uploadingEstimate}
-                onUpload={f => handleUpload('estimate', f)}
+                onAdd={f => handleAdd('ESTIMATE', f)}
+                onDelete={handleDeleteAttachment}
               />
-              <DocUploadCard
+              <MultiDocUploadCard
                 label="Final Bill"
-                url={service.billDocUrl}
+                attachments={service.billAttachments ?? []}
                 uploading={uploadingBill}
-                onUpload={f => handleUpload('bill', f)}
+                onAdd={f => handleAdd('BILL', f)}
+                onDelete={handleDeleteAttachment}
               />
             </div>
           </div>

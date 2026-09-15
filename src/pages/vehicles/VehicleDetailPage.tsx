@@ -919,16 +919,23 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
 
   const isThirdParty = s.serviceType === 'THIRD_PARTY' || s.serviceType === 'OEM_CENTER'
 
-  async function upload(type: 'estimate' | 'bill', file: File) {
-    const set = type === 'estimate' ? setUploadingEst : setUploadingBill
-    const fn  = type === 'estimate' ? vehicleServicesApi.uploadEstimateDoc : vehicleServicesApi.uploadBillDoc
+  async function upload(type: 'ESTIMATE' | 'BILL', file: File) {
+    const set = type === 'ESTIMATE' ? setUploadingEst : setUploadingBill
     set(true)
     try {
-      await fn(s.id, await compressImage(file))
+      await vehicleServicesApi.addAttachment(s.id, type, await compressImage(file))
       qc.invalidateQueries({ queryKey: ['vehicle-services'] })
-      toast.success(`${type === 'estimate' ? 'Estimate' : 'Bill'} uploaded`)
+      toast.success(`${type === 'ESTIMATE' ? 'Estimate' : 'Bill'} uploaded`)
     } catch { toast.error('Upload failed') }
     finally { set(false) }
+  }
+
+  async function deleteAttachment(attachmentId: number) {
+    try {
+      await vehicleServicesApi.deleteAttachment(s.id, attachmentId)
+      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+      toast.success('Attachment removed')
+    } catch { toast.error('Failed to remove') }
   }
 
   async function addItem() {
@@ -956,9 +963,9 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
   return (
     <div className="border-t border-gray-100 px-4 py-3 bg-gray-50/40 space-y-3">
       <input ref={estRef}  type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) upload('estimate', f); e.target.value = '' }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) upload('ESTIMATE', f); e.target.value = '' }} />
       <input ref={billRef} type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) upload('bill', f); e.target.value = '' }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) upload('BILL', f); e.target.value = '' }} />
 
       {/* Cost amounts */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
@@ -1028,37 +1035,53 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
 
       {/* Doc cards */}
       <div className="flex items-start gap-2">
-        {/* Estimate doc — always shown */}
-        <div className="flex-1 border border-gray-200 rounded-lg p-2.5 bg-white min-w-0">
-          <p className="text-xs font-medium text-gray-500 mb-1.5">Estimate Doc</p>
-          {s.estimateDocUrl ? (
-            <a href={s.estimateDocUrl} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
-              <ExternalLink size={11} /> View
-            </a>
-          ) : (
-            <button onClick={() => estRef.current?.click()} disabled={uploadingEst}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
-              <Upload size={11} /> {uploadingEst ? 'Uploading…' : 'Upload'}
-            </button>
-          )}
+        {/* Estimate docs */}
+        <div className="flex-1 border border-gray-200 rounded-lg p-2.5 bg-white min-w-0 space-y-1.5">
+          <p className="text-xs font-medium text-gray-500">Estimate Docs</p>
+          {(s.estimateAttachments ?? []).map((a, i) => (
+            <div key={a.id ?? `l-${i}`} className="flex items-center gap-1 group">
+              <a href={a.url} target="_blank" rel="noopener noreferrer"
+                className="flex-1 flex items-center gap-1 text-xs text-blue-600 hover:underline truncate">
+                <ExternalLink size={10} className="shrink-0" />
+                <span className="truncate">Estimate {(s.estimateAttachments?.length ?? 0) > 1 ? i + 1 : ''}</span>
+              </a>
+              {a.id !== null && (
+                <button onClick={() => deleteAttachment(a.id!)}
+                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <X size={10} />
+                </button>
+              )}
+            </div>
+          ))}
+          <button onClick={() => estRef.current?.click()} disabled={uploadingEst}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
+            <Upload size={10} /> {uploadingEst ? 'Uploading…' : 'Add'}
+          </button>
         </div>
 
-        {/* Bill doc — only when completed */}
+        {/* Bill docs — only when completed */}
         {isCompleted && (
-          <div className="flex-1 border border-gray-200 rounded-lg p-2.5 bg-white min-w-0">
-            <p className="text-xs font-medium text-gray-500 mb-1.5">Bill Doc</p>
-            {s.billDocUrl ? (
-              <a href={s.billDocUrl} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
-                <ExternalLink size={11} /> View
-              </a>
-            ) : (
-              <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
-                className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
-                <Upload size={11} /> {uploadingBill ? 'Uploading…' : 'Upload'}
-              </button>
-            )}
+          <div className="flex-1 border border-gray-200 rounded-lg p-2.5 bg-white min-w-0 space-y-1.5">
+            <p className="text-xs font-medium text-gray-500">Bill Docs</p>
+            {(s.billAttachments ?? []).map((a, i) => (
+              <div key={a.id ?? `l-${i}`} className="flex items-center gap-1 group">
+                <a href={a.url} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 flex items-center gap-1 text-xs text-blue-600 hover:underline truncate">
+                  <ExternalLink size={10} className="shrink-0" />
+                  <span className="truncate">Bill {(s.billAttachments?.length ?? 0) > 1 ? i + 1 : ''}</span>
+                </a>
+                {a.id !== null && (
+                  <button onClick={() => deleteAttachment(a.id!)}
+                    className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <X size={10} />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
+              <Upload size={10} /> {uploadingBill ? 'Uploading…' : 'Add'}
+            </button>
           </div>
         )}
 
@@ -1583,7 +1606,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
         serviceId={completeService?.id ?? 0}
         serviceNumber={completeService?.serviceNumber}
         currentOdometer={currentOdometer ?? completeService?.odometer}
-        existingBillDocUrl={completeService?.billDocUrl}
+        existingBillDocUrl={completeService?.billAttachments?.[0]?.url ?? completeService?.billDocUrl}
         onComplete={async (data) => {
           await vehicleServicesApi.complete(completeService!.id, data)
           qc.invalidateQueries({ queryKey: ['vehicle-services'] })
@@ -1592,8 +1615,8 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
           qc.invalidateQueries({ queryKey: ['vehicles'] })
         }}
         onUploadBill={async (serviceId, file) => {
-          const res = await vehicleServicesApi.uploadBillDoc(serviceId, await compressImage(file))
-          return res.data?.billDocUrl
+          const res = await vehicleServicesApi.addAttachment(serviceId, 'BILL', await compressImage(file))
+          return res.data?.url
         }}
         onClose={() => setCompleteService(null)}
       />

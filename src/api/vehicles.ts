@@ -75,6 +75,12 @@ export const vehicleServicesApi = {
     const fd = new FormData(); fd.append('file', file)
     return apiClient.post<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/bill-doc`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
   },
+  addAttachment: (id: number, type: 'ESTIMATE' | 'BILL', file: File) => {
+    const fd = new FormData(); fd.append('file', file); fd.append('type', type)
+    return apiClient.post<ApiResponse<import('@/types').ServiceAttachment>>(`/vehicle-services/${id}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+  },
+  deleteAttachment: (id: number, attachmentId: number) =>
+    apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}/attachments/${attachmentId}`).then(r => r.data),
   complete:             (id: number, data: { completedDate: string; odometer?: number; completedCost?: number }) => apiClient.put<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}/complete`, data).then(r => r.data),
   delete:               (id: number)                     => apiClient.delete<ApiResponse<void>>(`/vehicle-services/${id}`).then(r => r.data),
   addVendorItem:        (id: number, description: string, cost?: number) =>

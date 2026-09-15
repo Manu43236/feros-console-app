@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Wrench, AlertTriangle, CheckCircle2, Clock, User, ChevronDown, ChevronUp, Plus, UserCheck,
-  MapPin, Calendar, StickyNote, Store, IndianRupee, Upload, ExternalLink, FileImage, Download, X,
+  MapPin, Calendar, StickyNote, Store, IndianRupee, ExternalLink, FileImage, Download, X, Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -33,6 +33,8 @@ export interface BoardService {
   vendorName?: string; location?: string; notes?: string
   estimatedCost?: number; completedCost?: number; totalCost?: number
   estimateDocUrl?: string; billDocUrl?: string
+  estimateAttachments?: Array<{ id: number | null; url: string }>
+  billAttachments?: Array<{ id: number | null; url: string }>
   vendorItems?: Array<{ id: number; description: string; cost?: number }>
 }
 export interface BoardBreakdown {
@@ -57,6 +59,8 @@ export interface ServiceBoardConfig {
   onLogService: (b: BoardBreakdown) => void
   onCreateGeneralService?: () => void
   onUploadDoc?: (serviceId: number, type: 'estimate' | 'bill', file: File) => Promise<void>
+  onAddAttachment?: (serviceId: number, type: 'ESTIMATE' | 'BILL', file: File) => Promise<void>
+  onDeleteAttachment?: (serviceId: number, attachmentId: number) => Promise<void>
   onOpenPdf?: (serviceId: number) => void
   onAddVendorItem?: (serviceId: number, description: string, cost?: number) => Promise<unknown>
   onDeleteVendorItem?: (serviceId: number, itemId: number) => Promise<unknown>
@@ -293,10 +297,15 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
     } catch { toast.error('Failed to remove part') }
   }
 
-  async function upload(type: 'estimate' | 'bill', file: File) {
-    if (!cfg.onUploadDoc) return
-    setUploading(type)
-    try { await cfg.onUploadDoc(service.id, type, file) } finally { setUploading(null) }
+  async function addAttachment(type: 'ESTIMATE' | 'BILL', file: File) {
+    if (!cfg.onAddAttachment) return
+    setUploading(type === 'ESTIMATE' ? 'estimate' : 'bill')
+    try { await cfg.onAddAttachment(service.id, type, file) } finally { setUploading(null) }
+  }
+
+  async function deleteAttachment(attachmentId: number) {
+    if (!cfg.onDeleteAttachment) return
+    try { await cfg.onDeleteAttachment(service.id, attachmentId) } catch { toast.error('Failed to remove') }
   }
 
   const isThirdParty = service.serviceType === 'THIRD_PARTY' || service.serviceType === 'OEM_CENTER'
@@ -304,36 +313,48 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
   const totalTaskCost = service.tasks.reduce((s, t) => s + (t.cost ?? 0), 0)
   const hasAnyCost = (service.estimatedCost ?? 0) > 0 || totalVendorCost > 0 || totalTaskCost > 0 || (service.completedCost ?? 0) > 0
 
-  function SmallDoc({ label, url, type, inputRef }: { label: string; url?: string; type: 'estimate' | 'bill'; inputRef: React.RefObject<HTMLInputElement | null> }) {
-    const isImg = url && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url)
+  function SmallMultiDoc({ label, attachments, type, inputRef }: {
+    label: string
+    attachments: Array<{ id: number | null; url: string }>
+    type: 'ESTIMATE' | 'BILL'
+    inputRef: React.RefObject<HTMLInputElement | null>
+  }) {
+    const uType = type === 'ESTIMATE' ? 'estimate' : 'bill'
     return (
       <div className="border border-gray-100 rounded-lg p-2.5 space-y-1.5">
         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1">
           <FileImage size={10} /> {label}
         </p>
-        {url ? (
-          <>
-            {isImg
-              ? <img src={url} alt={label} className="w-full rounded max-h-32 object-contain bg-gray-50 cursor-pointer" onClick={() => window.open(url, '_blank')} />
-              : <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink size={10} /> View {label}</a>
-            }
-            {cfg.onUploadDoc && (
-              <button disabled={uploading === type} onClick={() => inputRef.current?.click()}
-                className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-0.5">
-                <Upload size={9} /> {uploading === type ? 'Uploading…' : 'Replace'}
-              </button>
-            )}
-          </>
-        ) : cfg.onUploadDoc ? (
-          <button disabled={uploading === type} onClick={() => inputRef.current?.click()}
-            className="w-full border-2 border-dashed border-gray-200 rounded py-2 text-[10px] text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-1">
-            <Upload size={10} />{uploading === type ? 'Uploading…' : `Upload ${label}`}
+        {attachments.length > 0 && (
+          <div className="space-y-1">
+            {attachments.map((a, i) => (
+              <div key={a.id ?? `l-${i}`} className="flex items-center gap-1 group">
+                <a href={a.url} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 flex items-center gap-0.5 text-xs text-blue-600 hover:underline truncate">
+                  <ExternalLink size={10} className="shrink-0" />
+                  <span className="truncate">{label}{attachments.length > 1 ? ` ${i + 1}` : ''}</span>
+                </a>
+                {a.id !== null && cfg.onDeleteAttachment && (
+                  <button onClick={() => deleteAttachment(a.id!)}
+                    className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <Trash2 size={10} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {cfg.onAddAttachment && (
+          <button disabled={uploading === uType} onClick={() => inputRef.current?.click()}
+            className="w-full border border-dashed border-gray-200 rounded py-1.5 text-[10px] text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-0.5">
+            <Plus size={9} />{uploading === uType ? 'Uploading…' : `Add ${label}`}
           </button>
-        ) : (
+        )}
+        {!cfg.onAddAttachment && attachments.length === 0 && (
           <p className="text-[10px] text-gray-300">Not uploaded</p>
         )}
         <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden"
-          onChange={e => { const f = e.target.files?.[0]; if (f) upload(type, f); e.target.value = '' }} />
+          onChange={e => { const f = e.target.files?.[0]; if (f) addAttachment(type, f); e.target.value = '' }} />
       </div>
     )
   }
@@ -439,8 +460,8 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <SmallDoc label="Estimate" url={service.estimateDocUrl} type="estimate" inputRef={estimateRef} />
-          <SmallDoc label="Final Bill" url={service.billDocUrl} type="bill" inputRef={billRef} />
+          <SmallMultiDoc label="Estimate" attachments={service.estimateAttachments ?? []} type="ESTIMATE" inputRef={estimateRef} />
+          <SmallMultiDoc label="Final Bill" attachments={service.billAttachments ?? []} type="BILL" inputRef={billRef} />
         </div>
       </div>
     </div>
@@ -523,7 +544,7 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
           serviceId={service.id}
           serviceNumber={service.serviceNumber}
           meterLabel={cfg.meterLabel}
-          existingBillDocUrl={service.billDocUrl}
+          existingBillDocUrl={service.billAttachments?.[0]?.url ?? service.billDocUrl}
           onComplete={async (data) => { await cfg.onComplete(service.id, data); cfg.onChanged() }}
           onUploadBill={cfg.onUploadBillDoc}
           onClose={() => setCompleteOpen(false)}
