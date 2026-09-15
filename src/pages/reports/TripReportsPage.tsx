@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Download, FileText, AlertTriangle, Clock, Truck, Users, Route } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { SearchableSelect } from '@/components/ui/searchable-select'
+import { SearchableSelect, MultiSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import { downloadTripSummaryPdf } from './DailyFleetAttendancePdf'
@@ -262,11 +262,12 @@ const LR_STATUS_COLORS: Record<string, string> = {
 function TripSummaryTable({ rows, loading }: { rows: TripSummaryRow[]; loading: boolean }) {
   return <ReportTable
     loading={loading}
-    headers={['Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Trip Start', 'Delivery Time', 'Duration', 'Driver', 'Status']}
+    headers={['Order No.', 'Client', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Trip Start', 'Delivery Time', 'Duration', 'Driver', 'Status']}
     rows={rows.map(r => {
       const cls = LR_STATUS_COLORS[r.lrStatus] ?? 'bg-gray-100 text-gray-600'
       return [
         <span className="font-medium text-feros-navy">{r.orderNumber}</span>,
+        <span className="font-medium">{r.clientName}</span>,
         fmtDateTime(r.orderCreatedAt),
         dash(r.material),
         <span className="font-medium text-feros-navy">{r.lrNumber}</span>,
@@ -322,6 +323,8 @@ export default function TripReportsPage() {
   const [orderFilter, setOrderFilter] = useState('ALL')
   const [thresholdDays, setThresholdDays] = useState(3)
   const [orderNumberFilter, setOrderNumberFilter] = useState('')
+  const [tsClientFilters, setTsClientFilters] = useState<string[]>([])
+  const [tsOrderFilters, setTsOrderFilters] = useState<string[]>([])
 
   function handleTabChange(key: TabKey) {
     setTab(key)
@@ -329,6 +332,8 @@ export default function TripReportsPage() {
     setVehicleFilter('ALL')
     setOrderFilter('ALL')
     setOrderNumberFilter('')
+    setTsClientFilters([])
+    setTsOrderFilters([])
   }
 
   function applyPreset(p: DatePreset) {
@@ -385,11 +390,11 @@ export default function TripReportsPage() {
       } else if (tab === 'client-summary') {
         await reportsApi.exportClientTripSummary(startDate, endDate, format)
       } else if (tab === 'trip-summary') {
-        const rows = tripSummaryQuery.data?.data ?? []
+        const rows = filteredTripSummaryRows
         if (format === 'csv') {
-          const header = ['#', 'Order No.', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Trip Start', 'Delivery Time', 'Duration (hrs)', 'Driver', 'Status']
+          const header = ['#', 'Order No.', 'Client', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Trip Start', 'Delivery Time', 'Duration (hrs)', 'Driver', 'Status']
           const csvRows = rows.map((r, i) => [
-            i + 1, r.orderNumber, fmtDateTime(r.orderCreatedAt) ?? '—', r.material,
+            i + 1, r.orderNumber, r.clientName, fmtDateTime(r.orderCreatedAt) ?? '—', r.material,
             r.lrNumber, fmtDateTime(r.lrCreatedAt) ?? '—', r.registrationNumber,
             fmtDateTime(r.vehicleAssignedAt) ?? '—', fmtDateTime(r.tripStartTime) ?? '—',
             fmtDateTime(r.tripEndTime) ?? '—', r.durationHours ?? '—', r.driverName, r.lrStatus,
@@ -454,6 +459,16 @@ export default function TripReportsPage() {
     vehicleFilter === 'ALL' || r.vehicleRegistrationNumber === vehicleFilter
   )
 
+  const allTripSummaryRows = tripSummaryQuery.data?.data ?? []
+  const tsClients = Array.from(new Set(allTripSummaryRows.map(r => r.clientName).filter(Boolean))).sort()
+  const tsClientOptions = tsClients.map(c => ({ value: c, label: c }))
+  const tsOrders = Array.from(new Set(allTripSummaryRows.map(r => r.orderNumber).filter(Boolean))).sort()
+  const tsOrderOptions = tsOrders.map(o => ({ value: o, label: o }))
+  const filteredTripSummaryRows = allTripSummaryRows.filter(r =>
+    (tsClientFilters.length === 0 || tsClientFilters.includes(r.clientName)) &&
+    (tsOrderFilters.length === 0 || tsOrderFilters.includes(r.orderNumber))
+  )
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -483,17 +498,39 @@ export default function TripReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
-        {/* Trip Summary — order number filter */}
+        {/* Trip Summary filters */}
         {tab === 'trip-summary' && (
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Order Number</label>
-            <Input
-              placeholder="Search order…"
-              value={orderNumberFilter}
-              onChange={e => setOrderNumberFilter(e.target.value)}
-              className="w-52"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Order Number</label>
+              <Input
+                placeholder="Search order…"
+                value={orderNumberFilter}
+                onChange={e => setOrderNumberFilter(e.target.value)}
+                className="w-52"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Client</label>
+              <MultiSelect
+                values={tsClientFilters}
+                onValuesChange={setTsClientFilters}
+                options={tsClientOptions}
+                placeholder="All Clients"
+                className="w-48"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Order No.</label>
+              <MultiSelect
+                values={tsOrderFilters}
+                onValuesChange={setTsOrderFilters}
+                options={tsOrderOptions}
+                placeholder="All Orders"
+                className="w-48"
+              />
+            </div>
+          </>
         )}
 
         {/* Vehicle filter — detail tabs only */}
@@ -611,7 +648,7 @@ export default function TripReportsPage() {
       {tab === 'delayed-deliveries' && <DelayedDeliveriesTable rows={filteredDelayedRows}                         loading={delayedQuery.isLoading} />}
       {tab === 'vehicle-summary'    && <VehicleSummaryTable    rows={vehicleSummaryQuery.data?.data ?? []}        loading={vehicleSummaryQuery.isLoading} />}
       {tab === 'client-summary'     && <ClientSummaryTable     rows={clientSummaryQuery.data?.data ?? []}         loading={clientSummaryQuery.isLoading} />}
-      {tab === 'trip-summary'       && <TripSummaryTable       rows={tripSummaryQuery.data?.data ?? []}           loading={tripSummaryQuery.isLoading} />}
+      {tab === 'trip-summary'       && <TripSummaryTable       rows={filteredTripSummaryRows}                      loading={tripSummaryQuery.isLoading} />}
     </div>
   )
 }

@@ -521,10 +521,10 @@ const clientSummaryQuery = useQuery({
     setDownloading(true)
     try {
       if (tab === 'register') {
-        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Fulfilled Wt', 'Freight Amt', 'Vehicles', 'Status', 'Payment']
+        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Duration', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Fulfilled Wt', 'Freight Amt', 'Vehicles', 'Status', 'Payment']
         const rows = registerRows.map(r => [
-          r.orderNumber, r.orderDate, r.expectedDeliveryDate ?? '—', r.clientName, r.materialType,
-          `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`,
+          r.orderNumber, r.orderDate, r.expectedDeliveryDate ?? '—', r.durationDays != null ? `${r.durationDays}d` : '—',
+          r.clientName, r.materialType, `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`,
           String(r.totalWeight ?? '—'), String(r.totalWeightFulfilled ?? '—'), String(r.totalFreightAmount ?? '—'),
           String(r.vehicleCount), r.orderStatus, r.orderPaymentStatus,
         ])

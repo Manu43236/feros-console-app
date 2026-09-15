@@ -2053,6 +2053,7 @@ export interface ClientTripSummaryRow {
 }
 
 export interface TripSummaryRow {
+  clientName: string
   orderNumber: string
   orderCreatedAt: string
   material: string
