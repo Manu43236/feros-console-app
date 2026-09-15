@@ -103,11 +103,17 @@ function MultiDocUploadCard({
 }: {
   label: string
   attachments: ServiceAttachment[]
-  onAdd: (f: File) => void
+  onAdd: (f: File, label: string) => void
   onDelete: (id: number) => void
   uploading: boolean
 }) {
   const ref = useRef<HTMLInputElement>(null)
+  const [adding, setAdding] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+
+  function openForm() { setAdding(true); setNameInput('') }
+  function cancelForm() { setAdding(false); setNameInput('') }
+
   return (
     <div className="border border-gray-100 rounded-lg p-3 space-y-2">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
@@ -120,11 +126,10 @@ function MultiDocUploadCard({
               <a href={a.url} target="_blank" rel="noopener noreferrer"
                 className="flex-1 flex items-center gap-1.5 text-xs text-blue-600 hover:underline truncate">
                 <ExternalLink size={11} className="shrink-0" />
-                <span className="truncate">{label} {attachments.length > 1 ? i + 1 : ''}</span>
+                <span className="truncate">{a.label || `${label}${attachments.length > 1 ? ` ${i + 1}` : ''}`}</span>
               </a>
               {a.id !== null && (
-                <button
-                  onClick={() => onDelete(a.id!)}
+                <button onClick={() => onDelete(a.id!)}
                   className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                   title="Remove">
                   <Trash2 size={12} />
@@ -134,14 +139,37 @@ function MultiDocUploadCard({
           ))}
         </div>
       )}
-      <button
-        onClick={() => ref.current?.click()}
-        disabled={uploading}
-        className="w-full border-2 border-dashed border-gray-200 rounded-lg py-2 text-xs text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-1.5">
-        <Plus size={12} /> {uploading ? 'Uploading…' : `Add ${label}`}
-      </button>
+      {adding ? (
+        <div className="space-y-1.5">
+          <input
+            autoFocus
+            value={nameInput}
+            onChange={e => setNameInput(e.target.value)}
+            placeholder={`Name (e.g. Vendor Quote)`}
+            className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+          <div className="flex gap-1.5">
+            <button onClick={() => ref.current?.click()} disabled={uploading}
+              className="flex-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs py-1.5 flex items-center justify-center gap-1 hover:bg-blue-100">
+              <Plus size={11} />{uploading ? 'Uploading…' : 'Choose File'}
+            </button>
+            <button onClick={cancelForm} className="text-xs text-gray-400 hover:text-gray-600 px-2">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={openForm} disabled={uploading}
+          className="w-full border-2 border-dashed border-gray-200 rounded-lg py-2 text-xs text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-1.5">
+          <Plus size={12} /> {`Add ${label}`}
+        </button>
+      )}
       <input ref={ref} type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) onAdd(f); e.target.value = '' }} />
+        onChange={e => {
+          const f = e.target.files?.[0]
+          if (f) { onAdd(f, nameInput); cancelForm() }
+          e.target.value = ''
+        }} />
     </div>
   )
 }
@@ -159,12 +187,12 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
   })
   const parts: ServicePart[] = partsData?.data ?? []
 
-  async function handleAdd(type: 'ESTIMATE' | 'BILL', file: File) {
+  async function handleAdd(type: 'ESTIMATE' | 'BILL', file: File, label?: string) {
     if (!service) return
     const setter = type === 'ESTIMATE' ? setUploadingEstimate : setUploadingBill
     setter(true)
     try {
-      await vehicleServicesApi.addAttachment(service.id, type, file)
+      await vehicleServicesApi.addAttachment(service.id, type, file, label || undefined)
       qc.invalidateQueries({ queryKey: ['vehicle-services'] })
       toast.success(`${type === 'ESTIMATE' ? 'Estimate' : 'Bill'} uploaded`)
     } catch {
@@ -444,14 +472,14 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
                 label="Estimate"
                 attachments={service.estimateAttachments ?? []}
                 uploading={uploadingEstimate}
-                onAdd={f => handleAdd('ESTIMATE', f)}
+                onAdd={(f, lbl) => handleAdd('ESTIMATE', f, lbl)}
                 onDelete={handleDeleteAttachment}
               />
               <MultiDocUploadCard
                 label="Final Bill"
                 attachments={service.billAttachments ?? []}
                 uploading={uploadingBill}
-                onAdd={f => handleAdd('BILL', f)}
+                onAdd={(f, lbl) => handleAdd('BILL', f, lbl)}
                 onDelete={handleDeleteAttachment}
               />
             </div>

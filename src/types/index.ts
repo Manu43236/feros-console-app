@@ -1415,6 +1415,7 @@ export interface ServiceAttachment {
   id: number | null  // null = legacy single-url entry (not deletable)
   type: 'ESTIMATE' | 'BILL'
   url: string
+  label?: string
   uploadedAt?: string
 }
 

@@ -33,8 +33,8 @@ export interface BoardService {
   vendorName?: string; location?: string; notes?: string
   estimatedCost?: number; completedCost?: number; totalCost?: number
   estimateDocUrl?: string; billDocUrl?: string
-  estimateAttachments?: Array<{ id: number | null; url: string }>
-  billAttachments?: Array<{ id: number | null; url: string }>
+  estimateAttachments?: Array<{ id: number | null; url: string; label?: string }>
+  billAttachments?: Array<{ id: number | null; url: string; label?: string }>
   vendorItems?: Array<{ id: number; description: string; cost?: number }>
 }
 export interface BoardBreakdown {
@@ -59,7 +59,7 @@ export interface ServiceBoardConfig {
   onLogService: (b: BoardBreakdown) => void
   onCreateGeneralService?: () => void
   onUploadDoc?: (serviceId: number, type: 'estimate' | 'bill', file: File) => Promise<void>
-  onAddAttachment?: (serviceId: number, type: 'ESTIMATE' | 'BILL', file: File) => Promise<void>
+  onAddAttachment?: (serviceId: number, type: 'ESTIMATE' | 'BILL', file: File, label?: string) => Promise<void>
   onDeleteAttachment?: (serviceId: number, attachmentId: number) => Promise<void>
   onOpenPdf?: (serviceId: number) => void
   onAddVendorItem?: (serviceId: number, description: string, cost?: number) => Promise<unknown>
@@ -297,15 +297,19 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
     } catch { toast.error('Failed to remove part') }
   }
 
-  async function addAttachment(type: 'ESTIMATE' | 'BILL', file: File) {
+  async function addAttachment(type: 'ESTIMATE' | 'BILL', file: File, label?: string) {
     if (!cfg.onAddAttachment) return
     setUploading(type === 'ESTIMATE' ? 'estimate' : 'bill')
-    try { await cfg.onAddAttachment(service.id, type, file) } finally { setUploading(null) }
+    try { await cfg.onAddAttachment(service.id, type, file, label) } finally { setUploading(null) }
   }
 
   async function deleteAttachment(attachmentId: number) {
     if (!cfg.onDeleteAttachment) return
-    try { await cfg.onDeleteAttachment(service.id, attachmentId) } catch { toast.error('Failed to remove') }
+    try {
+      await cfg.onDeleteAttachment(service.id, attachmentId)
+      cfg.onChanged()
+      toast.success('Attachment removed')
+    } catch { toast.error('Failed to remove') }
   }
 
   const isThirdParty = service.serviceType === 'THIRD_PARTY' || service.serviceType === 'OEM_CENTER'
@@ -315,11 +319,13 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
 
   function SmallMultiDoc({ label, attachments, type, inputRef }: {
     label: string
-    attachments: Array<{ id: number | null; url: string }>
+    attachments: Array<{ id: number | null; url: string; label?: string }>
     type: 'ESTIMATE' | 'BILL'
     inputRef: React.RefObject<HTMLInputElement | null>
   }) {
     const uType = type === 'ESTIMATE' ? 'estimate' : 'bill'
+    const [adding, setAdding] = useState(false)
+    const [nameInput, setNameInput] = useState('')
     return (
       <div className="border border-gray-100 rounded-lg p-2.5 space-y-1.5">
         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1">
@@ -332,7 +338,7 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
                 <a href={a.url} target="_blank" rel="noopener noreferrer"
                   className="flex-1 flex items-center gap-0.5 text-xs text-blue-600 hover:underline truncate">
                   <ExternalLink size={10} className="shrink-0" />
-                  <span className="truncate">{label}{attachments.length > 1 ? ` ${i + 1}` : ''}</span>
+                  <span className="truncate">{a.label || `${label}${attachments.length > 1 ? ` ${i + 1}` : ''}`}</span>
                 </a>
                 {a.id !== null && cfg.onDeleteAttachment && (
                   <button onClick={() => deleteAttachment(a.id!)}
@@ -344,17 +350,35 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
             ))}
           </div>
         )}
-        {cfg.onAddAttachment && (
-          <button disabled={uploading === uType} onClick={() => inputRef.current?.click()}
+        {cfg.onAddAttachment && !adding && (
+          <button disabled={uploading === uType} onClick={() => { setAdding(true); setNameInput('') }}
             className="w-full border border-dashed border-gray-200 rounded py-1.5 text-[10px] text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-0.5">
             <Plus size={9} />{uploading === uType ? 'Uploading…' : `Add ${label}`}
           </button>
+        )}
+        {cfg.onAddAttachment && adding && (
+          <div className="space-y-1">
+            <input autoFocus value={nameInput} onChange={e => setNameInput(e.target.value)}
+              placeholder="Name (e.g. Vendor Quote)"
+              className="w-full text-[10px] border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+            <div className="flex gap-1">
+              <button onClick={() => inputRef.current?.click()} disabled={uploading === uType}
+                className="flex-1 border border-blue-200 bg-blue-50 text-blue-600 rounded py-1 text-[10px] flex items-center justify-center gap-0.5 hover:bg-blue-100">
+                <Plus size={9} />{uploading === uType ? 'Uploading…' : 'Choose File'}
+              </button>
+              <button onClick={() => setAdding(false)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1.5">✕</button>
+            </div>
+          </div>
         )}
         {!cfg.onAddAttachment && attachments.length === 0 && (
           <p className="text-[10px] text-gray-300">Not uploaded</p>
         )}
         <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden"
-          onChange={e => { const f = e.target.files?.[0]; if (f) addAttachment(type, f); e.target.value = '' }} />
+          onChange={e => {
+            const f = e.target.files?.[0]
+            if (f) { addAttachment(type, f, nameInput); setAdding(false); setNameInput('') }
+            e.target.value = ''
+          }} />
       </div>
     )
   }

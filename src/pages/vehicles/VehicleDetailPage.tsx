@@ -912,6 +912,10 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
   const billRef = useRef<HTMLInputElement>(null)
   const [uploadingEst,  setUploadingEst]  = useState(false)
   const [uploadingBill, setUploadingBill] = useState(false)
+  const [addingEstLabel, setAddingEstLabel]   = useState(false)
+  const [addingBillLabel, setAddingBillLabel] = useState(false)
+  const [estLabelInput, setEstLabelInput]     = useState('')
+  const [billLabelInput, setBillLabelInput]   = useState('')
   const [newItemDesc, setNewItemDesc]     = useState('')
   const [newItemCost, setNewItemCost]     = useState('')
   const [addingItem,  setAddingItem]      = useState(false)
@@ -919,11 +923,11 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
 
   const isThirdParty = s.serviceType === 'THIRD_PARTY' || s.serviceType === 'OEM_CENTER'
 
-  async function upload(type: 'ESTIMATE' | 'BILL', file: File) {
+  async function upload(type: 'ESTIMATE' | 'BILL', file: File, label?: string) {
     const set = type === 'ESTIMATE' ? setUploadingEst : setUploadingBill
     set(true)
     try {
-      await vehicleServicesApi.addAttachment(s.id, type, await compressImage(file))
+      await vehicleServicesApi.addAttachment(s.id, type, await compressImage(file), label || undefined)
       qc.invalidateQueries({ queryKey: ['vehicle-services'] })
       toast.success(`${type === 'ESTIMATE' ? 'Estimate' : 'Bill'} uploaded`)
     } catch { toast.error('Upload failed') }
@@ -963,9 +967,9 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
   return (
     <div className="border-t border-gray-100 px-4 py-3 bg-gray-50/40 space-y-3">
       <input ref={estRef}  type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) upload('ESTIMATE', f); e.target.value = '' }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) { upload('ESTIMATE', f, estLabelInput); setAddingEstLabel(false); setEstLabelInput('') } e.target.value = '' }} />
       <input ref={billRef} type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) upload('BILL', f); e.target.value = '' }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) { upload('BILL', f, billLabelInput); setAddingBillLabel(false); setBillLabelInput('') } e.target.value = '' }} />
 
       {/* Cost amounts */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
@@ -1043,7 +1047,7 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
               <a href={a.url} target="_blank" rel="noopener noreferrer"
                 className="flex-1 flex items-center gap-1 text-xs text-blue-600 hover:underline truncate">
                 <ExternalLink size={10} className="shrink-0" />
-                <span className="truncate">Estimate {(s.estimateAttachments?.length ?? 0) > 1 ? i + 1 : ''}</span>
+                <span className="truncate">{a.label || `Estimate${(s.estimateAttachments?.length ?? 0) > 1 ? ` ${i + 1}` : ''}`}</span>
               </a>
               {a.id !== null && (
                 <button onClick={() => deleteAttachment(a.id!)}
@@ -1053,10 +1057,25 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
               )}
             </div>
           ))}
-          <button onClick={() => estRef.current?.click()} disabled={uploadingEst}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
-            <Upload size={10} /> {uploadingEst ? 'Uploading…' : 'Add'}
-          </button>
+          {!addingEstLabel ? (
+            <button onClick={() => { setAddingEstLabel(true); setEstLabelInput('') }} disabled={uploadingEst}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
+              <Upload size={10} /> {uploadingEst ? 'Uploading…' : 'Add'}
+            </button>
+          ) : (
+            <div className="space-y-1">
+              <input autoFocus value={estLabelInput} onChange={e => setEstLabelInput(e.target.value)}
+                placeholder="Name (e.g. Vendor Quote)"
+                className="w-full text-[10px] border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+              <div className="flex gap-1">
+                <button onClick={() => estRef.current?.click()}
+                  className="flex-1 flex items-center gap-0.5 text-[10px] text-blue-600 hover:underline justify-center">
+                  <Upload size={9} />{uploadingEst ? 'Uploading…' : 'Choose File'}
+                </button>
+                <button onClick={() => setAddingEstLabel(false)} className="text-[10px] text-gray-400 hover:text-gray-600">✕</button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bill docs — only when completed */}
@@ -1068,7 +1087,7 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
                 <a href={a.url} target="_blank" rel="noopener noreferrer"
                   className="flex-1 flex items-center gap-1 text-xs text-blue-600 hover:underline truncate">
                   <ExternalLink size={10} className="shrink-0" />
-                  <span className="truncate">Bill {(s.billAttachments?.length ?? 0) > 1 ? i + 1 : ''}</span>
+                  <span className="truncate">{a.label || `Bill${(s.billAttachments?.length ?? 0) > 1 ? ` ${i + 1}` : ''}`}</span>
                 </a>
                 {a.id !== null && (
                   <button onClick={() => deleteAttachment(a.id!)}
@@ -1078,10 +1097,25 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
                 )}
               </div>
             ))}
-            <button onClick={() => billRef.current?.click()} disabled={uploadingBill}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
-              <Upload size={10} /> {uploadingBill ? 'Uploading…' : 'Add'}
-            </button>
+            {!addingBillLabel ? (
+              <button onClick={() => { setAddingBillLabel(true); setBillLabelInput('') }} disabled={uploadingBill}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
+                <Upload size={10} /> {uploadingBill ? 'Uploading…' : 'Add'}
+              </button>
+            ) : (
+              <div className="space-y-1">
+                <input autoFocus value={billLabelInput} onChange={e => setBillLabelInput(e.target.value)}
+                  placeholder="Name (e.g. Final Invoice)"
+                  className="w-full text-[10px] border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                <div className="flex gap-1">
+                  <button onClick={() => billRef.current?.click()}
+                    className="flex-1 flex items-center gap-0.5 text-[10px] text-blue-600 hover:underline justify-center">
+                    <Upload size={9} />{uploadingBill ? 'Uploading…' : 'Choose File'}
+                  </button>
+                  <button onClick={() => setAddingBillLabel(false)} className="text-[10px] text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

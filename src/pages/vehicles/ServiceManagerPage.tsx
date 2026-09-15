@@ -221,8 +221,8 @@ function VehicleServiceManagerView() {
     },
     onLogService: (b) => setLogService({ vehicleId: b.assetId, vehicleReg: b.assetName, breakdownId: b.id }),
     onCreateGeneralService: openVehiclePicker,
-    onAddAttachment: async (serviceId, type, file) => {
-      await vehicleServicesApi.addAttachment(serviceId, type, await compressImage(file))
+    onAddAttachment: async (serviceId, type, file, label) => {
+      await vehicleServicesApi.addAttachment(serviceId, type, await compressImage(file), label)
       qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
     },
     onDeleteAttachment: async (serviceId, attachmentId) => {
