@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, ClipboardList, CalendarCheck } from 'lucide-react'
+import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import { downloadDailyFleetAttendancePdf, downloadFleetStatusPdf, downloadFleetStatusSummaryPdf } from './DailyFleetAttendancePdf'
+import { downloadFleetStatusPdf, downloadFleetStatusSummaryPdf } from './DailyFleetAttendancePdf'
 import type {
   VehicleMasterRow, FleetStatusRow, FuelMileageRow,
   BreakdownReportRow, DocumentExpiryRow, MaintenanceServiceRow,
-  DailyFleetAttendanceReport,
 } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -35,7 +34,6 @@ const TABS = [
   { key: 'breakdowns',      label: 'Breakdowns',           icon: AlertTriangle  },
   { key: 'doc-expiry',      label: 'Document Expiry',      icon: FileText       },
   { key: 'maintenance',     label: 'Maintenance',          icon: Wrench         },
-  { key: 'daily-fleet',     label: 'Daily Attendance',     icon: CalendarCheck  },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -282,33 +280,6 @@ function MaintenanceTable({ rows, loading }: { rows: MaintenanceServiceRow[]; lo
   />
 }
 
-function applyFleetFilter(rows: DailyFleetAttendanceReport['rows'], filter: 'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty') {
-  if (filter === 'drivers')    return rows.filter(r => r.driverName !== '—')
-  if (filter === 'cleaners')   return rows.filter(r => r.cleanerName !== '—')
-  if (filter === 'unassigned') return rows.filter(r => r.driverName === '—')
-  if (filter === 'empty')      return rows.filter(r => r.driverName === '—' && r.cleanerName === '—')
-  return rows
-}
-
-function DailyFleetTable({ report, filter, loading }: { report: DailyFleetAttendanceReport | undefined; filter: 'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty'; loading: boolean }) {
-  const rows = applyFleetFilter(report?.rows ?? [], filter)
-  return <ReportTable
-    loading={loading}
-    headers={['#', 'Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']}
-    rows={rows.map((r, i) => [
-      <span className="text-gray-400">{i + 1}</span>,
-      <span className="font-medium">{r.registrationNumber}</span>,
-      <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{r.scope}</span>,
-      dash(r.vehicleType),
-      r.driverName === '—'
-        ? <span className="text-gray-300">—</span>
-        : <span className="text-green-700 font-medium">{r.driverName}</span>,
-      r.cleanerName === '—'
-        ? <span className="text-gray-300">—</span>
-        : <span className="text-teal-700 font-medium">{r.cleanerName}</span>,
-    ])}
-  />
-}
 
 const STATUS_ORDER = ['AVAILABLE', 'ASSIGNED', 'ON_TRIP', 'IN_REPAIR', 'BREAKDOWN', 'ON_LEASE', 'OTHER']
 
@@ -331,9 +302,6 @@ export default function VehicleReportsPage() {
   const [endDate, setEndDate] = useState(todayStr())
   const [days, setDays] = useState(30)
   const [downloading, setDownloading] = useState(false)
-  const [fleetDate, setFleetDate] = useState(todayStr())
-  const [fleetScope, setFleetScope] = useState<'INTRA_STATE' | 'INTER_STATE'>('INTRA_STATE')
-  const [fleetFilter, setFleetFilter] = useState<'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty'>('all')
   const [fleetView, setFleetView] = useState<'detail' | 'summary'>('detail')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
@@ -352,7 +320,6 @@ export default function VehicleReportsPage() {
     setOwnershipFilter('ALL')
     setIotFilter('ALL')
     setFinanceFilter('ALL')
-    setFleetFilter('all')
     setFleetView('detail')
   }
 
@@ -394,12 +361,6 @@ const fuelQuery = useQuery({
     queryKey: ['report-maintenance', startDate, endDate],
     queryFn: () => reportsApi.getMaintenanceService(startDate, endDate),
     enabled: tab === 'maintenance',
-  })
-
-  const dailyFleetQuery = useQuery({
-    queryKey: ['report-daily-fleet', fleetDate, fleetScope],
-    queryFn: () => reportsApi.getDailyFleetAttendance(fleetDate, fleetScope),
-    enabled: tab === 'daily-fleet',
   })
 
 
@@ -447,24 +408,6 @@ const fuelQuery = useQuery({
       else if (tab === 'breakdowns') await reportsApi.exportBreakdowns(startDate, endDate, format)
       else if (tab === 'doc-expiry') await reportsApi.exportDocumentExpiry(days, format)
       else if (tab === 'maintenance') await reportsApi.exportMaintenanceService(startDate, endDate, format)
-      else if (tab === 'daily-fleet') {
-        const report = dailyFleetQuery.data?.data
-        if (report) {
-          const filtered = applyFleetFilter(report.rows, fleetFilter)
-          const label = fleetFilter !== 'all' ? fleetFilter.charAt(0).toUpperCase() + fleetFilter.slice(1) : undefined
-          if (format === 'csv') {
-            const header = ['#', 'Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']
-            const csvRows = filtered.map((r, i) => [i + 1, r.registrationNumber, r.scope, r.vehicleType ?? '—', r.driverName, r.cleanerName])
-            const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
-            const a = document.createElement('a')
-            a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
-            a.download = `fleet-attendance-${report.scope.replace(' ', '-').toLowerCase()}-${report.date}${label ? `-${label.toLowerCase()}` : ''}.csv`
-            a.click()
-          } else {
-            await downloadDailyFleetAttendancePdf(report, filtered, label)
-          }
-        }
-      }
     } catch {
       toast.error('Export failed')
     } finally {
@@ -472,7 +415,7 @@ const fuelQuery = useQuery({
     }
   }
 
-  const usesDateRange = tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'doc-expiry' && tab !== 'daily-fleet'
+  const usesDateRange = tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'doc-expiry'
 
   return (
     <div className="space-y-6">
@@ -613,58 +556,6 @@ const fuelQuery = useQuery({
           )
         })()}
 
-        {/* Daily Fleet Attendance controls */}
-        {tab === 'daily-fleet' && (() => {
-          const report = dailyFleetQuery.data?.data
-          return (
-            <>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
-                <Input type="date" value={fleetDate} onChange={e => setFleetDate(e.target.value)} className="w-40" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Scope</label>
-                <SearchableSelect
-                  value={fleetScope}
-                  onValueChange={v => setFleetScope(v as 'INTRA_STATE' | 'INTER_STATE')}
-                  options={[
-                    { value: 'INTRA_STATE', label: 'Local (Intra State)' },
-                    { value: 'INTER_STATE', label: 'Out Station (Inter State)' },
-                  ]}
-                  showSearch={false}
-                  className="w-52"
-                />
-              </div>
-              {report && (() => {
-                const stats: { label: string; value: number; key: typeof fleetFilter; base: string; active: string }[] = [
-                  { label: 'Total Vehicles', value: report.totalVehicles, key: 'all',        base: 'bg-blue-50 text-blue-700 border-blue-200',  active: 'bg-blue-700 text-white border-blue-700' },
-                  { label: 'Drivers',        value: report.drivers,       key: 'drivers',    base: 'bg-green-50 text-green-700 border-green-200', active: 'bg-green-700 text-white border-green-700' },
-                  { label: 'Cleaners',       value: report.cleaners,      key: 'cleaners',   base: 'bg-teal-50 text-teal-700 border-teal-200',   active: 'bg-teal-700 text-white border-teal-700' },
-                  { label: 'Unassigned',     value: report.unassigned,    key: 'unassigned', base: 'bg-red-50 text-red-700 border-red-200',     active: 'bg-red-700 text-white border-red-700' },
-                  { label: 'Empty',          value: report.empty ?? 0,    key: 'empty',      base: 'bg-orange-50 text-orange-700 border-orange-200', active: 'bg-orange-700 text-white border-orange-700' },
-                ]
-                return (
-                  <div className="flex gap-3 items-end">
-                    {stats.map(s => (
-                      <button
-                        key={s.key}
-                        onClick={() => setFleetFilter(f => f === s.key ? 'all' : s.key)}
-                        className={cn(
-                          'border rounded-lg px-3 py-1.5 text-center min-w-[80px] transition-colors cursor-pointer',
-                          fleetFilter === s.key ? s.active : s.base
-                        )}
-                      >
-                        <div className="text-xs font-medium opacity-80">{s.label}</div>
-                        <div className="text-xl font-bold">{s.value}</div>
-                      </button>
-                    ))}
-                  </div>
-                )
-              })()}
-            </>
-          )
-        })()}
-
         {/* Vehicle filter — tabs with date range */}
         {tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'daily-fleet' && (() => {
           const allRows: { registrationNumber: string }[] =
@@ -747,7 +638,7 @@ const fuelQuery = useQuery({
         <div className="ml-auto flex items-end gap-2">
           <Button
             variant="outline" size="sm"
-            disabled={downloading || (tab === 'daily-fleet' && !dailyFleetQuery.data?.data)}
+            disabled={downloading}
             onClick={() => handleDownload('csv')}
             className="gap-1.5"
           >
@@ -756,7 +647,7 @@ const fuelQuery = useQuery({
           </Button>
           <Button
             variant="outline" size="sm"
-            disabled={downloading || (tab === 'daily-fleet' && !dailyFleetQuery.data?.data)}
+            disabled={downloading}
             onClick={() => handleDownload('pdf')}
             className="gap-1.5"
           >
@@ -795,7 +686,6 @@ const fuelQuery = useQuery({
       {tab === 'breakdowns'    && <BreakdownsTable  rows={(breakdownQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}   loading={breakdownQuery.isLoading} />}
       {tab === 'doc-expiry'    && <DocExpiryTable   rows={(docExpiryQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}   loading={docExpiryQuery.isLoading} />}
       {tab === 'maintenance'   && <MaintenanceTable rows={(maintenanceQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)} loading={maintenanceQuery.isLoading} />}
-      {tab === 'daily-fleet'   && <DailyFleetTable  report={dailyFleetQuery.data?.data} filter={fleetFilter} loading={dailyFleetQuery.isLoading} />}
     </div>
   )
 }

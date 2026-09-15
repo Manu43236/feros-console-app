@@ -307,6 +307,49 @@ export async function downloadFleetStatusPdf(rows: FleetStatusRow[], statusLabel
   URL.revokeObjectURL(url)
 }
 
+// ── Generic filtered-table PDF ────────────────────────────────────────────────
+function GenericTableDoc({ title, subtitle, headers, rows }: {
+  title: string
+  subtitle: string
+  headers: string[]
+  rows: string[][]
+}) {
+  const colFlex = 1
+  return (
+    <Document>
+      <Page size="A4" orientation="landscape" style={S.page}>
+        <Image style={S.watermark} src={ferosLogo} />
+        <Text style={{ fontSize: 12, fontWeight: 'bold', color: NAVY, textAlign: 'center' }}>{title}</Text>
+        <Text style={{ fontSize: 7.5, textAlign: 'center', color: '#555', marginTop: 2 }}>{subtitle}</Text>
+        <View style={{ borderBottom: `1.5pt solid ${NAVY}`, marginVertical: 6 }} />
+        <View style={{ flexDirection: 'row', backgroundColor: NAVY, borderRadius: 2 }}>
+          {headers.map((h, i) => (
+            <Text key={i} style={{ flex: colFlex, color: '#fff', fontWeight: 'bold', fontSize: 6, padding: '3 3' }}>{h}</Text>
+          ))}
+        </View>
+        {rows.map((row, ri) => (
+          <View key={ri} style={{ flexDirection: 'row', backgroundColor: ri % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '0.5pt solid #e2e8f0' }}>
+            {row.map((cell, ci) => (
+              <Text key={ci} style={{ flex: colFlex, fontSize: 6, padding: '2.5 3', color: '#374151' }}>{cell}</Text>
+            ))}
+          </View>
+        ))}
+        <Text style={{ marginTop: 6, fontSize: 6, color: '#999', textAlign: 'right' }}>
+          {rows.length} record{rows.length !== 1 ? 's' : ''}
+        </Text>
+      </Page>
+    </Document>
+  )
+}
+
+export async function downloadTablePdf(title: string, subtitle: string, headers: string[], rows: string[][], filename: string) {
+  const blob = await pdf(<GenericTableDoc title={title} subtitle={subtitle} headers={headers} rows={rows} />).toBlob()
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+}
+
 export async function downloadDailyFleetAttendancePdf(
   report: DailyFleetAttendanceReport,
   rows: DailyFleetAttendanceReport['rows'],

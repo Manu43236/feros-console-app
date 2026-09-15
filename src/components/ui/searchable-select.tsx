@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Search, Check, Plus } from 'lucide-react'
+import { ChevronDown, Search, Check, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface SelectOption {
@@ -25,6 +25,110 @@ interface SearchableSelectProps {
   onCreateNew?: (searchText: string) => void
 }
 
+// ── Multi-select ───────────────────────────────────────────────────────────────
+interface MultiSelectProps {
+  values: string[]
+  onValuesChange: (values: string[]) => void
+  options: SelectOption[]
+  placeholder?: string
+  className?: string
+}
+
+export function MultiSelect({ values, onValuesChange, options, placeholder = 'Select...', className }: MultiSelectProps) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const filtered = options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()))
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+        setSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [])
+
+  function toggle(val: string) {
+    onValuesChange(values.includes(val) ? values.filter(v => v !== val) : [...values, val])
+  }
+
+  const triggerLabel =
+    values.length === 0 ? placeholder :
+    values.length === 1 ? (options.find(o => o.value === values[0])?.label ?? values[0]) :
+    `${values.length} selected`
+
+  return (
+    <div ref={containerRef} className={cn('relative', className)}>
+      <button
+        type="button"
+        onClick={() => { setOpen(p => !p); setSearch('') }}
+        className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+      >
+        <span className={cn('truncate', values.length === 0 && 'text-muted-foreground')}>{triggerLabel}</span>
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          {values.length > 0 && (
+            <span
+              role="button"
+              onClick={e => { e.stopPropagation(); onValuesChange([]) }}
+              className="text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+            </span>
+          )}
+          <ChevronDown className="h-4 w-4 opacity-50" />
+        </div>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
+          <div className="flex items-center gap-2 border-b px-3 py-2">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+          <div className="max-h-52 overflow-y-auto p-1">
+            {filtered.length === 0 ? (
+              <p className="py-2 text-center text-sm text-muted-foreground">No results</p>
+            ) : (
+              filtered.map(o => {
+                const checked = values.includes(o.value)
+                return (
+                  <button key={o.value} type="button" onClick={() => toggle(o.value)}
+                    className={cn('flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1.5 text-sm hover:bg-gray-100', checked && 'bg-blue-50')}
+                  >
+                    <div className={cn('h-4 w-4 shrink-0 rounded border flex items-center justify-center', checked ? 'bg-feros-navy border-feros-navy' : 'border-gray-300')}>
+                      {checked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                    </div>
+                    <span className="truncate text-left">{o.label}</span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+          {values.length > 0 && (
+            <div className="border-t p-2">
+              <button type="button" onClick={() => onValuesChange([])}
+                className="w-full rounded-md bg-gray-100 hover:bg-gray-200 py-1 text-xs text-gray-600 font-medium">
+                Clear all ({values.length})
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Single-select ──────────────────────────────────────────────────────────────
 export function SearchableSelect({
   value,
   onValueChange,

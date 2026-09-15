@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Download, ClipboardList, Users, AlertTriangle, Scale, MapPin, CreditCard, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SearchableSelect } from '@/components/ui/searchable-select'
+import { SearchableSelect, MultiSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import { ordersApi } from '@/api/orders'
 import { lrsApi } from '@/api/lrs'
 import { downloadOrderSummaryPdf } from './OrderSummaryPdf'
+import { downloadTablePdf } from './DailyFleetAttendancePdf'
 import type {
   OrderRegisterRow, OrderClientSummaryRow,
   OverdueOrderRow, WeightFulfillmentRow, OrderRouteSummaryRow, OrderPaymentStatusRow,
@@ -71,30 +72,64 @@ function ReportTable({ headers, rows, loading }: {
   rows: React.ReactNode[][]
   loading: boolean
 }) {
+  const topRef    = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const mirrorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const top = topRef.current
+    const bottom = bottomRef.current
+    const mirror = mirrorRef.current
+    if (!top || !bottom || !mirror) return
+
+    const ro = new ResizeObserver(() => {
+      mirror.style.width = `${bottom.scrollWidth}px`
+    })
+    ro.observe(bottom)
+
+    let syncing = false
+    function onTop()    { if (!syncing) { syncing = true; bottom.scrollLeft = top.scrollLeft;    syncing = false } }
+    function onBottom() { if (!syncing) { syncing = true; top.scrollLeft    = bottom.scrollLeft; syncing = false } }
+
+    top.addEventListener('scroll', onTop)
+    bottom.addEventListener('scroll', onBottom)
+    return () => {
+      ro.disconnect()
+      top.removeEventListener('scroll', onTop)
+      bottom.removeEventListener('scroll', onBottom)
+    }
+  }, [rows])
+
   if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
   if (rows.length === 0) return <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="min-w-full text-sm">
-        <thead>
-          <tr>
-            {headers.map(h => (
-              <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-              {row.map((cell, j) => (
-                <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{cell}</td>
+    <div className="rounded-lg border overflow-hidden">
+      {/* Top scrollbar — synced with table */}
+      <div ref={topRef} className="overflow-x-auto border-b bg-gray-50" style={{ height: 14 }}>
+        <div ref={mirrorRef} style={{ height: 1 }} />
+      </div>
+      <div ref={bottomRef} className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr>
+              {headers.map(h => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="px-4 py-2 border-t bg-gray-50 text-xs text-gray-500">
-        {rows.length} record{rows.length !== 1 ? 's' : ''}
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                {row.map((cell, j) => (
+                  <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="px-4 py-2 border-t bg-gray-50 text-xs text-gray-500">
+          {rows.length} record{rows.length !== 1 ? 's' : ''}
+        </div>
       </div>
     </div>
   )
@@ -421,14 +456,14 @@ export default function OrderReportsPage() {
   const [downloading, setDownloading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [paymentFilter, setPaymentFilter] = useState('ALL')
-  const [clientFilter, setClientFilter] = useState('ALL')
+  const [clientFilters, setClientFilters] = useState<string[]>([])
   const [thresholdDays, setThresholdDays] = useState(1)
 
   function handleTabChange(key: TabKey) {
     setTab(key)
     setStatusFilter('ALL')
     setPaymentFilter('ALL')
-    setClientFilter('ALL')
+    setClientFilters([])
   }
 
   function applyPreset(p: DatePreset) {
@@ -470,15 +505,57 @@ const clientSummaryQuery = useQuery({
     enabled: tab === 'payment-status',
   })
 
+  function clientCsv(headers: string[], rows: string[][], filename: string) {
+    const content = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v ?? '—').replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+    a.download = filename
+    a.click()
+  }
+
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
-      if      (tab === 'register')       await reportsApi.exportOrderRegister(startDate, endDate, format)
-else if (tab === 'client-summary') await reportsApi.exportOrderClientSummary(startDate, endDate, format)
-      else if (tab === 'overdue')        await reportsApi.exportOverdueOrders(thresholdDays, format)
-      else if (tab === 'fulfillment')    await reportsApi.exportWeightFulfillment(startDate, endDate, format)
-      else if (tab === 'route-summary')  await reportsApi.exportOrderRouteSummary(startDate, endDate, format)
-      else                               await reportsApi.exportOrderPaymentStatus(startDate, endDate, format, paymentFilter !== 'ALL' ? paymentFilter : undefined)
+      if (tab === 'register') {
+        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Fulfilled Wt', 'Freight Amt', 'Vehicles', 'Status', 'Payment']
+        const rows = registerRows.map(r => [
+          r.orderNumber, r.orderDate, r.expectedDeliveryDate ?? '—', r.clientName, r.materialType,
+          `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`,
+          String(r.totalWeight ?? '—'), String(r.totalWeightFulfilled ?? '—'), String(r.totalFreightAmount ?? '—'),
+          String(r.vehicleCount), r.orderStatus, r.orderPaymentStatus,
+        ])
+        const clientSuffix = clientFilters.length > 0 ? ` · Clients: ${clientFilters.join(', ')}` : ''
+        const subtitle = `${startDate} to ${endDate}${statusFilter !== 'ALL' ? ` · Status: ${statusFilter}` : ''}${clientSuffix}`
+        if (format === 'csv') clientCsv(headers, rows, `order-register-${startDate}-${endDate}.csv`)
+        else await downloadTablePdf('Order Register', subtitle, headers, rows, `order-register-${startDate}-${endDate}.pdf`)
+      } else if (tab === 'overdue') {
+        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Days Overdue', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Fulfilled Wt', 'Status']
+        const rows = overdueRows.map(r => [
+          r.orderNumber, r.orderDate, r.expectedDeliveryDate, `${r.daysOverdue} days`,
+          r.clientName, r.materialType, r.fromCity, r.toCity,
+          String(r.totalWeight ?? '—'), String(r.totalWeightFulfilled ?? '—'), r.orderStatus,
+        ])
+        const subtitle = `Min. ${thresholdDays}+ days overdue${clientFilters.length > 0 ? ` · Clients: ${clientFilters.join(', ')}` : ''}`
+        if (format === 'csv') clientCsv(headers, rows, `overdue-orders.csv`)
+        else await downloadTablePdf('Overdue Orders', subtitle, headers, rows, `overdue-orders.pdf`)
+      } else if (tab === 'payment-status') {
+        const headers = ['Order No.', 'Order Date', 'Client', 'Total Freight', 'Order Status', 'Payment Status']
+        const rows = paymentRows.map(r => [
+          r.orderNumber, r.orderDate, r.clientName, String(r.totalFreightAmount ?? '—'),
+          r.orderStatus, r.orderPaymentStatus,
+        ])
+        const subtitle = `${startDate} to ${endDate}${paymentFilter !== 'ALL' ? ` · Payment: ${paymentFilter}` : ''}${clientFilters.length > 0 ? ` · Clients: ${clientFilters.join(', ')}` : ''}`
+        if (format === 'csv') clientCsv(headers, rows, `order-payment-status-${startDate}-${endDate}.csv`)
+        else await downloadTablePdf('Order Payment Status', subtitle, headers, rows, `order-payment-status-${startDate}-${endDate}.pdf`)
+      } else if (tab === 'client-summary') {
+        await reportsApi.exportOrderClientSummary(startDate, endDate, format)
+      } else if (tab === 'fulfillment') {
+        await reportsApi.exportWeightFulfillment(startDate, endDate, format)
+      } else if (tab === 'route-summary') {
+        await reportsApi.exportOrderRouteSummary(startDate, endDate, format)
+      }
     } catch {
       toast.error('Export failed')
     } finally {
@@ -491,27 +568,30 @@ else if (tab === 'client-summary') await reportsApi.exportOrderClientSummary(sta
   const allOverdueRows   = overdueQuery.data?.data ?? []
   const allPaymentRows   = paymentQuery.data?.data ?? []
 
-  const registerRows = allRegisterRows.filter(r =>
-    (statusFilter === 'ALL' || r.orderStatus === statusFilter) &&
-    (clientFilter === 'ALL' || r.clientName === clientFilter)
-  )
-const overdueRows = allOverdueRows.filter(r =>
-    clientFilter === 'ALL' || r.clientName === clientFilter
-  )
-  const paymentRows = allPaymentRows.filter(r =>
-    (paymentFilter === 'ALL' || r.orderPaymentStatus === paymentFilter) &&
-    (clientFilter === 'ALL' || r.clientName === clientFilter)
-  )
+  const registerRows = allRegisterRows
+    .filter(r =>
+      (statusFilter === 'ALL' || r.orderStatus === statusFilter) &&
+      (clientFilters.length === 0 || clientFilters.includes(r.clientName))
+    )
+    .sort((a, b) => a.clientName.localeCompare(b.clientName) || a.orderDate.localeCompare(b.orderDate))
+
+  const overdueRows = allOverdueRows
+    .filter(r => clientFilters.length === 0 || clientFilters.includes(r.clientName))
+    .sort((a, b) => a.clientName.localeCompare(b.clientName) || a.daysOverdue - b.daysOverdue)
+
+  const paymentRows = allPaymentRows
+    .filter(r =>
+      (paymentFilter === 'ALL' || r.orderPaymentStatus === paymentFilter) &&
+      (clientFilters.length === 0 || clientFilters.includes(r.clientName))
+    )
+    .sort((a, b) => a.clientName.localeCompare(b.clientName) || a.orderDate.localeCompare(b.orderDate))
 
   // ── Client options per tab ──
   const tabClientSource: string[] =
-    tab === 'register'      ? allRegisterRows.map(r => r.clientName) :
-    tab === 'overdue'       ? allOverdueRows.map(r => r.clientName) :
-    tab === 'payment-status'? allPaymentRows.map(r => r.clientName) : []
-  const clientOptions = [
-    { value: 'ALL', label: 'All Clients' },
-    ...Array.from(new Set(tabClientSource.filter(Boolean))).sort().map(c => ({ value: c, label: c })),
-  ]
+    tab === 'register'       ? allRegisterRows.map(r => r.clientName) :
+    tab === 'overdue'        ? allOverdueRows.map(r => r.clientName) :
+    tab === 'payment-status' ? allPaymentRows.map(r => r.clientName) : []
+  const clientOptions = Array.from(new Set(tabClientSource.filter(Boolean))).sort().map(c => ({ value: c, label: c }))
   const showClientFilter = ['register', 'overdue', 'payment-status'].includes(tab)
 
   // ── Date-range tabs (show/hide date controls) ──
@@ -559,15 +639,16 @@ const overdueRows = allOverdueRows.filter(r =>
           </div>
         )}
 
-        {/* Client filter */}
+        {/* Client filter — multi-select */}
         {showClientFilter && (
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Client</label>
-            <SearchableSelect
-              value={clientFilter}
-              onValueChange={setClientFilter}
+            <MultiSelect
+              values={clientFilters}
+              onValuesChange={setClientFilters}
               options={clientOptions}
-              className="w-48"
+              placeholder="All Clients"
+              className="w-52"
             />
           </div>
         )}

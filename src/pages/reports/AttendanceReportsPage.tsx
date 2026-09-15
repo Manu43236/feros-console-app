@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Users, ClipboardList } from 'lucide-react'
+import { Download, Users, ClipboardList, CalendarCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { AttendanceDailyRow, AttendanceSummaryRow } from '@/types'
+import { downloadDailyFleetAttendancePdf } from './DailyFleetAttendancePdf'
+import type { AttendanceDailyRow, AttendanceSummaryRow, DailyFleetAttendanceReport } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -23,8 +25,9 @@ const thisMonthStart = () => {
 
 // ── Tab config ─────────────────────────────────────────────────────────────────
 const TABS = [
-  { key: 'daily',   label: 'Daily Register',  icon: ClipboardList },
-  { key: 'summary', label: 'Monthly Summary', icon: Users },
+  { key: 'daily',   label: 'Daily Register',   icon: ClipboardList  },
+  { key: 'summary', label: 'Monthly Summary',  icon: Users          },
+  { key: 'fleet',   label: 'Daily Attendance', icon: CalendarCheck  },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -137,6 +140,37 @@ function SummaryTable({ rows, loading }: { rows: AttendanceSummaryRow[]; loading
   />
 }
 
+// ── Fleet Attendance helpers ───────────────────────────────────────────────────
+const dash = (v: unknown) => (v != null && v !== '' ? String(v) : '—')
+
+function applyFleetFilter(rows: DailyFleetAttendanceReport['rows'], filter: 'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty') {
+  if (filter === 'drivers')    return rows.filter(r => r.driverName !== '—')
+  if (filter === 'cleaners')   return rows.filter(r => r.cleanerName !== '—')
+  if (filter === 'unassigned') return rows.filter(r => r.driverName === '—')
+  if (filter === 'empty')      return rows.filter(r => r.driverName === '—' && r.cleanerName === '—')
+  return rows
+}
+
+function DailyFleetTable({ report, filter, loading }: { report: DailyFleetAttendanceReport | undefined; filter: 'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty'; loading: boolean }) {
+  const rows = applyFleetFilter(report?.rows ?? [], filter)
+  return <ReportTable
+    loading={loading}
+    headers={['#', 'Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']}
+    rows={rows.map((r, i) => [
+      <span className="text-gray-400">{i + 1}</span>,
+      <span className="font-medium">{r.registrationNumber}</span>,
+      <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{r.scope}</span>,
+      dash(r.vehicleType),
+      r.driverName === '—'
+        ? <span className="text-gray-300">—</span>
+        : <span className="text-green-700 font-medium">{r.driverName}</span>,
+      r.cleanerName === '—'
+        ? <span className="text-gray-300">—</span>
+        : <span className="text-teal-700 font-medium">{r.cleanerName}</span>,
+    ])}
+  />
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AttendanceReportsPage() {
   const [tab, setTab] = useState<TabKey>('daily')
@@ -146,11 +180,15 @@ export default function AttendanceReportsPage() {
   const [downloading, setDownloading] = useState(false)
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
   const [roleFilter, setRoleFilter] = useState('ALL')
+  const [fleetDate, setFleetDate] = useState(todayStr())
+  const [fleetScope, setFleetScope] = useState<'INTRA_STATE' | 'INTER_STATE'>('INTRA_STATE')
+  const [fleetFilter, setFleetFilter] = useState<'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty'>('all')
 
   function handleTabChange(key: TabKey) {
     setTab(key)
     setVehicleFilter('ALL')
     setRoleFilter('ALL')
+    setFleetFilter('all')
   }
 
   function applyPreset(p: DatePreset) {
@@ -171,12 +209,35 @@ export default function AttendanceReportsPage() {
     queryFn: () => reportsApi.getAttendanceSummary(startDate, endDate),
     enabled: tab === 'summary',
   })
+  const fleetQuery = useQuery({
+    queryKey: ['report-daily-fleet', fleetDate, fleetScope],
+    queryFn: () => reportsApi.getDailyFleetAttendance(fleetDate, fleetScope),
+    enabled: tab === 'fleet',
+  })
 
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
       if (tab === 'daily')   await reportsApi.exportAttendanceDaily(startDate, endDate, format)
-      else                   await reportsApi.exportAttendanceSummary(startDate, endDate, format)
+      else if (tab === 'summary') await reportsApi.exportAttendanceSummary(startDate, endDate, format)
+      else if (tab === 'fleet') {
+        const report = fleetQuery.data?.data
+        if (report) {
+          const filtered = applyFleetFilter(report.rows, fleetFilter)
+          const label = fleetFilter !== 'all' ? fleetFilter.charAt(0).toUpperCase() + fleetFilter.slice(1) : undefined
+          if (format === 'csv') {
+            const header = ['#', 'Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']
+            const csvRows = filtered.map((r, i) => [i + 1, r.registrationNumber, r.scope, r.vehicleType ?? '—', r.driverName, r.cleanerName])
+            const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+            a.download = `fleet-attendance-${report.scope.replace(' ', '-').toLowerCase()}-${report.date}${label ? `-${label.toLowerCase()}` : ''}.csv`
+            a.click()
+          } else {
+            await downloadDailyFleetAttendancePdf(report, filtered, label)
+          }
+        }
+      }
     } catch {
       toast.error('Export failed')
     } finally {
@@ -237,81 +298,136 @@ export default function AttendanceReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
-        {/* Vehicle filter */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
-          <SearchableSelect
-            value={vehicleFilter}
-            onValueChange={setVehicleFilter}
-            options={vehicleOptions}
-            className="w-52"
-          />
-        </div>
-
-        {/* Role filter */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-          <SearchableSelect
-            value={roleFilter}
-            onValueChange={setRoleFilter}
-            options={ROLES.map(r => ({ value: r, label: r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ') }))}
-            showSearch={false}
-            className="w-44"
-          />
-        </div>
-
-        {/* Period presets */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Period</label>
-          <div className="flex gap-1">
-            {(['today', 'this-week', 'this-month', 'custom'] as DatePreset[]).map(p => (
-              <button
-                key={p}
-                onClick={() => applyPreset(p)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
-                  preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 hover:border-gray-400'
-                )}
-              >
-                {p === 'today' ? 'Today' : p === 'this-week' ? 'This Week' : p === 'this-month' ? 'This Month' : 'Custom'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {preset === 'custom' && (
-          <div className="flex items-end gap-2">
+        {tab !== 'fleet' && (
+          <>
+            {/* Vehicle filter */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                className="w-36 h-9 border rounded-md px-2 text-sm" />
+              <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
+              <SearchableSelect
+                value={vehicleFilter}
+                onValueChange={setVehicleFilter}
+                options={vehicleOptions}
+                className="w-52"
+              />
             </div>
-            <span className="pb-2 text-gray-400 text-sm">→</span>
+
+            {/* Role filter */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                className="w-36 h-9 border rounded-md px-2 text-sm" />
+              <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+              <SearchableSelect
+                value={roleFilter}
+                onValueChange={setRoleFilter}
+                options={ROLES.map(r => ({ value: r, label: r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ') }))}
+                showSearch={false}
+                className="w-44"
+              />
             </div>
-          </div>
+
+            {/* Period presets */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Period</label>
+              <div className="flex gap-1">
+                {(['today', 'this-week', 'this-month', 'custom'] as DatePreset[]).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => applyPreset(p)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
+                      preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 hover:border-gray-400'
+                    )}
+                  >
+                    {p === 'today' ? 'Today' : p === 'this-week' ? 'This Week' : p === 'this-month' ? 'This Month' : 'Custom'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {preset === 'custom' && (
+              <div className="flex items-end gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                    className="w-36 h-9 border rounded-md px-2 text-sm" />
+                </div>
+                <span className="pb-2 text-gray-400 text-sm">→</span>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                    className="w-36 h-9 border rounded-md px-2 text-sm" />
+                </div>
+              </div>
+            )}
+            {preset !== 'custom' && (
+              <div className="pb-1 text-xs text-gray-400">{startDate} → {endDate}</div>
+            )}
+          </>
         )}
-        {preset !== 'custom' && (
-          <div className="pb-1 text-xs text-gray-400">{startDate} → {endDate}</div>
-        )}
+
+        {/* Fleet Attendance controls */}
+        {tab === 'fleet' && (() => {
+          const report = fleetQuery.data?.data
+          const stats: { label: string; value: number; key: typeof fleetFilter; base: string; active: string }[] = report ? [
+            { label: 'Total Vehicles', value: report.totalVehicles, key: 'all',        base: 'bg-blue-50 text-blue-700 border-blue-200',      active: 'bg-blue-700 text-white border-blue-700' },
+            { label: 'Drivers',        value: report.drivers,       key: 'drivers',    base: 'bg-green-50 text-green-700 border-green-200',    active: 'bg-green-700 text-white border-green-700' },
+            { label: 'Cleaners',       value: report.cleaners,      key: 'cleaners',   base: 'bg-teal-50 text-teal-700 border-teal-200',      active: 'bg-teal-700 text-white border-teal-700' },
+            { label: 'Unassigned',     value: report.unassigned,    key: 'unassigned', base: 'bg-red-50 text-red-700 border-red-200',         active: 'bg-red-700 text-white border-red-700' },
+            { label: 'Empty',          value: report.empty ?? 0,    key: 'empty',      base: 'bg-orange-50 text-orange-700 border-orange-200', active: 'bg-orange-700 text-white border-orange-700' },
+          ] : []
+          return (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                <Input type="date" value={fleetDate} onChange={e => setFleetDate(e.target.value)} className="w-40" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Scope</label>
+                <SearchableSelect
+                  value={fleetScope}
+                  onValueChange={v => setFleetScope(v as 'INTRA_STATE' | 'INTER_STATE')}
+                  options={[
+                    { value: 'INTRA_STATE', label: 'Local (Intra State)' },
+                    { value: 'INTER_STATE', label: 'Out Station (Inter State)' },
+                  ]}
+                  showSearch={false}
+                  className="w-52"
+                />
+              </div>
+              {stats.length > 0 && (
+                <div className="flex gap-3 items-end">
+                  {stats.map(s => (
+                    <button
+                      key={s.key}
+                      onClick={() => setFleetFilter(f => f === s.key ? 'all' : s.key)}
+                      className={cn(
+                        'border rounded-lg px-3 py-1.5 text-center min-w-[80px] transition-colors cursor-pointer',
+                        fleetFilter === s.key ? s.active : s.base
+                      )}
+                    >
+                      <div className="text-xs font-medium opacity-80">{s.label}</div>
+                      <div className="text-xl font-bold">{s.value}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )
+        })()}
 
         {/* Download buttons */}
         <div className="ml-auto flex items-end gap-2">
-          <Button variant="outline" size="sm" disabled={downloading} onClick={() => handleDownload('csv')} className="gap-1.5">
+          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('csv')} className="gap-1.5">
             <Download size={14} />CSV
           </Button>
-          <Button variant="outline" size="sm" disabled={downloading} onClick={() => handleDownload('pdf')} className="gap-1.5">
+          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('pdf')} className="gap-1.5">
             <Download size={14} />PDF
           </Button>
         </div>
       </div>
 
       {/* Table */}
-      {tab === 'daily'   && <DailyTable   rows={filteredDaily}   loading={dailyQuery.isLoading} />}
-      {tab === 'summary' && <SummaryTable rows={filteredSummary} loading={summaryQuery.isLoading} />}
+      {tab === 'daily'   && <DailyTable      rows={filteredDaily}   loading={dailyQuery.isLoading} />}
+      {tab === 'summary' && <SummaryTable    rows={filteredSummary} loading={summaryQuery.isLoading} />}
+      {tab === 'fleet'   && <DailyFleetTable report={fleetQuery.data?.data} filter={fleetFilter} loading={fleetQuery.isLoading} />}
     </div>
   )
 }
