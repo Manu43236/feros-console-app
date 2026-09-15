@@ -141,8 +141,6 @@ function SummaryTable({ rows, loading }: { rows: AttendanceSummaryRow[]; loading
 }
 
 // ── Fleet Attendance helpers ───────────────────────────────────────────────────
-const dash = (v: unknown) => (v != null && v !== '' ? String(v) : '—')
-
 function applyFleetFilter(rows: DailyFleetAttendanceReport['rows'], filter: 'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty') {
   if (filter === 'drivers')    return rows.filter(r => r.driverName !== '—')
   if (filter === 'cleaners')   return rows.filter(r => r.cleanerName !== '—')

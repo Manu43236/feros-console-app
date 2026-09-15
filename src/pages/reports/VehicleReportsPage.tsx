@@ -557,7 +557,7 @@ const fuelQuery = useQuery({
         })()}
 
         {/* Vehicle filter — tabs with date range */}
-        {tab !== 'vehicle-master' && tab !== 'fleet-status' && tab !== 'daily-fleet' && (() => {
+        {tab !== 'vehicle-master' && tab !== 'fleet-status' && (() => {
           const allRows: { registrationNumber: string }[] =
             tab === 'fuel-mileage' ? (fuelQuery.data?.data ?? []) :
             tab === 'breakdowns'   ? (breakdownQuery.data?.data ?? []) :

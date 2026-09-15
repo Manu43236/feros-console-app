@@ -87,9 +87,10 @@ function ReportTable({ headers, rows, loading }: {
     })
     ro.observe(bottom)
 
+    const t = top, b = bottom   // captured non-null after the guard above
     let syncing = false
-    function onTop()    { if (!syncing) { syncing = true; bottom.scrollLeft = top.scrollLeft;    syncing = false } }
-    function onBottom() { if (!syncing) { syncing = true; top.scrollLeft    = bottom.scrollLeft; syncing = false } }
+    function onTop()    { if (!syncing) { syncing = true; b.scrollLeft = t.scrollLeft; syncing = false } }
+    function onBottom() { if (!syncing) { syncing = true; t.scrollLeft = b.scrollLeft; syncing = false } }
 
     top.addEventListener('scroll', onTop)
     bottom.addEventListener('scroll', onBottom)
