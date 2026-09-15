@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Wrench, AlertTriangle, CheckCircle2, Clock, User, ChevronDown, ChevronUp, Plus, UserCheck,
-  MapPin, Calendar, StickyNote, Store, IndianRupee, ExternalLink, FileImage, Download, X, Trash2,
+  MapPin, Calendar, StickyNote, Store, IndianRupee, FileImage, X, Trash2, Eye, Upload, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -269,9 +269,6 @@ function TaskRow({ task, serviceId, cfg, isExternal }: { task: BoardTask; servic
 
 // ── Service Card ────────────────────────────────────────────────────────────────
 function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: ServiceBoardConfig }) {
-  const estimateRef = useRef<HTMLInputElement>(null)
-  const billRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState<'estimate' | 'bill' | null>(null)
   const [showAddItem, setShowAddItem] = useState(false)
   const [newItemDesc, setNewItemDesc] = useState('')
   const [newItemCost, setNewItemCost] = useState('')
@@ -299,8 +296,7 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
 
   async function addAttachment(type: 'ESTIMATE' | 'BILL', file: File, label?: string) {
     if (!cfg.onAddAttachment) return
-    setUploading(type === 'ESTIMATE' ? 'estimate' : 'bill')
-    try { await cfg.onAddAttachment(service.id, type, file, label) } finally { setUploading(null) }
+    await cfg.onAddAttachment(service.id, type, file, label)
   }
 
   async function deleteAttachment(attachmentId: number) {
@@ -317,68 +313,101 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
   const totalTaskCost = service.tasks.reduce((s, t) => s + (t.cost ?? 0), 0)
   const hasAnyCost = (service.estimatedCost ?? 0) > 0 || totalVendorCost > 0 || totalTaskCost > 0 || (service.completedCost ?? 0) > 0
 
-  function SmallMultiDoc({ label, attachments, type, inputRef }: {
+  function AddAttachmentDialogSM({ open, onClose, onAdd, label }: {
+    open: boolean; onClose: () => void
+    onAdd: (f: File, lbl: string) => Promise<void>; label: string
+  }) {
+    const [name, setName] = useState('')
+    const [file, setFile] = useState<File | null>(null)
+    const [busy, setBusy] = useState(false)
+    const ref = useRef<HTMLInputElement>(null)
+    async function submit() {
+      if (!file) return
+      setBusy(true)
+      try { await onAdd(file, name.trim()); onClose() }
+      catch {} finally { setBusy(false) }
+    }
+    return (
+      <Dialog open={open} onOpenChange={v => !v && onClose()}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add {label}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="mb-1.5 block">Name / Label</Label>
+              <Input placeholder="e.g. Vendor Quote, Revised Estimate" value={name} onChange={e => setName(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">File *</Label>
+              {file ? (
+                <div className="flex items-center gap-2 p-2.5 border border-gray-200 rounded-lg">
+                  <FileImage size={14} className="text-gray-400 shrink-0" />
+                  <span className="text-sm text-gray-700 flex-1 truncate">{file.name}</span>
+                  <button onClick={() => setFile(null)} className="text-gray-400 hover:text-red-500"><X size={14} /></button>
+                </div>
+              ) : (
+                <button onClick={() => ref.current?.click()}
+                  className="w-full border-2 border-dashed border-gray-200 rounded-lg py-5 text-sm text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-2">
+                  <Upload size={14} /> Choose file (PDF or image)
+                </button>
+              )}
+              <input ref={ref} type="file" accept="image/*,.pdf" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f); e.target.value = '' }} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button disabled={!file || busy} onClick={submit}>{busy ? 'Uploading…' : 'Upload'}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  function SmallMultiDoc({ label, attachments, type }: {
     label: string
     attachments: Array<{ id: number | null; url: string; label?: string }>
     type: 'ESTIMATE' | 'BILL'
-    inputRef: React.RefObject<HTMLInputElement | null>
   }) {
-    const uType = type === 'ESTIMATE' ? 'estimate' : 'bill'
-    const [adding, setAdding] = useState(false)
-    const [nameInput, setNameInput] = useState('')
+    const [dialogOpen, setDialogOpen] = useState(false)
     return (
-      <div className="border border-gray-100 rounded-lg p-2.5 space-y-1.5">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-          <FileImage size={10} /> {label}
-        </p>
-        {attachments.length > 0 && (
-          <div className="space-y-1">
-            {attachments.map((a, i) => (
-              <div key={a.id ?? `l-${i}`} className="flex items-center gap-1 group">
-                <a href={a.url} target="_blank" rel="noopener noreferrer"
-                  className="flex-1 flex items-center gap-0.5 text-xs text-blue-600 hover:underline truncate">
-                  <ExternalLink size={10} className="shrink-0" />
-                  <span className="truncate">{a.label || `${label}${attachments.length > 1 ? ` ${i + 1}` : ''}`}</span>
-                </a>
-                {a.id !== null && cfg.onDeleteAttachment && (
-                  <button onClick={() => deleteAttachment(a.id!)}
-                    className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <Trash2 size={10} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-0.5">
+            <FileImage size={9} /> {label}
+          </p>
+          {cfg.onAddAttachment && (
+            <button onClick={() => setDialogOpen(true)}
+              className="flex items-center gap-0.5 text-[10px] text-feros-navy hover:underline font-medium">
+              <Plus size={9} /> Add
+            </button>
+          )}
+        </div>
+        {attachments.length === 0 && (
+          <p className="text-[10px] text-gray-300">No attachments</p>
         )}
-        {cfg.onAddAttachment && !adding && (
-          <button disabled={uploading === uType} onClick={() => { setAdding(true); setNameInput('') }}
-            className="w-full border border-dashed border-gray-200 rounded py-1.5 text-[10px] text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-0.5">
-            <Plus size={9} />{uploading === uType ? 'Uploading…' : `Add ${label}`}
-          </button>
-        )}
-        {cfg.onAddAttachment && adding && (
-          <div className="space-y-1">
-            <input autoFocus value={nameInput} onChange={e => setNameInput(e.target.value)}
-              placeholder="Name (e.g. Vendor Quote)"
-              className="w-full text-[10px] border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-            <div className="flex gap-1">
-              <button onClick={() => inputRef.current?.click()} disabled={uploading === uType}
-                className="flex-1 border border-blue-200 bg-blue-50 text-blue-600 rounded py-1 text-[10px] flex items-center justify-center gap-0.5 hover:bg-blue-100">
-                <Plus size={9} />{uploading === uType ? 'Uploading…' : 'Choose File'}
-              </button>
-              <button onClick={() => setAdding(false)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1.5">✕</button>
+        {attachments.map((a, i) => (
+          <div key={a.id ?? `l-${i}`} className="flex items-center gap-1 group">
+            <span className="flex-1 text-[10px] text-gray-700 truncate">
+              {a.label || `${label}${attachments.length > 1 ? ` ${i + 1}` : ''}`}
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              <a href={a.url} target="_blank" rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-600 transition-colors" title="View">
+                <Eye size={11} />
+              </a>
+              {a.id !== null && cfg.onDeleteAttachment && (
+                <button onClick={() => deleteAttachment(a.id!)}
+                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Trash2 size={10} />
+                </button>
+              )}
             </div>
           </div>
+        ))}
+        {cfg.onAddAttachment && (
+          <AddAttachmentDialogSM open={dialogOpen} onClose={() => setDialogOpen(false)} label={label}
+            onAdd={async (f, lbl) => { await addAttachment(type, f, lbl); cfg.onChanged() }} />
         )}
-        {!cfg.onAddAttachment && attachments.length === 0 && (
-          <p className="text-[10px] text-gray-300">Not uploaded</p>
-        )}
-        <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden"
-          onChange={e => {
-            const f = e.target.files?.[0]
-            if (f) { addAttachment(type, f, nameInput); setAdding(false); setNameInput('') }
-            e.target.value = ''
-          }} />
       </div>
     )
   }
@@ -474,18 +503,18 @@ function ServiceInlineDocs({ service, cfg }: { service: BoardService; cfg: Servi
 
       {/* Documents */}
       <div>
-        <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center justify-between mb-2">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Documents</p>
           {cfg.onOpenPdf && (
             <button onClick={() => cfg.onOpenPdf!(service.id)}
-              className="flex items-center gap-1 text-[10px] text-feros-navy border border-feros-navy/30 rounded px-2 py-0.5 hover:bg-feros-navy/5">
-              <Download size={9} /> PDF
+              className="flex items-center gap-1 text-[10px] text-feros-navy border border-feros-navy/30 rounded px-1.5 py-0.5 hover:bg-feros-navy/5">
+              <FileText size={9} /> PDF
             </button>
           )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <SmallMultiDoc label="Estimate" attachments={service.estimateAttachments ?? []} type="ESTIMATE" inputRef={estimateRef} />
-          <SmallMultiDoc label="Final Bill" attachments={service.billAttachments ?? []} type="BILL" inputRef={billRef} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <SmallMultiDoc label="Estimate" attachments={service.estimateAttachments ?? []} type="ESTIMATE" />
+          <SmallMultiDoc label="Final Bill" attachments={service.billAttachments ?? []} type="BILL" />
         </div>
       </div>
     </div>
@@ -510,6 +539,12 @@ function ServiceCard({ service, cfg, isBreakdownService = false }: { service: Bo
           {service.serviceTypeLabel && <span className="text-xs text-gray-400 capitalize">{service.serviceTypeLabel}</span>}
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-3" onClick={e => e.stopPropagation()}>
+          {cfg.onOpenPdf && (
+            <button onClick={() => cfg.onOpenPdf!(service.id)}
+              className="flex items-center gap-0.5 text-[10px] text-feros-navy border border-feros-navy/30 rounded px-1.5 py-1 hover:bg-feros-navy/5">
+              <FileText size={11} /> PDF
+            </button>
+          )}
           {service.status !== 'COMPLETED' && (
             <>
               {!isExternal && (

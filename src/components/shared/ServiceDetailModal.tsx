@@ -4,9 +4,12 @@ import { format, parseISO, isValid } from 'date-fns'
 import {
   Wrench, MapPin, Calendar, IndianRupee, FileText,
   CheckCircle, Clock, Circle, Package, User, Play, CheckCircle2,
-  ExternalLink, FileImage, Download, Trash2, Plus,
+  FileImage, Download, Trash2, Plus, Eye, Upload, X,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { servicePartsApi } from '@/api/inventory'
 import { vehicleServicesApi } from '@/api/vehicles'
 import { toast } from 'sonner'
@@ -98,87 +101,110 @@ interface Props {
   onClose: () => void
 }
 
-function MultiDocUploadCard({
-  label, attachments, onAdd, onDelete, uploading,
+function AddAttachmentDialog({ open, onClose, onAdd, label }: {
+  open: boolean; onClose: () => void
+  onAdd: (f: File, label: string) => Promise<void>; label: string
+}) {
+  const [name, setName] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const ref = useRef<HTMLInputElement>(null)
+
+  async function submit() {
+    if (!file) return
+    setUploading(true)
+    try { await onAdd(file, name.trim()); onClose() }
+    catch {} finally { setUploading(false) }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Add {label}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="mb-1.5 block">Name / Label</Label>
+            <Input placeholder="e.g. Vendor Quote, Revised Estimate" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block">File *</Label>
+            {file ? (
+              <div className="flex items-center gap-2 p-2.5 border border-gray-200 rounded-lg">
+                <FileImage size={14} className="text-gray-400 shrink-0" />
+                <span className="text-sm text-gray-700 flex-1 truncate">{file.name}</span>
+                <button onClick={() => setFile(null)} className="text-gray-400 hover:text-red-500"><X size={14} /></button>
+              </div>
+            ) : (
+              <button onClick={() => ref.current?.click()}
+                className="w-full border-2 border-dashed border-gray-200 rounded-lg py-5 text-sm text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-2">
+                <Upload size={14} /> Choose file (PDF or image)
+              </button>
+            )}
+            <input ref={ref} type="file" accept="image/*,.pdf" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f); e.target.value = '' }} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={!file || uploading} onClick={submit}>
+            {uploading ? 'Uploading…' : 'Upload'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function MultiDocSection({
+  label, attachments, onAdd, onDelete,
 }: {
   label: string
   attachments: ServiceAttachment[]
-  onAdd: (f: File, label: string) => void
+  onAdd: (f: File, lbl: string) => Promise<void>
   onDelete: (id: number) => void
-  uploading: boolean
 }) {
-  const ref = useRef<HTMLInputElement>(null)
-  const [adding, setAdding] = useState(false)
-  const [nameInput, setNameInput] = useState('')
-
-  function openForm() { setAdding(true); setNameInput('') }
-  function cancelForm() { setAdding(false); setNameInput('') }
-
+  const [dialogOpen, setDialogOpen] = useState(false)
   return (
-    <div className="border border-gray-100 rounded-lg p-3 space-y-2">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-        <FileImage size={12} /> {label}
-      </p>
-      {attachments.length > 0 && (
-        <div className="space-y-1.5">
-          {attachments.map((a, i) => (
-            <div key={a.id ?? `legacy-${i}`} className="flex items-center gap-2 group">
-              <a href={a.url} target="_blank" rel="noopener noreferrer"
-                className="flex-1 flex items-center gap-1.5 text-xs text-blue-600 hover:underline truncate">
-                <ExternalLink size={11} className="shrink-0" />
-                <span className="truncate">{a.label || `${label}${attachments.length > 1 ? ` ${i + 1}` : ''}`}</span>
-              </a>
-              {a.id !== null && (
-                <button onClick={() => onDelete(a.id!)}
-                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                  title="Remove">
-                  <Trash2 size={12} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+          <FileImage size={11} /> {label}
+        </p>
+        <button onClick={() => setDialogOpen(true)}
+          className="flex items-center gap-0.5 text-xs text-feros-navy hover:underline font-medium">
+          <Plus size={11} /> Add
+        </button>
+      </div>
+      {attachments.length === 0 && (
+        <p className="text-xs text-gray-300 py-0.5">No attachments yet</p>
       )}
-      {adding ? (
-        <div className="space-y-1.5">
-          <input
-            autoFocus
-            value={nameInput}
-            onChange={e => setNameInput(e.target.value)}
-            placeholder={`Name (e.g. Vendor Quote)`}
-            className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
-          />
-          <div className="flex gap-1.5">
-            <button onClick={() => ref.current?.click()} disabled={uploading}
-              className="flex-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs py-1.5 flex items-center justify-center gap-1 hover:bg-blue-100">
-              <Plus size={11} />{uploading ? 'Uploading…' : 'Choose File'}
-            </button>
-            <button onClick={cancelForm} className="text-xs text-gray-400 hover:text-gray-600 px-2">
-              Cancel
-            </button>
+      {attachments.map((a, i) => (
+        <div key={a.id ?? `l-${i}`} className="flex items-center gap-2 group py-0.5">
+          <span className="flex-1 text-xs text-gray-700 truncate">
+            {a.label || `${label}${attachments.length > 1 ? ` ${i + 1}` : ''}`}
+          </span>
+          <div className="flex items-center gap-1 shrink-0">
+            <a href={a.url} target="_blank" rel="noopener noreferrer"
+              className="text-gray-400 hover:text-blue-600 transition-colors" title="View">
+              <Eye size={13} />
+            </a>
+            {a.id !== null && (
+              <button onClick={() => onDelete(a.id!)}
+                className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove">
+                <Trash2 size={12} />
+              </button>
+            )}
           </div>
         </div>
-      ) : (
-        <button onClick={openForm} disabled={uploading}
-          className="w-full border-2 border-dashed border-gray-200 rounded-lg py-2 text-xs text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-1.5">
-          <Plus size={12} /> {`Add ${label}`}
-        </button>
-      )}
-      <input ref={ref} type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => {
-          const f = e.target.files?.[0]
-          if (f) { onAdd(f, nameInput); cancelForm() }
-          e.target.value = ''
-        }} />
+      ))}
+      <AddAttachmentDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onAdd={onAdd} label={label} />
     </div>
   )
 }
 
 export function ServiceDetailModal({ service, open, onClose }: Props) {
   const qc = useQueryClient()
-  const [uploadingEstimate, setUploadingEstimate] = useState(false)
-  const [uploadingBill, setUploadingBill] = useState(false)
-  const [, setDeletingId] = useState<number | null>(null)
 
   const { data: partsData } = useQuery({
     queryKey: ['service-parts', service?.id],
@@ -187,33 +213,18 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
   })
   const parts: ServicePart[] = partsData?.data ?? []
 
-  async function handleAdd(type: 'ESTIMATE' | 'BILL', file: File, label?: string) {
+  async function handleAdd(type: 'ESTIMATE' | 'BILL', file: File, label: string) {
     if (!service) return
-    const setter = type === 'ESTIMATE' ? setUploadingEstimate : setUploadingBill
-    setter(true)
-    try {
-      await vehicleServicesApi.addAttachment(service.id, type, file, label || undefined)
-      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
-      toast.success(`${type === 'ESTIMATE' ? 'Estimate' : 'Bill'} uploaded`)
-    } catch {
-      toast.error('Upload failed')
-    } finally {
-      setter(false)
-    }
+    await vehicleServicesApi.addAttachment(service.id, type, file, label || undefined)
+    qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+    toast.success(`${type === 'ESTIMATE' ? 'Estimate' : 'Bill'} uploaded`)
   }
 
   async function handleDeleteAttachment(attachmentId: number) {
     if (!service) return
-    setDeletingId(attachmentId)
-    try {
-      await vehicleServicesApi.deleteAttachment(service.id, attachmentId)
-      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
-      toast.success('Attachment removed')
-    } catch {
-      toast.error('Failed to remove attachment')
-    } finally {
-      setDeletingId(null)
-    }
+    await vehicleServicesApi.deleteAttachment(service.id, attachmentId)
+    qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+    toast.success('Attachment removed')
   }
 
   if (!service) return null
@@ -467,18 +478,16 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
               <FileText size={12} /> Documents
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <MultiDocUploadCard
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <MultiDocSection
                 label="Estimate"
                 attachments={service.estimateAttachments ?? []}
-                uploading={uploadingEstimate}
                 onAdd={(f, lbl) => handleAdd('ESTIMATE', f, lbl)}
                 onDelete={handleDeleteAttachment}
               />
-              <MultiDocUploadCard
+              <MultiDocSection
                 label="Final Bill"
                 attachments={service.billAttachments ?? []}
-                uploading={uploadingBill}
                 onAdd={(f, lbl) => handleAdd('BILL', f, lbl)}
                 onDelete={handleDeleteAttachment}
               />

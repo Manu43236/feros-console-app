@@ -906,32 +906,73 @@ function CreateServiceDialog({
 }
 
 // ── service doc actions (inline on card) ───────────────────────────────────────
+function AddDocDialog({ open, onClose, onAdd, label }: {
+  open: boolean; onClose: () => void
+  onAdd: (f: File, lbl: string) => Promise<void>; label: string
+}) {
+  const [name, setName] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [busy, setBusy] = useState(false)
+  const ref = useRef<HTMLInputElement>(null)
+  async function submit() {
+    if (!file) return
+    setBusy(true)
+    try { await onAdd(file, name.trim()); onClose() }
+    catch {} finally { setBusy(false) }
+  }
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Add {label}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="mb-1.5 block">Name / Label</Label>
+            <Input placeholder="e.g. Vendor Quote, Revised Estimate" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block">File *</Label>
+            {file ? (
+              <div className="flex items-center gap-2 p-2.5 border border-gray-200 rounded-lg">
+                <FileText size={14} className="text-gray-400 shrink-0" />
+                <span className="text-sm text-gray-700 flex-1 truncate">{file.name}</span>
+                <button onClick={() => setFile(null)} className="text-gray-400 hover:text-red-500"><X size={14} /></button>
+              </div>
+            ) : (
+              <button onClick={() => ref.current?.click()}
+                className="w-full border-2 border-dashed border-gray-200 rounded-lg py-5 text-sm text-gray-400 hover:border-gray-300 hover:text-gray-500 flex items-center justify-center gap-2">
+                <Upload size={14} /> Choose file (PDF or image)
+              </button>
+            )}
+            <input ref={ref} type="file" accept="image/*,.pdf" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f); e.target.value = '' }} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={!file || busy} onClick={submit}>{busy ? 'Uploading…' : 'Upload'}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
   const qc = useQueryClient()
-  const estRef  = useRef<HTMLInputElement>(null)
-  const billRef = useRef<HTMLInputElement>(null)
-  const [uploadingEst,  setUploadingEst]  = useState(false)
-  const [uploadingBill, setUploadingBill] = useState(false)
-  const [addingEstLabel, setAddingEstLabel]   = useState(false)
-  const [addingBillLabel, setAddingBillLabel] = useState(false)
-  const [estLabelInput, setEstLabelInput]     = useState('')
-  const [billLabelInput, setBillLabelInput]   = useState('')
-  const [newItemDesc, setNewItemDesc]     = useState('')
-  const [newItemCost, setNewItemCost]     = useState('')
-  const [addingItem,  setAddingItem]      = useState(false)
-  const [showAddItem, setShowAddItem]     = useState(false)
+  const [estDialogOpen,  setEstDialogOpen]  = useState(false)
+  const [billDialogOpen, setBillDialogOpen] = useState(false)
+  const [newItemDesc, setNewItemDesc] = useState('')
+  const [newItemCost, setNewItemCost] = useState('')
+  const [addingItem,  setAddingItem]  = useState(false)
+  const [showAddItem, setShowAddItem] = useState(false)
 
   const isThirdParty = s.serviceType === 'THIRD_PARTY' || s.serviceType === 'OEM_CENTER'
+  const isCompleted  = s.status === 'COMPLETED'
+  const items = s.vendorItems ?? []
 
-  async function upload(type: 'ESTIMATE' | 'BILL', file: File, label?: string) {
-    const set = type === 'ESTIMATE' ? setUploadingEst : setUploadingBill
-    set(true)
-    try {
-      await vehicleServicesApi.addAttachment(s.id, type, await compressImage(file), label || undefined)
-      qc.invalidateQueries({ queryKey: ['vehicle-services'] })
-      toast.success(`${type === 'ESTIMATE' ? 'Estimate' : 'Bill'} uploaded`)
-    } catch { toast.error('Upload failed') }
-    finally { set(false) }
+  async function addDoc(type: 'ESTIMATE' | 'BILL', file: File, label: string) {
+    await vehicleServicesApi.addAttachment(s.id, type, await compressImage(file), label || undefined)
+    qc.invalidateQueries({ queryKey: ['vehicle-services'] })
+    toast.success(`${type === 'ESTIMATE' ? 'Estimate' : 'Bill'} uploaded`)
   }
 
   async function deleteAttachment(attachmentId: number) {
@@ -961,16 +1002,52 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
     } catch { toast.error('Failed to remove part') }
   }
 
-  const isCompleted = s.status === 'COMPLETED'
-  const items = s.vendorItems ?? []
+  function DocSection({ label, attachments, onAdd, dialogOpen, setDialogOpen }: {
+    label: string
+    attachments: Array<{ id: number | null; url: string; label?: string }>
+    onAdd: (f: File, lbl: string) => Promise<void>
+    dialogOpen: boolean
+    setDialogOpen: (v: boolean) => void
+  }) {
+    return (
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
+          <button onClick={() => setDialogOpen(true)}
+            className="flex items-center gap-0.5 text-xs text-feros-navy hover:underline font-medium">
+            <Plus size={11} /> Add
+          </button>
+        </div>
+        {attachments.length === 0 && (
+          <p className="text-xs text-gray-300">No attachments yet</p>
+        )}
+        {attachments.map((a, i) => (
+          <div key={a.id ?? `l-${i}`} className="flex items-center gap-2 group py-0.5">
+            <span className="flex-1 text-xs text-gray-700 truncate">
+              {a.label || `${label}${attachments.length > 1 ? ` ${i + 1}` : ''}`}
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              <a href={a.url} target="_blank" rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-600 transition-colors" title="View">
+                <Eye size={13} />
+              </a>
+              {a.id !== null && (
+                <button onClick={() => deleteAttachment(a.id!)}
+                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove">
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        <AddDocDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onAdd={onAdd} label={label} />
+      </div>
+    )
+  }
 
   return (
     <div className="border-t border-gray-100 px-4 py-3 bg-gray-50/40 space-y-3">
-      <input ref={estRef}  type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) { upload('ESTIMATE', f, estLabelInput); setAddingEstLabel(false); setEstLabelInput('') } e.target.value = '' }} />
-      <input ref={billRef} type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) { upload('BILL', f, billLabelInput); setAddingBillLabel(false); setBillLabelInput('') } e.target.value = '' }} />
-
       {/* Cost amounts */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <span className="text-gray-500">
@@ -1037,96 +1114,24 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
         </div>
       )}
 
-      {/* Doc cards */}
-      <div className="flex items-start gap-2">
-        {/* Estimate docs */}
-        <div className="flex-1 border border-gray-200 rounded-lg p-2.5 bg-white min-w-0 space-y-1.5">
-          <p className="text-xs font-medium text-gray-500">Estimate Docs</p>
-          {(s.estimateAttachments ?? []).map((a, i) => (
-            <div key={a.id ?? `l-${i}`} className="flex items-center gap-1 group">
-              <a href={a.url} target="_blank" rel="noopener noreferrer"
-                className="flex-1 flex items-center gap-1 text-xs text-blue-600 hover:underline truncate">
-                <ExternalLink size={10} className="shrink-0" />
-                <span className="truncate">{a.label || `Estimate${(s.estimateAttachments?.length ?? 0) > 1 ? ` ${i + 1}` : ''}`}</span>
-              </a>
-              {a.id !== null && (
-                <button onClick={() => deleteAttachment(a.id!)}
-                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <X size={10} />
-                </button>
-              )}
-            </div>
-          ))}
-          {!addingEstLabel ? (
-            <button onClick={() => { setAddingEstLabel(true); setEstLabelInput('') }} disabled={uploadingEst}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
-              <Upload size={10} /> {uploadingEst ? 'Uploading…' : 'Add'}
-            </button>
-          ) : (
-            <div className="space-y-1">
-              <input autoFocus value={estLabelInput} onChange={e => setEstLabelInput(e.target.value)}
-                placeholder="Name (e.g. Vendor Quote)"
-                className="w-full text-[10px] border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-              <div className="flex gap-1">
-                <button onClick={() => estRef.current?.click()}
-                  className="flex-1 flex items-center gap-0.5 text-[10px] text-blue-600 hover:underline justify-center">
-                  <Upload size={9} />{uploadingEst ? 'Uploading…' : 'Choose File'}
-                </button>
-                <button onClick={() => setAddingEstLabel(false)} className="text-[10px] text-gray-400 hover:text-gray-600">✕</button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Bill docs — only when completed */}
+      {/* Doc sections + PDF link */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <DocSection label="Estimate Docs" attachments={s.estimateAttachments ?? []}
+          onAdd={(f, lbl) => addDoc('ESTIMATE', f, lbl)}
+          dialogOpen={estDialogOpen} setDialogOpen={setEstDialogOpen} />
         {isCompleted && (
-          <div className="flex-1 border border-gray-200 rounded-lg p-2.5 bg-white min-w-0 space-y-1.5">
-            <p className="text-xs font-medium text-gray-500">Bill Docs</p>
-            {(s.billAttachments ?? []).map((a, i) => (
-              <div key={a.id ?? `l-${i}`} className="flex items-center gap-1 group">
-                <a href={a.url} target="_blank" rel="noopener noreferrer"
-                  className="flex-1 flex items-center gap-1 text-xs text-blue-600 hover:underline truncate">
-                  <ExternalLink size={10} className="shrink-0" />
-                  <span className="truncate">{a.label || `Bill${(s.billAttachments?.length ?? 0) > 1 ? ` ${i + 1}` : ''}`}</span>
-                </a>
-                {a.id !== null && (
-                  <button onClick={() => deleteAttachment(a.id!)}
-                    className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <X size={10} />
-                  </button>
-                )}
-              </div>
-            ))}
-            {!addingBillLabel ? (
-              <button onClick={() => { setAddingBillLabel(true); setBillLabelInput('') }} disabled={uploadingBill}
-                className="flex items-center gap-1 text-xs text-gray-400 hover:text-feros-navy">
-                <Upload size={10} /> {uploadingBill ? 'Uploading…' : 'Add'}
-              </button>
-            ) : (
-              <div className="space-y-1">
-                <input autoFocus value={billLabelInput} onChange={e => setBillLabelInput(e.target.value)}
-                  placeholder="Name (e.g. Final Invoice)"
-                  className="w-full text-[10px] border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                <div className="flex gap-1">
-                  <button onClick={() => billRef.current?.click()}
-                    className="flex-1 flex items-center gap-0.5 text-[10px] text-blue-600 hover:underline justify-center">
-                    <Upload size={9} />{uploadingBill ? 'Uploading…' : 'Choose File'}
-                  </button>
-                  <button onClick={() => setAddingBillLabel(false)} className="text-[10px] text-gray-400 hover:text-gray-600">✕</button>
-                </div>
-              </div>
-            )}
-          </div>
+          <DocSection label="Final Bill Docs" attachments={s.billAttachments ?? []}
+            onAdd={(f, lbl) => addDoc('BILL', f, lbl)}
+            dialogOpen={billDialogOpen} setDialogOpen={setBillDialogOpen} />
         )}
+      </div>
 
-        {/* PDF */}
-        <div className="border border-feros-navy/20 rounded-lg p-2.5 bg-white">
-          <p className="text-xs font-medium text-gray-500 mb-1.5">PDF</p>
-          <a href={`/vehicle-services/${s.id}/pdf`} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-feros-navy hover:underline">
-            <FileText size={11} /> View
-          </a>
-        </div>
+      {/* Service PDF */}
+      <div className="flex justify-end">
+        <a href={`/vehicle-services/${s.id}/pdf`} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-1 text-xs text-feros-navy border border-feros-navy/30 rounded px-2 py-1 hover:bg-feros-navy/5">
+          <FileText size={11} /> PDF Report
+        </a>
       </div>
     </div>
   )
