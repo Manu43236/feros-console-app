@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Download, DollarSign, BookOpen, TrendingDown, Users, CalendarRange, Truck } from 'lucide-react'
@@ -48,6 +48,36 @@ const statusBadge = (s: string) => {
     <span className={cn('px-2 py-0.5 rounded text-xs font-medium', map[s] ?? 'bg-gray-100 text-gray-600')}>
       {s}
     </span>
+  )
+}
+
+// ── Scrollable table wrapper ───────────────────────────────────────────────────
+function ScrollWrap({ children }: { children: React.ReactNode }) {
+  const topRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const mirrorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const top = topRef.current, bottom = bottomRef.current, mirror = mirrorRef.current
+    if (!top || !bottom || !mirror) return
+    const ro = new ResizeObserver(() => { mirror.style.width = `${bottom.scrollWidth}px` })
+    ro.observe(bottom)
+    let syncing = false
+    const t = top, b = bottom
+    function onTop()    { if (!syncing) { syncing = true; b.scrollLeft = t.scrollLeft; syncing = false } }
+    function onBottom() { if (!syncing) { syncing = true; t.scrollLeft = b.scrollLeft; syncing = false } }
+    top.addEventListener('scroll', onTop)
+    bottom.addEventListener('scroll', onBottom)
+    return () => { ro.disconnect(); top.removeEventListener('scroll', onTop); bottom.removeEventListener('scroll', onBottom) }
+  }, [])
+  return (
+    <div className="rounded-xl border overflow-hidden">
+      <div ref={topRef} className="overflow-x-auto border-b bg-gray-50" style={{ height: 14 }}>
+        <div ref={mirrorRef} style={{ height: 1 }} />
+      </div>
+      <div ref={bottomRef} className="overflow-x-auto">
+        {children}
+      </div>
+    </div>
   )
 }
 
@@ -135,7 +165,7 @@ function SummaryTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border">
+      <ScrollWrap>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -170,7 +200,7 @@ function SummaryTab() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollWrap>
     </div>
   )
 }
@@ -217,7 +247,7 @@ function SalaryRegisterTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border">
+      <ScrollWrap>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -258,7 +288,7 @@ function SalaryRegisterTab() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollWrap>
     </div>
   )
 }
@@ -305,7 +335,7 @@ function AdvancesTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border">
+      <ScrollWrap>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -342,7 +372,7 @@ function AdvancesTab() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollWrap>
     </div>
   )
 }
@@ -391,7 +421,7 @@ function ByRoleTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border">
+      <ScrollWrap>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -424,7 +454,7 @@ function ByRoleTab() {
             )}
           </tbody>
         </table>
-      </div>
+      </ScrollWrap>
     </div>
   )
 }
@@ -465,7 +495,7 @@ function YtdTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border">
+      <ScrollWrap>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -494,7 +524,7 @@ function YtdTab() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollWrap>
     </div>
   )
 }
@@ -587,7 +617,7 @@ function VehicleCostTab() {
           Select a vehicle and date range to view payroll cost.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border">
+        <ScrollWrap>
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -629,7 +659,7 @@ function VehicleCostTab() {
               </tfoot>
             )}
           </table>
-        </div>
+        </ScrollWrap>
       )}
     </div>
   )

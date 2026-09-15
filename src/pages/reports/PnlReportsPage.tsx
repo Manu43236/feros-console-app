@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Download, TrendingUp, Building2, Truck, MapPin, FileText } from 'lucide-react'
@@ -58,24 +58,45 @@ function SummaryCard({ label, value, sub, color }: {
 function ReportTable({ headers, rows, loading }: {
   headers: string[]; rows: React.ReactNode[][]; loading: boolean
 }) {
+  const topRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const mirrorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const top = topRef.current, bottom = bottomRef.current, mirror = mirrorRef.current
+    if (!top || !bottom || !mirror) return
+    const ro = new ResizeObserver(() => { mirror.style.width = `${bottom.scrollWidth}px` })
+    ro.observe(bottom)
+    let syncing = false
+    const t = top, b = bottom
+    function onTop()    { if (!syncing) { syncing = true; b.scrollLeft = t.scrollLeft; syncing = false } }
+    function onBottom() { if (!syncing) { syncing = true; t.scrollLeft = b.scrollLeft; syncing = false } }
+    top.addEventListener('scroll', onTop)
+    bottom.addEventListener('scroll', onBottom)
+    return () => { ro.disconnect(); top.removeEventListener('scroll', onTop); bottom.removeEventListener('scroll', onBottom) }
+  }, [rows])
   if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
   if (rows.length === 0) return <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-sm">
-        <thead>
-          <tr>{headers.map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-              {row.map((cell, j) => <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{cell}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="px-4 py-2 border-t bg-gray-50 text-xs text-gray-500">
-        {rows.length} record{rows.length !== 1 ? 's' : ''}
+    <div className="rounded-lg border overflow-hidden">
+      <div ref={topRef} className="overflow-x-auto border-b bg-gray-50" style={{ height: 14 }}>
+        <div ref={mirrorRef} style={{ height: 1 }} />
+      </div>
+      <div ref={bottomRef} className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr>{headers.map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                {row.map((cell, j) => <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{cell}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="px-4 py-2 border-t bg-gray-50 text-xs text-gray-500">
+          {rows.length} record{rows.length !== 1 ? 's' : ''}
+        </div>
       </div>
     </div>
   )
@@ -83,6 +104,22 @@ function ReportTable({ headers, rows, loading }: {
 
 // Grouped Client × Vehicle table — shows client as a spanning header row, then vehicle sub-rows
 function ClientVehicleTable({ rows, loading }: { rows: ClientVehiclePnlRow[]; loading: boolean }) {
+  const topRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const mirrorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const top = topRef.current, bottom = bottomRef.current, mirror = mirrorRef.current
+    if (!top || !bottom || !mirror) return
+    const ro = new ResizeObserver(() => { mirror.style.width = `${bottom.scrollWidth}px` })
+    ro.observe(bottom)
+    let syncing = false
+    const t = top, b = bottom
+    function onTop()    { if (!syncing) { syncing = true; b.scrollLeft = t.scrollLeft; syncing = false } }
+    function onBottom() { if (!syncing) { syncing = true; t.scrollLeft = b.scrollLeft; syncing = false } }
+    top.addEventListener('scroll', onTop)
+    bottom.addEventListener('scroll', onBottom)
+    return () => { ro.disconnect(); top.removeEventListener('scroll', onTop); bottom.removeEventListener('scroll', onBottom) }
+  }, [rows])
   if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
   if (rows.length === 0) return <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
 
@@ -96,41 +133,46 @@ function ClientVehicleTable({ rows, loading }: { rows: ClientVehiclePnlRow[]; lo
   const headers = ['Vehicle', 'Type', 'Trips', 'Revenue', 'Trip Expenses', 'Net P&L']
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-sm">
-        <thead>
-          <tr>{headers.map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>)}</tr>
-        </thead>
-        <tbody>
-          {Object.entries(byClient).map(([clientName, vRows]) => {
-            const clientRevenue = vRows.reduce((s, r) => s + r.revenue, 0)
-            const clientExp = vRows.reduce((s, r) => s + r.tripExpenses, 0)
-            const clientPnl = vRows.reduce((s, r) => s + r.netPnl, 0)
-            return [
-              // Client header row
-              <tr key={`client-${clientName}`} className="bg-blue-50 border-t-2 border-blue-200">
-                <td colSpan={3} className="px-4 py-2 font-semibold text-feros-navy">{clientName}</td>
-                <td className="px-4 py-2 font-semibold text-gray-700 tabular-nums">{fmt(clientRevenue)}</td>
-                <td className="px-4 py-2 font-semibold text-gray-700 tabular-nums">{fmt(clientExp)}</td>
-                <td className="px-4 py-2"><PnlBadge value={clientPnl} /></td>
-              </tr>,
-              // Vehicle sub-rows
-              ...vRows.map((r, i) => (
-                <tr key={`${clientName}-${r.vehicleId}`} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                  <td className="px-4 py-2.5 pl-8 text-gray-700">{r.registrationNumber}</td>
-                  <td className="px-4 py-2.5 text-gray-500">{r.vehicleType}</td>
-                  <td className="px-4 py-2.5 text-gray-700">{r.totalTrips}</td>
-                  <td className="px-4 py-2.5 text-gray-700 tabular-nums">{fmt(r.revenue)}</td>
-                  <td className="px-4 py-2.5 text-gray-700 tabular-nums">{fmt(r.tripExpenses)}</td>
-                  <td className="px-4 py-2.5"><PnlBadge value={r.netPnl} /></td>
-                </tr>
-              )),
-            ]
-          })}
-        </tbody>
-      </table>
-      <div className="px-4 py-2 border-t bg-gray-50 text-xs text-gray-500">
-        {rows.length} row{rows.length !== 1 ? 's' : ''} across {Object.keys(byClient).length} client{Object.keys(byClient).length !== 1 ? 's' : ''}
+    <div className="rounded-lg border overflow-hidden">
+      <div ref={topRef} className="overflow-x-auto border-b bg-gray-50" style={{ height: 14 }}>
+        <div ref={mirrorRef} style={{ height: 1 }} />
+      </div>
+      <div ref={bottomRef} className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr>{headers.map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {Object.entries(byClient).map(([clientName, vRows]) => {
+              const clientRevenue = vRows.reduce((s, r) => s + r.revenue, 0)
+              const clientExp = vRows.reduce((s, r) => s + r.tripExpenses, 0)
+              const clientPnl = vRows.reduce((s, r) => s + r.netPnl, 0)
+              return [
+                // Client header row
+                <tr key={`client-${clientName}`} className="bg-blue-50 border-t-2 border-blue-200">
+                  <td colSpan={3} className="px-4 py-2 font-semibold text-feros-navy">{clientName}</td>
+                  <td className="px-4 py-2 font-semibold text-gray-700 tabular-nums">{fmt(clientRevenue)}</td>
+                  <td className="px-4 py-2 font-semibold text-gray-700 tabular-nums">{fmt(clientExp)}</td>
+                  <td className="px-4 py-2"><PnlBadge value={clientPnl} /></td>
+                </tr>,
+                // Vehicle sub-rows
+                ...vRows.map((r, i) => (
+                  <tr key={`${clientName}-${r.vehicleId}`} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                    <td className="px-4 py-2.5 pl-8 text-gray-700">{r.registrationNumber}</td>
+                    <td className="px-4 py-2.5 text-gray-500">{r.vehicleType}</td>
+                    <td className="px-4 py-2.5 text-gray-700">{r.totalTrips}</td>
+                    <td className="px-4 py-2.5 text-gray-700 tabular-nums">{fmt(r.revenue)}</td>
+                    <td className="px-4 py-2.5 text-gray-700 tabular-nums">{fmt(r.tripExpenses)}</td>
+                    <td className="px-4 py-2.5"><PnlBadge value={r.netPnl} /></td>
+                  </tr>
+                )),
+              ]
+            })}
+          </tbody>
+        </table>
+        <div className="px-4 py-2 border-t bg-gray-50 text-xs text-gray-500">
+          {rows.length} row{rows.length !== 1 ? 's' : ''} across {Object.keys(byClient).length} client{Object.keys(byClient).length !== 1 ? 's' : ''}
+        </div>
       </div>
     </div>
   )
