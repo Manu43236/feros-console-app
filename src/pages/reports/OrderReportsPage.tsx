@@ -61,7 +61,8 @@ const PAYMENT_COLORS: Record<string, string> = {
   PARTIALLY_PAID: 'bg-amber-100 text-amber-700',
   PAID:           'bg-green-100 text-green-700',
 }
-function StatusBadge({ status, colorMap }: { status: string; colorMap: Record<string, string> }) {
+function StatusBadge({ status, colorMap }: { status: string | null | undefined; colorMap: Record<string, string> }) {
+  if (!status) return <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">—</span>
   const cls = colorMap[status] ?? 'bg-gray-100 text-gray-600'
   return <span className={`px-2 py-0.5 rounded text-xs font-medium ${cls}`}>{status.replace(/_/g, ' ')}</span>
 }
