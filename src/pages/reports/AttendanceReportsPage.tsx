@@ -243,6 +243,7 @@ export default function AttendanceReportsPage() {
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
   const [roleFilter, setRoleFilter] = useState('ALL')
   const [fleetDate, setFleetDate] = useState(todayStr())
+  const [roleSummaryDate, setRoleSummaryDate] = useState(todayStr())
   const [fleetScope, setFleetScope] = useState<'INTRA_STATE' | 'INTER_STATE'>('INTRA_STATE')
   const [fleetFilter, setFleetFilter] = useState<'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty'>('all')
 
@@ -277,8 +278,8 @@ export default function AttendanceReportsPage() {
     enabled: tab === 'fleet',
   })
   const roleSummaryQuery = useQuery({
-    queryKey: ['report-attendance-role-summary', startDate, endDate],
-    queryFn: () => reportsApi.getAttendanceRoleSummary(startDate, endDate),
+    queryKey: ['report-attendance-role-summary', roleSummaryDate],
+    queryFn: () => reportsApi.getAttendanceRoleSummary(roleSummaryDate, roleSummaryDate),
     enabled: tab === 'role-summary',
   })
 
@@ -365,32 +366,36 @@ export default function AttendanceReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
-        {(tab === 'daily' || tab === 'summary' || tab === 'role-summary') && (
+        {tab === 'role-summary' && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+          <Input type="date" value={roleSummaryDate} onChange={e => setRoleSummaryDate(e.target.value)} className="w-40" />
+        </div>
+      )}
+
+      {(tab === 'daily' || tab === 'summary') && (
           <>
-            {/* Vehicle + role filters — not shown for role-summary */}
-            {tab !== 'role-summary' && (
-              <>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
-                  <SearchableSelect
-                    value={vehicleFilter}
-                    onValueChange={setVehicleFilter}
-                    options={vehicleOptions}
-                    className="w-52"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-                  <SearchableSelect
-                    value={roleFilter}
-                    onValueChange={setRoleFilter}
-                    options={ROLES.map(r => ({ value: r, label: r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ') }))}
-                    showSearch={false}
-                    className="w-44"
-                  />
-                </div>
-              </>
-            )}
+            {/* Vehicle filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
+              <SearchableSelect
+                value={vehicleFilter}
+                onValueChange={setVehicleFilter}
+                options={vehicleOptions}
+                className="w-52"
+              />
+            </div>
+            {/* Role filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+              <SearchableSelect
+                value={roleFilter}
+                onValueChange={setRoleFilter}
+                options={ROLES.map(r => ({ value: r, label: r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ') }))}
+                showSearch={false}
+                className="w-44"
+              />
+            </div>
 
             {/* Period presets */}
             <div>
