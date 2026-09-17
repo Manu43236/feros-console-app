@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Users, ClipboardList, CalendarCheck } from 'lucide-react'
+import { Download, Users, ClipboardList, CalendarCheck, BarChart2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import { downloadDailyFleetAttendancePdf } from './DailyFleetAttendancePdf'
-import type { AttendanceDailyRow, AttendanceSummaryRow, DailyFleetAttendanceReport } from '@/types'
+import type { AttendanceDailyRow, AttendanceSummaryRow, AttendanceRoleSummaryRow, DailyFleetAttendanceReport } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -25,9 +25,10 @@ const thisMonthStart = () => {
 
 // ── Tab config ─────────────────────────────────────────────────────────────────
 const TABS = [
-  { key: 'daily',   label: 'Daily Register',   icon: ClipboardList  },
-  { key: 'summary', label: 'Monthly Summary',  icon: Users          },
-  { key: 'fleet',   label: 'Daily Attendance', icon: CalendarCheck  },
+  { key: 'daily',        label: 'Daily Register',   icon: ClipboardList  },
+  { key: 'summary',      label: 'Monthly Summary',  icon: Users          },
+  { key: 'fleet',        label: 'Daily Attendance', icon: CalendarCheck  },
+  { key: 'role-summary', label: 'Role Summary',     icon: BarChart2      },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -190,6 +191,48 @@ function DailyFleetTable({ report, filter, loading }: { report: DailyFleetAttend
   />
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  DRIVER: 'Drivers', CLEANER: 'Cleaners', SUPERVISOR: 'Supervisors',
+  OFFICE_STAFF: 'Office Staff', SERVICE_MANAGER: 'Service Managers',
+  TECHNICIAN: 'Technicians', STORE_KEEPER: 'Store Keepers', ADMIN: 'Admins',
+}
+
+function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[]; loading: boolean }) {
+  if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+  if (rows.length === 0) return (
+    <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
+  )
+  return (
+    <div className="rounded-lg border overflow-hidden">
+      <table className="min-w-full text-sm">
+        <thead>
+          <tr>
+            {['Role', 'Staff Count', 'Presented', 'Absent'].map(h => (
+              <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={r.role} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+              <td className="px-4 py-3 font-medium text-gray-800">{ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' ')}</td>
+              <td className="px-4 py-3 text-gray-700 font-semibold">{r.staffCount}</td>
+              <td className="px-4 py-3">
+                <span className="text-green-700 font-semibold">{r.presented}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={r.absent > 0 ? 'text-red-600 font-semibold' : 'text-gray-400'}>{r.absent}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AttendanceReportsPage() {
   const [tab, setTab] = useState<TabKey>('daily')
@@ -232,6 +275,11 @@ export default function AttendanceReportsPage() {
     queryKey: ['report-daily-fleet', fleetDate, fleetScope],
     queryFn: () => reportsApi.getDailyFleetAttendance(fleetDate, fleetScope),
     enabled: tab === 'fleet',
+  })
+  const roleSummaryQuery = useQuery({
+    queryKey: ['report-attendance-role-summary', startDate, endDate],
+    queryFn: () => reportsApi.getAttendanceRoleSummary(startDate, endDate),
+    enabled: tab === 'role-summary',
   })
 
   async function handleDownload(format: 'csv' | 'pdf') {
@@ -317,30 +365,32 @@ export default function AttendanceReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
-        {tab !== 'fleet' && (
+        {(tab === 'daily' || tab === 'summary' || tab === 'role-summary') && (
           <>
-            {/* Vehicle filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
-              <SearchableSelect
-                value={vehicleFilter}
-                onValueChange={setVehicleFilter}
-                options={vehicleOptions}
-                className="w-52"
-              />
-            </div>
-
-            {/* Role filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-              <SearchableSelect
-                value={roleFilter}
-                onValueChange={setRoleFilter}
-                options={ROLES.map(r => ({ value: r, label: r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ') }))}
-                showSearch={false}
-                className="w-44"
-              />
-            </div>
+            {/* Vehicle + role filters — not shown for role-summary */}
+            {tab !== 'role-summary' && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
+                  <SearchableSelect
+                    value={vehicleFilter}
+                    onValueChange={setVehicleFilter}
+                    options={vehicleOptions}
+                    className="w-52"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+                  <SearchableSelect
+                    value={roleFilter}
+                    onValueChange={setRoleFilter}
+                    options={ROLES.map(r => ({ value: r, label: r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ') }))}
+                    showSearch={false}
+                    className="w-44"
+                  />
+                </div>
+              </>
+            )}
 
             {/* Period presets */}
             <div>
@@ -432,21 +482,24 @@ export default function AttendanceReportsPage() {
           )
         })()}
 
-        {/* Download buttons */}
-        <div className="ml-auto flex items-end gap-2">
-          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('csv')} className="gap-1.5">
-            <Download size={14} />CSV
-          </Button>
-          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('pdf')} className="gap-1.5">
-            <Download size={14} />PDF
-          </Button>
-        </div>
+        {/* Download buttons — not shown for role-summary */}
+        {tab !== 'role-summary' && (
+          <div className="ml-auto flex items-end gap-2">
+            <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('csv')} className="gap-1.5">
+              <Download size={14} />CSV
+            </Button>
+            <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('pdf')} className="gap-1.5">
+              <Download size={14} />PDF
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Table */}
-      {tab === 'daily'   && <DailyTable      rows={filteredDaily}   loading={dailyQuery.isLoading} />}
-      {tab === 'summary' && <SummaryTable    rows={filteredSummary} loading={summaryQuery.isLoading} />}
-      {tab === 'fleet'   && <DailyFleetTable report={fleetQuery.data?.data} filter={fleetFilter} loading={fleetQuery.isLoading} />}
+      {tab === 'daily'        && <DailyTable        rows={filteredDaily}                    loading={dailyQuery.isLoading} />}
+      {tab === 'summary'      && <SummaryTable      rows={filteredSummary}                  loading={summaryQuery.isLoading} />}
+      {tab === 'fleet'        && <DailyFleetTable   report={fleetQuery.data?.data}          filter={fleetFilter} loading={fleetQuery.isLoading} />}
+      {tab === 'role-summary' && <RoleSummaryTable  rows={roleSummaryQuery.data?.data ?? []} loading={roleSummaryQuery.isLoading} />}
     </div>
   )
 }

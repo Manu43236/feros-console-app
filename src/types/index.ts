@@ -2010,6 +2010,13 @@ export interface AttendanceSummaryRow {
   presentPercent: number
 }
 
+export interface AttendanceRoleSummaryRow {
+  role: string
+  staffCount: number
+  presented: number
+  absent: number
+}
+
 export interface WeightDiscrepancyRow {
   lrId: number
   lrNumber: string

@@ -10,6 +10,7 @@ import type {
   MaintenanceServiceRow,
   AttendanceDailyRow,
   AttendanceSummaryRow,
+  AttendanceRoleSummaryRow,
   LrRegisterRow,
   WeightDiscrepancyRow,
   DelayedDeliveryRow,
@@ -173,6 +174,12 @@ export const reportsApi = {
     })
     triggerDownload(res.data as Blob, `attendance-summary-${startDate}-${endDate}.${format}`)
   },
+
+  // ── Attendance Role Summary ───────────────────────────────────────────────
+  getAttendanceRoleSummary: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<AttendanceRoleSummaryRow[]>>('/reports/attendance/role-summary', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
 
   // ── LR Register ───────────────────────────────────────────────────────────
   getLrRegister: (startDate: string, endDate: string, clientId?: number) =>
