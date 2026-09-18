@@ -660,6 +660,7 @@ export default function LeaseDetailPage() {
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [extendDate, setExtendDate] = useState('')
   const [showExtend, setShowExtend] = useState(false)
+  const [showCloseLease, setShowCloseLease] = useState(false)
   const [closingAssignment, setClosingAssignment] = useState<LeaseVehicleAssignment | null>(null)
   const [assigningDivisionFor, setAssigningDivisionFor] = useState<LeaseVehicleAssignment | null>(null)
   const [assigningDriverFor, setAssigningDriverFor] = useState<LeaseVehicleAssignment | null>(null)
@@ -795,7 +796,7 @@ export default function LeaseDetailPage() {
               {nextStatuses.map(s => (
                 <Button key={s} size="sm" variant="outline"
                   disabled={statusMutation.isPending}
-                  onClick={() => statusMutation.mutate(s)}
+                  onClick={() => s === 'CLOSED' ? setShowCloseLease(true) : statusMutation.mutate(s)}
                   className={s === 'CLOSED'
                     ? 'text-red-300 border-red-400/40 hover:bg-red-500/20 bg-transparent gap-1.5'
                     : 'text-white border-white/30 hover:bg-white/20 bg-white/10 gap-1.5'
@@ -1279,6 +1280,25 @@ export default function LeaseDetailPage() {
       )}
 
       {/* ── Modals ── */}
+      <Dialog open={showCloseLease} onOpenChange={v => !v && setShowCloseLease(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Close Lease</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600">
+            This will permanently close <strong>{lease.leaseNumber}</strong>. All assigned drivers will be automatically unassigned.
+          </p>
+          <p className="text-sm text-red-600 font-medium">This action cannot be undone.</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowCloseLease(false)}>Cancel</Button>
+            <Button
+              disabled={statusMutation.isPending}
+              onClick={() => { statusMutation.mutate('CLOSED'); setShowCloseLease(false) }}
+              className="bg-red-600 hover:bg-red-700 text-white">
+              {statusMutation.isPending ? 'Closing…' : 'Close Lease'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {closingAssignment && (
         <CloseVehicleDialog
           leaseId={leaseId}
