@@ -202,12 +202,13 @@ function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
   if (rows.length === 0) return (
     <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
   )
+  const HEADERS = ['Role', 'Staff Count', 'Pending', 'Present', 'Half Day', 'Leave', 'Holiday', 'Week Off', 'Absent']
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="rounded-lg border overflow-hidden overflow-x-auto">
       <table className="min-w-full text-sm">
         <thead>
           <tr>
-            {['Role', 'Staff Count', 'Presented', 'Absent'].map(h => (
+            {HEADERS.map(h => (
               <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">
                 {h}
               </th>
@@ -217,10 +218,25 @@ function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.role} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-              <td className="px-4 py-3 font-medium text-gray-800">{ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' ')}</td>
+              <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' ')}</td>
               <td className="px-4 py-3 text-gray-700 font-semibold">{r.staffCount}</td>
               <td className="px-4 py-3">
-                <span className="text-green-700 font-semibold">{r.presented}</span>
+                <span className={r.pending > 0 ? 'text-yellow-600 font-semibold' : 'text-gray-400'}>{r.pending}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={r.present > 0 ? 'text-green-700 font-semibold' : 'text-gray-400'}>{r.present}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={r.halfDay > 0 ? 'text-amber-600 font-semibold' : 'text-gray-400'}>{r.halfDay}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={r.onLeave > 0 ? 'text-blue-600 font-semibold' : 'text-gray-400'}>{r.onLeave}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={r.holiday > 0 ? 'text-purple-600 font-semibold' : 'text-gray-400'}>{r.holiday}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={r.weekOff > 0 ? 'text-teal-600 font-semibold' : 'text-gray-400'}>{r.weekOff}</span>
               </td>
               <td className="px-4 py-3">
                 <span className={r.absent > 0 ? 'text-red-600 font-semibold' : 'text-gray-400'}>{r.absent}</span>
@@ -290,8 +306,12 @@ export default function AttendanceReportsPage() {
       else if (tab === 'summary') await reportsApi.exportAttendanceSummary(startDate, endDate, format)
       else if (tab === 'role-summary') {
         const rows = roleSummaryQuery.data?.data ?? []
-        const headers = ['Role', 'Staff Count', 'Presented', 'Absent']
-        const csvRows = rows.map(r => [ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' '), String(r.staffCount), String(r.presented), String(r.absent)])
+        const headers = ['Role', 'Staff Count', 'Pending', 'Present', 'Half Day', 'Leave', 'Holiday', 'Week Off', 'Absent']
+        const csvRows = rows.map(r => [
+          ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' '),
+          String(r.staffCount), String(r.pending), String(r.present),
+          String(r.halfDay), String(r.onLeave), String(r.holiday), String(r.weekOff), String(r.absent),
+        ])
         if (format === 'csv') {
           const content = [headers, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
           const a = document.createElement('a')

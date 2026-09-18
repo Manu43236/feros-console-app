@@ -2013,7 +2013,12 @@ export interface AttendanceSummaryRow {
 export interface AttendanceRoleSummaryRow {
   role: string
   staffCount: number
-  presented: number
+  pending: number
+  present: number
+  halfDay: number
+  onLeave: number
+  holiday: number
+  weekOff: number
   absent: number
 }
 
