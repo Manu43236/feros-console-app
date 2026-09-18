@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import { downloadDailyFleetAttendancePdf } from './DailyFleetAttendancePdf'
+import { downloadDailyFleetAttendancePdf, downloadTablePdf } from './DailyFleetAttendancePdf'
 import type { AttendanceDailyRow, AttendanceSummaryRow, AttendanceRoleSummaryRow, DailyFleetAttendanceReport } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -244,6 +244,7 @@ export default function AttendanceReportsPage() {
   const [roleFilter, setRoleFilter] = useState('ALL')
   const [fleetDate, setFleetDate] = useState(todayStr())
   const [fleetScope, setFleetScope] = useState<'INTRA_STATE' | 'INTER_STATE'>('INTRA_STATE')
+  const [roleSummaryDate, setRoleSummaryDate] = useState(todayStr())
   const [fleetFilter, setFleetFilter] = useState<'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty'>('all')
 
   function handleTabChange(key: TabKey) {
@@ -277,8 +278,8 @@ export default function AttendanceReportsPage() {
     enabled: tab === 'fleet',
   })
   const roleSummaryQuery = useQuery({
-    queryKey: ['report-attendance-role-summary', startDate, endDate],
-    queryFn: () => reportsApi.getAttendanceRoleSummary(startDate, endDate),
+    queryKey: ['report-attendance-role-summary', roleSummaryDate],
+    queryFn: () => reportsApi.getAttendanceRoleSummary(roleSummaryDate, roleSummaryDate),
     enabled: tab === 'role-summary',
   })
 
@@ -287,7 +288,26 @@ export default function AttendanceReportsPage() {
     try {
       if (tab === 'daily')   await reportsApi.exportAttendanceDaily(startDate, endDate, format)
       else if (tab === 'summary') await reportsApi.exportAttendanceSummary(startDate, endDate, format)
-      else if (tab === 'fleet') {
+      else if (tab === 'role-summary') {
+        const rows = roleSummaryQuery.data?.data ?? []
+        const headers = ['Role', 'Staff Count', 'Presented', 'Absent']
+        const csvRows = rows.map(r => [ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' '), String(r.staffCount), String(r.presented), String(r.absent)])
+        if (format === 'csv') {
+          const content = [headers, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+          a.download = `role-summary-attendance-${roleSummaryDate}.csv`
+          a.click()
+        } else {
+          await downloadTablePdf(
+            'Role Summary — Attendance Report',
+            `Date: ${roleSummaryDate}`,
+            headers,
+            csvRows,
+            `role-summary-attendance-${roleSummaryDate}.pdf`,
+          )
+        }
+      } else if (tab === 'fleet') {
         const report = fleetQuery.data?.data
         if (report) {
           const filtered = applyFleetFilter(report.rows, fleetFilter)
@@ -365,32 +385,28 @@ export default function AttendanceReportsPage() {
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
-        {(tab === 'daily' || tab === 'summary' || tab === 'role-summary') && (
+        {(tab === 'daily' || tab === 'summary') && (
           <>
-            {/* Vehicle + role filters — not shown for role-summary */}
-            {tab !== 'role-summary' && (
-              <>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
-                  <SearchableSelect
-                    value={vehicleFilter}
-                    onValueChange={setVehicleFilter}
-                    options={vehicleOptions}
-                    className="w-52"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-                  <SearchableSelect
-                    value={roleFilter}
-                    onValueChange={setRoleFilter}
-                    options={ROLES.map(r => ({ value: r, label: r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ') }))}
-                    showSearch={false}
-                    className="w-44"
-                  />
-                </div>
-              </>
-            )}
+            {/* Vehicle + role filters */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle</label>
+              <SearchableSelect
+                value={vehicleFilter}
+                onValueChange={setVehicleFilter}
+                options={vehicleOptions}
+                className="w-52"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+              <SearchableSelect
+                value={roleFilter}
+                onValueChange={setRoleFilter}
+                options={ROLES.map(r => ({ value: r, label: r === 'ALL' ? 'All Roles' : r.replace(/_/g, ' ') }))}
+                showSearch={false}
+                className="w-44"
+              />
+            </div>
 
             {/* Period presets */}
             <div>
@@ -430,6 +446,14 @@ export default function AttendanceReportsPage() {
               <div className="pb-1 text-xs text-gray-400">{startDate} → {endDate}</div>
             )}
           </>
+        )}
+
+        {/* Role Summary — single date picker */}
+        {tab === 'role-summary' && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+            <Input type="date" value={roleSummaryDate} onChange={e => setRoleSummaryDate(e.target.value)} className="w-40" />
+          </div>
         )}
 
         {/* Fleet Attendance controls */}
@@ -482,17 +506,15 @@ export default function AttendanceReportsPage() {
           )
         })()}
 
-        {/* Download buttons — not shown for role-summary */}
-        {tab !== 'role-summary' && (
-          <div className="ml-auto flex items-end gap-2">
-            <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('csv')} className="gap-1.5">
-              <Download size={14} />CSV
-            </Button>
-            <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('pdf')} className="gap-1.5">
-              <Download size={14} />PDF
-            </Button>
-          </div>
-        )}
+        {/* Download buttons */}
+        <div className="ml-auto flex items-end gap-2">
+          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('csv')} className="gap-1.5">
+            <Download size={14} />CSV
+          </Button>
+          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('pdf')} className="gap-1.5">
+            <Download size={14} />PDF
+          </Button>
+        </div>
       </div>
 
       {/* Table */}

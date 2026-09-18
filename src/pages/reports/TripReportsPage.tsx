@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { SearchableSelect, MultiSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import { downloadTripSummaryPdf } from './DailyFleetAttendancePdf'
+import { downloadTripSummaryPdf, downloadTablePdf } from './DailyFleetAttendancePdf'
 import type { LrRegisterRow, WeightDiscrepancyRow, DelayedDeliveryRow, VehicleTripSummaryRow, ClientTripSummaryRow, TripSummaryRow } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -374,16 +374,57 @@ export default function TripReportsPage() {
     enabled: tab === 'trip-summary',
   })
 
+  function triggerCsvDownload(header: string[], rows: (string | number)[][], filename: string) {
+    const content = [header, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+    a.download = filename
+    a.click()
+  }
+
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
       if (tab === 'lr-register') {
-        const clientId = clientFilter !== 'ALL' ? Number(clientFilter) : undefined
-        await reportsApi.exportLrRegister(startDate, endDate, format, clientId)
+        const rows = filteredLrRows
+        const headers = ['LR No.', 'LR Date', 'Order No.', 'Client', 'Vehicle', 'Driver', 'Cleaner', 'From', 'To', 'Material', 'Alloc. Wt', 'Loaded Wt', 'Delivered Wt', 'Variance', 'Overloaded', 'Loaded At', 'Delivered At', 'E-Way Bill', 'Invoiced', 'Status', 'Remarks']
+        const csvRows = rows.map(r => [
+          r.lrNumber, r.lrDate, r.orderNumber, r.clientName, r.vehicleRegistrationNumber, r.driverName, r.cleanerName,
+          `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`, r.materialType,
+          r.allocatedWeight ?? '—', r.loadedWeight ?? '—', r.deliveredWeight ?? '—', r.weightVariance ?? '—',
+          r.isOverloaded ? 'Yes' : 'No', fmtDateTime(r.loadedAt), fmtDateTime(r.deliveredAt),
+          r.ewayBillNumber ?? '—', r.isInvoiced ? 'Yes' : 'No', r.lrStatus, r.remarks ?? '—',
+        ])
+        if (format === 'csv') {
+          triggerCsvDownload(headers, csvRows, `lr-register-${startDate}-${endDate}.csv`)
+        } else {
+          await downloadTablePdf('LR Register', `${startDate} to ${endDate} · ${rows.length} records`, headers, csvRows.map(r => r.map(String)), `lr-register-${startDate}-${endDate}.pdf`)
+        }
       } else if (tab === 'weight-discrepancy') {
-        await reportsApi.exportWeightDiscrepancy(startDate, endDate, format)
+        const rows = filteredWeightRows
+        const headers = ['LR No.', 'LR Date', 'Client', 'Vehicle', 'From', 'To', 'Material', 'Alloc. Wt', 'Loaded Wt', 'Delivered Wt', 'Variance', 'Overloaded', 'Status']
+        const csvRows = rows.map(r => [
+          r.lrNumber, r.lrDate, r.clientName, r.vehicleRegistrationNumber, r.fromCity, r.toCity, r.materialType,
+          r.allocatedWeight ?? '—', r.loadedWeight ?? '—', r.deliveredWeight ?? '—',
+          r.weightVariance ?? '—', r.isOverloaded ? 'Yes' : 'No', r.lrStatus,
+        ])
+        if (format === 'csv') {
+          triggerCsvDownload(headers, csvRows, `weight-discrepancy-${startDate}-${endDate}.csv`)
+        } else {
+          await downloadTablePdf('Weight Discrepancy Report', `${startDate} to ${endDate} · ${rows.length} records`, headers, csvRows.map(r => r.map(String)), `weight-discrepancy-${startDate}-${endDate}.pdf`)
+        }
       } else if (tab === 'delayed-deliveries') {
-        await reportsApi.exportDelayedDeliveries(startDate, endDate, thresholdDays, format)
+        const rows = filteredDelayedRows
+        const headers = ['LR No.', 'LR Date', 'Client', 'Vehicle', 'Driver', 'From', 'To', 'Material', 'Loaded At', 'Days in Transit', 'Status']
+        const csvRows = rows.map(r => [
+          r.lrNumber, r.lrDate, r.clientName, r.vehicleRegistrationNumber, r.driverName,
+          r.fromCity, r.toCity, r.materialType, fmtDateTime(r.loadedAt), r.daysInTransit, r.lrStatus,
+        ])
+        if (format === 'csv') {
+          triggerCsvDownload(headers, csvRows, `delayed-deliveries-${startDate}-${endDate}.csv`)
+        } else {
+          await downloadTablePdf('Delayed Deliveries Report', `${startDate} to ${endDate} · ${rows.length} records`, headers, csvRows.map(r => r.map(String)), `delayed-deliveries-${startDate}-${endDate}.pdf`)
+        }
       } else if (tab === 'vehicle-summary') {
         await reportsApi.exportVehicleTripSummary(startDate, endDate, format)
       } else if (tab === 'client-summary') {
