@@ -2020,6 +2020,7 @@ export interface AttendanceRoleSummaryRow {
   holiday: number
   weekOff: number
   absent: number
+  noAttendance: number
 }
 
 export interface WeightDiscrepancyRow {

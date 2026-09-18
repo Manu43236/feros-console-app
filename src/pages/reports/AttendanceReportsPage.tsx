@@ -202,7 +202,7 @@ function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
   if (rows.length === 0) return (
     <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
   )
-  const HEADERS = ['Role', 'Staff Count', 'Pending', 'Present', 'Half Day', 'Leave', 'Holiday', 'Week Off', 'Absent']
+  const HEADERS = ['Role', 'Staff Count', 'Pending', 'Present', 'Half Day', 'Leave', 'Holiday', 'Week Off', 'Absent', 'No Attendance']
   return (
     <div className="rounded-lg border overflow-hidden overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -240,6 +240,9 @@ function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
               </td>
               <td className="px-4 py-3">
                 <span className={r.absent > 0 ? 'text-red-600 font-semibold' : 'text-gray-400'}>{r.absent}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className={r.noAttendance > 0 ? 'text-gray-500 font-semibold' : 'text-gray-400'}>{r.noAttendance}</span>
               </td>
             </tr>
           ))}
@@ -306,11 +309,12 @@ export default function AttendanceReportsPage() {
       else if (tab === 'summary') await reportsApi.exportAttendanceSummary(startDate, endDate, format)
       else if (tab === 'role-summary') {
         const rows = roleSummaryQuery.data?.data ?? []
-        const headers = ['Role', 'Staff Count', 'Pending', 'Present', 'Half Day', 'Leave', 'Holiday', 'Week Off', 'Absent']
+        const headers = ['Role', 'Staff Count', 'Pending', 'Present', 'Half Day', 'Leave', 'Holiday', 'Week Off', 'Absent', 'No Attendance']
         const csvRows = rows.map(r => [
           ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' '),
           String(r.staffCount), String(r.pending), String(r.present),
-          String(r.halfDay), String(r.onLeave), String(r.holiday), String(r.weekOff), String(r.absent),
+          String(r.halfDay), String(r.onLeave), String(r.holiday), String(r.weekOff),
+          String(r.absent), String(r.noAttendance),
         ])
         if (format === 'csv') {
           const content = [headers, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
