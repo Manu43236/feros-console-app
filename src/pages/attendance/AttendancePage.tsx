@@ -882,7 +882,6 @@ function PendingApprovalsTab() {
 
 // ── Rejected Tab ──────────────────────────────────────────────────────────────
 function RejectedTab() {
-  const qc = useQueryClient()
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
   const [mapCoords, setMapCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [page, setPage] = useState(0)
@@ -894,16 +893,6 @@ function RejectedTab() {
   const records = data?.data ?? []
   const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
   const pageRows   = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-
-  const approveMutation = useMutation({
-    mutationFn: (id: number) => attendanceApi.approve(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['attendance-rejected'] })
-      qc.invalidateQueries({ queryKey: ['attendance-pending'] })
-      toast.success('Attendance approved')
-    },
-    onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
-  })
 
   if (isLoading) return <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
 
@@ -945,7 +934,6 @@ function RejectedTab() {
                 <th className="text-left px-5 py-3 whitespace-nowrap">Location</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Selfie</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Rejected By</th>
-                <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -969,12 +957,6 @@ function RejectedTab() {
                     ) : <span className="text-gray-300 text-xs">—</span>}
                   </td>
                   <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.approvedByName ?? '—'}</td>
-                  <td className="px-5 py-3 whitespace-nowrap">
-                    <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 h-7 px-2.5 text-xs"
-                      disabled={approveMutation.isPending} onClick={() => approveMutation.mutate(r.id)}>
-                      <CheckCircle size={12} className="mr-1" />Approve
-                    </Button>
-                  </td>
                 </tr>
               ))}
             </tbody>
