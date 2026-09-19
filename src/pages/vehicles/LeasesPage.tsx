@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { vehicleLeasesApi } from '@/api/vehicleLeases'
 import { clientsApi } from '@/api/clients'
 import { toast } from 'sonner'
-import { Plus, KeyRound } from 'lucide-react'
+import { Plus, KeyRound, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -150,6 +150,7 @@ export default function LeasesPage() {
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState<LeaseStatus | ''>('')
   const [clientFilter, setClientFilter] = useState<number | ''>('')
+  const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [showNew, setShowNew] = useState(false)
 
@@ -160,12 +161,13 @@ export default function LeasesPage() {
   const clients = clientsRes?.data?.content ?? []
 
   const { data, isLoading } = useQuery({
-    queryKey: ['vehicle-leases', statusFilter, clientFilter, page],
+    queryKey: ['vehicle-leases', statusFilter, clientFilter, search, page],
     queryFn: () => vehicleLeasesApi.getAll({
       page,
       size: 20,
       status: statusFilter || undefined,
       clientId: clientFilter || undefined,
+      search: search || undefined,
     }),
   })
   const leases = data?.data?.content ?? []
@@ -188,6 +190,16 @@ export default function LeasesPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
+        {/* Search */}
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Search lease #, client, site…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(0) }}
+            className="pl-8 w-64 h-9 text-sm"
+          />
+        </div>
         {/* Status pills */}
         <div className="flex gap-2 flex-wrap">
           <button

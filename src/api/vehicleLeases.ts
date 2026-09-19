@@ -2,7 +2,7 @@ import apiClient from './client'
 import type { ApiResponse, PageResponse, VehicleLease, LeaseVehicleAssignment, LeaseBilling, LeaseDailyLog, LeaseStatus, LeaseVehicleSession } from '@/types'
 
 export const vehicleLeasesApi = {
-  getAll: (params?: { page?: number; size?: number; status?: LeaseStatus; clientId?: number }) =>
+  getAll: (params?: { page?: number; size?: number; status?: LeaseStatus; clientId?: number; search?: string }) =>
     apiClient.get<ApiResponse<PageResponse<VehicleLease>>>('/vehicle-leases', { params }).then(r => r.data),
 
   getById: (id: number) =>
