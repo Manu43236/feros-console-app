@@ -11,6 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 
+const fmtRequestedOn = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+
 // ── Equipment Approve/Reject Dialog ─────────────────────────────────────────────
 function EquipmentApprovalDialog({ part, onClose }: { part: EquipmentServicePart; onClose: () => void }) {
   const qc = useQueryClient()
@@ -253,6 +256,7 @@ export default function PartRequestsPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Service</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Vehicle</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Requested By</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Requested On</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Requested</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">In Stock</th>
                 <th className="px-4 py-3" />
@@ -268,6 +272,7 @@ export default function PartRequestsPage() {
                   <td className="px-4 py-3 text-gray-700">{r.serviceNumber}</td>
                   <td className="px-4 py-3 text-gray-700">{r.vehicleRegistrationNumber}</td>
                   <td className="px-4 py-3 text-gray-700">{r.requestedByName}</td>
+                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtRequestedOn(r.createdAt)}</td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">
                     {r.quantityRequested} {r.unit}
                   </td>
@@ -310,6 +315,7 @@ export default function PartRequestsPage() {
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Service</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Machine</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Requested By</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Requested On</th>
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Requested</th>
                   <th className="text-right px-4 py-3 font-medium text-gray-600">In Stock</th>
                   <th className="px-4 py-3" />
@@ -325,6 +331,7 @@ export default function PartRequestsPage() {
                     <td className="px-4 py-3 text-gray-700">{r.serviceNumber}</td>
                     <td className="px-4 py-3 text-gray-700">{r.equipmentName}</td>
                     <td className="px-4 py-3 text-gray-700">{r.requestedByName}</td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtRequestedOn(r.createdAt)}</td>
                     <td className="px-4 py-3 text-right font-semibold text-gray-900">{r.quantityRequested} {r.unit}</td>
                     <td className="px-4 py-3 text-right font-semibold">
                       <span className={(r.availableStock ?? 0) < r.quantityRequested ? 'text-red-600' : 'text-green-700'}>
