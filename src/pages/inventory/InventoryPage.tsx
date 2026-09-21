@@ -490,6 +490,7 @@ function PartRequestsTab() {
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">Service</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">Vehicle</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">Requested By</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">Requested On</th>
                   <th className="text-right px-4 py-2.5 font-medium text-gray-600">Qty</th>
                   <th className="px-4 py-2.5" />
                 </tr>
@@ -504,6 +505,7 @@ function PartRequestsTab() {
                     <td className="px-4 py-3 text-gray-700">{r.serviceNumber}</td>
                     <td className="px-4 py-3 text-gray-700">{r.vehicleRegistrationNumber}</td>
                     <td className="px-4 py-3 text-gray-700">{r.requestedByName}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDateTime(r.createdAt)}</td>
                     <td className="px-4 py-3 text-right font-semibold">{r.quantityRequested} {r.unit}</td>
                     <td className="px-4 py-3">
                       <button onClick={() => setSelected(r)}
@@ -531,6 +533,7 @@ function txChip(type: StockTransactionType) {
   return <span className="flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded"><AlertOctagon size={11} />DMG</span>
 }
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+const fmtDateTime = (d?: string | null) => d ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
 function TransactionsTab() {
   const { isEquipmentMode } = useSubscription()
