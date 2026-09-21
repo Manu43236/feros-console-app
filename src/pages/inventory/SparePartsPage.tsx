@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 
 // ── Form Dialog ────────────────────────────────────────────────────────────────
-function SparePartDialog({ part, categories, onClose }: { part?: SparePart | null; categories: string[]; onClose: () => void }) {
+function SparePartDialog({ part, categories, units, onClose }: { part?: SparePart | null; categories: string[]; units: string[]; onClose: () => void }) {
   const qc = useQueryClient()
   const isEdit = !!part
   const [form, setForm] = useState({
@@ -74,7 +74,8 @@ function SparePartDialog({ part, categories, onClose }: { part?: SparePart | nul
                 value={form.unit}
                 onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
               >
-                {['Pieces', 'Litres', 'Kg', 'Metres', 'Sets', 'Pairs'].map(u => (
+                {form.unit && !units.includes(form.unit) && <option value={form.unit}>{form.unit}</option>}
+                {units.map(u => (
                   <option key={u} value={u}>{u}</option>
                 ))}
               </select>
@@ -151,6 +152,8 @@ export default function SparePartsPage() {
 
   const { data: catData } = useQuery({ queryKey: ['partCategories'], queryFn: globalMastersApi.getPartCategories })
   const categories = (catData?.data ?? []).map((c: { name: string }) => c.name)
+  const { data: unitData } = useQuery({ queryKey: ['units'], queryFn: globalMastersApi.getUnits })
+  const units = (unitData?.data ?? []).map((u: { name: string }) => u.name)
   const filtered = parts.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.category ?? '').toLowerCase().includes(search.toLowerCase()) ||
@@ -247,7 +250,7 @@ export default function SparePartsPage() {
         )}
       </div>
 
-      {formPart !== undefined && <SparePartDialog part={formPart} categories={categories} onClose={() => setFormPart(undefined)} />}
+      {formPart !== undefined && <SparePartDialog part={formPart} categories={categories} units={units} onClose={() => setFormPart(undefined)} />}
       <DeleteDialog part={deletePart} onClose={() => setDeletePart(null)} />
     </div>
   )

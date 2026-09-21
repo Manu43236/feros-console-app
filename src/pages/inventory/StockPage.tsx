@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockApi, sparePartsApi } from '@/api/inventory'
+import { globalMastersApi } from '@/api/masters'
 import type { SparePart } from '@/types'
 import { toast } from 'sonner'
 import { Plus, Minus, Search, AlertTriangle, Boxes } from 'lucide-react'
@@ -13,8 +14,6 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
 
 // ── Quick Create Part Dialog ────────────────────────────────────────────────────
-const UNITS = ['Pieces', 'Litres', 'Kg', 'Metres', 'Sets', 'Pairs']
-
 function QuickCreatePartDialog({
   defaultName,
   onClose,
@@ -25,6 +24,8 @@ function QuickCreatePartDialog({
   onCreated: (part: SparePart) => void
 }) {
   const qc = useQueryClient()
+  const { data: unitData } = useQuery({ queryKey: ['units'], queryFn: globalMastersApi.getUnits })
+  const units = (unitData?.data ?? []).map((u: { name: string }) => u.name)
   const [form, setForm] = useState({
     name: defaultName,
     unit: 'Pieces',
@@ -66,7 +67,8 @@ function QuickCreatePartDialog({
                 value={form.unit}
                 onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
               >
-                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                {form.unit && !units.includes(form.unit) && <option value={form.unit}>{form.unit}</option>}
+                {units.map(u => <option key={u} value={u}>{u}</option>)}
               </select>
             </div>
             <div>

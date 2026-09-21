@@ -27,6 +27,7 @@ const SECTIONS = [
   { key: 'designations',    label: 'Designations',     icon: Users      },
   { key: 'holidays',        label: 'Holidays',         icon: CalendarDays },
   { key: 'routes',          label: 'Routes',           icon: MapPin     },
+  { key: 'units',           label: 'Units',            icon: List       },
   { key: 'settings',       label: 'Settings',         icon: Settings   },
 ] as const
 type SectionKey = typeof SECTIONS[number]['key']
@@ -1379,6 +1380,24 @@ export function MastersPage() {
     onError: () => toast.error('Failed to delete'),
   })
 
+  const { data: unitData, isLoading: unitLoading } = useQuery({ queryKey: ['units'], queryFn: globalMastersApi.getUnits })
+  const unitItems: TenantMasterItem[] = (unitData?.data as TenantMasterItem[]) ?? []
+  const unitCreate = useMutation({
+    mutationFn: (d: { name: string }) => globalMastersApi.createUnit(d),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['units'] }); toast.success('Added') },
+    onError: () => toast.error('Failed to add'),
+  })
+  const unitUpdate = useMutation({
+    mutationFn: ({ id, d }: { id: number; d: { name: string } }) => globalMastersApi.updateUnit(id, d),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['units'] }); toast.success('Updated') },
+    onError: () => toast.error('Failed to update'),
+  })
+  const unitDelete = useMutation({
+    mutationFn: (id: number) => globalMastersApi.deleteUnit(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['units'] }); toast.success('Deleted') },
+    onError: () => toast.error('Failed to delete'),
+  })
+
   function renderContent() {
     switch (effectiveSection) {
       case 'vehicleStatuses':
@@ -1406,6 +1425,15 @@ export function MastersPage() {
             onAdd={d => chargeCreate.mutate(d)}
             onEdit={item => chargeUpdate.mutate({ id: item.id, d: { name: item.name, description: item.description } })}
             onDelete={id => chargeDelete.mutate(id)}
+          />
+        )
+      case 'units':
+        return (
+          <SimpleSection
+            title="Units" items={unitItems} loading={unitLoading}
+            onAdd={d => unitCreate.mutate(d)}
+            onEdit={item => unitUpdate.mutate({ id: item.id, d: { name: item.name } })}
+            onDelete={id => unitDelete.mutate(id)}
           />
         )
       case 'paymentTerms':   return <PaymentTermsSection />

@@ -610,6 +610,7 @@ const OwnershipTypesSection   = makeSimpleSection('Ownership Types',   'g-owners
 const DeductionTypesSection   = makeSimpleSection('Deduction Types',   'g-deduction-types',   globalMastersApi.getDeductionTypes,    globalMastersWriteApi.createDeductionType, globalMastersWriteApi.updateDeductionType, globalMastersWriteApi.deleteDeductionType)
 const PaymentStatusesSection  = makeSimpleSection('Payment Statuses',  'g-payment-statuses',  globalMastersApi.getPaymentStatuses,   globalMastersWriteApi.createPaymentStatus, globalMastersWriteApi.updatePaymentStatus, globalMastersWriteApi.deletePaymentStatus)
 const PartCategoriesSection   = makeSimpleSection('Part Categories',   'g-part-categories',   globalMastersApi.getPartCategories,    globalMastersWriteApi.createPartCategory,  globalMastersWriteApi.updatePartCategory,  globalMastersWriteApi.deletePartCategory)
+const UnitsSection            = makeSimpleSection('Units',             'g-units',             globalMastersApi.getUnits,             globalMastersApi.createUnit,               globalMastersApi.updateUnit,               globalMastersApi.deleteUnit)
 const VehicleBodyTypesSection = makeSimpleSection('Vehicle Body Types','g-vehicle-body-types', globalMastersApi.getVehicleBodyTypes,  globalMastersWriteApi.createVehicleBodyType, globalMastersWriteApi.updateVehicleBodyType, globalMastersWriteApi.deleteVehicleBodyType)
 
 // ── Section registry ──────────────────────────────────────────────────────────
@@ -617,7 +618,7 @@ type SectionId =
   | 'states' | 'cities' | 'vehicleBrands' | 'vehicleTypes' | 'vehicleBodyTypes' | 'fuelTypes'
   | 'materialTypes' | 'documentTypes' | 'attendanceTypes' | 'leaveTypes'
   | 'employmentTypes' | 'ownershipTypes' | 'deductionTypes' | 'taxes' | 'paymentStatuses'
-  | 'partCategories'
+  | 'partCategories' | 'units'
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'states',           label: 'States' },
@@ -636,6 +637,7 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'taxes',           label: 'Taxes' },
   { id: 'paymentStatuses', label: 'Payment Statuses' },
   { id: 'partCategories',  label: 'Part Categories' },
+  { id: 'units',           label: 'Units' },
 ]
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -662,6 +664,7 @@ export function GlobalMastersPage() {
     taxes:           <TaxesSection />,
     paymentStatuses: <PaymentStatusesSection />,
     partCategories:  <PartCategoriesSection />,
+    units:           <UnitsSection />,
   }
 
   return (

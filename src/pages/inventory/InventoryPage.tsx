@@ -714,6 +714,8 @@ function PartCatalogTab() {
 
   const { data: catData } = useQuery({ queryKey: ['partCategories'], queryFn: globalMastersApi.getPartCategories })
   const partCategories = (catData?.data ?? []).map((c: { name: string }) => c.name)
+  const { data: unitData } = useQuery({ queryKey: ['units'], queryFn: globalMastersApi.getUnits })
+  const units = (unitData?.data ?? []).map((u: { name: string }) => u.name)
 
   const save = useMutation({
     mutationFn: () => editing ? sparePartsApi.update(editing.id, form) : sparePartsApi.create(form),
@@ -789,7 +791,8 @@ function PartCatalogTab() {
               <div>
                 <Label>Unit *</Label>
                 <select className="mt-1 w-full border rounded-md px-3 py-2 text-sm" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
-                  {['Pieces', 'Litres', 'Kg', 'Metres', 'Sets', 'Pairs'].map(u => <option key={u}>{u}</option>)}
+                  {form.unit && !units.includes(form.unit) && <option value={form.unit}>{form.unit}</option>}
+                  {units.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
               <div>
