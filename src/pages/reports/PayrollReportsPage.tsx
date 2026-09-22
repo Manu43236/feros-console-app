@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Download, DollarSign, BookOpen, TrendingDown, Users, CalendarRange, Truck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import { vehiclesApi } from '@/api/vehicles'
@@ -20,6 +21,13 @@ const thisMonthStart = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
 const currentYear = () => new Date().getFullYear()
+const prevMonthRange = () => {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const end = new Date(now.getFullYear(), now.getMonth(), 0) // day 0 of this month = last day of prev month
+  const f = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+  return { start: f(start), end: f(end) }
+}
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────
 const TABS = [
@@ -538,10 +546,11 @@ const ROLE_OPTIONS = [
 
 function VehicleCostTab() {
   const today = todayStr()
-  const [vehicleId, setVehicleId] = useState<number | null>(null)
+  const defaultRange = prevMonthRange()
+  const [vehicleSel, setVehicleSel] = useState('ALL')
   const [role, setRole] = useState('ALL')
-  const [start, setStart] = useState(thisMonthStart())
-  const [end, setEnd] = useState(today)
+  const [start, setStart] = useState(defaultRange.start)
+  const [end, setEnd] = useState(defaultRange.end)
   const [exportLoading, setExportLoading] = useState(false)
 
   const { data: vehiclesData } = useQuery({
@@ -549,18 +558,22 @@ function VehicleCostTab() {
     queryFn: () => vehiclesApi.getAll(),
   })
   const vehicles = vehiclesData?.data ?? []
+  const vehicleOptions = [
+    { value: 'ALL', label: 'All Vehicles' },
+    ...vehicles.map((v: any) => ({ value: String(v.id), label: v.registrationNumber })),
+  ]
+  const vehicleId = vehicleSel === 'ALL' ? null : Number(vehicleSel)
 
-  const enabled = vehicleId !== null && !!start && !!end
+  const enabled = !!start && !!end
   const { data, isLoading } = useQuery({
     queryKey: ['vehicle-payroll-cost', vehicleId, role, start, end],
-    queryFn: () => reportsApi.getVehiclePayrollCost(vehicleId!, role, start, end),
+    queryFn: () => reportsApi.getVehiclePayrollCost(vehicleId, role, start, end),
     enabled,
   })
   const result = data?.data
   const rows: VehiclePayrollCostRow[] = result?.rows ?? []
 
   const handleExport = async (format: 'csv' | 'pdf') => {
-    if (!vehicleId) return
     setExportLoading(true)
     try { await reportsApi.exportVehiclePayrollCost(vehicleId, role, start, end, format) }
     catch { toast.error('Export failed') }
@@ -573,16 +586,12 @@ function VehicleCostTab() {
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-500">Vehicle</label>
-          <select
-            value={vehicleId ?? ''}
-            onChange={e => setVehicleId(e.target.value ? Number(e.target.value) : null)}
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white min-w-[200px]"
-          >
-            <option value="">— Select Vehicle —</option>
-            {vehicles.map((v: any) => (
-              <option key={v.id} value={v.id}>{v.registrationNumber}</option>
-            ))}
-          </select>
+          <SearchableSelect
+            value={vehicleSel}
+            onValueChange={setVehicleSel}
+            options={vehicleOptions}
+            className="min-w-[220px]"
+          />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -614,7 +623,7 @@ function VehicleCostTab() {
       {/* Table */}
       {!enabled ? (
         <div className="bg-white border rounded-xl p-12 text-center text-sm text-gray-400">
-          Select a vehicle and date range to view payroll cost.
+          Select a date range to view payroll cost.
         </div>
       ) : (
         <ScrollWrap>

@@ -715,14 +715,14 @@ export const reportsApi = {
     triggerDownload(res.data as Blob, `payroll-ytd-${year}.${format}`)
   },
 
-  getVehiclePayrollCost: (vehicleId: number, role: string, startDate: string, endDate: string) =>
+  getVehiclePayrollCost: (vehicleId: number | null, role: string, startDate: string, endDate: string) =>
     apiClient.get<ApiResponse<VehiclePayrollCostResponse>>('/reports/payroll/vehicle-cost', {
-      params: { vehicleId, role, startDate, endDate }
+      params: { ...(vehicleId != null ? { vehicleId } : {}), role, startDate, endDate }
     }).then(r => r.data),
 
-  exportVehiclePayrollCost: async (vehicleId: number, role: string, startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+  exportVehiclePayrollCost: async (vehicleId: number | null, role: string, startDate: string, endDate: string, format: 'csv' | 'pdf') => {
     const res = await apiClient.get('/reports/payroll/vehicle-cost/export', {
-      params: { vehicleId, role, startDate, endDate, format }, responseType: 'blob'
+      params: { ...(vehicleId != null ? { vehicleId } : {}), role, startDate, endDate, format }, responseType: 'blob'
     })
     triggerDownload(res.data as Blob, `vehicle-payroll-cost-${startDate}-${endDate}.${format}`)
   },
