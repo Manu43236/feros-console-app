@@ -59,7 +59,7 @@ function inr(v?: number | null) {
   return '₹' + v.toLocaleString('en-IN')
 }
 
-function ServiceDoc({ s, tenantLogoUrl }: { s: VehicleServiceRecord; tenantLogoUrl?: string | null }) {
+export function ServiceDoc({ s, tenantLogoUrl }: { s: VehicleServiceRecord; tenantLogoUrl?: string | null }) {
   const totalTaskCost   = s.tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0)
   const totalVendorCost = (s.vendorItems ?? []).reduce((sum, i) => sum + (i.cost ?? 0), 0)
   const isCompleted     = s.status === 'COMPLETED'

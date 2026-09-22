@@ -14,6 +14,7 @@ import { staffApi } from '@/api/staff'
 import { servicePartsApi, sparePartsApi } from '@/api/inventory'
 import { tenantMastersApi, globalMastersApi } from '@/api/masters'
 import { breakdownsApi } from '@/api/breakdowns'
+import { ServicePdfDialog } from './ServicePdfDialog'
 import { fuelLogsApi } from '@/api/fuelLogs'
 import { tyresApi } from '@/api/tyres'
 import { meterReadingsApi } from '@/api/meterReadings'
@@ -964,6 +965,7 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
   const [newItemCost, setNewItemCost] = useState('')
   const [addingItem,  setAddingItem]  = useState(false)
   const [showAddItem, setShowAddItem] = useState(false)
+  const [pdfOpen, setPdfOpen] = useState(false)
 
   const isThirdParty = s.serviceType === 'THIRD_PARTY' || s.serviceType === 'OEM_CENTER'
   const isCompleted  = s.status === 'COMPLETED'
@@ -1128,11 +1130,12 @@ function ServiceDocActions({ s }: { s: VehicleServiceRecord }) {
 
       {/* Service PDF */}
       <div className="flex justify-end">
-        <a href={`/vehicle-services/${s.id}/pdf`} target="_blank" rel="noopener noreferrer"
+        <button onClick={() => setPdfOpen(true)}
           className="flex items-center gap-1 text-xs text-feros-navy border border-feros-navy/30 rounded px-2 py-1 hover:bg-feros-navy/5">
           <FileText size={11} /> PDF Report
-        </a>
+        </button>
       </div>
+      <ServicePdfDialog serviceId={pdfOpen ? s.id : null} onClose={() => setPdfOpen(false)} />
     </div>
   )
 }

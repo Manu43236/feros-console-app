@@ -9,6 +9,7 @@ import { vehicleServicesApi, vehiclesApi, vehicleBreakdownApi } from '@/api/vehi
 import { globalMastersApi } from '@/api/masters'
 import { compressImage } from '@/lib/imageCompress'
 import { CreateServiceDialog } from '@/components/shared/CreateServiceDialog'
+import { ServicePdfDialog } from '@/pages/vehicles/ServicePdfDialog'
 import { ServiceBoard } from '@/components/service/ServiceBoard'
 import type { BoardBreakdown, BoardService, ServiceBoardConfig } from '@/components/service/ServiceBoard'
 import type { SmServiceItem } from '@/types'
@@ -164,6 +165,7 @@ function VehicleServiceManagerView() {
   const qc = useQueryClient()
   const [logService, setLogService] = useState<{ vehicleId: number; vehicleReg: string; breakdownId?: number } | null>(null)
   const [pickingVehicle, setPickingVehicle] = useState(false)
+  const [pdfServiceId, setPdfServiceId] = useState<number | null>(null)
   const [pickedVehicleId, setPickedVehicleId] = useState<number | null>(null)
   const [reportingBreakdown, setReportingBreakdown] = useState(false)
 
@@ -229,7 +231,7 @@ function VehicleServiceManagerView() {
       await vehicleServicesApi.deleteAttachment(serviceId, attachmentId)
       qc.invalidateQueries({ queryKey: ['sm-dashboard'] })
     },
-    onOpenPdf: (id) => window.open(`/vehicle-services/${id}/pdf`, '_blank'),
+    onOpenPdf: (id) => setPdfServiceId(id),
     onAddVendorItem: (serviceId, description, cost) => vehicleServicesApi.addVendorItem(serviceId, description, cost),
     onDeleteVendorItem: (serviceId, itemId) => vehicleServicesApi.deleteVendorItem(serviceId, itemId),
     onChanged: () => qc.invalidateQueries({ queryKey: ['sm-dashboard'] }),
@@ -246,6 +248,8 @@ function VehicleServiceManagerView() {
         data={{ breakdowns: boardBreakdowns, generalServices: boardServices, technicianCount: technicians.length }}
         cfg={cfg}
       />
+
+      <ServicePdfDialog serviceId={pdfServiceId} onClose={() => setPdfServiceId(null)} />
 
       {/* Vehicle picker before opening CreateServiceDialog */}
       <Dialog open={pickingVehicle} onOpenChange={v => !v && setPickingVehicle(false)}>

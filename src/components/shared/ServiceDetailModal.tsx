@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { servicePartsApi } from '@/api/inventory'
 import { vehicleServicesApi } from '@/api/vehicles'
+import { ServicePdfDialog } from '@/pages/vehicles/ServicePdfDialog'
 import { toast } from 'sonner'
 import type { VehicleServiceRecord, ServicePart, ServiceAttachment } from '@/types'
 import { cn } from '@/lib/utils'
@@ -205,6 +206,7 @@ function MultiDocSection({
 
 export function ServiceDetailModal({ service, open, onClose }: Props) {
   const qc = useQueryClient()
+  const [pdfServiceId, setPdfServiceId] = useState<number | null>(null)
 
   const { data: partsData } = useQuery({
     queryKey: ['service-parts', service?.id],
@@ -256,10 +258,12 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
   const isThirdParty    = service.serviceType === 'THIRD_PARTY' || service.serviceType === 'OEM_CENTER'
 
   function openPdf() {
-    window.open(`/vehicle-services/${service!.id}/pdf`, '_blank')
+    setPdfServiceId(service!.id)
   }
 
   return (
+    <>
+    <ServicePdfDialog serviceId={pdfServiceId} onClose={() => setPdfServiceId(null)} />
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -537,5 +541,6 @@ export function ServiceDetailModal({ service, open, onClose }: Props) {
         </div>
       </DialogContent>
     </Dialog>
+    </>
   )
 }
