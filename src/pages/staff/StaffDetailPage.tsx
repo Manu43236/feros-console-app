@@ -57,10 +57,11 @@ const profileSchema = z.object({
     v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
     z.number().positive('Must be a positive amount').optional()
   ),
-  requiredDays:          z.preprocess(
+  allowedOffDays:        z.preprocess(
     v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
-    z.number().int().min(1, 'Must be at least 1').max(31, 'Cannot exceed 31').optional()
+    z.number().int().min(0, 'Cannot be negative').max(31, 'Cannot exceed 31').optional()
   ),
+  skipCalendar:          z.boolean().optional(),
   canAccessVehicles:     z.boolean().optional(),
   canAccessEquipment:    z.boolean().optional(),
   canAccessLeases:       z.boolean().optional(),
@@ -393,7 +394,8 @@ export function StaffDetailPage() {
         licenseExpiryDate:     profile.licenseExpiryDate?.split('T')[0] ?? '',
         salaryType:            profile.salaryType ?? 'DAILY',
         monthlySalary:         profile.monthlySalary,
-        requiredDays:          profile.requiredDays,
+        allowedOffDays:        profile.allowedOffDays,
+        skipCalendar:          profile.skipCalendar ?? false,
         canAccessVehicles:     profile.canAccessVehicles ?? true,
         canAccessEquipment:    profile.canAccessEquipment ?? false,
         canAccessLeases:       profile.canAccessLeases ?? false,
@@ -803,16 +805,37 @@ export function StaffDetailPage() {
               )}
               {watch('salaryType') === 'MONTHLY' && (
                 <div className="space-y-1.5">
-                  <Label>Required Days / Month</Label>
+                  <Label>Allowed Off Days / Month</Label>
                   <Input
                     type="number"
-                    min={1}
+                    min={0}
                     max={31}
                     step={1}
-                    placeholder="e.g. 26"
-                    {...register('requiredDays')}
+                    placeholder="e.g. 2"
+                    {...register('allowedOffDays')}
                   />
-                  {errors.requiredDays && <p className="text-red-500 text-xs">{errors.requiredDays.message}</p>}
+                  {errors.allowedOffDays && <p className="text-red-500 text-xs">{errors.allowedOffDays.message}</p>}
+                </div>
+              )}
+              {watch('salaryType') === 'MONTHLY' && (
+                <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 sm:col-span-2">
+                  <div>
+                    <p className="text-sm font-medium">No weekly off (works all days)</p>
+                    <p className="text-xs text-gray-400">Skip the calendar — count every day, Sundays &amp; holidays included</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setValue('skipCalendar', !watch('skipCalendar'), { shouldDirty: true })}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                      watch('skipCalendar') ? 'bg-feros-navy' : 'bg-gray-200'
+                    )}
+                  >
+                    <span className={cn(
+                      'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+                      watch('skipCalendar') ? 'translate-x-5' : 'translate-x-0'
+                    )} />
+                  </button>
                 </div>
               )}
             </div>
@@ -820,7 +843,7 @@ export function StaffDetailPage() {
               <p className="text-xs text-gray-400">Daily rate is configured on the designation. Override it per-payroll when generating.</p>
             )}
             {watch('salaryType') === 'MONTHLY' && (
-              <p className="text-xs text-gray-400">Full pay if present days meet Required Days. Shortfall is deducted at monthly salary ÷ required days per day. Leave Required Days blank for no deduction.</p>
+              <p className="text-xs text-gray-400">Full pay if offs stay within Allowed Off Days. Extra offs are deducted at monthly salary ÷ working days. "No weekly off" counts every calendar day.</p>
             )}
           </div>}
 

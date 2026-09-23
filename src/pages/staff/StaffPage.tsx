@@ -70,10 +70,11 @@ const addStaffSchema = z.object({
     v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
     z.number().positive('Must be a positive amount').optional()
   ),
-  requiredDays:       z.preprocess(
+  allowedOffDays:     z.preprocess(
     v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
-    z.number().int().min(1, 'Must be at least 1').max(31, 'Cannot exceed 31').optional()
+    z.number().int().min(0, 'Cannot be negative').max(31, 'Cannot exceed 31').optional()
   ),
+  skipCalendar:       z.boolean().optional(),
   canAccessVehicles:  z.boolean().optional(),
   canAccessEquipment: z.boolean().optional(),
   canAccessLeases:    z.boolean().optional(),
@@ -125,7 +126,8 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
         canAccessLeases: data.canAccessLeases,
         salaryType: !isDailyRole ? (data.salaryType ?? 'MONTHLY') : undefined,
         monthlySalary: !isDailyRole && data.salaryType === 'MONTHLY' ? data.monthlySalary : undefined,
-        requiredDays: !isDailyRole && data.salaryType === 'MONTHLY' ? data.requiredDays : undefined,
+        allowedOffDays: !isDailyRole && data.salaryType === 'MONTHLY' ? data.allowedOffDays : undefined,
+        skipCalendar: !isDailyRole && data.salaryType === 'MONTHLY' ? (data.skipCalendar ?? false) : undefined,
       })
       const userId = res.data?.id
       if (userId) {
@@ -136,7 +138,8 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
             designationId: data.designationId,
             salaryType:    !isDailyRole ? (data.salaryType ?? 'MONTHLY') : undefined,
             monthlySalary: !isDailyRole ? data.monthlySalary : undefined,
-            requiredDays:  !isDailyRole && data.salaryType === 'MONTHLY' ? data.requiredDays : undefined,
+            allowedOffDays: !isDailyRole && data.salaryType === 'MONTHLY' ? data.allowedOffDays : undefined,
+            skipCalendar:   !isDailyRole && data.salaryType === 'MONTHLY' ? (data.skipCalendar ?? false) : undefined,
           })
         }
       }
@@ -350,19 +353,40 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
                 )}
                 {isMonthly && (
                   <div className="space-y-1.5">
-                    <Label>Required Days / Month</Label>
+                    <Label>Allowed Off Days / Month</Label>
                     <Input
                       type="number"
-                      min={1}
+                      min={0}
                       max={31}
                       step={1}
-                      placeholder="e.g. 26"
-                      {...register('requiredDays')}
+                      placeholder="e.g. 2"
+                      {...register('allowedOffDays')}
                     />
                     <p className="text-muted-foreground text-xs">
-                      Full pay if present days meet this. Short days are deducted at monthly ÷ required. Leave blank for no deduction.
+                      Paid days off allowed. Offs beyond this are deducted at monthly ÷ working days. Blank = 0 allowance.
                     </p>
-                    {errors.requiredDays && <p className="text-red-500 text-xs">{errors.requiredDays.message}</p>}
+                    {errors.allowedOffDays && <p className="text-red-500 text-xs">{errors.allowedOffDays.message}</p>}
+                  </div>
+                )}
+                {isMonthly && (
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">No weekly off (works all days)</p>
+                      <p className="text-xs text-muted-foreground">Skip the calendar — count every day, Sundays &amp; holidays included</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setValue('skipCalendar', !watch('skipCalendar'))}
+                      className={cn(
+                        'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                        watch('skipCalendar') ? 'bg-feros-navy' : 'bg-gray-200'
+                      )}
+                    >
+                      <span className={cn(
+                        'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+                        watch('skipCalendar') ? 'translate-x-5' : 'translate-x-0'
+                      )} />
+                    </button>
                   </div>
                 )}
               </div>

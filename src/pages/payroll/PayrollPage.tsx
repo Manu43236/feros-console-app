@@ -207,7 +207,7 @@ function GenerateDialog({ open, onClose, users }: {
                 onChange={handleMonthlyChange}
                 className={`mt-1 ${errors.monthlySalary ? 'border-red-400' : rateAutoFilled ? 'border-green-400 bg-green-50' : ''}`}
               />
-              <p className="text-xs text-gray-400 mt-1">Full pay if present days meet the staff's required days; shortfall deducted at monthly ÷ required</p>
+              <p className="text-xs text-gray-400 mt-1">Full pay if offs stay within the staff's allowed off days; extra offs deducted at monthly ÷ working days</p>
               {errors.monthlySalary && <p className="text-red-500 text-xs mt-1">{errors.monthlySalary.message}</p>}
             </div>
           )}
@@ -413,7 +413,7 @@ function PayrollRow({ payroll, onApprove, onEdit, onCancel, checked, onCheck }: 
                     <span className="text-gray-600">
                       Basic Pay{p.designationName ? ` — ${p.designationName}` : ''}{' '}
                       {p.salaryType === 'MONTHLY'
-                        ? <span className="text-xs text-gray-400">(₹{p.monthlySalary}/month · present {p.presentDays}{p.requiredDays ? `/${p.requiredDays} required` : ' — no required-days set'})</span>
+                        ? <span className="text-xs text-gray-400">(₹{p.monthlySalary}/month · present {p.presentDays}{p.allowedOffDays != null ? ` · ${p.allowedOffDays} offs allowed` : ''}{p.skipCalendar ? ' · all days' : ''})</span>
                         : <span className="text-xs text-gray-400">({p.presentDays} + {p.halfDays}×0.5 days × ₹{p.dailyRate}/day)</span>
                       }
                     </span>
