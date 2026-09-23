@@ -80,7 +80,7 @@ export function EditPayrollDialog({ open, onClose, payroll }: {
               <Label>Monthly Salary (₹)</Label>
               <Input type="number" step="100" {...register('monthlySalary')}
                 className={`mt-1 ${errors.monthlySalary ? 'border-red-400' : ''}`} />
-              <p className="text-xs text-gray-400 mt-1">Basic pay recalculated: offs beyond the allowance deducted at monthly ÷ working days</p>
+              <p className="text-xs text-gray-400 mt-1">Basic pay recalculated: each day short of required deducted at monthly ÷ required days</p>
             </div>
           ) : (
             <div>
