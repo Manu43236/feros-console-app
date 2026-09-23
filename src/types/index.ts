@@ -815,7 +815,7 @@ export interface StaffProfile {
   nomineeName?: string; nomineeRelation?: string; nomineeDateOfBirth?: string; nomineeAadharNumber?: string
   licenseNumber?: string; licenseExpiryDate?: string
   profilePhotoUrl?: string
-  salaryType?: 'DAILY' | 'MONTHLY'; monthlySalary?: number
+  salaryType?: 'DAILY' | 'MONTHLY'; monthlySalary?: number; requiredDays?: number
   canAccessVehicles?: boolean
   canAccessEquipment?: boolean
   canAccessLeases?: boolean
@@ -861,7 +861,7 @@ export interface Payroll {
   id: number; userId: number; userName: string; userPhone: string; roleName: string; designationName?: string
   payCycleStartDate: string; payCycleEndDate: string
   totalDays: number; presentDays: number; absentDays: number; halfDays: number; leaveDays: number
-  overtimeHours: number; salaryType?: 'DAILY' | 'MONTHLY'; dailyRate?: number; monthlySalary?: number
+  overtimeHours: number; salaryType?: 'DAILY' | 'MONTHLY'; dailyRate?: number; monthlySalary?: number; requiredDays?: number
   basicPay: number; overtimePay: number; tripBonus: number; vehicleExtraPay?: number
   grossPay: number; totalDeductions: number; netPay: number
   deductions: PayrollDeduction[]

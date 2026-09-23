@@ -57,6 +57,10 @@ const profileSchema = z.object({
     v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
     z.number().positive('Must be a positive amount').optional()
   ),
+  requiredDays:          z.preprocess(
+    v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+    z.number().int().min(1, 'Must be at least 1').max(31, 'Cannot exceed 31').optional()
+  ),
   canAccessVehicles:     z.boolean().optional(),
   canAccessEquipment:    z.boolean().optional(),
   canAccessLeases:       z.boolean().optional(),
@@ -389,6 +393,7 @@ export function StaffDetailPage() {
         licenseExpiryDate:     profile.licenseExpiryDate?.split('T')[0] ?? '',
         salaryType:            profile.salaryType ?? 'DAILY',
         monthlySalary:         profile.monthlySalary,
+        requiredDays:          profile.requiredDays,
         canAccessVehicles:     profile.canAccessVehicles ?? true,
         canAccessEquipment:    profile.canAccessEquipment ?? false,
         canAccessLeases:       profile.canAccessLeases ?? false,
@@ -796,12 +801,26 @@ export function StaffDetailPage() {
                   {errors.monthlySalary && <p className="text-red-500 text-xs">{errors.monthlySalary.message}</p>}
                 </div>
               )}
+              {watch('salaryType') === 'MONTHLY' && (
+                <div className="space-y-1.5">
+                  <Label>Required Days / Month</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={31}
+                    step={1}
+                    placeholder="e.g. 26"
+                    {...register('requiredDays')}
+                  />
+                  {errors.requiredDays && <p className="text-red-500 text-xs">{errors.requiredDays.message}</p>}
+                </div>
+              )}
             </div>
             {watch('salaryType') === 'DAILY' && (
               <p className="text-xs text-gray-400">Daily rate is configured on the designation. Override it per-payroll when generating.</p>
             )}
             {watch('salaryType') === 'MONTHLY' && (
-              <p className="text-xs text-gray-400">LOP deduction = (monthly salary ÷ working days) × absent days. Sundays excluded.</p>
+              <p className="text-xs text-gray-400">Full pay if present days meet Required Days. Shortfall is deducted at monthly salary ÷ required days per day. Leave Required Days blank for no deduction.</p>
             )}
           </div>}
 

@@ -70,6 +70,10 @@ const addStaffSchema = z.object({
     v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
     z.number().positive('Must be a positive amount').optional()
   ),
+  requiredDays:       z.preprocess(
+    v => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+    z.number().int().min(1, 'Must be at least 1').max(31, 'Cannot exceed 31').optional()
+  ),
   canAccessVehicles:  z.boolean().optional(),
   canAccessEquipment: z.boolean().optional(),
   canAccessLeases:    z.boolean().optional(),
@@ -121,6 +125,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
         canAccessLeases: data.canAccessLeases,
         salaryType: !isDailyRole ? (data.salaryType ?? 'MONTHLY') : undefined,
         monthlySalary: !isDailyRole && data.salaryType === 'MONTHLY' ? data.monthlySalary : undefined,
+        requiredDays: !isDailyRole && data.salaryType === 'MONTHLY' ? data.requiredDays : undefined,
       })
       const userId = res.data?.id
       if (userId) {
@@ -131,6 +136,7 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
             designationId: data.designationId,
             salaryType:    !isDailyRole ? (data.salaryType ?? 'MONTHLY') : undefined,
             monthlySalary: !isDailyRole ? data.monthlySalary : undefined,
+            requiredDays:  !isDailyRole && data.salaryType === 'MONTHLY' ? data.requiredDays : undefined,
           })
         }
       }
@@ -340,6 +346,23 @@ function AddStaff({ open, onClose }: { open: boolean; onClose: () => void }) {
                       {...register('monthlySalary')}
                     />
                     {errors.monthlySalary && <p className="text-red-500 text-xs">{errors.monthlySalary.message}</p>}
+                  </div>
+                )}
+                {isMonthly && (
+                  <div className="space-y-1.5">
+                    <Label>Required Days / Month</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={31}
+                      step={1}
+                      placeholder="e.g. 26"
+                      {...register('requiredDays')}
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      Full pay if present days meet this. Short days are deducted at monthly ÷ required. Leave blank for no deduction.
+                    </p>
+                    {errors.requiredDays && <p className="text-red-500 text-xs">{errors.requiredDays.message}</p>}
                   </div>
                 )}
               </div>
