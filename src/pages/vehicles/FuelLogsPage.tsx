@@ -277,7 +277,7 @@ function FuelLogDialog({
               {maxFillable != null && (
                 <p className="text-xs text-gray-400 mb-0.5">Max: {maxFillable.toFixed(1)} L</p>
               )}
-              <Input className="mt-1" type="number" step="0.01"
+              <Input className="mt-1" type="text" inputMode="decimal"
                 placeholder={maxFillable != null ? `Max ${maxFillable.toFixed(1)} L` : 'e.g. 50'}
                 value={form.litresFilled}
                 onChange={e => set('litresFilled', e.target.value)}
@@ -286,7 +286,7 @@ function FuelLogDialog({
             </div>
             <div>
               <Label>Cost / Litre (₹) *</Label>
-              <Input className="mt-1" type="number" step="0.01" placeholder="e.g. 96.50"
+              <Input className="mt-1" type="text" inputMode="decimal" placeholder="e.g. 96.50"
                 value={form.costPerLitre}
                 onChange={e => set('costPerLitre', e.target.value)}
                 onBlur={() => autoTotal()} />
@@ -297,13 +297,13 @@ function FuelLogDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Total Cost (₹)</Label>
-              <Input className="mt-1" type="number" step="0.01" placeholder="Auto-calculated"
+              <Input className="mt-1" type="text" inputMode="decimal" placeholder="Auto-calculated"
                 value={form.totalCost}
                 onChange={e => set('totalCost', e.target.value)} />
             </div>
             <div>
               <Label>Odometer Reading (km) *</Label>
-              <Input className="mt-1" type="number" step="0.1" placeholder="e.g. 45820"
+              <Input className="mt-1" type="text" inputMode="decimal" placeholder="e.g. 45820"
                 value={form.odometerReading}
                 onChange={e => set('odometerReading', e.target.value)} />
             </div>

@@ -796,7 +796,7 @@ export function StaffDetailPage() {
                   <Input
                     type="number"
                     min={0}
-                    step={100}
+                    step={1}
                     placeholder="e.g. 18000"
                     {...register('monthlySalary')}
                   />
