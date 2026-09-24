@@ -29,12 +29,19 @@ type StaffUser = { id: number; name: string; role: string; isActive: boolean }
 
 const generateSchema = z.object({
   userId:        z.string().min(1, 'Select a staff member'),
-  from:          z.string().min(1, 'Start date is required'),
-  to:            z.string().min(1, 'End date is required'),
+  month:         z.string().min(1, 'Select a month'),
   dailyRate:     z.coerce.number().optional(),
   monthlySalary: z.coerce.number().optional(),
 })
 type GenerateForm = z.infer<typeof generateSchema>
+
+// 'YYYY-MM' → first & last calendar day of that month
+function monthBounds(month: string) {
+  const [y, m] = month.split('-').map(Number)
+  return { start: `${month}-01`, end: format(new Date(y, m, 0), 'yyyy-MM-dd') }
+}
+// Latest selectable month = last completed month (no current/future)
+const LAST_MONTH = format(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), 'yyyy-MM')
 
 const advanceSchema = z.object({
   userId:      z.string().min(1, 'Select a staff member'),
@@ -118,13 +125,16 @@ function GenerateDialog({ open, onClose, users }: {
   }
 
   const mutation = useMutation({
-    mutationFn: (d: GenerateForm) => payrollApi.generateRange({
-      userId:            Number(d.userId),
-      payCycleStartDate: d.from,
-      payCycleEndDate:   d.to,
-      dailyRate:         isMonthly ? undefined : d.dailyRate,
-      monthlySalary:     isMonthly ? d.monthlySalary : undefined,
-    }),
+    mutationFn: (d: GenerateForm) => {
+      const { start, end } = monthBounds(d.month)
+      return payrollApi.generateRange({
+        userId:            Number(d.userId),
+        payCycleStartDate: start,
+        payCycleEndDate:   end,
+        dailyRate:         isMonthly ? undefined : d.dailyRate,
+        monthlySalary:     isMonthly ? d.monthlySalary : undefined,
+      })
+    },
     onSuccess: (res) => {
       const count = res.data?.length ?? 1
       toast.success(count > 1 ? `${count} payrolls generated` : 'Payroll generated')
@@ -153,18 +163,11 @@ function GenerateDialog({ open, onClose, users }: {
             {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId.message}</p>}
           </div>
 
-          {/* Pay Cycle */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label>Pay Cycle Start <span className="text-red-500">*</span></Label>
-              <Input type="date" {...register('from')} className={`mt-1 ${errors.from ? 'border-red-400' : ''}`} />
-              {errors.from && <p className="text-red-500 text-xs mt-1">{errors.from.message}</p>}
-            </div>
-            <div>
-              <Label>Pay Cycle End <span className="text-red-500">*</span></Label>
-              <Input type="date" {...register('to')} className={`mt-1 ${errors.to ? 'border-red-400' : ''}`} />
-              {errors.to && <p className="text-red-500 text-xs mt-1">{errors.to.message}</p>}
-            </div>
+          {/* Pay Month */}
+          <div>
+            <Label>Pay Month <span className="text-red-500">*</span></Label>
+            <Input type="month" max={LAST_MONTH} {...register('month')} className={`mt-1 ${errors.month ? 'border-red-400' : ''}`} />
+            {errors.month && <p className="text-red-500 text-xs mt-1">{errors.month.message}</p>}
           </div>
 
           {/* Rate — daily or monthly based on staff salary type */}

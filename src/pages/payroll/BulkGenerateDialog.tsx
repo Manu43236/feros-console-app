@@ -16,16 +16,22 @@ type StaffUser = { id: number; name: string; role: string; isActive: boolean }
 
 const PAYROLL_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'SERVICE_MANAGER', 'STORE_KEEPER', 'TECHNICIAN']
 
+// 'YYYY-MM' → first & last calendar day of that month
+function monthBounds(month: string) {
+  const [y, m] = month.split('-').map(Number)
+  return { start: `${month}-01`, end: format(new Date(y, m, 0), 'yyyy-MM-dd') }
+}
+// Latest selectable month = last completed month (no current/future)
+const LAST_MONTH = format(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1), 'yyyy-MM')
+
 export function BulkGenerateDialog({ open, onClose, users }: {
   open: boolean
   onClose: () => void
   users: StaffUser[]
 }) {
   const qc = useQueryClient()
-  const today = format(new Date(), 'yyyy-MM-dd')
 
-  const [from, setFrom]           = useState('')
-  const [to, setTo]               = useState('')
+  const [month, setMonth]         = useState('')
   const [roleFilter, setRole]     = useState('ALL')
   const [selectedIds, setSelected] = useState<Set<number>>(new Set())
   const [result, setResult]       = useState<BulkPayrollResult | null>(null)
@@ -54,17 +60,20 @@ export function BulkGenerateDialog({ open, onClose, users }: {
   }
 
   function handleClose() {
-    setFrom(''); setTo(''); setRole('ALL')
+    setMonth(''); setRole('ALL')
     setSelected(new Set()); setResult(null)
     onClose()
   }
 
   const mutation = useMutation({
-    mutationFn: () => payrollApi.bulkGenerate({
-      payCycleStartDate: from,
-      payCycleEndDate:   to,
-      userIds:           [...selectedIds],
-    }),
+    mutationFn: () => {
+      const { start, end } = monthBounds(month)
+      return payrollApi.bulkGenerate({
+        payCycleStartDate: start,
+        payCycleEndDate:   end,
+        userIds:           [...selectedIds],
+      })
+    },
     onSuccess: (res) => {
       setResult(res.data)
       qc.invalidateQueries({ queryKey: ['payrolls'] })
@@ -77,7 +86,7 @@ export function BulkGenerateDialog({ open, onClose, users }: {
     onError: (e: unknown) => toast.error(getApiError(e, 'Bulk generate failed') ?? 'Bulk generate failed'),
   })
 
-  const canGenerate = from && to && selectedIds.size > 0 && !mutation.isPending
+  const canGenerate = month && selectedIds.size > 0 && !mutation.isPending
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
@@ -147,18 +156,11 @@ export function BulkGenerateDialog({ open, onClose, users }: {
         ) : (
           /* ── Config Screen ── */
           <div className="space-y-4 overflow-y-auto flex-1 py-1">
-            {/* Pay Cycle */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label>Pay Cycle Start <span className="text-red-500">*</span></Label>
-                <Input type="date" value={from} onChange={e => setFrom(e.target.value)}
-                  max={today} className="mt-1" />
-              </div>
-              <div>
-                <Label>Pay Cycle End <span className="text-red-500">*</span></Label>
-                <Input type="date" value={to} onChange={e => setTo(e.target.value)}
-                  max={today} className="mt-1" />
-              </div>
+            {/* Pay Month */}
+            <div>
+              <Label>Pay Month <span className="text-red-500">*</span></Label>
+              <Input type="month" value={month} max={LAST_MONTH}
+                onChange={e => setMonth(e.target.value)} className="mt-1" />
             </div>
 
             {/* Role Filter + Select All */}
