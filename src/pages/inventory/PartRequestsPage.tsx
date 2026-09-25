@@ -240,7 +240,7 @@ export default function PartRequestsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-white rounded-xl border overflow-x-auto">
         {isLoading ? (
           <div className="p-8 text-center text-gray-400">Loading…</div>
         ) : requests.length === 0 ? (
@@ -301,7 +301,7 @@ export default function PartRequestsPage() {
       {/* Equipment part requests */}
       <div>
         <h2 className="text-base font-semibold text-gray-900 mb-2">Equipment Part Requests</h2>
-        <div className="bg-white rounded-xl border overflow-hidden">
+        <div className="bg-white rounded-xl border overflow-x-auto">
           {eqRequests.length === 0 ? (
             <div className="p-10 flex flex-col items-center gap-2 text-gray-400">
               <ClipboardList size={36} />
