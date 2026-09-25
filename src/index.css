@@ -41,6 +41,12 @@
   }
 }
 
+/* Loader — pulsing bars */
+@keyframes feros-bar {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+  50%      { transform: scaleY(1);   opacity: 1; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar        { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track  { background: #f1f5f9; }

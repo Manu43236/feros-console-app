@@ -1,12 +1,13 @@
-import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+const BAR_COUNT = 5
+// Staggered start times give the left-to-right "wave" motion.
+const BAR_DELAYS = ['-0.4s', '-0.3s', '-0.2s', '-0.1s', '0s']
+
 /**
- * Shared modern loading indicator used across the app.
- *
- * `Spinner` is a drop-in replacement for the old inline `Loading…` text — it
- * renders a smooth brand-coloured spinner and centers itself inside whatever
- * wrapper it's placed in. Pass `label` to show text beside it.
+ * Shared modern loading indicator used across the app — animated pulsing bars
+ * (equalizer style). `Spinner` centers itself inside whatever wrapper it's
+ * placed in; pass `label` to show text beside it.
  */
 export function Spinner({ className, label }: { className?: string; label?: string }) {
   return (
@@ -15,7 +16,15 @@ export function Spinner({ className, label }: { className?: string; label?: stri
       aria-live="polite"
       className={cn('inline-flex items-center justify-center gap-2 text-feros-navy', className)}
     >
-      <Loader2 className="h-5 w-5 animate-spin" strokeWidth={2.5} />
+      <span className="flex items-end gap-[3px] h-5" aria-hidden>
+        {Array.from({ length: BAR_COUNT }).map((_, i) => (
+          <span
+            key={i}
+            className="w-[3px] h-full rounded-full bg-current origin-bottom"
+            style={{ animation: 'feros-bar 1s ease-in-out infinite', animationDelay: BAR_DELAYS[i] }}
+          />
+        ))}
+      </span>
       {label && <span className="text-sm text-gray-500">{label}</span>}
       <span className="sr-only">Loading</span>
     </span>
