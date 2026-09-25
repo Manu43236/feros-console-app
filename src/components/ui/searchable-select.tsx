@@ -68,7 +68,7 @@ export function MultiSelect({ values, onValuesChange, options, placeholder = 'Se
         onClick={() => { setOpen(p => !p); setSearch('') }}
         className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
       >
-        <span className={cn('truncate', values.length === 0 && 'text-muted-foreground')}>{triggerLabel}</span>
+        <span className={cn('flex-1 min-w-0 truncate text-left', values.length === 0 && 'text-muted-foreground')}>{triggerLabel}</span>
         <div className="flex items-center gap-1 shrink-0 ml-2">
           {values.length > 0 && (
             <span
@@ -184,7 +184,7 @@ export function SearchableSelect({
           triggerClassName
         )}
       >
-        <span className={cn('truncate', selected?.color)}>
+        <span className={cn('flex-1 min-w-0 truncate text-left', selected?.color)}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
