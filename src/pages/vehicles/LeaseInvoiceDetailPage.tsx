@@ -79,7 +79,7 @@ export function LeaseInvoiceDetailPage() {
     onError: () => toast.error('Failed to delete invoice'),
   })
 
-  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse"><Spinner /></div>
+  if (isLoading) return <div className="p-12 text-center text-gray-400"><Spinner /></div>
   if (!invoice)  return <div className="p-12 text-center text-gray-400">Invoice not found</div>
 
   const nextStatuses = NEXT_STATUS[invoice.status] ?? []

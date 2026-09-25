@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -300,7 +301,7 @@ export function LrsPage() {
           </div>
         </div>
         {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading LRs…</div>
+          <div className="p-8 text-center text-gray-500"><Spinner /></div>
         ) : lrs.length === 0 ? (
           <div className="p-12 text-center">
             <FileText className="h-10 w-10 text-gray-300 mx-auto mb-2" />

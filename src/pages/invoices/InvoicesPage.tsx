@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -534,7 +535,7 @@ export function InvoicesPage() {
           </div>
         </div>
         {isLoading ? (
-          <div className="p-12 text-center text-gray-400 animate-pulse">Loading invoices…</div>
+          <div className="p-12 text-center text-gray-400"><Spinner /></div>
         ) : invoices.length === 0 ? (
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-3">
             <FileText size={36} className="text-gray-200" />

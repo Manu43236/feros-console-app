@@ -903,7 +903,7 @@ export default function AssignmentsPage() {
           {/* Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {historyVLoading || historySLoading ? (
-              <div className="py-16 text-center text-gray-400 text-sm">Loading history…</div>
+              <div className="py-16 text-center text-gray-400 text-sm"><Spinner /></div>
             ) : filteredHistoryRows.length === 0 ? (
               <div className="py-16 text-center">
                 <Clock size={36} className="mx-auto text-gray-300 mb-3" />

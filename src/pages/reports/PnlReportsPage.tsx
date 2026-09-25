@@ -339,7 +339,7 @@ export default function PnlReportsPage() {
 
       {/* Summary Cards */}
       {summaryQuery.isLoading ? (
-        <div className="text-center py-8 text-gray-400 text-sm">Loading summary…</div>
+        <div className="text-center py-8 text-gray-400 text-sm"><Spinner /></div>
       ) : summary && (
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">

@@ -1,3 +1,4 @@
+import { PageLoader } from '@/components/ui/loader'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
@@ -491,11 +492,7 @@ export function DashboardPage() {
 
       {/* ── Breakdown Cards ── */}
       {loadingSummary ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl h-52 animate-pulse border border-gray-100" />
-          ))}
-        </div>
+        <PageLoader />
       ) : s && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -593,9 +590,7 @@ export function DashboardPage() {
             )}
           </div>
           {loadingAlerts ? (
-            <div className="space-y-px">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-gray-50 animate-pulse" />)}
-            </div>
+            <PageLoader />
           ) : !alerts?.vehicleAlerts.length ? (
             <div className="p-10 flex flex-col items-center gap-2 text-gray-400">
               <CheckCircle size={28} className="text-green-400" />
@@ -635,9 +630,7 @@ export function DashboardPage() {
             )}
           </div>
           {loadingAlerts ? (
-            <div className="space-y-px">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-gray-50 animate-pulse" />)}
-            </div>
+            <PageLoader />
           ) : !alerts?.staffDocumentAlerts.length ? (
             <div className="p-10 flex flex-col items-center gap-2 text-gray-400">
               <CheckCircle size={28} className="text-green-400" />

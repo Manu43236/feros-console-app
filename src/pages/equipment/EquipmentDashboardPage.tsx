@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useQuery } from '@tanstack/react-query'
 import { Construction, Gauge, Wrench, AlertTriangle, ClipboardList, Clock, Calendar } from 'lucide-react'
 import { equipmentApi } from '@/api/equipment'
@@ -39,7 +40,7 @@ export function EquipmentDashboardPage() {
   const d = data?.data
 
   if (isLoading) return (
-    <div className="p-12 text-center text-gray-400 animate-pulse">Loading dashboard…</div>
+    <div className="p-12 text-center text-gray-400"><Spinner /></div>
   )
 
   return (

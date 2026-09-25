@@ -26,7 +26,7 @@ export function ServiceInvoiceDetailPage() {
 
   const invoice = data?.data
 
-  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse"><Spinner /></div>
+  if (isLoading) return <div className="p-12 text-center text-gray-400"><Spinner /></div>
   if (!invoice)  return <div className="p-12 text-center text-gray-400">Invoice not found</div>
 
   async function handleViewPdf() {

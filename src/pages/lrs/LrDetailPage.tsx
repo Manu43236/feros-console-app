@@ -652,7 +652,7 @@ export function LrDetailPage() {
     }
   }
 
-  if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse"><Spinner /></div>
+  if (isLoading) return <div className="p-8 text-center text-gray-500"><Spinner /></div>
   if (!lr) return <div className="p-8 text-center text-gray-500">LR not found.</div>
 
   const isActive   = isSuperAdmin || (lr.lrStatus !== 'CANCELLED' && lr.lrStatus !== 'DELIVERED')

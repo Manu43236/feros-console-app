@@ -213,7 +213,7 @@ function DocumentsTab({ userId, role }: { userId: number; role: string }) {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-10 text-gray-400 animate-pulse"><Spinner /></div>
+        <div className="text-center py-10 text-gray-400"><Spinner /></div>
       ) : docs.length === 0 ? (
         <div className="text-center py-10 flex flex-col items-center gap-2 text-gray-400">
           <FileText size={32} className="text-gray-200" />

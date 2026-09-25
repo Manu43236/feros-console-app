@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useRef, useState, useEffect } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -279,7 +280,7 @@ function VehicleDocStep({ vehicleId, onFinish, onBack }: { vehicleId: number; on
     }
   }
 
-  if (isLoading) return <div className="py-8 text-center text-sm text-gray-400">Loading document types…</div>
+  if (isLoading) return <div className="py-8 text-center text-sm text-gray-400"><Spinner /></div>
 
   return (
     <div className="space-y-4">
@@ -1478,7 +1479,7 @@ export function VehiclesPage() {
           </div>
         </div>
         {isLoading ? (
-          <div className="p-12 text-center text-gray-400 animate-pulse">Loading vehicles…</div>
+          <div className="p-12 text-center text-gray-400"><Spinner /></div>
         ) : vehicles.length === 0 ? (
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-3">
             <Truck size={36} className="text-gray-200" />

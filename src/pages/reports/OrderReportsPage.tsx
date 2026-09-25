@@ -319,7 +319,7 @@ function OrderSummaryTab() {
         </Button>
       </div>
 
-      {loading && <div className="text-center py-16 text-gray-400 text-sm">Loading order…</div>}
+      {loading && <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>}
 
       {order && (
         <div className="space-y-4">

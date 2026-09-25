@@ -137,7 +137,7 @@ export function EquipmentInvoicesPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-gray-400 animate-pulse"><Spinner /></td>
+                <td colSpan={7} className="px-4 py-12 text-center text-gray-400"><Spinner /></td>
               </tr>
             ) : invoices.length === 0 ? (
               <tr>

@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { gpsTrackingApi, type GpsFleetItem } from '@/api/gpsTracking'
@@ -141,7 +142,7 @@ export function GpsFleetMapPage() {
 
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
-            <p className="text-sm text-gray-400 p-4">Loading fleet…</p>
+            <p className="text-sm text-gray-400 p-4"><Spinner /></p>
           ) : fleet.length === 0 ? (
             <div className="p-4">
               <p className="text-sm text-gray-500">No GPS data available.</p>

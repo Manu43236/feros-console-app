@@ -1,3 +1,4 @@
+import { PageLoader } from '@/components/ui/loader'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { dashboardApi } from '@/api/dashboard'
@@ -220,11 +221,7 @@ export function SupervisorDashboardPage() {
 
       {/* ── KPI Cards ── */}
       {loadingSummary ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl h-32 animate-pulse border border-gray-100" />
-          ))}
-        </div>
+        <PageLoader />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <KpiCard
@@ -315,9 +312,7 @@ export function SupervisorDashboardPage() {
           )}
         </div>
         {loadingAlerts ? (
-          <div className="space-y-px">
-            {[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-gray-50 animate-pulse" />)}
-          </div>
+          <PageLoader />
         ) : !alerts?.vehicleAlerts.length ? (
           <div className="p-10 flex flex-col items-center gap-2 text-gray-400">
             <CheckCircle size={28} className="text-green-400" />

@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -1207,7 +1208,7 @@ export function OrderDetailPage() {
     onError: (e: unknown) => { const msg = (e as any)?.response?.data?.message ?? 'Failed'; toast.error(msg) },
   })
 
-  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading order…</div>
+  if (isLoading) return <div className="p-12 text-center text-gray-400"><Spinner /></div>
   if (!order)    return <div className="p-12 text-center text-gray-500">Order not found.</div>
 
   const canForceDeliver = ['ADMIN', 'SUPER_ADMIN', 'SUPERVISOR'].includes(role ?? '')

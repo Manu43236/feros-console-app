@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useRef } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useNavigate } from 'react-router-dom'
@@ -765,7 +766,7 @@ export function StaffPage() {
           </div>
         </div>
         {isLoading ? (
-          <div className="p-12 text-center text-gray-400 animate-pulse">Loading staff…</div>
+          <div className="p-12 text-center text-gray-400"><Spinner /></div>
         ) : staff.length === 0 ? (
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-3">
             <UserCheck size={36} className="text-gray-200" />

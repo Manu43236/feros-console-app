@@ -1818,7 +1818,7 @@ export function WorkOrderDetailPage() {
     onError: () => toast.error('Failed to delete release'),
   })
 
-  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse"><Spinner /></div>
+  if (isLoading) return <div className="p-12 text-center text-gray-400"><Spinner /></div>
   if (!res?.data) return <div className="p-12 text-center text-gray-400">Work order not found</div>
 
   const { workOrder: wo, assignments, logs } = res.data

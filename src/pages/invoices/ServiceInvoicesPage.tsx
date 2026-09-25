@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -129,7 +130,7 @@ export function ServiceInvoicesPage() {
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {isLoading ? (
-          <div className="p-12 text-center text-gray-400 animate-pulse">Loading service invoices…</div>
+          <div className="p-12 text-center text-gray-400"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-3">
             <AlertCircle size={36} className="text-gray-200" />

@@ -132,7 +132,7 @@ export function BreakdownTab({ equipmentId, currentHmr }: { equipmentId: number;
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center text-gray-400 text-sm animate-pulse"><Spinner /></div>
+        <div className="py-8 text-center text-gray-400 text-sm"><Spinner /></div>
       ) : breakdowns.length === 0 ? (
         <div className="py-12 text-center text-gray-400">
           <AlertTriangle size={32} className="mx-auto mb-3 text-gray-200" />

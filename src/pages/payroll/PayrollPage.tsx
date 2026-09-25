@@ -176,7 +176,7 @@ function GenerateDialog({ open, onClose, users }: {
             <div>
               <div className="flex items-center justify-between">
                 <Label>Daily Rate (₹)</Label>
-                {profileFetching && <span className="text-xs text-gray-400 animate-pulse">Looking up rate…</span>}
+                {profileFetching && <Spinner label="Looking up rate…" className="text-xs" />}
                 {rateAutoFilled && !profileFetching && (
                   <span className="text-xs text-green-600 font-medium">Auto-filled from designation</span>
                 )}
@@ -198,7 +198,7 @@ function GenerateDialog({ open, onClose, users }: {
             <div>
               <div className="flex items-center justify-between">
                 <Label>Monthly Salary (₹)</Label>
-                {profileFetching && <span className="text-xs text-gray-400 animate-pulse">Looking up salary…</span>}
+                {profileFetching && <Spinner label="Looking up salary…" className="text-xs" />}
                 {rateAutoFilled && !profileFetching && (
                   <span className="text-xs text-green-600 font-medium">Auto-filled from profile</span>
                 )}

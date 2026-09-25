@@ -482,7 +482,7 @@ export function TripExpenseTab({ lrId, lrStatus }: { lrId: number; lrStatus: LrS
     onError: (e) => toast.error(getApiError(e, 'Failed to remove item')),
   })
 
-  if (isLoading) return <div className="py-8 text-center text-sm text-gray-400 animate-pulse"><Spinner /></div>
+  if (isLoading) return <div className="py-8 text-center text-sm text-gray-400"><Spinner /></div>
 
   if (!expense || (error as { response?: { status?: number } })?.response?.status === 404) {
     return (

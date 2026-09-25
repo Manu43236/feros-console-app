@@ -272,7 +272,7 @@ export function InvoiceDetailPage() {
     onError: () => toast.error('Failed to remove payment'),
   })
 
-  if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse"><Spinner /></div>
+  if (isLoading) return <div className="p-8 text-center text-gray-500"><Spinner /></div>
   if (!invoice)  return <div className="p-8 text-center text-gray-500">Invoice not found.</div>
 
   if (invoice.invoiceStatus === 'CANCELLED') {

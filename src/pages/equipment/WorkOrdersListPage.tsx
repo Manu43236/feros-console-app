@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -362,7 +363,7 @@ export function WorkOrdersListPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-12 text-center text-gray-400 animate-pulse">Loading work orders…</div>
+          <div className="p-12 text-center text-gray-400"><Spinner /></div>
         ) : workOrders.length === 0 ? (
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-3">
             <ClipboardList size={36} className="text-gray-200" />

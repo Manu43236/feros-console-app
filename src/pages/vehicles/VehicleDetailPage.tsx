@@ -1462,7 +1462,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
 
           {/* Service list */}
           {servicesLoading ? (
-            <div className="py-8 text-center text-gray-400 text-sm animate-pulse"><Spinner /></div>
+            <div className="py-8 text-center text-gray-400 text-sm"><Spinner /></div>
           ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-gray-400">
               <Wrench size={32} className="mx-auto mb-3 text-gray-200" />
@@ -1578,7 +1578,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
       {subTab === 'breakdown' && (
         <div className="space-y-2">
           {breakdownsLoading ? (
-            <div className="py-8 text-center text-gray-400 text-sm animate-pulse"><Spinner /></div>
+            <div className="py-8 text-center text-gray-400 text-sm"><Spinner /></div>
           ) : allBreakdowns.length === 0 ? (
             <div className="py-12 text-center text-gray-400">
               <AlertTriangle size={32} className="mx-auto mb-3 text-gray-200" />
@@ -2616,7 +2616,7 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
 
       {/* ── Table ── */}
       {isLoading ? (
-        <div className="py-8 text-center text-gray-400 text-sm animate-pulse"><Spinner /></div>
+        <div className="py-8 text-center text-gray-400 text-sm"><Spinner /></div>
       ) : logs.length === 0 ? (
         <div className="py-10 text-center text-gray-400">
           <Droplets size={32} className="mx-auto mb-3 text-gray-200" />
@@ -3268,7 +3268,7 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
 
           {/* timeline */}
           {historyLoading ? (
-            <div className="py-12 text-center text-gray-400 text-sm">Loading history…</div>
+            <div className="py-12 text-center text-gray-400 text-sm"><Spinner /></div>
           ) : filteredEvents.length === 0 ? (
             <div className="py-12 text-center">
               <Clock size={32} className="mx-auto text-gray-200 mb-3" />
@@ -3503,7 +3503,7 @@ function RoutePlaybackModal({ vehicleId, lr, onClose }: {
         <div className="relative h-[440px]">
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
-              <p className="text-sm text-gray-500">Loading route…</p>
+              <p className="text-sm text-gray-500"><Spinner /></p>
             </div>
           )}
           {!isLoading && latLngs.length === 0 && (
@@ -3784,7 +3784,7 @@ export function VehicleDetailPage() {
     return () => document.removeEventListener('keydown', onEsc)
   }, [lightboxOpen])
 
-  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading vehicle…</div>
+  if (isLoading) return <div className="p-12 text-center text-gray-400"><Spinner /></div>
   if (!v) return (
     <div className="p-12 text-center text-gray-400">
       <p>Vehicle not found.</p>

@@ -208,7 +208,7 @@ export function EquipmentAttachmentsPage() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-gray-400 animate-pulse"><Spinner /></div>
+        <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center text-gray-400">
           <Boxes size={36} className="mx-auto mb-3 text-gray-200" />

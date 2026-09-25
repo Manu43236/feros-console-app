@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useRef, useEffect } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -687,7 +688,7 @@ export function ClientsPage() {
           </div>
         </div>
         {isLoading ? (
-          <div className="p-12 text-center text-gray-400 animate-pulse">Loading clients…</div>
+          <div className="p-12 text-center text-gray-400"><Spinner /></div>
         ) : clients.length === 0 ? (
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-3">
             <Building2 size={36} className="text-gray-200" />

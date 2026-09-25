@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -250,7 +251,7 @@ export default function LeasesPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-12 text-center text-gray-400 animate-pulse">Loading leases…</div>
+          <div className="p-12 text-center text-gray-400"><Spinner /></div>
         ) : leases.length === 0 ? (
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-3">
             <KeyRound size={36} className="text-gray-200" />

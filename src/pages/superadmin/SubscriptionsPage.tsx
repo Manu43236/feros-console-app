@@ -826,7 +826,7 @@ function TenantsTab() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="py-12 text-center text-gray-400 text-sm">Loading tenants…</div>
+        <div className="py-12 text-center text-gray-400 text-sm"><Spinner /></div>
       ) : filtered.length === 0 ? (
         <div className="py-12 text-center text-gray-400 text-sm">No tenants match this filter</div>
       ) : (
