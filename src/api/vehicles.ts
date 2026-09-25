@@ -1,6 +1,21 @@
 import apiClient from './client'
 import type { ApiResponse, BreakdownDuration, BreakdownType, StaffAssignmentHistory, Vehicle, VehicleDocument, VehicleImage, VehicleServiceRecord } from '@/types'
 
+export interface PagedVehicleServices {
+  content: VehicleServiceRecord[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+  summary: {
+    totalRecords: number
+    totalCost: number
+    inProgress: number
+    dueSoon: number
+    overdue: number
+  }
+}
+
 export interface UpdateStatusPayload {
   currentStatusId: number
   breakdownType?: BreakdownType
@@ -59,6 +74,8 @@ export const vehiclesApi = {
 
 export const vehicleServicesApi = {
   getAll:               ()                               => apiClient.get<ApiResponse<VehicleServiceRecord[]>>('/vehicle-services').then(r => r.data),
+  getAllPaged:          (params: { page: number; size: number; status: string; search: string }) =>
+                          apiClient.get<ApiResponse<PagedVehicleServices>>('/vehicle-services/paged', { params }).then(r => r.data),
   getByVehicle:         (vehicleId: number)              => apiClient.get<ApiResponse<VehicleServiceRecord[]>>(`/vehicle-services/vehicle/${vehicleId}`).then(r => r.data),
   getById:              (id: number)                     => apiClient.get<ApiResponse<VehicleServiceRecord>>(`/vehicle-services/${id}`).then(r => r.data),
   create:               (data: unknown)                  => apiClient.post<ApiResponse<VehicleServiceRecord>>('/vehicle-services', data).then(r => r.data),

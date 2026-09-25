@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { vehicleServicesApi } from '@/api/vehicles'
 import { servicePartsApi, sparePartsApi } from '@/api/inventory'
 import type { VehicleServiceRecord, ServiceDisplayStatus, ServicePart } from '@/types'
@@ -44,6 +44,8 @@ function serviceTypeLabel(s: string, vendorName?: string) {
 }
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+
+const PAGE_SIZE = 20
 
 // ── Delete Dialog ─────────────────────────────────────────────────────────────
 function DeleteDialog({ record, onClose }: { record: VehicleServiceRecord | null; onClose: () => void }) {
@@ -337,30 +339,36 @@ export default function VehicleServicesPage() {
   const [search, setSearch]     = useState('')
   const [filter, setFilter]     = useState<FilterType>('ALL')
   const [toDelete, setToDelete] = useState<VehicleServiceRecord | null>(null)
+  const [page, setPage]         = useState(0) // server page is 0-indexed
+
+  // Debounce search so we don't fire a request per keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  // Reset to first page whenever the query changes
+  useEffect(() => { setPage(0) }, [debouncedSearch, filter])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['vehicle-services'],
-    queryFn:  vehicleServicesApi.getAll,
-  })
-  const records = [...(data?.data ?? [])].sort((a, b) => b.id - a.id)
-
-  const filtered = records.filter(r => {
-    const matchSearch =
-      r.vehicleRegistrationNumber.toLowerCase().includes(search.toLowerCase()) ||
-      (r.serviceNumber ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (r.vendorName ?? '').toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'ALL' || r.displayStatus === filter
-    return matchSearch && matchFilter
+    queryKey: ['vehicle-services', 'paged', filter, debouncedSearch, page],
+    queryFn:  () => vehicleServicesApi.getAllPaged({ page, size: PAGE_SIZE, status: filter, search: debouncedSearch }),
+    placeholderData: keepPreviousData,
   })
 
-  const totalCost = records.reduce((s, r) => s + (r.totalCost ?? 0), 0)
-  const dueSoon   = records.filter(r => r.displayStatus === 'DUE_SOON').length
-  const overdue   = records.filter(r => r.displayStatus === 'OVERDUE').length
+  const paged      = data?.data.content ?? []
+  const summary    = data?.data.summary
+  const totalPages = data?.data.totalPages ?? 1
+  const totalElements = data?.data.totalElements ?? 0
 
-  const inProgress = records.filter(r => r.displayStatus === 'IN_PROGRESS').length
+  const totalCost = summary?.totalCost ?? 0
+  const dueSoon   = summary?.dueSoon ?? 0
+  const overdue   = summary?.overdue ?? 0
+  const inProgress = summary?.inProgress ?? 0
 
   const filterPills: { label: string; value: FilterType; count?: number }[] = [
-    { label: 'All',         value: 'ALL',         count: records.length },
+    { label: 'All',         value: 'ALL',         count: summary?.totalRecords ?? 0 },
     { label: 'Open',        value: 'OPEN' },
     { label: 'In Progress', value: 'IN_PROGRESS', count: inProgress },
     { label: 'Due Soon',    value: 'DUE_SOON',    count: dueSoon },
@@ -382,7 +390,7 @@ export default function VehicleServicesPage() {
           <div className="p-2.5 bg-blue-50 rounded-lg"><Wrench size={20} className="text-blue-600" /></div>
           <div>
             <p className="text-xs text-gray-500">Total Records</p>
-            <p className="text-lg font-bold text-gray-900">{records.length}</p>
+            <p className="text-lg font-bold text-gray-900">{summary?.totalRecords ?? 0}</p>
           </div>
         </div>
         <div className="bg-white rounded-xl border p-4 flex items-center gap-4">
@@ -443,7 +451,7 @@ export default function VehicleServicesPage() {
         <div className="flex-1 min-w-0">
           {isLoading ? (
             <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
-          ) : filtered.length === 0 ? (
+          ) : paged.length === 0 ? (
             <div className="text-center py-16">
               <Wrench size={40} className="mx-auto text-gray-300 mb-3" />
               <p className="text-gray-400 text-sm">
@@ -452,9 +460,25 @@ export default function VehicleServicesPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filtered.map(r => (
+              {paged.map(r => (
                 <ServiceCard key={r.id} record={r} onDelete={() => setToDelete(r)} />
               ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalElements > PAGE_SIZE && (
+            <div className="flex items-center justify-between mt-4 text-sm">
+              <span className="text-gray-500">
+                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalElements)} of {totalElements}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={page <= 0}
+                  onClick={() => setPage(p => Math.max(0, p - 1))}>Previous</Button>
+                <span className="text-gray-600">Page {page + 1} of {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={page >= totalPages - 1}
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}>Next</Button>
+              </div>
             </div>
           )}
         </div>
