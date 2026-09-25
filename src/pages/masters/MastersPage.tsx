@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -96,7 +97,7 @@ function VehicleStatusSection({
         {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
       {loading ? (
-        <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+        <div className="text-sm text-gray-400 py-6 text-center"><Spinner /></div>
       ) : items.length === 0 ? (
         <div className="text-sm text-gray-400 py-6 text-center">No vehicle statuses yet</div>
       ) : (
@@ -191,7 +192,7 @@ function SimpleSection({
         {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
       {loading ? (
-        <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+        <div className="text-sm text-gray-400 py-6 text-center"><Spinner /></div>
       ) : items.length === 0 ? (
         <div className="text-sm text-gray-400 py-6 text-center">No {title.toLowerCase()} yet</div>
       ) : (
@@ -288,7 +289,7 @@ function PaymentTermsSection() {
         <h2 className="text-base font-semibold text-gray-800">Payment Terms</h2>
         {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
-      {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+      {isLoading ? <div className="text-sm text-gray-400 py-6 text-center"><Spinner /></div>
         : items.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No payment terms yet</div>
         : (
           <div className="border rounded-lg divide-y">
@@ -393,7 +394,7 @@ function DesignationsSection() {
         <h2 className="text-base font-semibold text-gray-800">Designations</h2>
         {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
-      {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+      {isLoading ? <div className="text-sm text-gray-400 py-6 text-center"><Spinner /></div>
         : items.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No designations yet</div>
         : (
           <div className="border rounded-lg divide-y">
@@ -551,7 +552,7 @@ function HolidaysSection() {
       </div>
 
       {view === 'calendar' ? (
-        isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div> : (
+        isLoading ? <div className="text-sm text-gray-400 py-6 text-center"><Spinner /></div> : (
           <div>
             {/* Day labels */}
             <div className="grid grid-cols-7 mb-1">
@@ -605,7 +606,7 @@ function HolidaysSection() {
         )
       ) : (
         // List view — filtered to current month
-        isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+        isLoading ? <div className="text-sm text-gray-400 py-6 text-center"><Spinner /></div>
         : monthItems.length === 0
           ? <div className="text-sm text-gray-400 py-6 text-center">No holidays in {MONTH_NAMES[month]} {year}</div>
           : (
@@ -733,7 +734,7 @@ function RoutesSection() {
         <h2 className="text-base font-semibold text-gray-800">Routes</h2>
         {!locked && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" />Add</Button>}
       </div>
-      {isLoading ? <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+      {isLoading ? <div className="text-sm text-gray-400 py-6 text-center"><Spinner /></div>
         : routes.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No routes yet</div>
         : (
           <div className="border rounded-lg divide-y">
@@ -1103,7 +1104,7 @@ function SettingsSection() {
 
   const { locked, isEquipmentMode } = useSubscription()
 
-  if (isLoading) return <div className="text-sm text-gray-400 py-6 text-center">Loading…</div>
+  if (isLoading) return <div className="text-sm text-gray-400 py-6 text-center"><Spinner /></div>
 
   return (
     <div>

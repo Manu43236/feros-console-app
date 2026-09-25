@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { useState, useMemo } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
@@ -649,7 +650,7 @@ export default function AssignmentsPage() {
       {tab === 'vehicle' && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {isLoading ? (
-            <div className="py-16 text-center text-gray-400 text-sm">Loading…</div>
+            <div className="py-16 text-center text-gray-400 text-sm"><Spinner /></div>
           ) : (
             <>
             {/* Search bar */}
@@ -744,7 +745,7 @@ export default function AssignmentsPage() {
       {tab === 'driver' && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {isLoading ? (
-            <div className="py-16 text-center text-gray-400 text-sm">Loading…</div>
+            <div className="py-16 text-center text-gray-400 text-sm"><Spinner /></div>
           ) : (
             <>
             {/* Search bar */}

@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -501,7 +502,7 @@ export function EquipmentListPage() {
           </thead>
           <tbody className="divide-y">
             {isLoading ? (
-              <tr><td colSpan={colCount} className="px-3 py-8 text-center text-gray-400 text-sm">Loading…</td></tr>
+              <tr><td colSpan={colCount} className="px-3 py-8 text-center text-gray-400 text-sm"><Spinner /></td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={colCount} className="px-3 py-8 text-center text-gray-400 text-sm">{search ? 'No machines match your search' : 'No machines yet. Click "Add Machine" to get started.'}</td></tr>
             ) : filtered.map(m => (

@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -64,7 +65,7 @@ function ReportTable({ headers, rows, loading }: {
     bottom.addEventListener('scroll', onBottom)
     return () => { ro.disconnect(); top.removeEventListener('scroll', onTop); bottom.removeEventListener('scroll', onBottom) }
   }, [rows])
-  if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+  if (loading) return <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
   if (rows.length === 0) return <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
   return (
     <div className="rounded-lg border overflow-hidden">
@@ -232,7 +233,7 @@ function TyreCostTable({ rows, loading }: { rows: TyreCostRow[]; loading: boolea
 function SalaryExpenseTable({ rows, loading, vehicleLabel }: {
   rows: VehicleSalaryDayRow[]; loading: boolean; vehicleLabel: string
 }) {
-  if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+  if (loading) return <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
   if (!vehicleLabel || vehicleLabel === 'ALL') return (
     <div className="text-center py-16 text-gray-400 text-sm">Select a vehicle and month to view salary breakdown</div>
   )

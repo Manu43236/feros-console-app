@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -481,7 +482,7 @@ export function TripExpenseTab({ lrId, lrStatus }: { lrId: number; lrStatus: LrS
     onError: (e) => toast.error(getApiError(e, 'Failed to remove item')),
   })
 
-  if (isLoading) return <div className="py-8 text-center text-sm text-gray-400 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="py-8 text-center text-sm text-gray-400 animate-pulse"><Spinner /></div>
 
   if (!expense || (error as { response?: { status?: number } })?.response?.status === 404) {
     return (

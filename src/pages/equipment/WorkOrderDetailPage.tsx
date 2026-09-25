@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -1817,7 +1818,7 @@ export function WorkOrderDetailPage() {
     onError: () => toast.error('Failed to delete release'),
   })
 
-  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse"><Spinner /></div>
   if (!res?.data) return <div className="p-12 text-center text-gray-400">Work order not found</div>
 
   const { workOrder: wo, assignments, logs } = res.data
@@ -2582,7 +2583,7 @@ export function WorkOrderDetailPage() {
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm">Loading…</div>
+            <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm"><Spinner /></div>
           )}
 
           {/* Advances */}

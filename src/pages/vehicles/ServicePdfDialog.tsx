@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useQuery } from '@tanstack/react-query'
 import { PDFViewer } from '@react-pdf/renderer'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -18,7 +19,7 @@ export function ServicePdfDialog({ serviceId, onClose }: { serviceId: number | n
     <Dialog open={serviceId != null} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 overflow-hidden">
         <DialogTitle className="sr-only">Service PDF Report</DialogTitle>
-        {isLoading && <div className="flex items-center justify-center h-full text-gray-500 text-sm">Loading…</div>}
+        {isLoading && <div className="flex items-center justify-center h-full text-gray-500 text-sm"><Spinner /></div>}
         {(isError || (data && !data.data)) && (
           <div className="flex items-center justify-center h-full text-red-500 text-sm">Service not found</div>
         )}

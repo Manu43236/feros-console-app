@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -72,7 +73,7 @@ export function LeaseInvoicePrintPage() {
   }
 
   if (isLoading) return (
-    <div style={{ padding: 40, textAlign: 'center', color: '#999', fontFamily: 'Arial' }}>Loading…</div>
+    <div style={{ padding: 40, textAlign: 'center', color: '#999', fontFamily: 'Arial' }}><Spinner /></div>
   )
   if (!inv) return (
     <div style={{ padding: 40, textAlign: 'center', color: '#999', fontFamily: 'Arial' }}>Invoice not found</div>

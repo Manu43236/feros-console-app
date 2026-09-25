@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -136,7 +137,7 @@ export function EquipmentInvoicesPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-gray-400 animate-pulse">Loading…</td>
+                <td colSpan={7} className="px-4 py-12 text-center text-gray-400 animate-pulse"><Spinner /></td>
               </tr>
             ) : invoices.length === 0 ? (
               <tr>

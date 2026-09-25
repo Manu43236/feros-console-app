@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -25,7 +26,7 @@ export function ServiceInvoiceDetailPage() {
 
   const invoice = data?.data
 
-  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse"><Spinner /></div>
   if (!invoice)  return <div className="p-12 text-center text-gray-400">Invoice not found</div>
 
   async function handleViewPdf() {

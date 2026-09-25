@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi } from '@/api/superadmin'
 import { Bell, CheckCheck } from 'lucide-react'
@@ -54,7 +55,7 @@ export function NotificationsPage() {
       {/* List */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-gray-400">Loading…</div>
+          <div className="py-16 text-center text-sm text-gray-400"><Spinner /></div>
         ) : notifs.length === 0 ? (
           <div className="py-16 flex flex-col items-center gap-3 text-gray-400">
             <Bell size={36} strokeWidth={1.5} />

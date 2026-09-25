@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -145,7 +146,7 @@ export function AttendanceLocationsPage() {
             {isLoading ? (
               <tr>
                 <td colSpan={6} className="px-5 py-8 text-center text-gray-400 text-sm">
-                  Loading…
+                  <Spinner />
                 </td>
               </tr>
             ) : locations.length === 0 ? (

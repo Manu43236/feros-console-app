@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useState, useEffect } from 'react'
@@ -942,7 +943,7 @@ function TyreDetailSheet({ tyre, open, onClose, onEdit, onFit, onRemove, onBackT
             </div>
 
             {tab === 'fittings' && (
-              loadingFittings ? <p className="text-sm text-gray-400 text-center py-4">Loading…</p> :
+              loadingFittings ? <p className="text-sm text-gray-400 text-center py-4"><Spinner /></p> :
               fittings.length === 0 ? <p className="text-sm text-gray-400 text-center py-4">No fitting history</p> :
               <div className="space-y-2">
                 {fittings.map(f => (
@@ -965,7 +966,7 @@ function TyreDetailSheet({ tyre, open, onClose, onEdit, onFit, onRemove, onBackT
             )}
 
             {tab === 'retreads' && (
-              loadingRetreads ? <p className="text-sm text-gray-400 text-center py-4">Loading…</p> :
+              loadingRetreads ? <p className="text-sm text-gray-400 text-center py-4"><Spinner /></p> :
               retreads.length === 0 ? <p className="text-sm text-gray-400 text-center py-4">No retread history</p> :
               <div className="space-y-2">
                 {retreads.map(r => (
@@ -1132,7 +1133,7 @@ export default function TyreInventoryPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+          <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-400">No tyres found</div>
         ) : (

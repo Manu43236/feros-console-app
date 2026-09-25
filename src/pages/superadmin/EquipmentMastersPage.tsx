@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -47,7 +48,7 @@ function MakesSection() {
         <h3 className="text-sm font-semibold text-gray-700">Equipment Makes</h3>
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No makes yet</div> : (
+      {isLoading ? <div className="text-xs text-gray-400 py-3"><Spinner /></div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No makes yet</div> : (
         <div className="divide-y border rounded-lg overflow-hidden">
           {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
@@ -133,7 +134,7 @@ function ModelsSection({ makes }: { makes: EquipmentMake[] }) {
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
         </div>
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No models yet</div> : (
+      {isLoading ? <div className="text-xs text-gray-400 py-3"><Spinner /></div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No models yet</div> : (
         <div className="divide-y border rounded-lg overflow-hidden">
           {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
@@ -264,7 +265,7 @@ function TypesSection({ makes }: { makes: EquipmentMake[] }) {
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
         </div>
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No types yet</div> : (
+      {isLoading ? <div className="text-xs text-gray-400 py-3"><Spinner /></div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No types yet</div> : (
         <div className="divide-y border rounded-lg overflow-hidden">
           {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">

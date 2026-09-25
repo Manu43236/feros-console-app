@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -420,7 +421,7 @@ export function SAUsersPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+          <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center">
             <UserCog size={36} className="mx-auto text-gray-300 mb-3" />

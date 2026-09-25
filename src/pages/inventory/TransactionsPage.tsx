@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { inventoryTransactionsApi } from '@/api/inventory'
@@ -84,7 +85,7 @@ export default function TransactionsPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Loading…</div>
+          <div className="p-8 text-center text-gray-400"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-gray-400 text-sm">No transactions found</div>
         ) : (

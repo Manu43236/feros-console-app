@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useEffect } from 'react'
 import { Settings, Smartphone, Save, PlayCircle, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -49,7 +50,7 @@ function AppUpdateTab() {
           everything — all devices must update immediately.
         </p>
         {isLoading ? (
-          <p style={{ color: '#94a3b8', fontSize: 14 }}>Loading…</p>
+          <p style={{ color: '#94a3b8', fontSize: 14 }}><Spinner /></p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Field label="Min Version (version code)" hint="Below this → immediate blocking update">
@@ -152,7 +153,7 @@ function TutorialVideosTab() {
 
       {/* Table */}
       {isLoading ? (
-        <p style={{ color: '#94a3b8', fontSize: 14 }}>Loading…</p>
+        <p style={{ color: '#94a3b8', fontSize: 14 }}><Spinner /></p>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8', fontSize: 14 }}>No videos found</div>
       ) : (

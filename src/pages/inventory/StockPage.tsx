@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -381,7 +382,7 @@ export default function StockPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Loading…</div>
+          <div className="p-8 text-center text-gray-400"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="p-10 flex flex-col items-center gap-2 text-gray-400">
             <Boxes size={36} />

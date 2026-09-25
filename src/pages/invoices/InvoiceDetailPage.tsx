@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -271,7 +272,7 @@ export function InvoiceDetailPage() {
     onError: () => toast.error('Failed to remove payment'),
   })
 
-  if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse"><Spinner /></div>
   if (!invoice)  return <div className="p-8 text-center text-gray-500">Invoice not found.</div>
 
   if (invoice.invoiceStatus === 'CANCELLED') {

@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -161,7 +162,7 @@ export function GpsHardwarePage() {
           </thead>
           <tbody className="divide-y">
             {isLoading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">No device models yet. Add one to get started.</td></tr>
             ) : (

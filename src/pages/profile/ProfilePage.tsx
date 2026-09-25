@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -172,7 +173,7 @@ function AccountTab({ userId, role }: { userId: number; role: string | null }) {
 
   const canEdit = role === 'ADMIN' || role === 'OFFICE_STAFF' || role === 'SUPERVISOR' || role === 'DRIVER' || role === 'CLEANER'
 
-  if (isLoading) return <div className="py-12 text-center text-gray-400 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="py-12 text-center text-gray-400 animate-pulse"><Spinner /></div>
 
   if (editing) {
     return (
@@ -420,7 +421,7 @@ function DocumentsTab({ role }: { role: string | null }) {
     }
   }
 
-  if (isLoading) return <div className="py-12 text-center text-gray-400 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="py-12 text-center text-gray-400 animate-pulse"><Spinner /></div>
 
   return (
     <div className="space-y-6">
@@ -580,7 +581,7 @@ function CompanyTab({ role }: { role: string | null }) {
     ? Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000)
     : null
 
-  if (isLoading) return <div className="py-12 text-center text-gray-400 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="py-12 text-center text-gray-400 animate-pulse"><Spinner /></div>
 
   if (editing && canEdit) {
     return (

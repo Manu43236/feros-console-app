@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -397,7 +398,7 @@ export function EquipmentInvoiceDetailPage() {
     await html2pdf().set(opts).from(invoiceRef.current).save()
   }
 
-  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="p-12 text-center text-gray-400 animate-pulse"><Spinner /></div>
   if (!invoice)  return <div className="p-12 text-center text-gray-400">Invoice not found</div>
 
   const nextStatuses = NEXT_STATUS[invoice.status] ?? []

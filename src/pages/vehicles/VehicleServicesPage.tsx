@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { vehicleServicesApi } from '@/api/vehicles'
@@ -467,7 +468,7 @@ export default function VehicleServicesPage() {
         {/* Records */}
         <div className="flex-1 min-w-0">
           {isLoading ? (
-            <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+            <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
           ) : paged.length === 0 ? (
             <div className="text-center py-16">
               <Wrench size={40} className="mx-auto text-gray-300 mb-3" />

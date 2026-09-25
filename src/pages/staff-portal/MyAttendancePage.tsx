@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -247,7 +248,7 @@ export function MyAttendancePage() {
           <h2 className="text-sm font-semibold text-gray-700">This Month's Records</h2>
         </div>
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+          <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
         ) : records.length === 0 ? (
           <div className="py-12 flex flex-col items-center text-gray-400">
             <Calendar size={36} className="mb-3 text-gray-300" />

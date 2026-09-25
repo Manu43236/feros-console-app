@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
@@ -250,7 +251,7 @@ export default function ClientAdvancesPage() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+          <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <Banknote size={40} className="mx-auto text-gray-300 mb-3" />

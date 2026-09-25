@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -637,7 +638,7 @@ export function TripExpensesPage() {
 
       {/* List */}
       {isLoading ? (
-        <div className="py-8 text-center text-gray-400 animate-pulse text-sm">Loading…</div>
+        <div className="py-8 text-center text-gray-400 animate-pulse text-sm"><Spinner /></div>
       ) : sorted.length === 0 ? (
         <div className="py-16 flex flex-col items-center gap-3 text-center">
           <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center">

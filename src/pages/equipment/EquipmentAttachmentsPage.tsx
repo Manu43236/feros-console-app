@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -207,7 +208,7 @@ export function EquipmentAttachmentsPage() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-gray-400 animate-pulse">Loading…</div>
+        <div className="py-12 text-center text-sm text-gray-400 animate-pulse"><Spinner /></div>
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center text-gray-400">
           <Boxes size={36} className="mx-auto mb-3 text-gray-200" />

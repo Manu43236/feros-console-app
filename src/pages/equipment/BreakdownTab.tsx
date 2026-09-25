@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -131,7 +132,7 @@ export function BreakdownTab({ equipmentId, currentHmr }: { equipmentId: number;
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center text-gray-400 text-sm animate-pulse">Loading…</div>
+        <div className="py-8 text-center text-gray-400 text-sm animate-pulse"><Spinner /></div>
       ) : breakdowns.length === 0 ? (
         <div className="py-12 text-center text-gray-400">
           <AlertTriangle size={32} className="mx-auto mb-3 text-gray-200" />

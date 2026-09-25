@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -353,7 +354,7 @@ function MyAttendanceTab({
           <h2 className="text-sm font-semibold text-gray-700">This Month — {format(new Date(), 'MMMM yyyy')}</h2>
         </div>
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+          <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
         ) : records.length === 0 ? (
           <div className="py-12 flex flex-col items-center text-gray-400">
             <Calendar size={36} className="mb-3 text-gray-300" />
@@ -551,7 +552,7 @@ export function SupervisorAttendancePage() {
             </span>
           </div>
           {isLoading ? (
-            <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+            <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
           ) : presentRecords.length === 0 ? (
             <div className="py-12 flex flex-col items-center text-gray-400">
               <Users size={36} className="mb-3 text-gray-300" />
@@ -633,7 +634,7 @@ export function SupervisorAttendancePage() {
               )}
             </div>
             {isLoading ? (
-              <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+              <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

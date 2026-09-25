@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { useState, useRef } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
@@ -412,7 +413,7 @@ function StockTab() {
 
       <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-center text-gray-400 text-sm">Loading…</div>
+          <div className="p-6 text-center text-gray-400 text-sm"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="p-8 flex flex-col items-center gap-2 text-gray-400"><Boxes size={32} /><p className="text-sm">No stock records</p></div>
         ) : (
@@ -478,7 +479,7 @@ function PartRequestsTab() {
 
       <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-center text-gray-400 text-sm">Loading…</div>
+          <div className="p-6 text-center text-gray-400 text-sm"><Spinner /></div>
         ) : requests.length === 0 ? (
           <div className="p-8 flex flex-col items-center gap-2 text-gray-400"><ClipboardList size={32} /><p className="text-sm">No pending requests</p></div>
         ) : (
@@ -577,7 +578,7 @@ function TransactionsTab() {
 
       <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-center text-gray-400 text-sm">Loading…</div>
+          <div className="p-6 text-center text-gray-400 text-sm"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-gray-400 text-sm">No transactions found</div>
         ) : (
@@ -745,7 +746,7 @@ function PartCatalogTab() {
 
       <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-center text-gray-400 text-sm">Loading…</div>
+          <div className="p-6 text-center text-gray-400 text-sm"><Spinner /></div>
         ) : parts.length === 0 ? (
           <div className="p-8 flex flex-col items-center gap-2 text-gray-400"><Boxes size={32} /><p className="text-sm">No parts in catalog yet</p></div>
         ) : (

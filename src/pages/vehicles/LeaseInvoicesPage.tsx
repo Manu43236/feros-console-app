@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Receipt } from 'lucide-react'
@@ -48,7 +49,7 @@ export default function LeaseInvoicesPage() {
 
       {/* ── Table ── */}
       {isLoading ? (
-        <div className="text-center text-gray-400 py-12 animate-pulse">Loading…</div>
+        <div className="text-center text-gray-400 py-12 animate-pulse"><Spinner /></div>
       ) : invoices.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
           No lease invoices yet.

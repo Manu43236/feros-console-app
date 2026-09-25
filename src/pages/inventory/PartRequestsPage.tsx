@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { servicePartsApi } from '@/api/inventory'
@@ -243,7 +244,7 @@ export default function PartRequestsPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border overflow-x-auto">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Loading…</div>
+          <div className="p-8 text-center text-gray-400"><Spinner /></div>
         ) : requests.length === 0 ? (
           <div className="p-10 flex flex-col items-center gap-2 text-gray-400">
             <ClipboardList size={36} />

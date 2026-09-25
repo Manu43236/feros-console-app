@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -209,7 +210,7 @@ export function EquipmentServicesPage() {
         {/* Records */}
         <div className="flex-1 min-w-0">
           {isLoading ? (
-            <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+            <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-16">
               <Wrench size={40} className="mx-auto text-gray-300 mb-3" />

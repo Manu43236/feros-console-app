@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { useState, useEffect } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
@@ -214,7 +215,7 @@ function MyAttendanceTab({
           </div>
         </div>
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+          <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
         ) : records.length === 0 ? (
           <div className="py-12 flex flex-col items-center text-gray-400">
             <Calendar size={36} className="mb-3 text-gray-300" />
@@ -653,7 +654,7 @@ function StaffHistoryDialog({ open, onClose, user }: { open: boolean; onClose: (
               ))}
             </div>
             {isLoading ? (
-              <div className="text-sm text-gray-400 py-4 text-center">Loading…</div>
+              <div className="text-sm text-gray-400 py-4 text-center"><Spinner /></div>
             ) : records.length === 0 ? (
               <div className="text-sm text-gray-400 py-4 text-center">No records in this range</div>
             ) : (
@@ -737,7 +738,7 @@ function PendingApprovalsTab() {
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed') ?? 'Failed'),
   })
 
-  if (isLoading) return <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+  if (isLoading) return <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
 
   if (records.length === 0)
     return (
@@ -894,7 +895,7 @@ function RejectedTab() {
   const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
   const pageRows   = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
-  if (isLoading) return <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+  if (isLoading) return <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
 
   if (records.length === 0)
     return (
@@ -1090,7 +1091,7 @@ function DutyTimesTab({
         </div>
 
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+          <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-400">
             {q ? `No results for "${search}"` : 'No attendance records for this date'}
@@ -1374,7 +1375,7 @@ export function AttendancePage() {
               </div>
             </div>
             {isLoading ? (
-              <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+              <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
             ) : (
               <div className="overflow-auto max-h-[calc(100vh-22rem)]">
                 <table className="w-full text-sm">

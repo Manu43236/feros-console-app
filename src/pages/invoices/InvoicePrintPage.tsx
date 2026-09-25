@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -409,7 +410,7 @@ export function InvoicePrintPage() {
     }
   }, [invoice])
 
-  if (isLoading) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Loading…</div>
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}><Spinner /></div>
   if (!invoice)  return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial' }}>Invoice not found.</div>
 
   return (

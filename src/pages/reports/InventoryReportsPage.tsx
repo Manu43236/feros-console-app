@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, Fragment, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -213,7 +214,7 @@ export default function InventoryReportsPage() {
 // ── Stock Summary ──────────────────────────────────────────────────────────────
 function StockSummaryTab({ rows, loading }: { rows?: StockSummaryRow[]; loading: boolean }) {
   const [filter, setFilter] = useState<'ALL' | 'OK' | 'LOW' | 'OUT'>('ALL')
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No data</div>
   const filtered = filter === 'ALL' ? rows : rows.filter(r => r.stockStatus === filter)
 
@@ -251,7 +252,7 @@ function StockSummaryTab({ rows, loading }: { rows?: StockSummaryRow[]; loading:
 
 // ── Stock Inward ───────────────────────────────────────────────────────────────
 function InwardTab({ rows, loading }: { rows?: StockInwardRow[]; loading: boolean }) {
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No inward transactions in this period</div>
   const total = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
 
@@ -341,7 +342,7 @@ function InwardTab({ rows, loading }: { rows?: StockInwardRow[]; loading: boolea
 
 // ── Stock Outward ──────────────────────────────────────────────────────────────
 function OutwardTab({ rows, loading }: { rows?: StockOutwardRow[]; loading: boolean }) {
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No outward transactions in this period</div>
   const total = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0)
   return (
@@ -376,7 +377,7 @@ function OutwardTab({ rows, loading }: { rows?: StockOutwardRow[]; loading: bool
 // ── Part Requests ──────────────────────────────────────────────────────────────
 function PartRequestsTab({ rows, loading }: { rows?: PartRequestRow[]; loading: boolean }) {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'REQUESTED' | 'APPROVED' | 'REJECTED'>('ALL')
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No part requests in this period</div>
   const filtered = statusFilter === 'ALL' ? rows : rows.filter(r => r.status === statusFilter)
   return (
@@ -415,7 +416,7 @@ function PartRequestsTab({ rows, loading }: { rows?: PartRequestRow[]; loading: 
 
 // ── Consumption by Vehicle ─────────────────────────────────────────────────────
 function ConsumptionTab({ rows, loading }: { rows?: ConsumptionByVehicleRow[]; loading: boolean }) {
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No consumption data in this period</div>
 
   const vehicles = new Set(rows.map(r => r.registrationNumber)).size

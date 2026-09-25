@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -73,7 +74,7 @@ function ReportTable({ headers, rows, loading }: {
     bottom.addEventListener('scroll', onBottom)
     return () => { ro.disconnect(); top.removeEventListener('scroll', onTop); bottom.removeEventListener('scroll', onBottom) }
   }, [rows])
-  if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+  if (loading) return <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
   if (rows.length === 0) return (
     <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
   )
@@ -198,7 +199,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[]; loading: boolean }) {
-  if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+  if (loading) return <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
   if (rows.length === 0) return (
     <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
   )

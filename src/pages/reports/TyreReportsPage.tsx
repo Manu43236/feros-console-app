@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -238,7 +239,7 @@ export default function TyreReportsPage() {
 // ── Current Inventory ─────────────────────────────────────────────────────────
 function TyreInventoryTab({ rows, loading }: { rows?: TyreInventoryRow[]; loading: boolean }) {
   const [statusFilter, setStatusFilter] = useState('ALL')
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No tyres found</div>
 
   const statuses = ['ALL', 'IN_STOCK', 'FITTED', 'RETREADING', 'SCRAPPED', 'DISPOSED']
@@ -294,7 +295,7 @@ function TyreInventoryTab({ rows, loading }: { rows?: TyreInventoryRow[]; loadin
 
 // ── Fitting Register ───────────────────────────────────────────────────────────
 function FittingsTab({ rows, loading }: { rows?: TyreFittingRow[]; loading: boolean }) {
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No fittings in this period</div>
   return (
     <div>
@@ -330,7 +331,7 @@ function FittingsTab({ rows, loading }: { rows?: TyreFittingRow[]; loading: bool
 
 // ── Removal Register ──────────────────────────────────────────────────────────
 function RemovalsTab({ rows, loading }: { rows?: TyreRemovalRow[]; loading: boolean }) {
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No removals in this period</div>
   return (
     <div>
@@ -369,7 +370,7 @@ function RemovalsTab({ rows, loading }: { rows?: TyreRemovalRow[]; loading: bool
 
 // ── Tyre Life ──────────────────────────────────────────────────────────────────
 function TyreLifeTab({ rows, loading }: { rows?: TyreLifeRow[]; loading: boolean }) {
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No tyres found</div>
   const critical = rows.filter(r => r.percentLifeUsed >= 90).length
   return (
@@ -409,7 +410,7 @@ function TyreLifeTab({ rows, loading }: { rows?: TyreLifeRow[]; loading: boolean
 // ── Request Register ──────────────────────────────────────────────────────────
 function RequestsTab({ rows, loading }: { rows?: TyreRequestRow[]; loading: boolean }) {
   const [statusFilter, setStatusFilter] = useState('ALL')
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No requests in this period</div>
   const filtered = statusFilter === 'ALL' ? rows : rows.filter(r => r.status === statusFilter)
   return (
@@ -458,7 +459,7 @@ function RequestsTab({ rows, loading }: { rows?: TyreRequestRow[]; loading: bool
 // ── Rotation Log ──────────────────────────────────────────────────────────────
 function RotationsTab({ rows, loading }: { rows?: TyreRotationRow[]; loading: boolean }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  if (loading) return <div className="p-8 text-center text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No rotation logs in this period</div>
 
   function toggle(id: number) {

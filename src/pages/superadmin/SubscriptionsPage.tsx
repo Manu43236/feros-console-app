@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
@@ -525,7 +526,7 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
             {historyOpen && (
               <div className="mt-3">
                 {historyLoading ? (
-                  <p className="text-xs text-gray-400 py-4 text-center">Loading…</p>
+                  <p className="text-xs text-gray-400 py-4 text-center"><Spinner /></p>
                 ) : history.length === 0 ? (
                   <p className="text-xs text-gray-400 py-4 text-center">No history</p>
                 ) : (
@@ -987,7 +988,7 @@ function InvoicesTab() {
       </div>
 
       {isLoading ? (
-        <div className="py-12 text-center text-gray-400 text-sm">Loading…</div>
+        <div className="py-12 text-center text-gray-400 text-sm"><Spinner /></div>
       ) : allInvoices.length === 0 ? (
         <div className="py-12 text-center text-gray-400 text-sm">No invoices found</div>
       ) : (

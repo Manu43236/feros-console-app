@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -187,7 +188,7 @@ function SummaryTab() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {isLoading ? (
-              <tr><td colSpan={12} className="px-3 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+              <tr><td colSpan={12} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={12} className="px-3 py-8 text-center text-sm text-gray-400">No payroll records found for this period.</td></tr>
             ) : rows.map(r => (
@@ -271,7 +272,7 @@ function SalaryRegisterTab() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {isLoading ? (
-              <tr><td colSpan={16} className="px-3 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+              <tr><td colSpan={16} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={16} className="px-3 py-8 text-center text-sm text-gray-400">No records found.</td></tr>
             ) : rows.map(r => (
@@ -354,7 +355,7 @@ function AdvancesTab() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {isLoading ? (
-              <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+              <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-gray-400">No advances found for this period.</td></tr>
             ) : rows.map(r => (
@@ -442,7 +443,7 @@ function ByRoleTab() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {isLoading ? (
-              <tr><td colSpan={5} className="px-3 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+              <tr><td colSpan={5} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={5} className="px-3 py-8 text-center text-sm text-gray-400">No data for this period.</td></tr>
             ) : rows.map(r => (
@@ -515,7 +516,7 @@ function YtdTab() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {isLoading ? (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400">No payroll data for {year}.</td></tr>
             ) : rows.map(r => (
@@ -640,7 +641,7 @@ function VehicleCostTab() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">No payroll records found for this vehicle and period.</td></tr>
               ) : rows.map((r, i) => (

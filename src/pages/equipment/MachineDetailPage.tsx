@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
@@ -1145,7 +1146,7 @@ export function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; c
 
       {/* Service list */}
       {isLoading ? (
-        <div className="py-8 text-center text-gray-400 text-sm animate-pulse">Loading…</div>
+        <div className="py-8 text-center text-gray-400 text-sm animate-pulse"><Spinner /></div>
       ) : filtered.length === 0 ? (
         <div className="py-12 text-center text-gray-400">
           <Wrench size={32} className="mx-auto mb-3 text-gray-200" />
@@ -1630,7 +1631,7 @@ function DocumentsTab({ equipmentId }: { equipmentId: number }) {
     setDialogOpen(true)
   }
 
-  if (isLoading) return <div className="py-10 text-center text-sm text-gray-400 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="py-10 text-center text-sm text-gray-400 animate-pulse"><Spinner /></div>
 
   return (
     <div className="space-y-4">

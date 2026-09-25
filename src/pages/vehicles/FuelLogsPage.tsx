@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useRef } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -614,7 +615,7 @@ export default function FuelLogsPage() {
 
       {/* List */}
       {isLoading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+        <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
       ) : logs.length === 0 ? (
         <div className="text-center py-16">
           <Fuel size={40} className="mx-auto text-gray-300 mb-3" />

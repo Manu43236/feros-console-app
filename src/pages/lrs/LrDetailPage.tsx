@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { useAuthStore } from '@/store/authStore'
 import { TripExpenseTab } from './TripExpenseTab'
@@ -651,7 +652,7 @@ export function LrDetailPage() {
     }
   }
 
-  if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading…</div>
+  if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse"><Spinner /></div>
   if (!lr) return <div className="p-8 text-center text-gray-500">LR not found.</div>
 
   const isActive   = isSuperAdmin || (lr.lrStatus !== 'CANCELLED' && lr.lrStatus !== 'DELIVERED')

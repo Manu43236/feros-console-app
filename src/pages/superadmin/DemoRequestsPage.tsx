@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -243,7 +244,7 @@ export default function DemoRequestsPage() {
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-20 text-slate-400 text-sm">
-            Loading…
+            <Spinner />
           </div>
         ) : requests.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">

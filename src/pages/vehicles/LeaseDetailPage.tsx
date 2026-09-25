@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -765,7 +766,7 @@ export default function LeaseDetailPage() {
   })
 
   if (isLoading || !lease) {
-    return <div className="text-sm text-gray-400 py-12 text-center">Loading…</div>
+    return <div className="text-sm text-gray-400 py-12 text-center"><Spinner /></div>
   }
 
   const nextStatuses = NEXT_STATUSES[lease.status] ?? []

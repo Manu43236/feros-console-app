@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -53,7 +54,7 @@ function SimpleSection({
         </Button>
       </div>
       {isLoading ? (
-        <div className="text-xs text-gray-400 py-3">Loading…</div>
+        <div className="text-xs text-gray-400 py-3"><Spinner /></div>
       ) : items.length === 0 ? (
         <div className="text-xs text-gray-400 py-3">No items yet</div>
       ) : (
@@ -142,7 +143,7 @@ function StatesSection() {
       <div className="mb-2">
         <Input placeholder="Search states…" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} className="h-7 text-xs" />
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No states found</div> : (
+      {isLoading ? <div className="text-xs text-gray-400 py-3"><Spinner /></div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No states found</div> : (
         <div className="divide-y border rounded-lg overflow-hidden">
           {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
@@ -249,7 +250,7 @@ function CitiesSection({ states }: { states: StateItem[] }) {
       <div className="mb-2">
         <Input placeholder="Search cities…" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} className="h-7 text-xs" />
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No cities found</div> : (
+      {isLoading ? <div className="text-xs text-gray-400 py-3"><Spinner /></div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No cities found</div> : (
         <div className="divide-y border rounded-lg overflow-hidden">
           {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
@@ -343,7 +344,7 @@ function VehicleTypesSection() {
         <h3 className="text-sm font-semibold text-gray-700">Vehicle Types</h3>
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No vehicle types yet</div> : (
+      {isLoading ? <div className="text-xs text-gray-400 py-3"><Spinner /></div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No vehicle types yet</div> : (
         <div className="divide-y border rounded-lg overflow-hidden">
           {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
@@ -423,7 +424,7 @@ function DocumentTypesSection() {
         <h3 className="text-sm font-semibold text-gray-700">Document Types</h3>
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No document types yet</div> : (
+      {isLoading ? <div className="text-xs text-gray-400 py-3"><Spinner /></div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No document types yet</div> : (
         <div className="divide-y border rounded-lg overflow-hidden">
           {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
@@ -516,7 +517,7 @@ function TaxesSection() {
         <h3 className="text-sm font-semibold text-gray-700">Taxes</h3>
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openAdd}><Plus size={12} className="mr-1" />Add</Button>
       </div>
-      {isLoading ? <div className="text-xs text-gray-400 py-3">Loading…</div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No taxes yet</div> : (
+      {isLoading ? <div className="text-xs text-gray-400 py-3"><Spinner /></div> : items.length === 0 ? <div className="text-xs text-gray-400 py-3">No taxes yet</div> : (
         <div className="divide-y border rounded-lg overflow-hidden">
           {items.map(it => (
             <div key={it.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">

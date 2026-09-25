@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { useState, useEffect } from 'react'
 import { useSubscription } from '@/context/SubscriptionContext'
@@ -732,7 +733,7 @@ export function PayrollPage() {
               className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
           </div>
           {loadingPayrolls ? (
-            <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+            <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
           ) : payrolls.length === 0 ? (
             <div className="py-12 text-center">
               <Receipt size={36} className="mx-auto text-gray-300 mb-3" />
@@ -784,7 +785,7 @@ export function PayrollPage() {
       {tab === 'advances' && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {loadingAdvances ? (
-            <div className="py-12 text-center text-sm text-gray-400">Loading…</div>
+            <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
           ) : advances.length === 0 ? (
             <div className="py-12 text-center">
               <Banknote size={36} className="mx-auto text-gray-300 mb-3" />

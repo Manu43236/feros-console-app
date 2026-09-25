@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { getApiError } from '@/lib/apiError'
 import { compressImage } from '@/lib/imageCompress'
 import { useAuthStore } from '@/store/authStore'
@@ -1461,7 +1462,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
 
           {/* Service list */}
           {servicesLoading ? (
-            <div className="py-8 text-center text-gray-400 text-sm animate-pulse">Loading…</div>
+            <div className="py-8 text-center text-gray-400 text-sm animate-pulse"><Spinner /></div>
           ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-gray-400">
               <Wrench size={32} className="mx-auto mb-3 text-gray-200" />
@@ -1577,7 +1578,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
       {subTab === 'breakdown' && (
         <div className="space-y-2">
           {breakdownsLoading ? (
-            <div className="py-8 text-center text-gray-400 text-sm animate-pulse">Loading…</div>
+            <div className="py-8 text-center text-gray-400 text-sm animate-pulse"><Spinner /></div>
           ) : allBreakdowns.length === 0 ? (
             <div className="py-12 text-center text-gray-400">
               <AlertTriangle size={32} className="mx-auto mb-3 text-gray-200" />
@@ -1756,7 +1757,7 @@ function MeterReadingsTabContent({ vehicleId, latestOdometer }: { vehicleId: num
 
       {/* Table */}
       {isLoading ? (
-        <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+        <p className="text-sm text-gray-400 text-center py-8"><Spinner /></p>
       ) : readings.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-8">No readings recorded</p>
       ) : (
@@ -2615,7 +2616,7 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
 
       {/* ── Table ── */}
       {isLoading ? (
-        <div className="py-8 text-center text-gray-400 text-sm animate-pulse">Loading…</div>
+        <div className="py-8 text-center text-gray-400 text-sm animate-pulse"><Spinner /></div>
       ) : logs.length === 0 ? (
         <div className="py-10 text-center text-gray-400">
           <Droplets size={32} className="mx-auto mb-3 text-gray-200" />
@@ -3086,7 +3087,7 @@ function VehicleAssignmentsTab({ vehicleId }: { vehicleId: number }) {
     onError: (e: unknown) => toast.error(getApiError(e, 'Failed to unassign staff') ?? 'Failed'),
   })
 
-  if (isLoading && view === 'active') return <div className="py-16 text-center text-gray-400 text-sm">Loading…</div>
+  if (isLoading && view === 'active') return <div className="py-16 text-center text-gray-400 text-sm"><Spinner /></div>
 
   return (
     <div className="space-y-4">
@@ -3597,7 +3598,7 @@ function TripHistoryTab({ vehicleId, isIot }: { vehicleId: number; isIot: boolea
   const total  = data?.data?.totalElements ?? 0
   const pages  = data?.data?.totalPages ?? 1
 
-  if (isLoading) return <p className="text-sm text-gray-400 p-6">Loading…</p>
+  if (isLoading) return <p className="text-sm text-gray-400 p-6"><Spinner /></p>
 
   if (lrs.length === 0) return (
     <div className="py-12 text-center text-gray-400">

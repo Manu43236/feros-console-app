@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/loader'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -212,7 +213,7 @@ export function ServicePdfPage() {
     enabled: !!id,
   })
 
-  if (isLoading) return <div className="flex items-center justify-center h-screen text-gray-500 text-sm">Loading…</div>
+  if (isLoading) return <div className="flex items-center justify-center h-screen text-gray-500 text-sm"><Spinner /></div>
   if (isError || !data?.data) return <div className="flex items-center justify-center h-screen text-red-500 text-sm">Service not found</div>
 
   return (
