@@ -5,7 +5,7 @@ import {
   Wrench, AlertTriangle, CheckCircle2, Clock, User, ChevronDown, ChevronUp, Plus, UserCheck,
   MapPin, Calendar, StickyNote, Store, IndianRupee, FileImage, X, Trash2, Eye, Upload, FileText,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, realPartNumber } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -164,7 +164,7 @@ function RequestPartDialog({ serviceId, taskId, taskName, cfg, onClose }: { serv
           <div>
             <Label className="mb-1.5 block">Spare Part *</Label>
             <SearchableSelect value={sparePartId ? String(sparePartId) : ''} onValueChange={v => setSparePartId(Number(v))}
-              options={cfg.spareParts.map(p => ({ value: String(p.id), label: p.partNumber ? `${p.name} — ${p.partNumber}` : p.name }))} placeholder="Select part…" />
+              options={cfg.spareParts.map(p => { const pn = realPartNumber(p.partNumber); return { value: String(p.id), label: pn ? `${p.name} — ${pn}` : p.name } })} placeholder="Select part…" />
           </div>
           <div>
             <Label className="mb-1.5 block">Quantity *</Label>
@@ -253,7 +253,7 @@ function TaskRow({ task, serviceId, cfg, isExternal }: { task: BoardTask; servic
             <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0" />
               <span className="font-medium text-gray-700">{p.partName}</span>
-              {p.partNumber && <span className="text-gray-400">({p.partNumber})</span>}
+              {realPartNumber(p.partNumber) && <span className="text-gray-400">({realPartNumber(p.partNumber)})</span>}
               <span>×{p.quantityRequested}</span>
               {p.quantityApproved != null && p.quantityApproved !== p.quantityRequested && <span className="text-green-600">approved: {p.quantityApproved}</span>}
               {partStatusBadge(p.status)}

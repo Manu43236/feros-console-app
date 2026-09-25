@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { realPartNumber } from '@/lib/utils'
 
 const fmtRequestedOn = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
@@ -46,7 +47,7 @@ function EquipmentApprovalDialog({ part, onClose }: { part: EquipmentServicePart
         <DialogHeader><DialogTitle>Process Part Request</DialogTitle></DialogHeader>
         <div className="space-y-3 text-sm">
           <div className="bg-gray-50 rounded-lg p-3 space-y-1">
-            <p><span className="text-gray-500">Part:</span> <strong>{part.sparePartName}</strong>{part.partNumber ? ` (${part.partNumber})` : ''}</p>
+            <p><span className="text-gray-500">Part:</span> <strong>{part.sparePartName}</strong>{realPartNumber(part.partNumber) ? ` (${realPartNumber(part.partNumber)})` : ''}</p>
             <p><span className="text-gray-500">Service:</span> {part.serviceNumber}</p>
             <p><span className="text-gray-500">Machine:</span> {part.equipmentName}</p>
             <p><span className="text-gray-500">Requested by:</span> {part.requestedByName}</p>
@@ -132,7 +133,7 @@ function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => v
         <DialogHeader><DialogTitle>Process Part Request</DialogTitle></DialogHeader>
         <div className="space-y-3 text-sm">
           <div className="bg-gray-50 rounded-lg p-3 space-y-1">
-            <p><span className="text-gray-500">Part:</span> <strong>{part.partName}</strong>{part.partNumber ? ` (${part.partNumber})` : ''}</p>
+            <p><span className="text-gray-500">Part:</span> <strong>{part.partName}</strong>{realPartNumber(part.partNumber) ? ` (${realPartNumber(part.partNumber)})` : ''}</p>
             <p><span className="text-gray-500">Service:</span> {part.serviceNumber}</p>
             <p><span className="text-gray-500">Vehicle:</span> {part.vehicleRegistrationNumber}</p>
             <p><span className="text-gray-500">Requested by:</span> {part.requestedByName}</p>
@@ -267,7 +268,7 @@ export default function PartRequestsPage() {
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900">{r.partName}</p>
-                    {r.partNumber && <p className="text-xs text-gray-400">{r.partNumber}</p>}
+                    {realPartNumber(r.partNumber) && <p className="text-xs text-gray-400">{realPartNumber(r.partNumber)}</p>}
                   </td>
                   <td className="px-4 py-3 text-gray-700">{r.serviceNumber}</td>
                   <td className="px-4 py-3 text-gray-700">{r.vehicleRegistrationNumber}</td>
@@ -326,7 +327,7 @@ export default function PartRequestsPage() {
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{r.sparePartName}</p>
-                      {r.partNumber && <p className="text-xs text-gray-400">{r.partNumber}</p>}
+                      {realPartNumber(r.partNumber) && <p className="text-xs text-gray-400">{realPartNumber(r.partNumber)}</p>}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{r.serviceNumber}</td>
                     <td className="px-4 py-3 text-gray-700">{r.equipmentName}</td>
