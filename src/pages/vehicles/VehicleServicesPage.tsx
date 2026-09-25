@@ -409,15 +409,32 @@ export default function VehicleServicesPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-2 max-w-sm">
-        <Search size={14} className="text-gray-400" />
-        <Input
-          placeholder="Search vehicle, service no…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="border-0 shadow-none focus-visible:ring-0 p-0 h-auto text-sm w-52"
-        />
+      {/* Search + pagination */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-2 max-w-sm">
+          <Search size={14} className="text-gray-400" />
+          <Input
+            placeholder="Search vehicle, service no…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="border-0 shadow-none focus-visible:ring-0 p-0 h-auto text-sm w-52"
+          />
+        </div>
+
+        {totalElements > PAGE_SIZE && (
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-gray-500">
+              Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalElements)} of {totalElements}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 0}
+                onClick={() => setPage(p => Math.max(0, p - 1))}>Previous</Button>
+              <span className="text-gray-600">Page {page + 1} of {totalPages}</span>
+              <Button variant="outline" size="sm" disabled={page >= totalPages - 1}
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}>Next</Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Layout: left filter + records */}
@@ -463,22 +480,6 @@ export default function VehicleServicesPage() {
               {paged.map(r => (
                 <ServiceCard key={r.id} record={r} onDelete={() => setToDelete(r)} />
               ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalElements > PAGE_SIZE && (
-            <div className="flex items-center justify-between mt-4 text-sm">
-              <span className="text-gray-500">
-                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalElements)} of {totalElements}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled={page <= 0}
-                  onClick={() => setPage(p => Math.max(0, p - 1))}>Previous</Button>
-                <span className="text-gray-600">Page {page + 1} of {totalPages}</span>
-                <Button variant="outline" size="sm" disabled={page >= totalPages - 1}
-                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}>Next</Button>
-              </div>
             </div>
           )}
         </div>
