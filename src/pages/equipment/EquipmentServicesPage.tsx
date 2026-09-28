@@ -131,6 +131,7 @@ export function EquipmentServicesPage() {
   const [filter, setFilter] = useState<FilterType>('ALL')
   const [toDelete, setToDelete] = useState<EquipmentServiceRecord | null>(null)
   const [detail, setDetail] = useState<EquipmentServiceRecord | null>(null)
+  const qc = useQueryClient()
 
   const { data, isLoading } = useQuery({ queryKey: ['eq-services', 'all'], queryFn: equipmentApi.getAllServices })
   const records = [...((data?.data ?? []) as EquipmentServiceRecord[])].sort((a, b) => b.id - a.id)
@@ -227,7 +228,7 @@ export function EquipmentServicesPage() {
       </div>
 
       <DeleteDialog record={toDelete} onClose={() => setToDelete(null)} />
-      <EquipmentServiceDetailModal service={detail} open={!!detail} onClose={() => setDetail(null)} />
+      <EquipmentServiceDetailModal service={detail} open={!!detail} onClose={() => setDetail(null)} onChanged={() => qc.invalidateQueries({ queryKey: ['eq-services'] })} />
 
     </div>
   )

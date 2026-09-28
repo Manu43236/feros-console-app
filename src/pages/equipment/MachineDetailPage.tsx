@@ -24,6 +24,7 @@ import type { MasterItem } from '@/types'
 import type { MachineAssignmentHistory, MachineDailyLog, MachineInvoiceItem, EquipmentDocument, EquipmentDocumentInput } from '@/api/machines'
 import type { DocumentTypeItem } from '@/types'
 import { BreakdownTab } from './BreakdownTab'
+import { EquipmentServiceDetailModal } from './EquipmentServiceDetailModal'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function fmtDate(d?: string | null) {
@@ -1015,11 +1016,12 @@ function CompleteServiceDialog({
   const qc = useQueryClient()
   const [completedDate, setCompletedDate] = useState(todayStr())
   const [completedHmr, setCompletedHmr] = useState(currentHmr != null ? String(currentHmr) : '')
+  const [completedCost, setCompletedCost] = useState('')
 
   const mut = useMutation({
     mutationFn: () => equipmentApi.completeService(
       service!.equipmentId, service!.id,
-      { completedHmr: completedHmr ? Number(completedHmr) : null, completedDate: completedDate || null }
+      { completedHmr: completedHmr ? Number(completedHmr) : null, completedDate: completedDate || null, completedCost: completedCost ? Number(completedCost) : null }
     ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['eq-services', service!.equipmentId] })
@@ -1048,6 +1050,11 @@ function CompleteServiceDialog({
               <p className="text-xs text-amber-600">⚠ Completed {Number(completedHmr) - service.dueAtHmr} hrs late — next service adjusted accordingly</p>
             )}
           </div>
+          <div className="space-y-1.5">
+            <Label>Actual Bill / Completed Cost (₹)</Label>
+            <Input type="number" placeholder="e.g. 15000"
+              value={completedCost} onChange={e => setCompletedCost(e.target.value)} />
+          </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose} disabled={mut.isPending}>Cancel</Button>
@@ -1070,6 +1077,7 @@ export function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; c
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<number | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [detail, setDetail] = useState<EquipmentServiceRecord | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['eq-services', equipmentId],
@@ -1238,8 +1246,18 @@ export function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; c
                         <Check size={12} /> Done
                       </Button>
                     )}
+                    {s.status !== 'OPEN' && (
+                      <Button size="sm" variant="outline" onClick={() => setDetail(s)}
+                        className="h-7 text-xs gap-1">
+                        <Wrench size={12} /> Manage
+                      </Button>
+                    )}
                     {s.status === 'OPEN' && (
                       <>
+                        <Button size="sm" variant="outline" onClick={() => setDetail(s)}
+                          className="h-7 text-xs gap-1">
+                          <Wrench size={12} /> Manage
+                        </Button>
                         <button onClick={() => { setEditing(s); setDialogOpen(true) }}
                           className="p-1.5 text-gray-300 hover:text-[#1C1400] rounded transition-colors">
                           <Pencil size={14} />
@@ -1295,6 +1313,7 @@ export function ServiceTab({ equipmentId, currentHmr }: { equipmentId: number; c
 
       <ServiceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} equipmentId={equipmentId} editing={editing} currentHmr={currentHmr} />
       <CompleteServiceDialog service={completing} currentHmr={currentHmr} open={!!completing} onClose={() => setCompleting(null)} />
+      <EquipmentServiceDetailModal service={detail} open={!!detail} onClose={() => setDetail(null)} onChanged={() => qc.invalidateQueries({ queryKey: ['eq-services', equipmentId] })} />
 
       {/* Delete confirm */}
       <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>

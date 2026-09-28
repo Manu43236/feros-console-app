@@ -106,7 +106,7 @@ function partStatusBadge(status: BoardPart['status']) {
 }
 
 // ── Dialogs ─────────────────────────────────────────────────────────────────────
-function AssignTechnicianDialog({ task, serviceId, cfg, onClose }: { task: BoardTask; serviceId: number; cfg: ServiceBoardConfig; onClose: () => void }) {
+export function AssignTechnicianDialog({ task, serviceId, cfg, onClose }: { task: BoardTask; serviceId: number; cfg: ServiceBoardConfig; onClose: () => void }) {
   const [selected, setSelected] = useState<number | null>(task.assignedMechanicId ?? null)
   const [search, setSearch] = useState('')
   const filtered = cfg.technicians.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
@@ -147,7 +147,7 @@ function AssignTechnicianDialog({ task, serviceId, cfg, onClose }: { task: Board
   )
 }
 
-function RequestPartDialog({ serviceId, taskId, taskName, cfg, onClose }: { serviceId: number; taskId: number; taskName: string; cfg: ServiceBoardConfig; onClose: () => void }) {
+export function RequestPartDialog({ serviceId, taskId, taskName, cfg, onClose }: { serviceId: number; taskId: number; taskName: string; cfg: ServiceBoardConfig; onClose: () => void }) {
   const [sparePartId, setSparePartId] = useState<number | null>(null)
   const [qty, setQty] = useState(1)
   const mutation = useMutation({
@@ -183,7 +183,7 @@ function RequestPartDialog({ serviceId, taskId, taskName, cfg, onClose }: { serv
 }
 
 
-function AddTaskDialog({ serviceId, cfg, onClose }: { serviceId: number; cfg: ServiceBoardConfig; onClose: () => void }) {
+export function AddTaskDialog({ serviceId, cfg, onClose }: { serviceId: number; cfg: ServiceBoardConfig; onClose: () => void }) {
   const [taskTypeId, setTaskTypeId] = useState<number | null>(null)
   const [customName, setCustomName] = useState('')
   const mutation = useMutation({

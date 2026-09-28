@@ -195,6 +195,11 @@ export interface EquipmentServiceRecord {
   completedHmr: number | null
   startedAt: string | null
   totalCost: number | null
+  estimatedCost?: number | null
+  completedCost?: number | null
+  estimateAttachments?: import('@/types').ServiceAttachment[]
+  billAttachments?: import('@/types').ServiceAttachment[]
+  vendorItems?: Array<{ id: number; description: string; cost?: number }>
   insuranceClaimNo: string | null
   insuranceClaimAmt: number | null
   certificateNumber: string | null
@@ -291,8 +296,23 @@ export const equipmentApi = {
   createService: (id: number, data: EquipmentServiceRequest) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services`, data).then(r => r.data),
   updateService: (id: number, serviceId: number, data: EquipmentServiceRequest) => apiClient.put<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}`, data).then(r => r.data),
   startService: (id: number, serviceId: number) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/start`, {}).then(r => r.data),
-  completeService: (id: number, serviceId: number, data: { completedHmr?: number | null; completedDate?: string | null }) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/complete`, data).then(r => r.data),
+  completeService: (id: number, serviceId: number, data: { completedHmr?: number | null; completedDate?: string | null; completedCost?: number | null }) => apiClient.post<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/complete`, data).then(r => r.data),
   deleteService: (id: number, serviceId: number) => apiClient.delete<ApiResponse<void>>(`/equipment/${id}/services/${serviceId}`).then(r => r.data),
+
+  // Service cost + attachments + vendor items (parity with vehicles)
+  updateServiceCharges: (id: number, serviceId: number, estimatedCost: number | null) =>
+    apiClient.put<ApiResponse<EquipmentServiceRecord>>(`/equipment/${id}/services/${serviceId}/charges`, { estimatedCost }).then(r => r.data),
+  addServiceAttachment: (id: number, serviceId: number, type: 'ESTIMATE' | 'BILL', file: File, label?: string) => {
+    const fd = new FormData(); fd.append('file', file); fd.append('type', type)
+    if (label?.trim()) fd.append('label', label.trim())
+    return apiClient.post<ApiResponse<import('@/types').ServiceAttachment>>(`/equipment/${id}/services/${serviceId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+  },
+  deleteServiceAttachment: (id: number, serviceId: number, attachmentId: number) =>
+    apiClient.delete<ApiResponse<void>>(`/equipment/${id}/services/${serviceId}/attachments/${attachmentId}`).then(r => r.data),
+  addServiceVendorItem: (id: number, serviceId: number, description: string, cost?: number) =>
+    apiClient.post<ApiResponse<{ id: number; description: string; cost?: number }>>(`/equipment/${id}/services/${serviceId}/vendor-items`, { description, cost }).then(r => r.data),
+  deleteServiceVendorItem: (id: number, serviceId: number, itemId: number) =>
+    apiClient.delete<ApiResponse<void>>(`/equipment/${id}/services/${serviceId}/vendor-items/${itemId}`).then(r => r.data),
   // E5 KAN-27 — daily logs for breakdown log picker
   getMachineDailyLogs: (id: number) => apiClient.get<ApiResponse<import('@/types').DailyLog[]>>(`/equipment/${id}/daily-logs`).then(r => r.data),
 
