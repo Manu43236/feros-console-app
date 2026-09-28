@@ -2,11 +2,12 @@ import { Spinner } from '@/components/ui/loader'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, UserCheck, Users, Wrench } from 'lucide-react'
+import { Download, UserCheck, Users, Wrench, List, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { DriverPerformanceRow, CleanerPerformanceRow, TechnicianPerformanceRow } from '@/types'
+import type { DriverPerformanceRow, CleanerPerformanceRow, TechnicianPerformanceRow, StaffDirectoryRow } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -24,6 +25,7 @@ const TABS = [
   { key: 'drivers',   label: 'Driver Performance',   icon: UserCheck },
   { key: 'cleaners',  label: 'Cleaner Performance',  icon: Users },
   { key: 'mechanics', label: 'Technician Performance', icon: Wrench },
+  { key: 'directory', label: 'Staff Directory',      icon: List },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -138,12 +140,29 @@ function MechanicTable({ rows, loading }: { rows: TechnicianPerformanceRow[]; lo
   )
 }
 
+function DirectoryTable({ rows, loading }: { rows: StaffDirectoryRow[]; loading: boolean }) {
+  return (
+    <ReportTable loading={loading}
+      headers={['Name', 'Role', 'Designation', 'Joining Date']}
+      rows={rows.map(r => [
+        <span className="font-medium text-feros-navy">{r.name}</span>,
+        dash(r.role),
+        dash(r.designation),
+        dash(r.joiningDate),
+      ])}
+    />
+  )
+}
+
 export default function StaffReportsPage() {
   const [tab, setTab]         = useState<TabKey>('drivers')
   const [preset, setPreset]   = useState<DatePreset>('this-month')
   const [startDate, setStartDate] = useState(thisMonthStart())
   const [endDate,   setEndDate]   = useState(todayStr())
   const [downloading, setDownloading] = useState(false)
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [monthFilter, setMonthFilter] = useState('')   // '' = all, else 'YYYY-MM'
+  const [nameSearch, setNameSearch] = useState('')
 
   function applyPreset(p: DatePreset) {
     setPreset(p)
@@ -167,17 +186,38 @@ export default function StaffReportsPage() {
     queryFn: () => reportsApi.getTechnicianPerformance(startDate, endDate),
     enabled: tab === 'mechanics',
   })
+  const directoryQuery = useQuery({
+    queryKey: ['report-staff-directory'],
+    queryFn: () => reportsApi.getStaffDirectory(),
+    enabled: tab === 'directory',
+  })
 
   const driverRows   = driverQuery.data?.data   ?? []
   const cleanerRows  = cleanerQuery.data?.data  ?? []
   const mechanicRows = mechanicQuery.data?.data ?? []
+  const directoryRows = directoryQuery.data?.data ?? []
+
+  const roleOptions = [
+    { value: 'all', label: 'All Roles' },
+    ...Array.from(new Set(directoryRows.map(r => r.role))).sort().map(role => ({ value: role, label: role })),
+  ]
+  const nameQuery = nameSearch.trim().toLowerCase()
+  const filteredDirectoryRows = directoryRows.filter(r => {
+    if (roleFilter !== 'all' && r.role !== roleFilter) return false
+    if (monthFilter && !r.joiningDate.startsWith(monthFilter)) return false
+    if (nameQuery && !r.name.toLowerCase().includes(nameQuery)) return false
+    return true
+  })
+  const directoryFiltered = roleFilter !== 'all' || monthFilter !== '' || nameSearch !== ''
+  const clearDirectoryFilters = () => { setRoleFilter('all'); setMonthFilter(''); setNameSearch('') }
 
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
-      if (tab === 'drivers')   await reportsApi.exportDriverPerformance(startDate, endDate, format)
+      if (tab === 'drivers')        await reportsApi.exportDriverPerformance(startDate, endDate, format)
       else if (tab === 'cleaners')  await reportsApi.exportCleanerPerformance(startDate, endDate, format)
-      else                          await reportsApi.exportTechnicianPerformance(startDate, endDate, format)
+      else if (tab === 'mechanics') await reportsApi.exportTechnicianPerformance(startDate, endDate, format)
+      else                          await reportsApi.exportStaffDirectory(format)
     } catch { toast.error('Export failed') }
     finally  { setDownloading(false) }
   }
@@ -202,37 +242,64 @@ export default function StaffReportsPage() {
       </div>
 
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Period</label>
-          <div className="flex gap-1">
-            {(['today', 'this-week', 'this-month', 'custom'] as DatePreset[]).map(p => (
-              <button key={p} onClick={() => applyPreset(p)}
-                className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
-                  preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 hover:border-gray-400'
-                )}
-              >
-                {p === 'today' ? 'Today' : p === 'this-week' ? 'This Week' : p === 'this-month' ? 'This Month' : 'Custom'}
-              </button>
-            ))}
-          </div>
-        </div>
-        {preset === 'custom' && (
-          <div className="flex items-end gap-2">
+        {tab === 'directory' ? (
+          <>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                className="w-36 h-9 border rounded-md px-2 text-sm" />
+              <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+              <SearchableSelect value={roleFilter} onValueChange={setRoleFilter}
+                options={roleOptions} triggerClassName="w-52 h-9" />
             </div>
-            <span className="pb-2 text-gray-400 text-sm">→</span>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                className="w-36 h-9 border rounded-md px-2 text-sm" />
+              <label className="block text-xs font-medium text-gray-600 mb-1">Joined Month</label>
+              <input type="month" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}
+                className="w-44 h-9 border rounded-md px-2 text-sm" />
             </div>
-          </div>
-        )}
-        {preset !== 'custom' && (
-          <div className="pb-1 text-xs text-gray-400">{startDate} → {endDate}</div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Search Name</label>
+              <input type="text" value={nameSearch} onChange={e => setNameSearch(e.target.value)}
+                placeholder="Search by name…" className="w-52 h-9 border rounded-md px-2 text-sm" />
+            </div>
+            {directoryFiltered && (
+              <Button variant="ghost" size="sm" onClick={clearDirectoryFilters} className="gap-1.5 text-gray-500">
+                <X size={14} />Clear
+              </Button>
+            )}
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Period</label>
+              <div className="flex gap-1">
+                {(['today', 'this-week', 'this-month', 'custom'] as DatePreset[]).map(p => (
+                  <button key={p} onClick={() => applyPreset(p)}
+                    className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
+                      preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 hover:border-gray-400'
+                    )}
+                  >
+                    {p === 'today' ? 'Today' : p === 'this-week' ? 'This Week' : p === 'this-month' ? 'This Month' : 'Custom'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {preset === 'custom' && (
+              <div className="flex items-end gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                    className="w-36 h-9 border rounded-md px-2 text-sm" />
+                </div>
+                <span className="pb-2 text-gray-400 text-sm">→</span>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                    className="w-36 h-9 border rounded-md px-2 text-sm" />
+                </div>
+              </div>
+            )}
+            {preset !== 'custom' && (
+              <div className="pb-1 text-xs text-gray-400">{startDate} → {endDate}</div>
+            )}
+          </>
         )}
 
         <div className="ml-auto flex items-end gap-2">
@@ -248,6 +315,7 @@ export default function StaffReportsPage() {
       {tab === 'drivers'   && <DriverTable   rows={driverRows}   loading={driverQuery.isLoading} />}
       {tab === 'cleaners'  && <CleanerTable  rows={cleanerRows}  loading={cleanerQuery.isLoading} />}
       {tab === 'mechanics' && <MechanicTable rows={mechanicRows} loading={mechanicQuery.isLoading} />}
+      {tab === 'directory' && <DirectoryTable rows={filteredDirectoryRows} loading={directoryQuery.isLoading} />}
     </div>
   )
 }

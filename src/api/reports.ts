@@ -37,6 +37,7 @@ import type {
   DriverPerformanceRow,
   CleanerPerformanceRow,
   TechnicianPerformanceRow,
+  StaffDirectoryRow,
   PnlSummaryRow,
   ClientPnlRow,
   VehiclePnlRow,
@@ -509,6 +510,16 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `technician-performance-${startDate}-${endDate}.${format}`)
+  },
+
+  getStaffDirectory: () =>
+    apiClient.get<ApiResponse<StaffDirectoryRow[]>>('/reports/staff/directory').then(r => r.data),
+
+  exportStaffDirectory: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/staff/directory/export', {
+      params: { format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `staff-directory.${format}`)
   },
 
   getPnlSummary: (startDate: string, endDate: string) =>

@@ -2367,6 +2367,14 @@ export interface CleanerPerformanceRow {
   attendancePct?: number
 }
 
+export interface StaffDirectoryRow {
+  staffId: number
+  name: string
+  role: string
+  designation: string
+  joiningDate: string
+}
+
 export interface PnlSummaryRow {
   totalInvoiced: number
   totalCollected: number
