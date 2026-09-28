@@ -621,6 +621,14 @@ function VehicleCostTab() {
         <ExportBtn onExport={handleExport} loading={exportLoading} />
       </div>
 
+      {/* Total summary — shown above the table so it's visible without scrolling */}
+      {enabled && !isLoading && rows.length > 0 && (
+        <div className="bg-feros-navy/5 border border-feros-navy/10 rounded-xl px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-700">Total Payroll Cost</span>
+          <span className="text-lg font-bold text-green-700">{fmt(result?.totalAmount)}</span>
+        </div>
+      )}
+
       {/* Table */}
       {!enabled ? (
         <div className="bg-white border rounded-xl p-12 text-center text-sm text-gray-400">
