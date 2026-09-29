@@ -48,6 +48,7 @@ export const lrsApi = {
   create:        (data: CreateLrPayload) => apiClient.post<ApiResponse<Lr>>('/lrs', data).then(r => r.data),
   update:        (id: number, data: UpdateLrPayload) => apiClient.put<ApiResponse<Lr>>(`/lrs/${id}`, data).then(r => r.data),
   cancel:        (id: number) => apiClient.put<ApiResponse<Lr>>(`/lrs/${id}`, { lrStatus: 'CANCELLED' }).then(r => r.data),
+  delete:        (id: number) => apiClient.delete<ApiResponse<void>>(`/lrs/${id}`).then(r => r.data),
   getByVehicle: (vehicleId: number, params?: { page?: number; size?: number }) =>
     apiClient.get<ApiResponse<PageResponse<Lr>>>(`/lrs/vehicle/${vehicleId}`, { params }).then(r => r.data),
   addCheckpost:    (id: number, data: AddCheckpostPayload) => apiClient.post<ApiResponse<LrCheckpost>>(`/lrs/${id}/checkposts`, data).then(r => r.data),

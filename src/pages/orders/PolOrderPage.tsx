@@ -219,6 +219,30 @@ export default function PolOrderPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (lrId: number) => lrsApi.delete(lrId),
+    onSuccess: (_res, lrId) => {
+      toast.success('LR deleted')
+      setRows(prev => prev.filter(r => r.id !== lrId))
+      qc.invalidateQueries({ queryKey: ['lrs-by-order', editId] })
+      qc.invalidateQueries({ queryKey: ['order', editId] })
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to delete LR')
+    },
+  })
+
+  function removeRow(i: number) {
+    const row = rows[i]
+    if (row.id) {
+      if (!confirm('Delete this LR? This cannot be undone.')) return
+      deleteMutation.mutate(row.id)
+    } else {
+      setRows(prev => prev.filter((_, idx) => idx !== i))
+    }
+  }
+
   function validateRows(): boolean {
     const errs: Record<number, Record<string, string>> = {}
     rows.forEach((r, i) => {
@@ -434,9 +458,9 @@ export default function PolOrderPage() {
                   LR #{(existingLrsRes?.data?.filter(l => l.invoiceId)?.length ?? 0) + i + 1}
                   {row.id && <span className="ml-1.5 text-xs font-normal text-blue-500">editing</span>}
                 </p>
-                {rows.length > 1 && (
-                  <button type="button" onClick={() => setRows(prev => prev.filter((_, idx) => idx !== i))}
-                    className="text-red-400 hover:text-red-600">
+                {(row.id || rows.length > 1) && (
+                  <button type="button" onClick={() => removeRow(i)} disabled={deleteMutation.isPending}
+                    className="text-red-400 hover:text-red-600 disabled:opacity-40">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 )}
