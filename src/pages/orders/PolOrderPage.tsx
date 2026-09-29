@@ -17,6 +17,7 @@ import { vehiclesApi } from '@/api/vehicles'
 import { globalMastersApi } from '@/api/masters'
 import { attendanceApi } from '@/api/attendance'
 import { lrsApi } from '@/api/lrs'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import type { Attendance } from '@/types'
 
 const MATERIAL_OTHER = 0
@@ -68,6 +69,7 @@ export default function PolOrderPage() {
   const [dstState, setDstState] = useState<number | undefined>()
   const [rows, setRows] = useState<LrRow[]>([emptyRow()])
   const [rowErrors, setRowErrors] = useState<Record<number, Record<string, string>>>({})
+  const [confirmLrId, setConfirmLrId] = useState<number | null>(null)
 
   const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -236,8 +238,7 @@ export default function PolOrderPage() {
   function removeRow(i: number) {
     const row = rows[i]
     if (row.id) {
-      if (!confirm('Delete this LR? This cannot be undone.')) return
-      deleteMutation.mutate(row.id)
+      setConfirmLrId(row.id)
     } else {
       setRows(prev => prev.filter((_, idx) => idx !== i))
     }
@@ -611,6 +612,15 @@ export default function PolOrderPage() {
           </Button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={confirmLrId != null}
+        title="Delete LR"
+        description="Delete this LR? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={() => { if (confirmLrId != null) deleteMutation.mutate(confirmLrId); setConfirmLrId(null) }}
+        onCancel={() => setConfirmLrId(null)}
+      />
     </div>
   )
 }
