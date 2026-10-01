@@ -581,6 +581,7 @@ export interface Vehicle {
   ownerName?: string; ownerPhone?: string; ownerPan?: string; ownerAddress?: string
   agreementStartDate?: string; agreementEndDate?: string; agreementAmount?: number
   currentOdometerReading?: number; fuelTankCapacity?: number; currentFuelLevel?: number; notes?: string
+  avgMileageKmPerLitre?: number; estimatedFuelLevel?: number; estimatedRangeKm?: number
   tyreRotationIntervalKm?: number
   isFinanced?: boolean; financerName?: string; financeStartDate?: string; financeEndDate?: string; financeMonthsRemaining?: number
   extraPayEnabled?: boolean; extraPayPerDay?: number
@@ -1697,6 +1698,7 @@ export interface FuelLog {
   filledByName: string
   fillDate: string
   litresFilled: number
+  fuelLevelBeforeFill?: number
   odometerReading: number
   costPerLitre: number
   totalCost: number

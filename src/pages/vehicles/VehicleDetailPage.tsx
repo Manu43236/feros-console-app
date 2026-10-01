@@ -1684,6 +1684,7 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
 const fuelLogSchema = z.object({
   fillDate:         z.string().min(1, 'Required'),
   litresFilled:     z.coerce.number().positive('Required'),
+  fuelLevelBeforeFill: z.coerce.number().min(0, 'Required'),
   odometerReading:  z.coerce.number().positive('Required'),
   costPerLitre:     z.coerce.number().positive('Required'),
   totalCost:        z.coerce.number().optional(),
@@ -2436,7 +2437,7 @@ function TyresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
   )
 }
 
-function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber: string; fuelTankCapacity?: number; currentFuelLevel?: number; currentOdometerReading?: number } }) {
+function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber: string; fuelTankCapacity?: number; currentFuelLevel?: number; currentOdometerReading?: number; avgMileageKmPerLitre?: number; estimatedFuelLevel?: number; estimatedRangeKm?: number } }) {
   const qc = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editLog, setEditLog]       = useState<FuelLog | null>(null)
@@ -2473,6 +2474,7 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
       paymentMode: 'CASH',
       fillDate: nowDTL(),
       odometerReading: vehicle.currentOdometerReading ?? undefined,
+      fuelLevelBeforeFill: vehicle.estimatedFuelLevel ?? vehicle.currentFuelLevel ?? undefined,
     })
     setEditLog(null)
     setDialogOpen(true)
@@ -2482,6 +2484,7 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
     reset({
       fillDate:        log.fillDate ? String(log.fillDate).slice(0, 16) : nowDTL(),
       litresFilled:    log.litresFilled,
+      fuelLevelBeforeFill: log.fuelLevelBeforeFill,
       odometerReading: log.odometerReading,
       costPerLitre:    log.costPerLitre,
       totalCost:       log.totalCost,
@@ -2556,11 +2559,6 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
     ? Math.round((vehicle.currentFuelLevel / vehicle.fuelTankCapacity) * 100)
     : null
 
-  const avgMileage = logs.filter(l => l.mileageKmPerLitre).length > 0
-    ? (logs.filter(l => l.mileageKmPerLitre).reduce((s, l) => s + (l.mileageKmPerLitre ?? 0), 0) /
-       logs.filter(l => l.mileageKmPerLitre).length).toFixed(2)
-    : null
-
   const totalSpend = logs.reduce((s, l) => s + l.totalCost, 0)
 
   const receiptUrl = watch('receiptUrl')
@@ -2577,25 +2575,33 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
           </p>
         </div>
         <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
-          <p className="text-xs text-orange-500 font-semibold uppercase tracking-wide mb-1">Current Fuel</p>
+          <p className="text-xs text-orange-500 font-semibold uppercase tracking-wide mb-1">Est. Fuel Now</p>
           <p className="text-lg font-bold text-orange-700">
-            {vehicle.currentFuelLevel ? `${vehicle.currentFuelLevel} L` : '—'}
+            {vehicle.estimatedFuelLevel != null
+              ? `~${Number(vehicle.estimatedFuelLevel).toFixed(0)} L`
+              : vehicle.currentFuelLevel ? `${vehicle.currentFuelLevel} L` : '—'}
           </p>
           {fuelPct !== null && (
             <div className="mt-1.5">
               <div className="h-1.5 bg-orange-100 rounded-full overflow-hidden">
                 <div className="h-full bg-orange-400 rounded-full" style={{ width: `${fuelPct}%` }} />
               </div>
-              <p className="text-xs text-orange-400 mt-0.5">{fuelPct}% full</p>
+              <p className="text-xs text-orange-400 mt-0.5">
+                {vehicle.estimatedRangeKm != null
+                  ? `~${Number(vehicle.estimatedRangeKm).toLocaleString('en-IN')} km range`
+                  : `${fuelPct}% full`}
+              </p>
             </div>
           )}
         </div>
         <div className="bg-green-50 rounded-lg p-3 border border-green-100">
           <p className="text-xs text-green-500 font-semibold uppercase tracking-wide mb-1">Avg Mileage</p>
           <p className="text-lg font-bold text-green-700">
-            {avgMileage ? `${avgMileage} km/L` : '—'}
+            {vehicle.avgMileageKmPerLitre != null ? `~${Number(vehicle.avgMileageKmPerLitre).toFixed(2)} km/L` : '—'}
           </p>
-          <p className="text-xs text-green-400">from full tank fills</p>
+          <p className="text-xs text-green-400">
+            {vehicle.avgMileageKmPerLitre != null ? 'approx · last 3 fills' : 'add 2 full-tank fills'}
+          </p>
         </div>
         <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
           <p className="text-xs text-purple-500 font-semibold uppercase tracking-wide mb-1">Total Fuel Spend</p>
@@ -2712,6 +2718,16 @@ function FuelTabContent({ vehicle }: { vehicle: { id: number; registrationNumber
                 <Label>Odometer (km) *</Label>
                 <Input type="number" placeholder="48200" {...register('odometerReading')} />
                 {errors.odometerReading && <p className="text-xs text-red-500">{errors.odometerReading.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fuel Level Before Filling (L) *</Label>
+                {tankCapacity != null && (
+                  <p className="text-xs text-gray-400">Remaining in tank now · max {tankCapacity} L</p>
+                )}
+                <Input type="number" step="0.01" required
+                  placeholder="e.g. 100"
+                  {...register('fuelLevelBeforeFill')} />
+                {errors.fuelLevelBeforeFill && <p className="text-xs text-red-500">{errors.fuelLevelBeforeFill.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Litres Filled *</Label>
@@ -4144,6 +4160,9 @@ export function VehicleDetailPage() {
                 <InfoRow label="Current Fuel"    value={v.currentFuelLevel != null && v.fuelTankCapacity
                   ? `${v.currentFuelLevel} L (${Math.round((Number(v.currentFuelLevel) / Number(v.fuelTankCapacity)) * 100)}%)`
                   : v.currentFuelLevel ? `${v.currentFuelLevel} L` : null} />
+                <InfoRow label="Avg Mileage"     value={v.avgMileageKmPerLitre != null ? `~${Number(v.avgMileageKmPerLitre).toFixed(2)} km/L` : null} />
+                <InfoRow label="Est. Fuel Now"   value={v.estimatedFuelLevel != null ? `~${Number(v.estimatedFuelLevel).toFixed(0)} L` : null} />
+                <InfoRow label="Est. Range"      value={v.estimatedRangeKm != null ? `~${Number(v.estimatedRangeKm).toLocaleString('en-IN')} km` : null} />
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Identification</p>
