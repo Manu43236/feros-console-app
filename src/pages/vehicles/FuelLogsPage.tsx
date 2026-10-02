@@ -71,6 +71,7 @@ interface FuelLogForm {
   vehicleId: string
   fillDate: string
   litresFilled: string
+  fuelLevelBeforeFill: string
   odometerReading: string
   costPerLitre: string
   totalCost: string
@@ -89,7 +90,7 @@ function nowDateTimeLocal() {
 }
 
 const BLANK: FuelLogForm = {
-  vehicleId: '', fillDate: nowDateTimeLocal(), litresFilled: '', odometerReading: '',
+  vehicleId: '', fillDate: nowDateTimeLocal(), litresFilled: '', fuelLevelBeforeFill: '', odometerReading: '',
   costPerLitre: '', totalCost: '', isFullTank: false,
   paymentMode: 'CASH', fuelStationName: '', fuelStationCity: '',
   notes: '', receiptUrl: '',
@@ -100,6 +101,7 @@ function toForm(log: FuelLog): FuelLogForm {
     vehicleId:       String(log.vehicleId),
     fillDate:        log.fillDate ? log.fillDate.slice(0, 16) : nowDateTimeLocal(),
     litresFilled:    String(log.litresFilled),
+    fuelLevelBeforeFill: log.fuelLevelBeforeFill != null ? String(log.fuelLevelBeforeFill) : '',
     odometerReading: String(log.odometerReading),
     costPerLitre:    String(log.costPerLitre),
     totalCost:       String(log.totalCost),
@@ -144,10 +146,12 @@ function FuelLogDialog({
   // When vehicle changes: auto-fill odometer
   function handleVehicleChange(vehicleId: string) {
     const v = vehicles.find(vv => String(vv.id) === vehicleId)
+    const est = v?.estimatedFuelLevel ?? v?.currentFuelLevel
     setForm(f => ({
       ...f,
       vehicleId,
       odometerReading: v?.currentOdometerReading ? String(v.currentOdometerReading) : f.odometerReading,
+      fuelLevelBeforeFill: est != null ? String(est) : '',
       litresFilled: '',
       isFullTank: false,
     }))
@@ -211,15 +215,21 @@ function FuelLogDialog({
   }
 
   function submit() {
-    if (!form.vehicleId || !form.fillDate || !form.litresFilled || !form.odometerReading || !form.costPerLitre) {
+    if (!form.vehicleId || !form.fillDate || !form.litresFilled || !form.fuelLevelBeforeFill || !form.odometerReading || !form.costPerLitre) {
       toast.error('Fill all required fields')
       return
     }
     if (litresError) { toast.error(litresError); return }
+    const remaining = parseFloat(form.fuelLevelBeforeFill)
+    if (isNaN(remaining) || remaining < 0 || (tankCapacity != null && remaining > tankCapacity)) {
+      toast.error(tankCapacity != null ? `Fuel before filling must be 0–${tankCapacity} L` : 'Enter valid fuel level before filling')
+      return
+    }
     const payload: Record<string, unknown> = {
       vehicleId:       Number(form.vehicleId),
       fillDate:        form.fillDate ? `${form.fillDate}:00` : undefined,
       litresFilled:    parseFloat(form.litresFilled),
+      fuelLevelBeforeFill: remaining,
       odometerReading: parseFloat(form.odometerReading),
       costPerLitre:    parseFloat(form.costPerLitre),
       totalCost:       form.totalCost ? parseFloat(form.totalCost) : undefined,
@@ -269,6 +279,17 @@ function FuelLogDialog({
             <Label>Fill Date & Time *</Label>
             <Input type="datetime-local" className="mt-1" value={form.fillDate}
               onChange={e => set('fillDate', e.target.value)} />
+          </div>
+
+          {/* Fuel level before filling (required — drives mileage) */}
+          <div>
+            <Label>Fuel Level Before Filling (L) *</Label>
+            {tankCapacity != null && (
+              <p className="text-xs text-gray-400 mb-0.5">Remaining in tank now · max {tankCapacity} L</p>
+            )}
+            <Input className="mt-1" type="text" inputMode="decimal" placeholder="e.g. 100"
+              value={form.fuelLevelBeforeFill}
+              onChange={e => set('fuelLevelBeforeFill', e.target.value)} />
           </div>
 
           {/* Litres + Cost per litre */}
