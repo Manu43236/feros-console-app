@@ -1260,6 +1260,7 @@ export interface Tenant {
   // Subscription overview (SA views)
   currentPlanName?: string
   currentVehicleCount?: number
+  currentAddonCount?: number
   currentPricePerVehicle?: number
   currentBillingCycle?: string
   customUserLimit?: number

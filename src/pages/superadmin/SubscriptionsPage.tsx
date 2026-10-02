@@ -341,7 +341,15 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                   )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-600">
-                  <div><span className="text-gray-400 block">Vehicles</span>{tenant.currentVehicleCount ?? '—'}</div>
+                  <div>
+                    <span className="text-gray-400 block">Vehicles</span>
+                    {tenant.currentVehicleCount ?? '—'}
+                    {!!tenant.currentAddonCount && (
+                      <span className="text-emerald-600 ml-1">
+                        ({(tenant.currentVehicleCount ?? 0) - tenant.currentAddonCount} + {tenant.currentAddonCount} add-on)
+                      </span>
+                    )}
+                  </div>
                   <div>
                     <span className="text-gray-400 block">Expiry</span>
                     <ExpiryCell date={tenant.subscriptionEndDate} />
