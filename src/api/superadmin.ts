@@ -92,6 +92,12 @@ export const subscriptionsApi = {
   getMyInvoices:   () => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice[]>>('/subscriptions/my/invoices').then(r => r.data),
   getMyInvoice:    (id: number) => apiClient.get<ApiResponse<import('@/types').SubscriptionInvoice>>(`/subscriptions/my/invoices/${id}`).then(r => r.data),
   correct:     (tenantId: number, data: unknown) => apiClient.patch<ApiResponse<import('@/types').SubscriptionHistory>>(`/subscriptions/${tenantId}/correct`, data).then(r => r.data),
+  addonPreview: (tenantId: number, count: number, price?: number) =>
+                   apiClient.get<ApiResponse<import('@/types').SubscriptionAddon>>(`/subscriptions/${tenantId}/addon/preview`, { params: { count, ...(price ? { price } : {}) } }).then(r => r.data),
+  addVehicles: (tenantId: number, data: unknown) =>
+                   apiClient.post<ApiResponse<import('@/types').SubscriptionAddon>>(`/subscriptions/${tenantId}/addon`, data).then(r => r.data),
+  getAddons:   (tenantId: number) =>
+                   apiClient.get<ApiResponse<import('@/types').SubscriptionAddon[]>>(`/subscriptions/${tenantId}/addons`).then(r => r.data),
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────

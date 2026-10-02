@@ -1362,6 +1362,26 @@ export interface SubscriptionInvoiceSummary {
   pendingProformas: number
 }
 
+export interface SubscriptionAddon {
+  id?: number
+  tenantId: number
+  subscriptionHistoryId: number
+  addonVehicleCount: number
+  pricePerVehicle?: number
+  effectiveFrom?: string
+  effectiveTo?: string
+  amount?: number
+  gstAmount?: number
+  totalAmount?: number
+  paymentRef?: string
+  invoiceId?: number
+  status?: string
+  notes?: string
+  createdAt?: string
+  baseVehicleCount?: number
+  effectiveSlotLimit?: number
+}
+
 export interface UpgradeRequest {
   id: number
   tenantId: number

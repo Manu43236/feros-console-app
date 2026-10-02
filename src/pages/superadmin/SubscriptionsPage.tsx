@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
   History, FileText, Megaphone, Calculator, Truck,
-  X, ChevronDown, ChevronUp, Users, AlertTriangle, Pencil, Printer, Receipt,
+  X, ChevronDown, ChevronUp, Users, AlertTriangle, Pencil, Printer, Receipt, Plus,
 } from 'lucide-react'
 import type { Tenant } from '@/types'
 import { tenantsApi, subscriptionsApi, notificationsApi } from '@/api/superadmin'
@@ -156,6 +156,12 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
   const [correctForm, setCorrectForm] = useState(emptyCorrect)
   const [correctErrs, setCorrectErrs] = useState({ vehicleCount: '', notes: '' })
 
+  // Add-vehicles (mid-cycle add-on) form
+  const emptyAddon = { vehicleCount: '', pricePerVehicle: '', paymentRef: '', notes: '' }
+  const [showAddonForm, setShowAddonForm] = useState(false)
+  const [addonForm, setAddonForm] = useState(emptyAddon)
+  const [addonErr, setAddonErr] = useState('')
+
   // User limit form
   const [newLimit, setNewLimit] = useState('')
 
@@ -233,6 +239,33 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
     onSuccess: () => { invalidate(); setShowUserLimitForm(false); setNewLimit('') },
   })
 
+  // ── Add-on: live pro-rata preview ──
+  const addonCount = Number(addonForm.vehicleCount) || 0
+  const addonPrice = Number(addonForm.pricePerVehicle) || undefined
+  const { data: addonPreviewRes } = useQuery({
+    queryKey: ['sa-addon-preview', tenant.id, addonCount, addonPrice],
+    queryFn: () => subscriptionsApi.addonPreview(tenant.id, addonCount, addonPrice),
+    enabled: showAddonForm && addonCount > 0 && !!latestActive,
+  })
+  const addonPreview = addonPreviewRes?.data
+
+  // ── Add-on mutation (pay-now) ──
+  const addonMutation = useMutation({
+    mutationFn: () => subscriptionsApi.addVehicles(tenant.id, {
+      vehicleCount: addonCount,
+      pricePerVehicle: addonPrice,
+      paymentRef: addonForm.paymentRef || undefined,
+      notes: addonForm.notes || undefined,
+    }),
+    onSuccess: () => { invalidate(); setShowAddonForm(false); setAddonForm(emptyAddon); setAddonErr('') },
+  })
+
+  function submitAddon() {
+    if (addonCount < 1) { setAddonErr('Enter how many vehicles to add'); return }
+    setAddonErr('')
+    addonMutation.mutate()
+  }
+
   function openAction(type: 'activate' | 'extend-trial' | 'extend' | 'suspend' | 'reactivate') {
     setActionForm(emptyForm)
     setActionErrs(emptyErrs)
@@ -295,10 +328,16 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
                     <p className="text-sm text-feros-navy font-medium">{fmt(tenant.currentPricePerVehicle)}/vehicle · {cycleLabel(tenant.currentBillingCycle)}</p>
                   </div>
                   {st === 'ACTIVE' && (
-                    <button onClick={() => { setShowCorrectForm(v => !v); setShowUserLimitForm(false) }}
-                      className="flex items-center gap-1 text-xs text-feros-navy border border-feros-navy rounded-lg px-2.5 py-1.5 hover:bg-blue-50">
-                      <Pencil size={11} /> Correct
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => { setShowAddonForm(v => !v); setShowCorrectForm(false); setShowUserLimitForm(false) }}
+                        className="flex items-center gap-1 text-xs text-emerald-700 border border-emerald-600 rounded-lg px-2.5 py-1.5 hover:bg-emerald-50">
+                        <Plus size={11} /> Add Vehicles
+                      </button>
+                      <button onClick={() => { setShowCorrectForm(v => !v); setShowAddonForm(false); setShowUserLimitForm(false) }}
+                        className="flex items-center gap-1 text-xs text-feros-navy border border-feros-navy rounded-lg px-2.5 py-1.5 hover:bg-blue-50">
+                        <Pencil size={11} /> Correct
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-600">
@@ -330,6 +369,86 @@ function SubscriptionDrawer({ tenant, onClose }: { tenant: Tenant; onClose: () =
               </div>
             )}
           </section>
+
+          {/* ── Add Vehicles (mid-cycle add-on) Form ── */}
+          {showAddonForm && (
+            <section className="border border-emerald-200 bg-emerald-50 rounded-xl p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Add Vehicles (Pro-Rated)</h3>
+              <p className="text-xs text-gray-500">
+                Extra slots billed pro-rata for the days left in the current period
+                {latestActive?.endDate ? ` (until ${latestActive.endDate})` : ''}. A paid invoice is raised immediately.
+                At renewal these fold into the base count.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* How many */}
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">Vehicles to add <span className="text-red-500">*</span></label>
+                  <input type="number" min={1}
+                    className={`w-full border rounded-lg px-3 py-2 text-sm bg-white ${addonErr ? 'border-red-400' : ''}`}
+                    value={addonForm.vehicleCount}
+                    onChange={e => setAddonForm(f => ({ ...f, vehicleCount: e.target.value }))}
+                    placeholder="e.g. 5" />
+                  {addonErr && <p className="text-red-500 text-xs mt-1">{addonErr}</p>}
+                </div>
+
+                {/* Price per vehicle override */}
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">Price / Vehicle (₹)</label>
+                  <input type="number" min={0}
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    value={addonForm.pricePerVehicle}
+                    onChange={e => setAddonForm(f => ({ ...f, pricePerVehicle: e.target.value }))}
+                    placeholder={String(latestActive?.pricePerVehicle ?? '0')} />
+                </div>
+
+                {/* Payment ref */}
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-gray-600 mb-1 block">Payment Reference</label>
+                  <input className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    value={addonForm.paymentRef}
+                    onChange={e => setAddonForm(f => ({ ...f, paymentRef: e.target.value }))}
+                    placeholder="UPI / bank ref" />
+                </div>
+              </div>
+
+              {/* Live pro-rata preview */}
+              {addonCount > 0 && addonPreview && (
+                <div className="bg-white border border-emerald-200 rounded-lg p-3 text-xs space-y-1">
+                  <div className="flex justify-between"><span className="text-gray-500">Remaining period</span>
+                    <span>{addonPreview.effectiveFrom} → {addonPreview.effectiveTo}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Pro-rata base ({addonCount} × {fmt(addonPreview.pricePerVehicle)})</span>
+                    <span>{fmt(addonPreview.amount)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">GST (18%)</span>
+                    <span>{fmt(addonPreview.gstAmount)}</span></div>
+                  <div className="flex justify-between font-semibold text-gray-900 border-t pt-1 mt-1">
+                    <span>Total payable now</span><span>{fmt(addonPreview.totalAmount)}</span></div>
+                  <div className="flex justify-between text-emerald-700 pt-1">
+                    <span>New slot limit</span>
+                    <span>{addonPreview.baseVehicleCount} base + {(addonPreview.effectiveSlotLimit ?? 0) - (addonPreview.baseVehicleCount ?? 0)} add-ons = {addonPreview.effectiveSlotLimit}</span></div>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Notes</label>
+                <textarea rows={2}
+                  className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                  value={addonForm.notes}
+                  onChange={e => setAddonForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Optional…" />
+              </div>
+              {addonMutation.isError && <p className="text-red-500 text-xs">Something went wrong. Please try again.</p>}
+              <div className="flex gap-2">
+                <button onClick={submitAddon}
+                  disabled={addonMutation.isPending}
+                  className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                  {addonMutation.isPending ? 'Processing…' : 'Add & Raise Invoice'}
+                </button>
+                <button onClick={() => { setShowAddonForm(false); setAddonForm(emptyAddon); setAddonErr('') }}
+                  className="flex-1 py-2 border rounded-lg text-sm">Cancel</button>
+              </div>
+            </section>
+          )}
 
           {/* ── Correction Form ── */}
           {showCorrectForm && (
