@@ -204,13 +204,13 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
   leaseId: number; assignment: LeaseVehicleAssignment; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
-  const [clientDriver, setClientDriver] = useState(!assignment.driverName)
+  const [clientDriver, setClientDriver] = useState(false)
   const [driverUserId, setDriverUserId] = useState('')
   const [clientDriverName, setClientDriverName] = useState(assignment.clientDriverName ?? '')
 
   useEffect(() => {
     if (open) {
-      setClientDriver(!assignment.driverName)
+      setClientDriver(false)
       setDriverUserId('')
       setClientDriverName(assignment.clientDriverName ?? '')
     }
@@ -411,7 +411,7 @@ function StartSessionDialog({ leaseId, clientId, assignment, lastOdometer, open,
   lastOdometer: number | null; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
-  const [clientDriver, setClientDriver] = useState(true)
+  const [clientDriver, setClientDriver] = useState(false)
   const [driverStaffId, setDriverStaffId] = useState('')
   const [divisionId, setDivisionId] = useState('')
   const [odometerStart, setOdometerStart] = useState('')
@@ -428,7 +428,7 @@ function StartSessionDialog({ leaseId, clientId, assignment, lastOdometer, open,
   }, [open, assignment?.divisionId, lastOdometer])
 
   function reset() {
-    setClientDriver(true); setDriverStaffId('')
+    setClientDriver(false); setDriverStaffId('')
     setDivisionId(assignment?.divisionId ? String(assignment.divisionId) : '')
     setOdometerStart(lastOdometer != null ? String(lastOdometer) : '')
     setStartTime(nowLocal()); setNotes('')
