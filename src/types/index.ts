@@ -805,6 +805,7 @@ export interface InvoicePayment {
 // ─── Staff ────────────────────────────────────────────────────────────────────
 export interface StaffProfile {
   userId: number; tenantId: number; userName: string; userPhone: string; roleName: string
+  currentVehicle?: string | null  // vehicle the staff member is currently on (busy marker); null = free
   designationId?: number; designationName?: string; designationPayPerDay?: number
   employmentTypeId?: number; employmentTypeName?: string
   dateOfBirth?: string; joiningDate?: string

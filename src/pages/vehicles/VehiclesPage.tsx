@@ -1220,6 +1220,13 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{u.name}</p>
                       <p className="text-xs text-gray-400">{u.phone}</p>
+                      {!isCurrent && u.isAssigned && (
+                        <p className="text-xs text-amber-600 truncate">
+                          On {u.assignmentType === 'LEASE'
+                            ? `lease ${u.activeLeaseNumber ?? ''}`.trim()
+                            : `order ${u.activeOrderNumber ?? ''}`.trim()}
+                        </p>
+                      )}
                     </div>
                     {isCurrent && <span className="text-xs text-gray-400 shrink-0">Current</span>}
                     {isSelected && !isCurrent && (

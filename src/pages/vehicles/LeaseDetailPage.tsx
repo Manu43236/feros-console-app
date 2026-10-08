@@ -224,9 +224,10 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
   const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
 
   const mutation = useMutation({
-    mutationFn: () => vehicleLeasesApi.assignDriver(leaseId, assignment.id, {
+    mutationFn: (swap: boolean = false) => vehicleLeasesApi.assignDriver(leaseId, assignment.id, {
       driverStaffId: clientDriver ? null : (driverUserId ? Number(driverUserId) : null),
       clientDriverName: clientDriver ? (clientDriverName.trim() || undefined) : undefined,
+      swap,
     }),
     onSuccess: () => {
       toast.success('Driver updated')
@@ -234,8 +235,17 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
       onClose()
     },
     onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to update driver')
+      const resp = (e as { response?: { data?: { message?: string; data?: { code?: string } } } })?.response?.data
+      const msg = resp?.message
+      // SWAPPABLE_CONFLICT → driver is on a normal/order vehicle that isn't mid-trip: offer to swap.
+      if (resp?.data?.code === 'SWAPPABLE_CONFLICT') {
+        toast.error(msg ?? 'Driver is already assigned to another vehicle.', {
+          action: { label: 'Swap to this lease', onClick: () => mutation.mutate(true) },
+          duration: 10000,
+        })
+      } else {
+        toast.error(msg ?? 'Failed to update driver')
+      }
     },
   })
 
@@ -272,7 +282,10 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
             {!clientDriver && (
               <div className="mt-2">
                 <SearchableSelect
-                  options={drivers.map(d => ({ value: String(d.userId), label: d.userName }))}
+                  options={drivers.map(d => ({
+                    value: String(d.userId),
+                    label: d.currentVehicle ? `${d.userName} — on ${d.currentVehicle}` : d.userName,
+                  }))}
                   value={driverUserId}
                   onValueChange={setDriverUserId}
                   placeholder="Select driver"
@@ -284,7 +297,7 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button
               disabled={(!clientDriver && !driverUserId) || mutation.isPending}
-              onClick={() => mutation.mutate()}
+              onClick={() => mutation.mutate(false)}
               className="bg-feros-navy hover:bg-feros-navy/90 text-white">
               {mutation.isPending ? 'Saving…' : 'Save'}
             </Button>

@@ -38,7 +38,7 @@ export const vehicleLeasesApi = {
       { divisionId }
     ).then(r => r.data),
 
-  assignDriver: (leaseId: number, assignmentId: number, data: { driverStaffId: number | null; clientDriverName?: string }) =>
+  assignDriver: (leaseId: number, assignmentId: number, data: { driverStaffId: number | null; clientDriverName?: string; swap?: boolean }) =>
     apiClient.put<ApiResponse<LeaseVehicleAssignment>>(
       `/vehicle-leases/${leaseId}/vehicles/${assignmentId}/driver`,
       data
