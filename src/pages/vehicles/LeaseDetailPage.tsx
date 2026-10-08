@@ -139,6 +139,15 @@ function AddVehicleDialog({ leaseId, open, onClose }: { leaseId: number; open: b
                 This vehicle is currently {selectedVehicle?.currentStatusType === 'ON_LEASE' ? 'on another lease' : 'assigned to an order'}. Saving will unassign it first.
               </p>
             )}
+            {selectedVehicle && (selectedVehicle.currentDriverName || selectedVehicle.currentCleanerName) && (
+              <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+                {[
+                  selectedVehicle.currentDriverName && `Driver ${selectedVehicle.currentDriverName}`,
+                  selectedVehicle.currentCleanerName && `Cleaner ${selectedVehicle.currentCleanerName}`,
+                ].filter(Boolean).join(' and ')}
+                {selectedVehicle.currentDriverName && selectedVehicle.currentCleanerName ? ' are' : ' is'} currently on this vehicle and will be released from it when it's added to the lease.
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
