@@ -1061,7 +1061,8 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
     enabled: open,
   })
 
-  const eligible = (usersRes?.data ?? []).filter(u => u.role === role && u.isActive)
+  // Only free staff are assignable here (a driver on an order/lease is block-only, so hide them).
+  const eligible = (usersRes?.data ?? []).filter(u => u.role === role && u.isActive && !u.isAssigned)
   const currentId   = role === 'DRIVER' ? vehicle?.currentDriverId  : vehicle?.currentCleanerId
   const currentName = role === 'DRIVER' ? vehicle?.currentDriverName : vehicle?.currentCleanerName
 
@@ -1220,13 +1221,6 @@ function VehicleStaffDialog({ open, onClose, vehicle, role }: {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{u.name}</p>
                       <p className="text-xs text-gray-400">{u.phone}</p>
-                      {!isCurrent && u.isAssigned && (
-                        <p className="text-xs text-amber-600 truncate">
-                          On {u.assignmentType === 'LEASE'
-                            ? `lease ${u.activeLeaseNumber ?? ''}`.trim()
-                            : `order ${u.activeOrderNumber ?? ''}`.trim()}
-                        </p>
-                      )}
                     </div>
                     {isCurrent && <span className="text-xs text-gray-400 shrink-0">Current</span>}
                     {isSelected && !isCurrent && (
@@ -1598,7 +1592,7 @@ export function VehiclesPage() {
                             ? <span className="text-xs font-medium text-gray-800">{v.currentDriverName}</span>
                             : <span className="text-gray-300 text-sm">—</span>
                           }
-                          {canAssignStaff && v.isActive && (
+                          {canAssignStaff && v.isActive && v.currentStatusType !== 'ON_LEASE' && (
                             <button
                               title={v.currentDriverName ? `Change Driver` : 'Assign Driver'}
                               onClick={e => { e.stopPropagation(); setStaffDialogVehicle(v); setStaffDialogRole('DRIVER') }}
@@ -1616,7 +1610,7 @@ export function VehiclesPage() {
                             ? <span className="text-xs font-medium text-gray-800">{v.currentCleanerName}</span>
                             : <span className="text-gray-300 text-sm">—</span>
                           }
-                          {canAssignStaff && v.isActive && (
+                          {canAssignStaff && v.isActive && v.currentStatusType !== 'ON_LEASE' && (
                             <button
                               title={v.currentCleanerName ? `Change Cleaner` : 'Assign Cleaner'}
                               onClick={e => { e.stopPropagation(); setStaffDialogVehicle(v); setStaffDialogRole('CLEANER') }}
