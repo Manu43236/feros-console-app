@@ -44,6 +44,12 @@ export const vehicleLeasesApi = {
       data
     ).then(r => r.data),
 
+  assignCleaner: (leaseId: number, assignmentId: number, data: { cleanerStaffId: number | null; clientCleanerName?: string; swap?: boolean }) =>
+    apiClient.put<ApiResponse<LeaseVehicleAssignment>>(
+      `/vehicle-leases/${leaseId}/vehicles/${assignmentId}/cleaner`,
+      data
+    ).then(r => r.data),
+
   getBilling: (leaseId: number) =>
     apiClient.get<ApiResponse<LeaseBilling>>(`/vehicle-leases/${leaseId}/billing`).then(r => r.data),
 

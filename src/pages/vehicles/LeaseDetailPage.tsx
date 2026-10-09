@@ -230,7 +230,9 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
     queryFn: () => staffApi.getAll(),
     enabled: open && !clientDriver,
   })
-  const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
+  // Available-only: hide staff already on a lease (hard conflict). Normal/order staff stay visible
+  // with their "— on X" marker so Swap still works. (currentVehicle lease rows end with "· lease")
+  const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER' && !s.currentVehicle?.includes('lease'))
 
   const mutation = useMutation({
     mutationFn: (swap: boolean = false) => vehicleLeasesApi.assignDriver(leaseId, assignment.id, {
@@ -306,6 +308,117 @@ function AssignDriverDialog({ leaseId, assignment, open, onClose }: {
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button
               disabled={(!clientDriver && !driverUserId) || mutation.isPending}
+              onClick={() => mutation.mutate(false)}
+              className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+              {mutation.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Assign Cleaner Dialog ───────────────────────────────────────────────────────
+function AssignCleanerDialog({ leaseId, assignment, open, onClose }: {
+  leaseId: number; assignment: LeaseVehicleAssignment; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [clientCleaner, setClientCleaner] = useState(false)
+  const [cleanerUserId, setCleanerUserId] = useState('')
+  const [clientCleanerName, setClientCleanerName] = useState(assignment.clientCleanerName ?? '')
+
+  useEffect(() => {
+    if (open) {
+      setClientCleaner(false)
+      setCleanerUserId('')
+      setClientCleanerName(assignment.clientCleanerName ?? '')
+    }
+  }, [open, assignment.cleanerName, assignment.clientCleanerName])
+
+  const { data: staffRes } = useQuery({
+    queryKey: ['staff'],
+    queryFn: () => staffApi.getAll(),
+    enabled: open && !clientCleaner,
+  })
+  // Available-only: hide staff already on a lease (hard conflict). Normal/order staff stay visible
+  // with their "— on X" marker so Swap still works. (currentVehicle lease rows end with "· lease")
+  const cleaners = (staffRes?.data ?? []).filter(s => s.roleName === 'CLEANER' && !s.currentVehicle?.includes('lease'))
+
+  const mutation = useMutation({
+    mutationFn: (swap: boolean = false) => vehicleLeasesApi.assignCleaner(leaseId, assignment.id, {
+      cleanerStaffId: clientCleaner ? null : (cleanerUserId ? Number(cleanerUserId) : null),
+      clientCleanerName: clientCleaner ? (clientCleanerName.trim() || undefined) : undefined,
+      swap,
+    }),
+    onSuccess: () => {
+      toast.success('Cleaner updated')
+      qc.invalidateQueries({ queryKey: ['lease-vehicles', leaseId] })
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const resp = (e as { response?: { data?: { message?: string; data?: { code?: string } } } })?.response?.data
+      const msg = resp?.message
+      // SWAPPABLE_CONFLICT → cleaner is on a normal/order vehicle that isn't mid-trip: offer to swap.
+      if (resp?.data?.code === 'SWAPPABLE_CONFLICT') {
+        toast.error(msg ?? 'Cleaner is already assigned to another vehicle.', {
+          action: { label: 'Swap to this lease', onClick: () => mutation.mutate(true) },
+          duration: 10000,
+        })
+      } else {
+        toast.error(msg ?? 'Failed to update cleaner')
+      }
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Assign Cleaner — {assignment.registrationNumber}</DialogTitle></DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div>
+            <Label>Cleaner</Label>
+            <div className="flex gap-2 mt-1.5">
+              <button type="button"
+                onClick={() => { setClientCleaner(true); setCleanerUserId('') }}
+                className={cn('px-3 py-1.5 rounded-lg text-xs border transition-colors',
+                  clientCleaner ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-500 hover:bg-gray-50')}>
+                Client's Cleaner
+              </button>
+              <button type="button"
+                onClick={() => setClientCleaner(false)}
+                className={cn('px-3 py-1.5 rounded-lg text-xs border transition-colors',
+                  !clientCleaner ? 'bg-feros-navy text-white border-feros-navy' : 'border-gray-200 text-gray-500 hover:bg-gray-50')}>
+                Our Staff
+              </button>
+            </div>
+            {clientCleaner && (
+              <div className="mt-2">
+                <Input
+                  value={clientCleaner ? clientCleanerName : ''}
+                  onChange={e => setClientCleanerName(e.target.value)}
+                  placeholder="Client cleaner name (optional)"
+                />
+              </div>
+            )}
+            {!clientCleaner && (
+              <div className="mt-2">
+                <SearchableSelect
+                  options={cleaners.map(c => ({
+                    value: String(c.userId),
+                    label: c.currentVehicle ? `${c.userName} — on ${c.currentVehicle}` : c.userName,
+                  }))}
+                  value={cleanerUserId}
+                  onValueChange={setCleanerUserId}
+                  placeholder="Select cleaner"
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button
+              disabled={(!clientCleaner && !cleanerUserId) || mutation.isPending}
               onClick={() => mutation.mutate(false)}
               className="bg-feros-navy hover:bg-feros-navy/90 text-white">
               {mutation.isPending ? 'Saving…' : 'Save'}
@@ -687,6 +800,7 @@ export default function LeaseDetailPage() {
   const [closingAssignment, setClosingAssignment] = useState<LeaseVehicleAssignment | null>(null)
   const [assigningDivisionFor, setAssigningDivisionFor] = useState<LeaseVehicleAssignment | null>(null)
   const [assigningDriverFor, setAssigningDriverFor] = useState<LeaseVehicleAssignment | null>(null)
+  const [assigningCleanerFor, setAssigningCleanerFor] = useState<LeaseVehicleAssignment | null>(null)
   const [startingSessionFor, setStartingSessionFor] = useState<LeaseVehicleAssignment | null>(null)
   const [endingSessionFor, setEndingSessionFor] = useState<LeaseVehicleAssignment | null>(null)
 
@@ -992,6 +1106,15 @@ export default function LeaseDetailPage() {
                             : <span className="text-gray-400 italic">Client's driver</span>
                           }
                         </span>
+                        <span className="flex items-center gap-1">
+                          <User size={12} className="text-gray-400" />
+                          {a.cleanerName
+                            ? <span className="font-medium text-gray-700">{a.cleanerName}</span>
+                            : a.clientCleanerName
+                            ? <span className="text-gray-700">{a.clientCleanerName}</span>
+                            : <span className="text-gray-400 italic">No cleaner</span>
+                          }
+                        </span>
                         {a.odometerAtStart != null && (
                           <span className="flex items-center gap-1">
                             <Gauge size={12} />
@@ -1005,6 +1128,11 @@ export default function LeaseDetailPage() {
                             className="text-xs h-6 px-2 text-feros-navy"
                             onClick={() => setAssigningDriverFor(a)}>
                             {a.driverName ? 'Change Driver' : 'Assign Driver'}
+                          </Button>
+                          <Button size="sm" variant="ghost"
+                            className="text-xs h-6 px-2 text-feros-navy"
+                            onClick={() => setAssigningCleanerFor(a)}>
+                            {a.cleanerName ? 'Change Cleaner' : 'Assign Cleaner'}
                           </Button>
                           <Button size="sm" variant="ghost"
                             className="text-xs h-6 px-2 text-feros-navy"
@@ -1343,6 +1471,14 @@ export default function LeaseDetailPage() {
           assignment={assigningDriverFor}
           open={!!assigningDriverFor}
           onClose={() => setAssigningDriverFor(null)}
+        />
+      )}
+      {assigningCleanerFor && (
+        <AssignCleanerDialog
+          leaseId={leaseId}
+          assignment={assigningCleanerFor}
+          open={!!assigningCleanerFor}
+          onClose={() => setAssigningCleanerFor(null)}
         />
       )}
       <StartSessionDialog

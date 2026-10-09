@@ -99,6 +99,7 @@ export interface LeaseVehicleAssignment {
   id: number; leaseId: number
   vehicleId: number; registrationNumber: string; vehicleType?: string
   driverStaffId?: number; driverName?: string; clientDriverName?: string
+  cleanerStaffId?: number; cleanerName?: string; clientCleanerName?: string
   ratePerVehicle: number
   startDate: string; endDate?: string
   odometerAtStart?: number; odometerAtEnd?: number; vehicleCurrentOdometer?: number
