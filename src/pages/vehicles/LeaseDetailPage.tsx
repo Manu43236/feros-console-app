@@ -786,13 +786,112 @@ function EndSessionDialog({ leaseId, assignment, activeSession, open, onClose }:
 }
 
 // ── Main Page ───────────────────────────────────────────────────────────────────
+// ── Shift Roster: assign driver + cleaner per vehicle × shift, day by day ──────
+function LeaseShiftRoster({ leaseId, assignments, shifts, canEdit }: {
+  leaseId: number
+  assignments: LeaseVehicleAssignment[]
+  shifts: import('@/types').LeaseShift[]
+  canEdit: boolean
+}) {
+  const qc = useQueryClient()
+  const [workDate, setWorkDate] = useState(new Date().toISOString().slice(0, 10))
+
+  const { data: staffRes } = useQuery({ queryKey: ['staff'], queryFn: () => staffApi.getAll() })
+  const drivers = (staffRes?.data ?? []).filter(s => s.roleName === 'DRIVER')
+  const cleaners = (staffRes?.data ?? []).filter(s => s.roleName === 'CLEANER')
+
+  const { data: rosterRes } = useQuery({
+    queryKey: ['lease-shift-assignments', leaseId, workDate],
+    queryFn: () => vehicleLeasesApi.getShiftAssignments(leaseId, workDate, workDate),
+  })
+  const roster = rosterRes?.data ?? []
+  const cellFor = (assignmentId: number, shiftId: number) =>
+    roster.find(r => r.assignmentId === assignmentId && r.shiftId === shiftId)
+
+  if (shifts.length === 0)
+    return <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">No shifts defined on this lease.</div>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Label className="text-sm">Work date</Label>
+        <Input type="date" value={workDate} onChange={e => setWorkDate(e.target.value)} className="w-44" />
+        <p className="text-xs text-gray-500">Night shift (e.g. 21:00–09:00) credits to this date.</p>
+      </div>
+      {assignments.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">Add a vehicle first.</div>
+      ) : assignments.map(a => (
+        <div key={a.id} className="bg-white rounded-xl border border-gray-100 p-4">
+          <p className="font-semibold text-gray-800 mb-3">{a.registrationNumber}</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {shifts.map(sh => (
+              <ShiftRosterCell key={sh.id} leaseId={leaseId} assignmentId={a.id} shift={sh} workDate={workDate}
+                current={cellFor(a.id, sh.id)} drivers={drivers} cleaners={cleaners} canEdit={canEdit}
+                onSaved={() => qc.invalidateQueries({ queryKey: ['lease-shift-assignments', leaseId, workDate] })} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ShiftRosterCell({ leaseId, assignmentId, shift, workDate, current, drivers, cleaners, canEdit, onSaved }: {
+  leaseId: number; assignmentId: number; shift: import('@/types').LeaseShift; workDate: string
+  current?: import('@/types').LeaseShiftAssignment
+  drivers: import('@/types').StaffProfile[]; cleaners: import('@/types').StaffProfile[]
+  canEdit: boolean; onSaved: () => void
+}) {
+  const [driver, setDriver] = useState('')
+  const [cleaner, setCleaner] = useState('')
+  useEffect(() => {
+    setDriver(current?.driverStaffId ? String(current.driverStaffId) : '')
+    setCleaner(current?.cleanerStaffId ? String(current.cleanerStaffId) : '')
+  }, [current])
+
+  const mutation = useMutation({
+    mutationFn: () => vehicleLeasesApi.assignShift(leaseId, assignmentId, {
+      shiftId: shift.id, workDate,
+      driverStaffId: driver ? Number(driver) : null,
+      cleanerStaffId: cleaner ? Number(cleaner) : null,
+    }),
+    onSuccess: () => { toast.success(`Shift ${shift.shiftNumber} saved`); onSaved() },
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to assign'),
+  })
+
+  return (
+    <div className="rounded-lg border border-gray-200 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">Shift {shift.shiftNumber}</span>
+        <span className="text-xs text-gray-500">{shift.startTime?.slice(0,5)}–{shift.endTime?.slice(0,5)}</span>
+      </div>
+      <div>
+        <Label className="text-xs">Driver <span className="text-gray-400">(blank = client's)</span></Label>
+        <SearchableSelect options={[{ value: '', label: "Client's driver" }, ...drivers.map(d => ({ value: String(d.userId), label: d.userName }))]}
+          value={driver} onValueChange={setDriver} placeholder="Client's driver" disabled={!canEdit} />
+      </div>
+      <div>
+        <Label className="text-xs">Cleaner <span className="text-gray-400">(blank = client's)</span></Label>
+        <SearchableSelect options={[{ value: '', label: "Client's cleaner" }, ...cleaners.map(c => ({ value: String(c.userId), label: c.userName }))]}
+          value={cleaner} onValueChange={setCleaner} placeholder="Client's cleaner" disabled={!canEdit} />
+      </div>
+      {canEdit && (
+        <Button size="sm" className="w-full bg-feros-navy hover:bg-feros-navy/90 text-white"
+          disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+          {mutation.isPending ? 'Saving…' : 'Save'}
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export default function LeaseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const leaseId = Number(id)
   const navigate = useNavigate()
   const qc = useQueryClient()
   const role = useAuthStore(s => s.role)
-  const [activeTab, setActiveTab] = useState<'vehicles' | 'sessions' | 'daily-logs' | 'billing'>('vehicles')
+  const [activeTab, setActiveTab] = useState<'vehicles' | 'shifts' | 'sessions' | 'daily-logs' | 'billing'>('vehicles')
   const [showAddVehicle, setShowAddVehicle] = useState(false)
   const [extendDate, setExtendDate] = useState('')
   const [showExtend, setShowExtend] = useState(false)
@@ -1003,10 +1102,11 @@ export default function LeaseDetailPage() {
       <div className="flex gap-1 border-b border-gray-200">
         {([
           { key: 'vehicles', label: 'Vehicles', icon: <Truck size={14} /> },
+          ...(lease.shiftDuty ? [{ key: 'shifts', label: 'Shift Roster', icon: <Clock size={14} /> }] : []),
           { key: 'sessions', label: 'Sessions', icon: <Clock size={14} /> },
           { key: 'daily-logs', label: 'Daily Logs', icon: <CalendarDays size={14} /> },
           ...(role !== 'SUPERVISOR' ? [{ key: 'billing', label: 'Billing', icon: <Receipt size={14} /> }] : []),
-        ] as { key: 'vehicles' | 'sessions' | 'daily-logs' | 'billing'; label: string; icon: React.ReactNode }[]).map(t => (
+        ] as { key: 'vehicles' | 'shifts' | 'sessions' | 'daily-logs' | 'billing'; label: string; icon: React.ReactNode }[]).map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
               activeTab === t.key
@@ -1168,6 +1268,11 @@ export default function LeaseDetailPage() {
 
           <AddVehicleDialog leaseId={leaseId} open={showAddVehicle} onClose={() => setShowAddVehicle(false)} />
         </div>
+      )}
+
+      {/* ── Shift Roster Tab ── */}
+      {activeTab === 'shifts' && lease.shiftDuty && (
+        <LeaseShiftRoster leaseId={leaseId} assignments={activeAssignments} shifts={lease.shifts ?? []} canEdit={canEdit} />
       )}
 
       {/* ── Sessions Tab ── */}

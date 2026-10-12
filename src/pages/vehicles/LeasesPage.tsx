@@ -2,7 +2,7 @@ import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, Controller, type Resolver } from 'react-hook-form'
+import { useForm, Controller, useFieldArray, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { vehicleLeasesApi } from '@/api/vehicleLeases'
@@ -27,6 +27,13 @@ const STATUS_LABELS: Record<LeaseStatus, string> = {
   DRAFT: 'Draft', ACTIVE: 'Active', CLOSED: 'Closed',
 }
 
+const shiftSchema = z.object({
+  startTime: z.string().min(1, 'Start time required'),
+  endTime:   z.string().min(1, 'End time required'),
+  driverPay: z.coerce.number().min(0, 'Driver pay ≥ 0'),
+  cleanerPay: z.union([z.coerce.number().min(0), z.literal('')]).optional(),
+})
+
 const schema = z.object({
   clientId:  z.coerce.number().min(1, 'Select client'),
   site:      z.string().optional(),
@@ -34,6 +41,10 @@ const schema = z.object({
   endDate:   z.string().optional(),
   rateType:  z.enum(['HOURLY', 'DAILY_SHIFT', 'MONTHLY'] as const),
   notes:     z.string().optional(),
+  shiftDuty: z.boolean().optional(),
+  shifts:    z.array(shiftSchema).max(4, 'At most 4 shifts').optional(),
+}).refine(d => !d.shiftDuty || (d.shifts && d.shifts.length > 0), {
+  message: 'Add at least one shift', path: ['shifts'],
 })
 type FormData = z.infer<typeof schema>
 
@@ -46,15 +57,27 @@ function NewLeaseDialog({ open, onClose }: { open: boolean; onClose: () => void 
   })
   const clients = clientsRes?.data?.content ?? []
 
-  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, control, reset, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: { rateType: 'DAILY_SHIFT' },
+    defaultValues: { rateType: 'DAILY_SHIFT', shiftDuty: false, shifts: [] },
   })
+  const { fields: shiftFields, append: appendShift, remove: removeShift } = useFieldArray({ control, name: 'shifts' })
+  const shiftDuty = watch('shiftDuty')
 
   const mutation = useMutation({
     mutationFn: (data: FormData) => vehicleLeasesApi.create({
       ...data,
       endDate: data.endDate || undefined,
+      shiftDuty: !!data.shiftDuty,
+      shifts: data.shiftDuty
+        ? (data.shifts ?? []).map((s, i) => ({
+            shiftNumber: i + 1,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            driverPay: Number(s.driverPay),
+            cleanerPay: s.cleanerPay === '' || s.cleanerPay == null ? undefined : Number(s.cleanerPay),
+          }))
+        : undefined,
     }),
     onSuccess: () => {
       toast.success('Lease created')
@@ -125,6 +148,49 @@ function NewLeaseDialog({ open, onClose }: { open: boolean; onClose: () => void 
                 />
               )}
             />
+          </div>
+
+          <div className="rounded-lg border border-gray-200 p-3 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" {...register('shiftDuty')} className="h-4 w-4 accent-feros-navy" />
+              <span className="text-sm font-medium">Shift duty — crew &amp; pay per shift (max 4)</span>
+            </label>
+
+            {shiftDuty && (
+              <div className="space-y-2">
+                {shiftFields.map((f, i) => (
+                  <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-3">
+                      <Label className="text-xs">Shift {i + 1} start</Label>
+                      <Input type="time" {...register(`shifts.${i}.startTime` as const)} />
+                    </div>
+                    <div className="col-span-3">
+                      <Label className="text-xs">End</Label>
+                      <Input type="time" {...register(`shifts.${i}.endTime` as const)} />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Driver ₹</Label>
+                      <Input type="number" step="0.01" {...register(`shifts.${i}.driverPay` as const)} />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Cleaner ₹</Label>
+                      <Input type="number" step="0.01" {...register(`shifts.${i}.cleanerPay` as const)} />
+                    </div>
+                    <div className="col-span-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => removeShift(i)}>Remove</Button>
+                    </div>
+                  </div>
+                ))}
+                {shiftFields.length < 4 && (
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => appendShift({ startTime: '', endTime: '', driverPay: 0, cleanerPay: '' })}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Shift
+                  </Button>
+                )}
+                {errors.shifts && <p className="text-xs text-red-500">{errors.shifts.message as string}</p>}
+                <p className="text-xs text-gray-500">Shift windows must not overlap. A window like 21:00–09:00 crosses midnight.</p>
+              </div>
+            )}
           </div>
 
           <div>

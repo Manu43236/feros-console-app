@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, PageResponse, VehicleLease, LeaseVehicleAssignment, LeaseBilling, LeaseDailyLog, LeaseStatus, LeaseVehicleSession } from '@/types'
+import type { ApiResponse, PageResponse, VehicleLease, LeaseVehicleAssignment, LeaseBilling, LeaseDailyLog, LeaseStatus, LeaseVehicleSession, LeaseShiftAssignment } from '@/types'
 
 export const vehicleLeasesApi = {
   getAll: (params?: { page?: number; size?: number; status?: LeaseStatus; clientId?: number; search?: string }) =>
@@ -52,6 +52,19 @@ export const vehicleLeasesApi = {
 
   getBilling: (leaseId: number) =>
     apiClient.get<ApiResponse<LeaseBilling>>(`/vehicle-leases/${leaseId}/billing`).then(r => r.data),
+
+  // Shift-duty leases — per-day, per-shift crew assignment
+  getShiftAssignments: (leaseId: number, from: string, to: string) =>
+    apiClient.get<ApiResponse<LeaseShiftAssignment[]>>(
+      `/vehicle-leases/${leaseId}/shift-assignments`, { params: { from, to } }
+    ).then(r => r.data),
+
+  assignShift: (leaseId: number, assignmentId: number, data: {
+    shiftId: number; workDate: string; driverStaffId?: number | null; cleanerStaffId?: number | null
+  }) =>
+    apiClient.put<ApiResponse<LeaseShiftAssignment>>(
+      `/vehicle-leases/${leaseId}/vehicles/${assignmentId}/shift-assignments`, data
+    ).then(r => r.data),
 
   startSession: (leaseId: number, assignmentId: number, data: {
     startTime?: string

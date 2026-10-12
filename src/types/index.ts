@@ -82,6 +82,15 @@ export type VehicleStatusType = 'AVAILABLE' | 'ASSIGNED' | 'ON_TRIP' | 'IN_REPAI
 // ── Vehicle Leases ────────────────────────────────────────────────────────────
 export type LeaseStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED'
 
+export interface LeaseShift {
+  id: number
+  shiftNumber: number
+  startTime: string   // "HH:mm[:ss]"
+  endTime: string
+  driverPay: number
+  cleanerPay?: number
+}
+
 export interface VehicleLease {
   id: number; tenantId: number
   leaseNumber: string
@@ -91,8 +100,21 @@ export interface VehicleLease {
   rateType: RateType
   status: LeaseStatus
   notes?: string
+  shiftDuty?: boolean
+  shifts?: LeaseShift[]
   vehicleCount: number
   createdAt: string; updatedAt: string
+}
+
+export interface LeaseShiftAssignment {
+  id: number
+  assignmentId: number
+  vehicleId: number; registrationNumber: string
+  shiftId: number; shiftNumber: number; startTime: string; endTime: string
+  workDate: string
+  driverStaffId?: number; driverName?: string; clientDriver: boolean
+  cleanerStaffId?: number; cleanerName?: string; clientCleaner: boolean
+  driverPay?: number; cleanerPay?: number
 }
 
 export interface LeaseVehicleAssignment {
