@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app'
-import { getMessaging, getToken, deleteToken, onMessage } from 'firebase/messaging'
+import { getMessaging, getToken, deleteToken, onMessage, type Messaging } from 'firebase/messaging'
 
 const firebaseConfig = {
   apiKey:            'AIzaSyCdSvv97TTnn3lcZUs5OcG1Z3tCssZh_x0',
@@ -12,27 +12,44 @@ const firebaseConfig = {
 
 const VAPID_KEY = 'BLEThp81u2iXeaR8STupnu-YIN4uhLwx61a20b0KcKrLBofOPPPwL2VUzbPWVPDYZXge4Xk1EZfEMqPUXsa8KWA'
 
-const app       = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
-const messaging = getMessaging(app)
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
+
+// Lazy + guarded: getMessaging() throws on insecure origins (HTTP/IP) and
+// unsupported browsers. Never let that crash app startup — push just stays off.
+let messaging: Messaging | null = null
+let messagingTried = false
+function getMessagingSafe(): Messaging | null {
+  if (messagingTried) return messaging
+  messagingTried = true
+  try { messaging = getMessaging(app) } catch { messaging = null }
+  return messaging
+}
 
 export async function getWebFcmToken(): Promise<string | null> {
   try {
+    const m = getMessagingSafe()
+    if (!m) return null
     if (!('Notification' in window)) return null
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') return null
     const sw = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    return await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw })
+    return await getToken(m, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw })
   } catch {
     return null
   }
 }
 
 export async function deleteWebFcmToken(): Promise<void> {
-  try { await deleteToken(messaging) } catch { /* best-effort */ }
+  try {
+    const m = getMessagingSafe()
+    if (m) await deleteToken(m)
+  } catch { /* best-effort */ }
 }
 
 export function listenForegroundMessages(onNotification: (title: string, body: string) => void) {
-  return onMessage(messaging, (payload) => {
+  const m = getMessagingSafe()
+  if (!m) return () => {}
+  return onMessage(m, (payload) => {
     const title = payload.notification?.title ?? 'FEROS'
     const body  = payload.notification?.body  ?? ''
     onNotification(title, body)
