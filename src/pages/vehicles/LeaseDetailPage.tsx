@@ -1224,16 +1224,21 @@ export default function LeaseDetailPage() {
                       </div>
                       {canEdit && a.isActive && (
                         <div className="flex gap-1">
-                          <Button size="sm" variant="ghost"
-                            className="text-xs h-6 px-2 text-feros-navy"
-                            onClick={() => setAssigningDriverFor(a)}>
-                            {a.driverName ? 'Change Driver' : 'Assign Driver'}
-                          </Button>
-                          <Button size="sm" variant="ghost"
-                            className="text-xs h-6 px-2 text-feros-navy"
-                            onClick={() => setAssigningCleanerFor(a)}>
-                            {a.cleanerName ? 'Change Cleaner' : 'Assign Cleaner'}
-                          </Button>
+                          {/* Shift leases assign crew per shift in the Shift Roster, not at vehicle level */}
+                          {!lease.shiftDuty && (
+                            <>
+                              <Button size="sm" variant="ghost"
+                                className="text-xs h-6 px-2 text-feros-navy"
+                                onClick={() => setAssigningDriverFor(a)}>
+                                {a.driverName ? 'Change Driver' : 'Assign Driver'}
+                              </Button>
+                              <Button size="sm" variant="ghost"
+                                className="text-xs h-6 px-2 text-feros-navy"
+                                onClick={() => setAssigningCleanerFor(a)}>
+                                {a.cleanerName ? 'Change Cleaner' : 'Assign Cleaner'}
+                              </Button>
+                            </>
+                          )}
                           <Button size="sm" variant="ghost"
                             className="text-xs h-6 px-2 text-feros-navy"
                             onClick={() => setAssigningDivisionFor(a)}>
