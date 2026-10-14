@@ -2035,6 +2035,8 @@ export interface AttendanceDailyRow {
   employeeName: string
   role: string
   vehicleRegistrationNumber: string
+  isLease: boolean
+  shiftLabel: string | null
   attendanceDate: string
   attendanceType: string
   markedAt: string | null

@@ -128,7 +128,11 @@ function DailyTable({ rows, loading }: { rows: AttendanceDailyRow[]; loading: bo
       r.attendanceDate,
       <span className="font-medium">{r.employeeName}</span>,
       <span className="text-xs text-gray-500">{r.role.replace(/_/g, ' ')}</span>,
-      dash(r.vehicleRegistrationNumber),
+      <span className="whitespace-pre-line">
+        {r.vehicleRegistrationNumber && r.vehicleRegistrationNumber !== '—' ? r.vehicleRegistrationNumber : '—'}
+        {r.isLease && <span className="ml-1.5 px-1.5 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700">Lease</span>}
+        {r.shiftLabel && <span className="ml-1.5 text-xs text-feros-navy">{r.shiftLabel}</span>}
+      </span>,
       <Badge label={r.attendanceType} />,
       fmtTime(r.markedAt),
       fmtTime(r.markedOutAt),
