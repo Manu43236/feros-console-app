@@ -925,6 +925,18 @@ export default function LeaseDetailPage() {
     queryFn: () => vehicleLeasesApi.getDailyLogs(leaseId),
     enabled: activeTab === 'daily-logs',
   })
+  // Shift leases: who's on the active shift right now (read-only card display).
+  // Fetch yesterday→tomorrow so a night shift that started yesterday is still in range.
+  const shiftWindowDay = (offset: number) => {
+    const d = new Date(); d.setDate(d.getDate() + offset)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  const { data: curShiftRes } = useQuery({
+    queryKey: ['lease-current-shifts', leaseId],
+    queryFn: () => vehicleLeasesApi.getShiftAssignments(leaseId, shiftWindowDay(-1), shiftWindowDay(1)),
+    enabled: !!leaseRes?.data?.shiftDuty,
+    refetchInterval: 5 * 60 * 1000,
+  })
 
   const lease = leaseRes?.data
   const assignments = vehiclesRes?.data ?? []
@@ -958,6 +970,23 @@ export default function LeaseDetailPage() {
   const activeSessionMap = new Map<number, LeaseVehicleSession>(
     sessions.filter(s => s.isActive).map(s => [s.assignmentId, s])
   )
+
+  // Shift leases: the shift assignment whose window covers "now" for a given vehicle.
+  const curShiftAssignments = curShiftRes?.data ?? []
+  const currentShiftFor = (assignmentId: number) => {
+    const now = new Date()
+    return curShiftAssignments.find(s => {
+      if (s.assignmentId !== assignmentId) return undefined
+      const [y, mo, d] = s.workDate.split('-').map(Number)
+      const [sh, sm] = s.startTime.split(':').map(Number)
+      const [eh, em] = s.endTime.split(':').map(Number)
+      const start = new Date(y, mo - 1, d, sh, sm)
+      const end = new Date(y, mo - 1, d, eh, em)
+      if (s.endTime <= s.startTime) end.setDate(end.getDate() + 1) // night shift crosses midnight
+      return now >= start && now < end
+    })
+  }
+  const hhmm = (t: string) => t.slice(0, 5)
 
   // Last known odometer: last session's odometerEnd → assignment odometerAtStart → vehicle current odometer
   function lastOdometerFor(a: typeof assignments[0]): number | null {
@@ -1141,6 +1170,7 @@ export default function LeaseDetailPage() {
             <div className="space-y-2">
               {assignments.map(a => {
                 const activeSession = activeSessionMap.get(a.id) ?? null
+                const curShift = lease.shiftDuty ? currentShiftFor(a.id) : undefined
                 return (
                   <div key={a.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3">
 
@@ -1197,7 +1227,36 @@ export default function LeaseDetailPage() {
                             : <span className="text-gray-400 italic">No division</span>
                           }
                         </span>
-                        <span className="flex items-center gap-1">
+                        {lease.shiftDuty ? (
+                          <>
+                            {curShift ? (
+                              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-feros-navy/5 text-feros-navy font-medium">
+                                <Clock size={11} /> Shift {curShift.shiftNumber} ({hhmm(curShift.startTime)}–{hhmm(curShift.endTime)})
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic">No active shift</span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <User size={12} />
+                              {curShift
+                                ? curShift.clientDriver
+                                  ? <span className="text-gray-700">Client's driver</span>
+                                  : <span className="font-medium text-gray-700">{curShift.driverName}</span>
+                                : <span className="text-gray-400 italic">—</span>
+                              }
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <User size={12} className="text-gray-400" />
+                              {curShift && !curShift.clientCleaner && curShift.cleanerName
+                                ? <span className="font-medium text-gray-700">{curShift.cleanerName}</span>
+                                : curShift?.clientCleaner
+                                ? <span className="text-gray-700">Client's cleaner</span>
+                                : <span className="text-gray-400 italic">No cleaner</span>
+                              }
+                            </span>
+                          </>
+                        ) : (
+                        <><span className="flex items-center gap-1">
                           <User size={12} />
                           {(activeSession !== null ? activeSession.driverName : a.driverName)
                             ? <span className="font-medium text-gray-700">{activeSession !== null ? activeSession.driverName : a.driverName}</span>
@@ -1214,7 +1273,8 @@ export default function LeaseDetailPage() {
                             ? <span className="text-gray-700">{a.clientCleanerName}</span>
                             : <span className="text-gray-400 italic">No cleaner</span>
                           }
-                        </span>
+                        </span></>
+                        )}
                         {a.odometerAtStart != null && (
                           <span className="flex items-center gap-1">
                             <Gauge size={12} />
