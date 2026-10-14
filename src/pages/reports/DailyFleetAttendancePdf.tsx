@@ -116,7 +116,7 @@ function FleetAttendanceDoc({ report, rows, filterLabel, tenantName }: Props) {
         {rows.map((row, i) => (
           <View key={i} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
             <Text style={[S.cell, S.colNo]}>{i + 1}</Text>
-            <Text style={[S.cell, S.colVehicle]}>{row.registrationNumber}</Text>
+            <Text style={[S.cell, S.colVehicle]}>{row.isLease ? `${row.registrationNumber} (Lease)` : row.registrationNumber}</Text>
             <Text style={[S.cell, S.colScope]}>{row.scope}</Text>
             <Text style={[S.cell, S.colType]}>{row.vehicleType}</Text>
             <Text style={[S.cell, S.colDriver, row.driverName === '—' ? S.dash : {}]}>{row.driverName}</Text>

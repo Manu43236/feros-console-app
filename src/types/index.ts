@@ -1962,6 +1962,7 @@ export interface DailyFleetAttendanceRow {
   vehicleType: string
   driverName: string
   cleanerName: string
+  isLease: boolean
 }
 
 export interface DailyFleetAttendanceReport {

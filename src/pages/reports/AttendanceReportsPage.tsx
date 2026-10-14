@@ -179,7 +179,10 @@ function DailyFleetTable({ report, filter, loading }: { report: DailyFleetAttend
     headers={['#', 'Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']}
     rows={rows.map((r, i) => [
       <span className="text-gray-400">{i + 1}</span>,
-      <span className="font-medium">{r.registrationNumber}</span>,
+      <span className="font-medium">
+        {r.registrationNumber}
+        {r.isLease && <span className="ml-1.5 px-1.5 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700">Lease</span>}
+      </span>,
       <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{r.scope}</span>,
       dash(r.vehicleType),
       r.driverName === '—'
@@ -339,7 +342,7 @@ export default function AttendanceReportsPage() {
           const label = fleetFilter !== 'all' ? fleetFilter.charAt(0).toUpperCase() + fleetFilter.slice(1) : undefined
           if (format === 'csv') {
             const header = ['#', 'Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']
-            const csvRows = filtered.map((r, i) => [i + 1, r.registrationNumber, r.scope, r.vehicleType ?? '—', r.driverName, r.cleanerName])
+            const csvRows = filtered.map((r, i) => [i + 1, r.isLease ? `${r.registrationNumber} (Lease)` : r.registrationNumber, r.scope, r.vehicleType ?? '—', r.driverName, r.cleanerName])
             const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
             const a = document.createElement('a')
             a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
