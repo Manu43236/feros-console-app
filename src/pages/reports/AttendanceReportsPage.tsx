@@ -187,10 +187,10 @@ function DailyFleetTable({ report, filter, loading }: { report: DailyFleetAttend
       dash(r.vehicleType),
       r.driverName === '—'
         ? <span className="text-gray-300">—</span>
-        : <span className="text-green-700 font-medium">{r.driverName}</span>,
+        : <span className="text-green-700 font-medium whitespace-pre-line">{r.driverName}</span>,
       r.cleanerName === '—'
         ? <span className="text-gray-300">—</span>
-        : <span className="text-teal-700 font-medium">{r.cleanerName}</span>,
+        : <span className="text-teal-700 font-medium whitespace-pre-line">{r.cleanerName}</span>,
     ])}
   />
 }
