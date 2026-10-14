@@ -807,22 +807,52 @@ function LeaseShiftRoster({ leaseId, assignments, shifts, canEdit }: {
   const roster = rosterRes?.data ?? []
   const cellFor = (assignmentId: number, shiftId: number) =>
     roster.find(r => r.assignmentId === assignmentId && r.shiftId === shiftId)
+  const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`
+  const payFor = (assignmentId: number) =>
+    roster.filter(r => r.assignmentId === assignmentId)
+          .reduce((s, r) => s + (r.driverPay ?? 0) + (r.cleanerPay ?? 0), 0)
+  const dayTotal = roster.reduce((s, r) => s + (r.driverPay ?? 0) + (r.cleanerPay ?? 0), 0)
 
   if (shifts.length === 0)
     return <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">No shifts defined on this lease.</div>
 
   return (
     <div className="space-y-4">
+      {/* Shift config — static definition (windows + pay) */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <p className="text-sm font-semibold text-gray-800 mb-3">Shifts ({shifts.length})</p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {shifts.map(s => (
+            <div key={s.id} className="rounded-lg bg-gray-50 border border-gray-100 p-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-feros-navy">Shift {s.shiftNumber}</span>
+                <span className="text-xs text-gray-500">{s.startTime?.slice(0,5)}–{s.endTime?.slice(0,5)}</span>
+              </div>
+              <p className="text-xs text-gray-600 mt-1">
+                Driver {inr(s.driverPay)}{s.cleanerPay != null ? ` · Cleaner ${inr(s.cleanerPay)}` : ''}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="flex items-center gap-3">
         <Label className="text-sm">Work date</Label>
         <Input type="date" value={workDate} onChange={e => setWorkDate(e.target.value)} className="w-44" />
         <p className="text-xs text-gray-500">Night shift (e.g. 21:00–09:00) credits to this date.</p>
+        <span className="ml-auto text-sm font-semibold text-feros-navy">Total: {inr(dayTotal)}</span>
       </div>
       {assignments.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">Add a vehicle first.</div>
       ) : assignments.map(a => (
         <div key={a.id} className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="font-semibold text-gray-800 mb-3">{a.registrationNumber}</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-semibold text-gray-800">{a.registrationNumber}</p>
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              <span>{a.divisionName ? `Division: ${a.divisionName}` : 'No division'}</span>
+              <span className="font-semibold text-feros-navy">{inr(payFor(a.id))}/day</span>
+            </div>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {shifts.map(sh => (
               <ShiftRosterCell key={sh.id} leaseId={leaseId} assignmentId={a.id} shift={sh} workDate={workDate}
@@ -1085,7 +1115,7 @@ export default function LeaseDetailPage() {
       </div>
 
       {/* ── Summary cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${lease.shiftDuty ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}>
         <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-gray-400 mb-2">
             <CalendarDays size={13} />
@@ -1125,6 +1155,19 @@ export default function LeaseDetailPage() {
           <p className="text-sm font-semibold text-gray-800 truncate">{lease.site ?? '—'}</p>
           <p className="text-xs text-gray-400 mt-0.5">location</p>
         </div>
+
+        {lease.shiftDuty && (
+          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-gray-400 mb-2">
+              <Clock size={13} />
+              <span className="text-xs font-medium uppercase tracking-wide">Shifts</span>
+            </div>
+            <p className="text-sm font-semibold text-gray-800">{(lease.shifts ?? []).length} shifts</p>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">
+              {(lease.shifts ?? []).map(s => `S${s.shiftNumber} ${s.startTime?.slice(0,5)}–${s.endTime?.slice(0,5)}`).join(' · ')}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Tabs ── */}
