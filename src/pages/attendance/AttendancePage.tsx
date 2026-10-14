@@ -841,7 +841,10 @@ function PendingApprovalsTab() {
                   <td className="px-5 py-3 whitespace-nowrap"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="rounded" /></td>
                   <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
                   <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
-                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedVehicleNumber ?? '—'}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
+                    {r.assignedVehicleNumber ?? '—'}
+                    {r.shiftLabel && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-feros-navy/5 text-feros-navy font-medium">{r.shiftLabel}</span>}
+                  </td>
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
                   <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                   <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
@@ -942,7 +945,10 @@ function RejectedTab() {
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
                   <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
-                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedVehicleNumber ?? '—'}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
+                    {r.assignedVehicleNumber ?? '—'}
+                    {r.shiftLabel && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-feros-navy/5 text-feros-navy font-medium">{r.shiftLabel}</span>}
+                  </td>
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
                   <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                   <td className="px-5 py-3 text-gray-400 text-xs whitespace-nowrap">{r.markedAt ? format(new Date(r.markedAt), 'dd MMM, hh:mm a') : '—'}</td>
@@ -1400,7 +1406,10 @@ export function AttendancePage() {
                           <tr key={r.id} className="hover:bg-gray-50">
                             <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
-                            <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.assignedVehicleNumber ?? '—'}</td>
+                            <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
+                    {r.assignedVehicleNumber ?? '—'}
+                    {r.shiftLabel && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-feros-navy/5 text-feros-navy font-medium">{r.shiftLabel}</span>}
+                  </td>
                             <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
                             <td className="px-5 py-3 whitespace-nowrap"><ApprovalBadge status={r.approvalStatus} /></td>
                             <td className="px-5 py-3 w-[140px]">{r.locationName && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(r.locationName.trim()) ? <span className="block w-[140px] truncate text-gray-500 text-xs" title={r.locationName}>{r.locationName}</span> : r.latitude != null && r.longitude != null ? <button onClick={() => setMapCoords({ lat: r.latitude!, lng: r.longitude! })} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"><MapPin size={11} />Other</button> : <span className="text-gray-400 text-xs">—</span>}</td>

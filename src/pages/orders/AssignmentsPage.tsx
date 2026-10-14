@@ -46,6 +46,7 @@ interface HistoryRow {
   leaseNumber?: string
   assignmentRefType?: 'VEHICLE_ASSIGNMENT' | 'ORDER_ALLOCATION' | 'LEASE_ASSIGNMENT'
   vehicleRegNumber?: string
+  shiftLabel?: string
   actionByName?: string
   actionAt?: string
 }
@@ -505,6 +506,7 @@ export default function AssignmentsPage() {
       vehicleRegNumber: r.vehicleRegistrationNumber,
       orderNumber: r.orderNumber,
       leaseNumber: r.leaseNumber,
+      shiftLabel: r.shiftLabel,
       assignmentRefType: r.type,
       actionByName: r.actionByName,
       actionAt: r.actionAt,
@@ -950,7 +952,10 @@ export default function AssignmentsPage() {
                           {hTab === 'vehicle' ? (row.orderNumber ?? '—') : (row.subjectRole ?? '—')}
                         </td>
                         {hTab === 'staff' && (
-                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.vehicleRegNumber ?? '—'}</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {row.vehicleRegNumber ?? '—'}
+                            {row.shiftLabel && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-feros-navy/5 text-feros-navy font-medium text-xs">{row.shiftLabel}</span>}
+                          </td>
                         )}
                         {hTab === 'staff' && (
                           <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">

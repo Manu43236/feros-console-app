@@ -707,6 +707,7 @@ export interface StaffAssignmentHistory {
   orderNumber?: string
   type?: 'VEHICLE_ASSIGNMENT' | 'ORDER_ALLOCATION' | 'LEASE_ASSIGNMENT'
   leaseNumber?: string
+  shiftLabel?: string
 }
 
 // ─── Breakdown ────────────────────────────────────────────────────────────────
@@ -866,6 +867,7 @@ export interface Attendance {
   remarks?: string; selfieUrl?: string
   locationName?: string; latitude?: number | null; longitude?: number | null
   assignedVehicleNumber?: string
+  shiftLabel?: string
   approvalStatus: AttendanceApprovalStatus
   approvedById?: number; approvedByName?: string; approvedAt?: string
   createdAt: string; updatedAt: string
