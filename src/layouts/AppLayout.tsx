@@ -640,8 +640,8 @@ export function AppLayout() {
     moduleType === 'EQUIPMENT_ONLY' ||
     (moduleType === 'BOTH' && currentMode === 'EQUIPMENT')
 
-  const smHasEquipment =
-    (moduleType === 'BOTH' || moduleType === 'EQUIPMENT_ONLY') && canAccessEquipment !== false
+  // SM auto-gets equipment when the tenant has it — no per-profile toggle exists for SM.
+  const smHasEquipment = moduleType === 'BOTH' || moduleType === 'EQUIPMENT_ONLY'
   const serviceManagerNav: FlatNav = smHasEquipment
     ? SERVICE_MANAGER_NAV.flatMap(item =>
         item.to === '/vehicle-services'

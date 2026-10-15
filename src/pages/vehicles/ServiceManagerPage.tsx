@@ -297,8 +297,12 @@ export default function ServiceManagerPage() {
   const moduleType = useAuthStore(s => s.moduleType)
   const canAccessVehicles = useAuthStore(s => s.canAccessVehicles)
   const canAccessEquipment = useAuthStore(s => s.canAccessEquipment)
+  const role = useAuthStore(s => s.role)
 
-  const hasEquipment = (moduleType === 'BOTH' || moduleType === 'EQUIPMENT_ONLY') && canAccessEquipment !== false
+  // SM auto-gets equipment when the tenant has it (no per-profile toggle for SM); others respect the flag.
+  const hasEquipment =
+    (moduleType === 'BOTH' || moduleType === 'EQUIPMENT_ONLY') &&
+    (role === 'SERVICE_MANAGER' || canAccessEquipment !== false)
   const hasVehicles = moduleType !== 'EQUIPMENT_ONLY' && canAccessVehicles !== false
   const [asset, setAsset] = useState<'vehicle' | 'equipment'>(hasVehicles ? 'vehicle' : 'equipment')
   const showSwitch = hasVehicles && hasEquipment
