@@ -98,8 +98,8 @@ export function EquipmentServiceManagerPage() {
     onLogService: (b) => setLogService({ equipmentId: b.assetId, currentHmr: machineHmr(b.assetId) }),
     onChanged: invalidate,
     reportBreakdownSlot: (
-      <Button size="sm" onClick={() => setReportOpen(true)} className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white gap-1.5 mb-1">
-        <Plus size={14} /> Report Breakdown
+      <Button size="sm" onClick={() => setReportOpen(true)} className="h-8 text-xs bg-red-600 hover:bg-red-700 text-white">
+        <Plus size={12} className="mr-1" /> Report Breakdown
       </Button>
     ),
   }
