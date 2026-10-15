@@ -11,6 +11,8 @@ import { ServiceBoard } from '@/components/service/ServiceBoard'
 import type { BoardBreakdown, BoardService, ServiceBoardConfig } from '@/components/service/ServiceBoard'
 import { ServiceDialog } from './MachineDetailPage'
 import { ReportBreakdownDialog } from './BreakdownTab'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 function toBoardService(s: EquipmentServiceRecord): BoardService {
   return {
@@ -38,6 +40,8 @@ export function EquipmentServiceManagerPage() {
   const qc = useQueryClient()
   const [reportOpen, setReportOpen] = useState(false)
   const [logService, setLogService] = useState<{ equipmentId: number; currentHmr: number | null } | null>(null)
+  const [pickOpen, setPickOpen] = useState(false)
+  const [pickedId, setPickedId] = useState<number | null>(null)
 
   const { data: machinesRes } = useQuery({ queryKey: ['equipment'], queryFn: equipmentApi.getAll })
   const machines = machinesRes?.data ?? []
@@ -96,6 +100,7 @@ export function EquipmentServiceManagerPage() {
     onRequestPart: (serviceId, taskId, body) => equipmentApi.requestPart(equipmentIdOf(serviceId)!, serviceId, { ...body, taskId }),
     onComplete: (serviceId, body) => equipmentApi.completeService(equipmentIdOf(serviceId)!, serviceId, { completedHmr: body.odometer ?? null, completedDate: body.completedDate }),
     onLogService: (b) => setLogService({ equipmentId: b.assetId, currentHmr: machineHmr(b.assetId) }),
+    onCreateGeneralService: () => { setPickedId(null); setPickOpen(true) },
     onChanged: invalidate,
     reportBreakdownSlot: (
       <Button size="sm" onClick={() => setReportOpen(true)} className="h-8 text-xs bg-red-600 hover:bg-red-700 text-white">
@@ -115,6 +120,27 @@ export function EquipmentServiceManagerPage() {
         onClose={() => setReportOpen(false)}
         machines={machines.map(m => ({ id: m.id, label: `${m.makeName} ${m.modelName}${m.serialNumber ? ` · ${m.serialNumber}` : ''}` }))}
       />
+      {/* Machine picker before opening a new general service */}
+      <Dialog open={pickOpen} onOpenChange={v => !v && setPickOpen(false)}>
+        <DialogContent className="max-w-sm min-h-[300px]">
+          <DialogHeader><DialogTitle>Select Machine</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-1">
+            <SearchableSelect
+              options={machines.map(m => ({ value: String(m.id), label: `${m.makeName} ${m.modelName}${m.serialNumber ? ` · ${m.serialNumber}` : ''}` }))}
+              value={pickedId ? String(pickedId) : ''}
+              onValueChange={val => setPickedId(Number(val))}
+              placeholder="Search machine…"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPickOpen(false)}>Cancel</Button>
+              <Button disabled={!pickedId} onClick={() => { setLogService({ equipmentId: pickedId!, currentHmr: machineHmr(pickedId!) }); setPickOpen(false) }} className="bg-[#1C1400] hover:bg-[#1C1400]/90 text-white">
+                Next
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {logService && (
         <ServiceDialog
           open={!!logService}
