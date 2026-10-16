@@ -167,6 +167,34 @@ export function OrderPdfDocument({ order, companyName }: Props) {
           )}
         </View>
 
+        {/* Materials manifest (multi-material orders) */}
+        {order.isMultiMaterial && (order.items?.length ?? 0) > 0 && (
+          <>
+            <Text style={S.tableTitle}>Materials</Text>
+            <View style={S.table}>
+              <View style={S.thead}>
+                <Text style={[S.th, { flex: 0.5 }]}>#</Text>
+                <Text style={[S.th, { flex: 3 }]}>Material</Text>
+                <Text style={[S.th, { flex: 1.2 }]}>Quantity</Text>
+                <Text style={[S.thLast, { flex: 1.2 }]}>Unit</Text>
+              </View>
+              <View style={S.tbody}>
+                {order.items!.map((it, i) => {
+                  const isLast = i === order.items!.length - 1
+                  return (
+                    <View key={it.id} style={isLast ? S.trLast : S.tr}>
+                      <Text style={[S.td, { flex: 0.5 }]}>{it.lineNo}</Text>
+                      <Text style={[S.tdLeft, { flex: 3 }]}>{it.materialName}</Text>
+                      <Text style={[S.td, { flex: 1.2 }]}>{Number(it.quantity).toLocaleString('en-IN')}</Text>
+                      <Text style={[S.tdLast, { flex: 1.2 }]}>{it.unitName}</Text>
+                    </View>
+                  )
+                })}
+              </View>
+            </View>
+          </>
+        )}
+
         {/* Vehicle Allocations */}
         {allocations.length > 0 && (
           <>

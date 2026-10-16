@@ -17,6 +17,7 @@ import { vehiclesApi } from '@/api/vehicles'
 import { globalMastersApi } from '@/api/masters'
 import { attendanceApi } from '@/api/attendance'
 import type { Attendance } from '@/types'
+import { MaterialManifest, type ManifestItem, manifestToPayload, validateManifest } from './MaterialManifest'
 
 // ── shared constants ──────────────────────────────────────────────────────────
 const MATERIAL_OTHER = 0
@@ -50,6 +51,8 @@ function LiveOrderForm() {
   const [srcState, setSrcState] = useState<number | undefined>()
   const [dstState, setDstState] = useState<number | undefined>()
   const [clientAutoFilled, setClientAutoFilled] = useState(false)
+  const [multi, setMulti] = useState(false)
+  const [items, setItems] = useState<ManifestItem[]>([])
 
   const { data: clientsRes }   = useQuery({ queryKey: ['clients-all'],    queryFn: () => clientsApi.getAll({ size: 1000 }) })
   const { data: materialsRes } = useQuery({ queryKey: ['material-types'], queryFn: globalMastersApi.getMaterialTypes })
@@ -101,7 +104,12 @@ function LiveOrderForm() {
   const mutation = useMutation({
     mutationFn: (data: LiveFormData) => {
       const payload: Record<string, unknown> = { ...data }
-      if (isOtherMaterial) delete payload.materialTypeId
+      if (multi) {
+        payload.isMultiMaterial = true
+        payload.items = manifestToPayload(items)
+        delete payload.materialTypeId
+        delete payload.customMaterialName
+      } else if (isOtherMaterial) delete payload.materialTypeId
       else delete payload.customMaterialName
       return ordersApi.create(payload)
     },
@@ -116,8 +124,16 @@ function LiveOrderForm() {
     },
   })
 
+  function submit(data: LiveFormData) {
+    if (multi) {
+      const err = validateManifest(items)
+      if (err) { toast.error(err); return }
+    }
+    mutation.mutate(data)
+  }
+
   return (
-    <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-6">
+    <form onSubmit={handleSubmit(submit)} className="space-y-6">
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
         <h2 className="font-semibold text-gray-800">Order Details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -132,6 +148,7 @@ function LiveOrderForm() {
             {errors.clientId && <p className="text-red-500 text-xs">{errors.clientId.message}</p>}
           </div>
 
+          {!multi && (
           <div className="space-y-1.5">
             <Label>Material Type *</Label>
             <SearchableSelect
@@ -148,6 +165,7 @@ function LiveOrderForm() {
               <Input {...register('customMaterialName')} placeholder="Type material name…" className="mt-1.5" autoFocus />
             )}
           </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Total Weight (tons) *</Label>
@@ -165,6 +183,13 @@ function LiveOrderForm() {
             <Input type="date" {...register('expectedDeliveryDate')} />
           </div>
         </div>
+
+        <MaterialManifest
+          enabled={multi}
+          onEnabledChange={v => { setMulti(v); if (v) setValue('materialTypeId', MATERIAL_OTHER) }}
+          items={items}
+          onChange={setItems}
+        />
 
         {/* Source */}
         <div className="border-t pt-4">
@@ -335,6 +360,8 @@ function PolOrderForm() {
   const [dstState, setDstState] = useState<number | undefined>()
   const [rows, setRows] = useState<LrRow[]>([emptyRow()])
   const [rowErrors, setRowErrors] = useState<Record<number, Record<string, string>>>({})
+  const [multi, setMulti] = useState(false)
+  const [items, setItems] = useState<ManifestItem[]>([])
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<PolFormData>({
     resolver: zodResolver(polSchema) as Resolver<PolFormData>,
@@ -394,7 +421,10 @@ function PolOrderForm() {
           remarks: r.remarks || undefined,
         })),
       }
-      if (isOtherMaterial) payload.customMaterialName = data.customMaterialName
+      if (multi) {
+        payload.isMultiMaterial = true
+        payload.items = manifestToPayload(items)
+      } else if (isOtherMaterial) payload.customMaterialName = data.customMaterialName
       else payload.materialTypeId = data.materialTypeId
       return ordersApi.createPol(payload)
     },
@@ -426,6 +456,10 @@ function PolOrderForm() {
   }
 
   function onSubmit(data: PolFormData): void {
+    if (multi) {
+      const err = validateManifest(items)
+      if (err) { toast.error(err); return }
+    }
     if (!validateRows()) { toast.error('Fix LR row errors before saving'); return }
     mutation.mutate(data)
   }
@@ -465,6 +499,7 @@ function PolOrderForm() {
             {errors.orderDate && <p className="text-red-500 text-xs">{errors.orderDate.message}</p>}
           </div>
 
+          {!multi && (
           <div className="space-y-1.5">
             <Label>Material Type *</Label>
             <SearchableSelect
@@ -480,6 +515,7 @@ function PolOrderForm() {
               <Input {...register('customMaterialName')} placeholder="Type material name…" className="mt-1.5" />
             )}
           </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Total Weight (tons) *</Label>
@@ -487,6 +523,13 @@ function PolOrderForm() {
             {errors.totalWeight && <p className="text-red-500 text-xs">{errors.totalWeight.message}</p>}
           </div>
         </div>
+
+        <MaterialManifest
+          enabled={multi}
+          onEnabledChange={v => { setMulti(v); if (v) setValue('materialTypeId', MATERIAL_OTHER) }}
+          items={items}
+          onChange={setItems}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-4">
           <div>

@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore'
 import { ordersApi } from '@/api/orders'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi } from '@/api/masters'
+import { MaterialManifest, type ManifestItem, manifestToPayload, validateManifest } from './MaterialManifest'
 import { toast } from 'sonner'
 import { Plus, Search, ArrowRight, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -112,6 +113,8 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
   const [srcState, setSrcState] = useState<number | undefined>(undefined)
   const [dstState, setDstState] = useState<number | undefined>(undefined)
   const [clientAutoFilled, setClientAutoFilled] = useState(false)
+  const [multi, setMulti] = useState(false)
+  const [items, setItems] = useState<ManifestItem[]>([])
 
   const { data: srcCitiesRes } = useQuery({
     queryKey: ['cities', srcState],
@@ -169,10 +172,16 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
       })
       setSrcState(order.sourceStateId)
       setDstState(order.destinationStateId)
+      setMulti(!!order.isMultiMaterial)
+      setItems((order.items ?? []).map(it => ({
+        materialTypeId: it.materialTypeId, customMaterialName: '', quantity: it.quantity, unitId: it.unitId,
+      })))
     } else {
       reset({ freightRateType: 'PER_TON', billingOn: 'LOADED_WEIGHT' })
       setSrcState(undefined)
       setDstState(undefined)
+      setMulti(false)
+      setItems([])
     }
   }, [order?.id, open])
 
@@ -204,11 +213,17 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
   const mutation = useMutation({
     mutationFn: (data: FormData) => {
       const payload: Record<string, unknown> = { ...data }
-      if (isOtherMaterial) {
+      if (multi) {
+        payload.isMultiMaterial = true
+        payload.items = manifestToPayload(items)
+        delete payload.materialTypeId
+        delete payload.customMaterialName
+      } else if (isOtherMaterial) {
         // Send customMaterialName, omit materialTypeId so backend resolves it
         delete payload.materialTypeId
       } else {
         delete payload.customMaterialName
+        payload.isMultiMaterial = false
       }
       return isEdit ? ordersApi.update(order!.id, payload) : ordersApi.create(payload)
     },
@@ -230,7 +245,10 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
           <DialogTitle>{isEdit ? 'Edit Order' : 'New Order'}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
+        <form onSubmit={handleSubmit(d => {
+          if (multi) { const err = validateManifest(items); if (err) { toast.error(err); return } }
+          mutation.mutate(d)
+        })} className="space-y-5 pt-2">
 
           {/* ── Client, Material, Weight, Dates ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -246,6 +264,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               {errors.clientId && <p className="text-red-500 text-xs">{errors.clientId.message}</p>}
             </div>
 
+            {!multi && (
             <div className="space-y-1.5">
               <Label>Material Type *</Label>
               <SearchableSelect
@@ -268,6 +287,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
                 />
               )}
             </div>
+            )}
 
             <div className="space-y-1.5">
               <Label>Total Weight (tons) *</Label>
@@ -285,6 +305,13 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               <Input type="date" {...register('expectedDeliveryDate')} />
             </div>
           </div>
+
+          <MaterialManifest
+            enabled={multi}
+            onEnabledChange={v => { setMulti(v); if (v) setValue('materialTypeId', MATERIAL_OTHER_SENTINEL) }}
+            items={items}
+            onChange={setItems}
+          />
 
           {/* ── Source ── */}
           <div className="border-t pt-4">

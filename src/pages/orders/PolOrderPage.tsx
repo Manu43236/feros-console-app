@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ordersApi } from '@/api/orders'
+import { MaterialManifest, type ManifestItem, manifestToPayload, validateManifest } from './MaterialManifest'
 import { clientsApi } from '@/api/clients'
 import { vehiclesApi } from '@/api/vehicles'
 import { globalMastersApi } from '@/api/masters'
@@ -70,6 +71,8 @@ export default function PolOrderPage() {
   const [rows, setRows] = useState<LrRow[]>([emptyRow()])
   const [rowErrors, setRowErrors] = useState<Record<number, Record<string, string>>>({})
   const [confirmLrId, setConfirmLrId] = useState<number | null>(null)
+  const [multi, setMulti] = useState(false)
+  const [items, setItems] = useState<ManifestItem[]>([])
 
   const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -138,6 +141,11 @@ export default function PolOrderPage() {
       remarks:            order.remarks ?? '',
     })
 
+    setMulti(!!order.isMultiMaterial)
+    setItems((order.items ?? []).map(it => ({
+      materialTypeId: it.materialTypeId, customMaterialName: '', quantity: it.quantity, unitId: it.unitId,
+    })))
+
     // Non-invoiced LRs → editable rows (with their id); invoiced ones shown locked separately
     setRows(lrs.filter(lr => !lr.invoiceId).map(lr => ({
       id:              lr.id,
@@ -201,10 +209,14 @@ export default function PolOrderPage() {
         remarks:            data.remarks,
         lrs: lrRows,
       }
-      if (isOtherMaterial) {
+      if (multi) {
+        payload.isMultiMaterial = true
+        payload.items = manifestToPayload(items)
+      } else if (isOtherMaterial) {
         payload.customMaterialName = data.customMaterialName
       } else {
         payload.materialTypeId = data.materialTypeId
+        payload.isMultiMaterial = false
       }
       return isEdit ? ordersApi.updatePol(editId!, payload) : ordersApi.createPol(payload)
     },
@@ -261,6 +273,7 @@ export default function PolOrderPage() {
   }
 
   function onSubmit(data: FormData): void {
+    if (multi) { const err = validateManifest(items); if (err) { toast.error(err); return } }
     if (rows.length > 0 && !validateRows()) { toast.error('Fix LR row errors before saving'); return }
     mutation.mutate(data)
   }
@@ -315,6 +328,7 @@ export default function PolOrderPage() {
               {errors.orderDate && <p className="text-red-500 text-xs">{errors.orderDate.message}</p>}
             </div>
 
+            {!multi && (
             <div className="space-y-1.5">
               <Label>Material Type *</Label>
               <SearchableSelect
@@ -330,6 +344,7 @@ export default function PolOrderPage() {
                 <Input {...register('customMaterialName')} placeholder="Type material name…" className="mt-1.5" />
               )}
             </div>
+            )}
 
             <div className="space-y-1.5">
               <Label>Total Weight (tons) *</Label>
@@ -337,6 +352,13 @@ export default function PolOrderPage() {
               {errors.totalWeight && <p className="text-red-500 text-xs">{errors.totalWeight.message}</p>}
             </div>
           </div>
+
+          <MaterialManifest
+            enabled={multi}
+            onEnabledChange={v => { setMulti(v); if (v) setValue('materialTypeId', MATERIAL_OTHER) }}
+            items={items}
+            onChange={setItems}
+          />
 
           {/* Source & Destination */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-4">

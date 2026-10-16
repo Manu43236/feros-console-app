@@ -677,7 +677,19 @@ export interface Order {
   specialInstructions?: string; remarks?: string
   vehicleAllocations?: VehicleAllocation[]
   isPol?: boolean
+  isMultiMaterial?: boolean
+  items?: OrderItem[]
   isActive: boolean; createdAt: string; updatedAt: string
+}
+
+export interface OrderItem {
+  id: number
+  lineNo: number
+  materialTypeId: number
+  materialName: string
+  quantity: number
+  unitId: number
+  unitName: string
 }
 
 export interface StaffAllocation {

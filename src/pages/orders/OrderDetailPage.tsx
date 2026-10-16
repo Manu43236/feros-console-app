@@ -1371,6 +1371,38 @@ export function OrderDetailPage() {
         </div>
       </div>
 
+      {/* ── Materials manifest (multi-material orders) ── */}
+      {order.isMultiMaterial && (order.items?.length ?? 0) > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <div className="flex items-center gap-2 text-gray-400 mb-3">
+            <Package size={13} />
+            <span className="text-xs font-medium uppercase tracking-wide">Materials ({order.items!.length})</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-400 border-b">
+                  <th className="py-2 pr-4 font-medium">#</th>
+                  <th className="py-2 pr-4 font-medium">Material</th>
+                  <th className="py-2 pr-4 font-medium">Quantity</th>
+                  <th className="py-2 font-medium">Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.items!.map(it => (
+                  <tr key={it.id} className="border-b last:border-0">
+                    <td className="py-2 pr-4 text-gray-500">{it.lineNo}</td>
+                    <td className="py-2 pr-4 font-medium text-gray-800">{it.materialName}</td>
+                    <td className="py-2 pr-4 text-gray-700">{it.quantity}</td>
+                    <td className="py-2 text-gray-700">{it.unitName}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* ── Money snapshot (opens settlement drawer) ── */}
       <button
         type="button"
