@@ -29,7 +29,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { StatusBadge, PaymentStatusBadge, OrderForm } from './OrdersPage'
 import { cn } from '@/lib/utils'
-import type { OrderPaymentStatus, StaffAllocation, VehicleAllocation } from '@/types'
+import type { StaffAllocation, VehicleAllocation } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { openOrderPdf } from './OrderPdf'
 
@@ -1160,7 +1160,7 @@ export function OrderDetailPage() {
 
   const [assignVehicleOpen, setAssignVehicleOpen]   = useState(false)
   const [editOpen, setEditOpen]                     = useState(false)
-  const [paymentStatusOpen, setPaymentStatusOpen]   = useState(false)
+  const [settlementOpen, setSettlementOpen]         = useState(false)
   const [dlg, setDlg]                               = useState<{ title: string; desc: string; onOk: () => void; confirmLabel?: string } | null>(null)
 
   const { data: res, isLoading } = useQuery({
@@ -1218,7 +1218,6 @@ export function OrderDetailPage() {
   const canAssign   = !['DELIVERED', 'CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const canCancel        = !isSupervisor && ['PENDING', 'PARTIALLY_ASSIGNED'].includes(order.orderStatus)
   const hasBreakdown     = (order.vehicleAllocations ?? []).some(a => a.allocationStatus === 'IN_TRANSIT')
-  const canUpdatePayment = !isSupervisor && !['CANCELLED', 'COMPLETED'].includes(order.orderStatus)
   const canManageSettlement = ['SUPER_ADMIN', 'ADMIN', 'OFFICE_STAFF'].includes(role ?? '') || saSession !== null
   const allocations = order.vehicleAllocations ?? []
   const totalAssigned = allocations.reduce((s, a) => s + Number(a.allocatedWeight), 0)
@@ -1274,16 +1273,14 @@ export function OrderDetailPage() {
                   <X size={14} /> Cancel
                 </Button>
               )}
-              {canUpdatePayment && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPaymentStatusOpen(true)}
-                  className="text-green-300 border-green-400/40 hover:bg-green-500/20 bg-transparent gap-1.5"
-                >
-                  <Receipt size={14} /> Payment
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSettlementOpen(true)}
+                className="text-green-300 border-green-400/40 hover:bg-green-500/20 bg-transparent gap-1.5"
+              >
+                <Wallet size={14} /> Payments
+              </Button>
               {(isSuperAdmin || (!isSupervisor && order.orderStatus === 'PENDING')) && (
                 <Button
                   size="sm"
@@ -1421,9 +1418,6 @@ export function OrderDetailPage() {
         </div>
       </div>
 
-      {/* ── Payments & Settlement ── */}
-      <SettlementCard orderId={order.id} canManage={canManageSettlement} />
-
       {/* ── Extra details ── */}
       {(order.specialInstructions || order.remarks || order.expectedDeliveryDate) && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -1465,12 +1459,11 @@ export function OrderDetailPage() {
         onClose={() => setAssignVehicleOpen(false)}
       />
       <OrderForm open={editOpen} onClose={() => setEditOpen(false)} order={order} />
-      <UpdatePaymentStatusDialog
+      <SettlementDrawer
         orderId={order.id}
-        current={order.orderPaymentStatus}
-        orderStatus={order.orderStatus}
-        open={paymentStatusOpen}
-        onClose={() => setPaymentStatusOpen(false)}
+        canManage={canManageSettlement}
+        open={settlementOpen}
+        onClose={() => setSettlementOpen(false)}
       />
       <ConfirmDialog
         open={!!dlg}
@@ -1481,87 +1474,6 @@ export function OrderDetailPage() {
         onCancel={() => setDlg(null)}
       />
     </div>
-  )
-}
-
-// ── update payment status dialog ──────────────────────────────────────────────
-const DELIVERY_STATUSES = ['PARTIALLY_DELIVERED', 'DELIVERED']
-
-const ALL_PAYMENT_OPTIONS: { value: OrderPaymentStatus; label: string }[] = [
-  { value: 'UNPAID',         label: 'Unpaid' },
-  { value: 'ADVANCE_PAID',   label: 'Advance Paid' },
-  { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
-  { value: 'PAID',           label: 'Paid (will mark order Completed)' },
-]
-
-function UpdatePaymentStatusDialog({ orderId, current, orderStatus, open, onClose }: {
-  orderId: number; current: OrderPaymentStatus; orderStatus: string; open: boolean; onClose: () => void
-}) {
-  const isDelivered = DELIVERY_STATUSES.includes(orderStatus)
-  const options = isDelivered
-    ? ALL_PAYMENT_OPTIONS
-    : ALL_PAYMENT_OPTIONS.filter(o => o.value === 'UNPAID' || o.value === 'ADVANCE_PAID')
-  const qc = useQueryClient()
-  const [selected, setSelected] = useState<OrderPaymentStatus>(current)
-
-  const mutation = useMutation({
-    mutationFn: () => ordersApi.updatePaymentStatus(orderId, selected),
-    onSuccess: () => {
-      toast.success('Payment status updated')
-      qc.invalidateQueries({ queryKey: ['order', orderId] })
-      qc.invalidateQueries({ queryKey: ['orders'] })
-      onClose()
-    },
-    onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to update payment status')
-    },
-  })
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Update Payment Status</DialogTitle></DialogHeader>
-        {!isDelivered && (
-          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-2">
-            Partially Paid / Paid options are available only after delivery.
-          </p>
-        )}
-        <div className="space-y-3 pt-2">
-          {options.map(opt => (
-            <label
-              key={opt.value}
-              className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer transition-colors',
-                selected === opt.value
-                  ? 'border-feros-navy bg-blue-50'
-                  : 'border-gray-100 hover:bg-gray-50'
-              )}
-            >
-              <input
-                type="radio"
-                name="paymentStatus"
-                value={opt.value}
-                checked={selected === opt.value}
-                onChange={() => setSelected(opt.value)}
-                className="accent-feros-navy"
-              />
-              <span className="text-sm font-medium text-gray-800">{opt.label}</span>
-            </label>
-          ))}
-        </div>
-        <div className="flex justify-end gap-3 pt-2 border-t mt-3">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || selected === current}
-            className="bg-feros-navy hover:bg-feros-navy/90 text-white"
-          >
-            {mutation.isPending ? 'Saving…' : 'Save'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -1576,127 +1488,219 @@ const DEDUCTION_REASON_LABELS: Record<DeductionReason, string> = {
 }
 const inr = (n: number) => `₹${Number(n ?? 0).toLocaleString('en-IN')}`
 
-function SettlementCard({ orderId, canManage }: { orderId: number; canManage: boolean }) {
+function SettlementDrawer({ orderId, canManage, open, onClose }: {
+  orderId: number; canManage: boolean; open: boolean; onClose: () => void
+}) {
   const qc = useQueryClient()
-  const [addOpen, setAddOpen] = useState(false)
-  const [delId, setDelId] = useState<number | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [confirmDelId, setConfirmDelId] = useState<number | null>(null)
+
+  // Add-form state (inline, within this drawer)
+  const [type, setType] = useState<OrderPaymentType>('ADVANCE')
+  const [amount, setAmount] = useState('')
+  const [txnDate, setTxnDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('CASH')
+  const [deductionReason, setDeductionReason] = useState<DeductionReason>('FUEL')
+  const [remarks, setRemarks] = useState('')
+
+  function resetForm() {
+    setType('ADVANCE'); setAmount(''); setTxnDate(format(new Date(), 'yyyy-MM-dd'))
+    setPaymentMode('CASH'); setDeductionReason('FUEL'); setRemarks('')
+  }
+  function closeAdd() { resetForm(); setAdding(false) }
 
   const { data: res, isLoading } = useQuery({
     queryKey: ['order-settlement', orderId],
     queryFn:  () => ordersApi.getSettlement(orderId),
+    enabled:  open,
   })
   const s = res?.data
 
-  const delMutation = useMutation({
-    mutationFn: (pid: number) => ordersApi.deletePayment(orderId, pid),
-    onSuccess: () => {
-      toast.success('Entry removed')
-      qc.invalidateQueries({ queryKey: ['order-settlement', orderId] })
-      qc.invalidateQueries({ queryKey: ['order', orderId] })
-      setDelId(null)
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['order-settlement', orderId] })
+    qc.invalidateQueries({ queryKey: ['order', orderId] })
+  }
+
+  const addMutation = useMutation({
+    mutationFn: () => ordersApi.addPayment(orderId, {
+      type,
+      amount: Number(amount),
+      txnDate,
+      paymentMode: type === 'DEDUCTION' ? undefined : paymentMode,
+      deductionReason: type === 'DEDUCTION' ? deductionReason : undefined,
+      remarks: remarks.trim() || undefined,
+    }),
+    onSuccess: () => { toast.success('Entry recorded'); refresh(); closeAdd() },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to record entry')
     },
-    onError: () => { toast.error('Failed to remove entry'); setDelId(null) },
   })
 
+  const delMutation = useMutation({
+    mutationFn: (pid: number) => ordersApi.deletePayment(orderId, pid),
+    onSuccess: () => { toast.success('Entry removed'); refresh(); setConfirmDelId(null) },
+    onError: () => { toast.error('Failed to remove entry'); setConfirmDelId(null) },
+  })
+
+  const valid = amount !== '' && Number(amount) > 0 && !!txnDate
+
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <Wallet size={15} className="text-gray-400" />
-            Payments & Settlement
-          </h2>
-          <p className="text-xs text-gray-400 mt-0.5">Advance, balance payments and client deductions against this order</p>
-        </div>
-        {canManage && (
-          <Button size="sm" onClick={() => setAddOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
-            <Plus size={14} /> Add Entry
-          </Button>
-        )}
-      </div>
+    <Sheet open={open} onOpenChange={v => { if (!v) { closeAdd(); onClose() } }}>
+      <SheetContent className="w-full sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <Wallet size={16} className="text-gray-400" /> Payments & Settlement
+          </SheetTitle>
+        </SheetHeader>
 
-      {isLoading || !s ? (
-        <div className="p-8 text-center text-gray-400"><Spinner /></div>
-      ) : (
-        <div className="p-4 space-y-4">
-          {/* Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <SummaryStat label="Order Value" value={inr(s.orderValue)} />
-            <SummaryStat label="Advance" value={inr(s.totalAdvance)} />
-            <SummaryStat label="Payments" value={inr(s.totalPaid)} />
-            <SummaryStat label="Received" value={inr(s.totalReceived)} />
-            <SummaryStat label="Deductions" value={inr(s.totalDeductions)} />
-            <SummaryStat
-              label="Balance"
-              value={inr(s.balance)}
-              highlight={s.balance <= 0 ? 'ok' : 'due'}
-            />
-          </div>
-
-          {/* Entries */}
-          {s.entries.length === 0 ? (
-            <div className="py-6 text-center text-sm text-gray-400">No entries yet.</div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {isLoading || !s ? (
+            <div className="py-12 text-center text-gray-400"><Spinner /></div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100">
-                    <th className="py-2 pr-3 font-medium">Date</th>
-                    <th className="py-2 pr-3 font-medium">Type</th>
-                    <th className="py-2 pr-3 font-medium">Mode / Reason</th>
-                    <th className="py-2 pr-3 font-medium text-right">Amount</th>
-                    <th className="py-2 pr-3 font-medium">Remarks</th>
-                    <th className="py-2 pr-3 font-medium">By</th>
-                    {canManage && <th className="py-2 w-10" />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {s.entries.map((e: OrderPayment) => (
-                    <tr key={e.id} className="border-b border-gray-50">
-                      <td className="py-2 pr-3 text-gray-600">{fmt(e.txnDate)}</td>
-                      <td className="py-2 pr-3">
-                        <span className={cn('text-xs font-medium px-2 py-0.5 rounded',
-                          e.type === 'DEDUCTION' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700')}>
-                          {PAYMENT_TYPE_LABELS[e.type]}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3 text-gray-600">
-                        {e.type === 'DEDUCTION'
-                          ? (e.deductionReason ? DEDUCTION_REASON_LABELS[e.deductionReason] : '—')
-                          : (e.paymentMode ?? '—')}
-                      </td>
-                      <td className={cn('py-2 pr-3 text-right font-medium',
+            <>
+              {/* Summary */}
+              <div className="grid grid-cols-2 gap-3">
+                <SummaryStat label="Order Value" value={inr(s.orderValue)} />
+                <SummaryStat label="Received" value={inr(s.totalReceived)} />
+                <SummaryStat label="Advance" value={inr(s.totalAdvance)} />
+                <SummaryStat label="Payments" value={inr(s.totalPaid)} />
+                <SummaryStat label="Deductions" value={inr(s.totalDeductions)} />
+                <SummaryStat label="Balance" value={inr(s.balance)} highlight={s.balance <= 0 ? 'ok' : 'due'} />
+              </div>
+
+              {/* Inline add */}
+              {canManage && (adding ? (
+                <div className="rounded-xl border border-gray-200 p-4 space-y-3 bg-gray-50/60">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-800">New Entry</h3>
+                    <button onClick={closeAdd} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Type *</Label>
+                    <SearchableSelect
+                      value={type}
+                      onValueChange={v => setType(v as OrderPaymentType)}
+                      options={(Object.keys(PAYMENT_TYPE_LABELS) as OrderPaymentType[]).map(t => ({ value: t, label: PAYMENT_TYPE_LABELS[t] }))}
+                      placeholder="Select type…"
+                    />
+                    <p className="text-xs text-gray-400">
+                      {type === 'DEDUCTION'
+                        ? 'A client cut (fuel/mamulu/penalty). Closes the balance but is not cash received.'
+                        : type === 'ADVANCE' ? 'Money received upfront, before/while the order runs.'
+                        : 'Balance / settlement received after delivery.'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Amount (₹) *</Label>
+                      <Input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Date *</Label>
+                      <Input type="date" value={txnDate} onChange={e => setTxnDate(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {type === 'DEDUCTION' ? (
+                    <div className="space-y-1.5">
+                      <Label>Deduction Reason *</Label>
+                      <SearchableSelect
+                        value={deductionReason}
+                        onValueChange={v => setDeductionReason(v as DeductionReason)}
+                        options={(Object.keys(DEDUCTION_REASON_LABELS) as DeductionReason[]).map(r => ({ value: r, label: DEDUCTION_REASON_LABELS[r] }))}
+                        placeholder="Select reason…"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Label>Payment Mode *</Label>
+                      <SearchableSelect
+                        value={paymentMode}
+                        onValueChange={v => setPaymentMode(v as PaymentMode)}
+                        options={PAYMENT_MODE_OPTIONS.map(m => ({ value: m, label: m }))}
+                        placeholder="Select mode…"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label>Remarks</Label>
+                    <Input value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Optional note" />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button type="button" variant="outline" size="sm" onClick={closeAdd}>Cancel</Button>
+                    <Button
+                      size="sm"
+                      onClick={() => addMutation.mutate()}
+                      disabled={addMutation.isPending || !valid}
+                      className="bg-feros-navy hover:bg-feros-navy/90 text-white"
+                    >
+                      {addMutation.isPending ? 'Saving…' : 'Save Entry'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button size="sm" onClick={() => setAdding(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 w-full">
+                  <Plus size={14} /> Add Entry
+                </Button>
+              ))}
+
+              {/* Entries */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide">Entries</h3>
+                {s.entries.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-gray-400">No entries yet.</div>
+                ) : (
+                  s.entries.map((e: OrderPayment) => (
+                    <div key={e.id} className="flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={cn('text-xs font-medium px-2 py-0.5 rounded',
+                            e.type === 'DEDUCTION' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700')}>
+                            {PAYMENT_TYPE_LABELS[e.type]}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {e.type === 'DEDUCTION'
+                              ? (e.deductionReason ? DEDUCTION_REASON_LABELS[e.deductionReason] : '—')
+                              : (e.paymentMode ?? '—')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {fmt(e.txnDate)}{e.createdByName ? ` · ${e.createdByName}` : ''}
+                          {e.remarks ? ` · ${e.remarks}` : ''}
+                        </p>
+                      </div>
+                      <span className={cn('text-sm font-semibold whitespace-nowrap',
                         e.type === 'DEDUCTION' ? 'text-orange-600' : 'text-gray-800')}>
                         {e.type === 'DEDUCTION' ? '− ' : ''}{inr(e.amount)}
-                      </td>
-                      <td className="py-2 pr-3 text-gray-500">{e.remarks ?? '—'}</td>
-                      <td className="py-2 pr-3 text-gray-500">{e.createdByName ?? '—'}</td>
+                      </span>
                       {canManage && (
-                        <td className="py-2 text-right">
-                          <button onClick={() => setDelId(e.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                        confirmDelId === e.id ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-500">Remove?</span>
+                            <button onClick={() => delMutation.mutate(e.id)} disabled={delMutation.isPending}
+                              className="text-red-600 hover:text-red-700 text-xs font-medium">Yes</button>
+                            <button onClick={() => setConfirmDelId(null)} className="text-gray-400 hover:text-gray-600 text-xs">No</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setConfirmDelId(e.id)} className="text-gray-300 hover:text-red-500 transition-colors">
                             <Trash2 size={15} />
                           </button>
-                        </td>
+                        )
                       )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
           )}
         </div>
-      )}
-
-      {canManage && <AddPaymentDrawer orderId={orderId} open={addOpen} onClose={() => setAddOpen(false)} />}
-      <ConfirmDialog
-        open={delId !== null}
-        title="Remove entry"
-        description="This will remove the money entry from this order's settlement."
-        confirmLabel="Remove"
-        onConfirm={() => delId !== null && delMutation.mutate(delId)}
-        onCancel={() => setDelId(null)}
-      />
-    </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -1712,119 +1716,5 @@ function SummaryStat({ label, value, highlight }: { label: string; value: string
         {value}
       </p>
     </div>
-  )
-}
-
-function AddPaymentDrawer({ orderId, open, onClose }: { orderId: number; open: boolean; onClose: () => void }) {
-  const qc = useQueryClient()
-  const [type, setType] = useState<OrderPaymentType>('ADVANCE')
-  const [amount, setAmount] = useState('')
-  const [txnDate, setTxnDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('CASH')
-  const [deductionReason, setDeductionReason] = useState<DeductionReason>('FUEL')
-  const [remarks, setRemarks] = useState('')
-
-  function reset() {
-    setType('ADVANCE'); setAmount(''); setTxnDate(format(new Date(), 'yyyy-MM-dd'))
-    setPaymentMode('CASH'); setDeductionReason('FUEL'); setRemarks('')
-  }
-
-  const mutation = useMutation({
-    mutationFn: () => ordersApi.addPayment(orderId, {
-      type,
-      amount: Number(amount),
-      txnDate,
-      paymentMode: type === 'DEDUCTION' ? undefined : paymentMode,
-      deductionReason: type === 'DEDUCTION' ? deductionReason : undefined,
-      remarks: remarks.trim() || undefined,
-    }),
-    onSuccess: () => {
-      toast.success('Entry recorded')
-      qc.invalidateQueries({ queryKey: ['order-settlement', orderId] })
-      qc.invalidateQueries({ queryKey: ['order', orderId] })
-      reset(); onClose()
-    },
-    onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to record entry')
-    },
-  })
-
-  const valid = amount !== '' && Number(amount) > 0 && !!txnDate
-
-  return (
-    <Sheet open={open} onOpenChange={v => { if (!v) { reset(); onClose() } }}>
-      <SheetContent className="w-full sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Add Payment / Deduction</SheetTitle>
-        </SheetHeader>
-
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          <div className="space-y-1.5">
-            <Label>Type *</Label>
-            <SearchableSelect
-              value={type}
-              onValueChange={v => setType(v as OrderPaymentType)}
-              options={(Object.keys(PAYMENT_TYPE_LABELS) as OrderPaymentType[]).map(t => ({ value: t, label: PAYMENT_TYPE_LABELS[t] }))}
-              placeholder="Select type…"
-            />
-            <p className="text-xs text-gray-400">
-              {type === 'DEDUCTION'
-                ? 'A client cut (fuel/mamulu/penalty). Closes the balance but is not cash received.'
-                : type === 'ADVANCE' ? 'Money received upfront, before/while the order runs.'
-                : 'Balance / settlement received after delivery.'}
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Amount (₹) *</Label>
-            <Input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Date *</Label>
-            <Input type="date" value={txnDate} onChange={e => setTxnDate(e.target.value)} />
-          </div>
-
-          {type === 'DEDUCTION' ? (
-            <div className="space-y-1.5">
-              <Label>Deduction Reason *</Label>
-              <SearchableSelect
-                value={deductionReason}
-                onValueChange={v => setDeductionReason(v as DeductionReason)}
-                options={(Object.keys(DEDUCTION_REASON_LABELS) as DeductionReason[]).map(r => ({ value: r, label: DEDUCTION_REASON_LABELS[r] }))}
-                placeholder="Select reason…"
-              />
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <Label>Payment Mode *</Label>
-              <SearchableSelect
-                value={paymentMode}
-                onValueChange={v => setPaymentMode(v as PaymentMode)}
-                options={PAYMENT_MODE_OPTIONS.map(m => ({ value: m, label: m }))}
-                placeholder="Select mode…"
-              />
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label>Remarks</Label>
-            <Input value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Optional note" />
-          </div>
-        </div>
-
-        <div className="shrink-0 border-t px-6 py-4 flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => { reset(); onClose() }}>Cancel</Button>
-          <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !valid}
-            className="bg-feros-navy hover:bg-feros-navy/90 text-white"
-          >
-            {mutation.isPending ? 'Saving…' : 'Save'}
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
   )
 }
