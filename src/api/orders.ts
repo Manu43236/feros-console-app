@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, VehicleAssignmentHistory, Order, OrderPaymentStatus, OrderStatus, PageResponse, VehicleAllocation, StaffAllocation } from '@/types'
+import type { ApiResponse, VehicleAssignmentHistory, Order, OrderPaymentStatus, OrderStatus, PageResponse, VehicleAllocation, StaffAllocation, OrderSettlement, OrderPaymentRequest } from '@/types'
 
 interface AssignVehicleRequest {
   vehicleId: number; allocatedWeight: number
@@ -29,6 +29,9 @@ export const ordersApi = {
   assignStaff:         (id: number, data: AssignStaffRequest)   => apiClient.post<ApiResponse<StaffAllocation>>(`/orders/${id}/assign-staff`, data).then(r => r.data),
   unassignStaff:       (id: number, staffAllocationId: number)  => apiClient.delete<ApiResponse<null>>(`/orders/${id}/staff-allocations/${staffAllocationId}`).then(r => r.data),
   updatePaymentStatus: (id: number, status: OrderPaymentStatus) => apiClient.patch<ApiResponse<Order>>(`/orders/${id}/payment-status`, null, { params: { status } }).then(r => r.data),
+  getSettlement:       (id: number)                             => apiClient.get<ApiResponse<OrderSettlement>>(`/orders/${id}/settlement`).then(r => r.data),
+  addPayment:          (id: number, data: OrderPaymentRequest)  => apiClient.post<ApiResponse<OrderSettlement>>(`/orders/${id}/payments`, data).then(r => r.data),
+  deletePayment:       (id: number, paymentId: number)          => apiClient.delete<ApiResponse<OrderSettlement>>(`/orders/${id}/payments/${paymentId}`).then(r => r.data),
   getVehicleAllocationHistory:     ()                  => apiClient.get<ApiResponse<VehicleAssignmentHistory[]>>('/orders/vehicle-allocation-history').then(r => r.data),
   getVehicleAllocationHistoryByVehicle: (vehicleId: number) => apiClient.get<ApiResponse<VehicleAssignmentHistory[]>>(`/orders/vehicle-allocation-history/vehicle/${vehicleId}`).then(r => r.data),
 }

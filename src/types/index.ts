@@ -640,9 +640,27 @@ export interface VehicleImage {
 
 // ─── Order ────────────────────────────────────────────────────────────────────
 export type OrderStatus = 'PENDING'|'PARTIALLY_ASSIGNED'|'FULLY_ASSIGNED'|'IN_TRANSIT'|'PARTIALLY_DELIVERED'|'DELIVERED'|'CANCELLED'|'COMPLETED'
-export type OrderPaymentStatus = 'UNPAID'|'ADVANCE_PAID'|'PARTIALLY_PAID'|'PAID'
+export type OrderPaymentStatus = 'UNPAID'|'ADVANCE_PAID'|'PARTIALLY_PAID'|'PAID'|'SETTLED'
 export type FreightRateType = 'PER_TON'|'PER_TRIP'|'PER_KM'
 export type BillingOn = 'LOADED_WEIGHT'|'DELIVERED_WEIGHT'
+
+// Order-level settlement ledger (V1 enhancement)
+export type OrderPaymentType = 'ADVANCE'|'PAYMENT'|'DEDUCTION'
+export type DeductionReason = 'FUEL'|'MAMULU'|'PENALTY'|'SHORTAGE'|'MISC'|'OTHER'
+export interface OrderPayment {
+  id: number; type: OrderPaymentType; amount: number; txnDate: string
+  paymentMode?: PaymentMode; deductionReason?: DeductionReason; remarks?: string
+  createdById?: number; createdByName?: string; createdAt?: string
+}
+export interface OrderSettlement {
+  orderId: number; orderNumber: string; orderValue: number
+  totalAdvance: number; totalPaid: number; totalReceived: number; totalDeductions: number
+  balance: number; paymentStatus: OrderPaymentStatus; entries: OrderPayment[]
+}
+export interface OrderPaymentRequest {
+  type: OrderPaymentType; amount: number; txnDate: string
+  paymentMode?: PaymentMode; deductionReason?: DeductionReason; remarks?: string
+}
 
 export interface Order {
   id: number; tenantId: number; orderNumber: string

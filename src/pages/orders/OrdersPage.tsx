@@ -57,6 +57,7 @@ const PAYMENT_STATUS_LABELS: Record<OrderPaymentStatus, string> = {
   ADVANCE_PAID:   'Advance Paid',
   PARTIALLY_PAID: 'Partially Paid',
   PAID:           'Paid',
+  SETTLED:        'Settled',
 }
 
 const PAYMENT_STATUS_COLORS: Record<OrderPaymentStatus, string> = {
@@ -64,6 +65,7 @@ const PAYMENT_STATUS_COLORS: Record<OrderPaymentStatus, string> = {
   ADVANCE_PAID:   'bg-blue-50 text-blue-700 hover:bg-blue-50',
   PARTIALLY_PAID: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-50',
   PAID:           'bg-green-50 text-green-700 hover:bg-green-50',
+  SETTLED:        'bg-emerald-50 text-emerald-700 hover:bg-emerald-50',
 }
 
 export function PaymentStatusBadge({ status }: { status: OrderPaymentStatus }) {

@@ -17,13 +17,14 @@ import {
   ArrowLeft, Truck, Plus, Package, MapPin,
   Scale, Receipt, User, ChevronDown, ChevronUp,
   Pencil, X, RefreshCw, FileText, ExternalLink, ClipboardList,
-  AlertTriangle, CheckCircle, WrenchIcon,
+  AlertTriangle, CheckCircle, WrenchIcon, Wallet, Trash2,
 } from 'lucide-react'
-import type { Breakdown, BreakdownDuration, BreakdownType } from '@/types'
+import type { Breakdown, BreakdownDuration, BreakdownType, OrderPayment, OrderPaymentType, DeductionReason, PaymentMode } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { StatusBadge, PaymentStatusBadge, OrderForm } from './OrdersPage'
@@ -1218,6 +1219,7 @@ export function OrderDetailPage() {
   const canCancel        = !isSupervisor && ['PENDING', 'PARTIALLY_ASSIGNED'].includes(order.orderStatus)
   const hasBreakdown     = (order.vehicleAllocations ?? []).some(a => a.allocationStatus === 'IN_TRANSIT')
   const canUpdatePayment = !isSupervisor && !['CANCELLED', 'COMPLETED'].includes(order.orderStatus)
+  const canManageSettlement = ['SUPER_ADMIN', 'ADMIN', 'OFFICE_STAFF'].includes(role ?? '') || saSession !== null
   const allocations = order.vehicleAllocations ?? []
   const totalAssigned = allocations.reduce((s, a) => s + Number(a.allocatedWeight), 0)
   const remaining   = Number(order.totalWeight) - totalAssigned
@@ -1419,6 +1421,9 @@ export function OrderDetailPage() {
         </div>
       </div>
 
+      {/* ── Payments & Settlement ── */}
+      <SettlementCard orderId={order.id} canManage={canManageSettlement} />
+
       {/* ── Extra details ── */}
       {(order.specialInstructions || order.remarks || order.expectedDeliveryDate) && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -1557,5 +1562,269 @@ function UpdatePaymentStatusDialog({ orderId, current, orderStatus, open, onClos
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ───────────────────────── Order Settlement (V1 enhancement) ─────────────────────────
+
+const PAYMENT_TYPE_LABELS: Record<OrderPaymentType, string> = {
+  ADVANCE: 'Advance', PAYMENT: 'Payment', DEDUCTION: 'Deduction',
+}
+const PAYMENT_MODE_OPTIONS: PaymentMode[] = ['CASH', 'UPI', 'NEFT', 'RTGS', 'CHEQUE', 'OTHER']
+const DEDUCTION_REASON_LABELS: Record<DeductionReason, string> = {
+  FUEL: 'Fuel', MAMULU: 'Mamulu', PENALTY: 'Penalty / Late', SHORTAGE: 'Shortage / Damage', MISC: 'Misc', OTHER: 'Other',
+}
+const inr = (n: number) => `₹${Number(n ?? 0).toLocaleString('en-IN')}`
+
+function SettlementCard({ orderId, canManage }: { orderId: number; canManage: boolean }) {
+  const qc = useQueryClient()
+  const [addOpen, setAddOpen] = useState(false)
+  const [delId, setDelId] = useState<number | null>(null)
+
+  const { data: res, isLoading } = useQuery({
+    queryKey: ['order-settlement', orderId],
+    queryFn:  () => ordersApi.getSettlement(orderId),
+  })
+  const s = res?.data
+
+  const delMutation = useMutation({
+    mutationFn: (pid: number) => ordersApi.deletePayment(orderId, pid),
+    onSuccess: () => {
+      toast.success('Entry removed')
+      qc.invalidateQueries({ queryKey: ['order-settlement', orderId] })
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      setDelId(null)
+    },
+    onError: () => { toast.error('Failed to remove entry'); setDelId(null) },
+  })
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <Wallet size={15} className="text-gray-400" />
+            Payments & Settlement
+          </h2>
+          <p className="text-xs text-gray-400 mt-0.5">Advance, balance payments and client deductions against this order</p>
+        </div>
+        {canManage && (
+          <Button size="sm" onClick={() => setAddOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
+            <Plus size={14} /> Add Entry
+          </Button>
+        )}
+      </div>
+
+      {isLoading || !s ? (
+        <div className="p-8 text-center text-gray-400"><Spinner /></div>
+      ) : (
+        <div className="p-4 space-y-4">
+          {/* Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <SummaryStat label="Order Value" value={inr(s.orderValue)} />
+            <SummaryStat label="Advance" value={inr(s.totalAdvance)} />
+            <SummaryStat label="Payments" value={inr(s.totalPaid)} />
+            <SummaryStat label="Received" value={inr(s.totalReceived)} />
+            <SummaryStat label="Deductions" value={inr(s.totalDeductions)} />
+            <SummaryStat
+              label="Balance"
+              value={inr(s.balance)}
+              highlight={s.balance <= 0 ? 'ok' : 'due'}
+            />
+          </div>
+
+          {/* Entries */}
+          {s.entries.length === 0 ? (
+            <div className="py-6 text-center text-sm text-gray-400">No entries yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100">
+                    <th className="py-2 pr-3 font-medium">Date</th>
+                    <th className="py-2 pr-3 font-medium">Type</th>
+                    <th className="py-2 pr-3 font-medium">Mode / Reason</th>
+                    <th className="py-2 pr-3 font-medium text-right">Amount</th>
+                    <th className="py-2 pr-3 font-medium">Remarks</th>
+                    <th className="py-2 pr-3 font-medium">By</th>
+                    {canManage && <th className="py-2 w-10" />}
+                  </tr>
+                </thead>
+                <tbody>
+                  {s.entries.map((e: OrderPayment) => (
+                    <tr key={e.id} className="border-b border-gray-50">
+                      <td className="py-2 pr-3 text-gray-600">{fmt(e.txnDate)}</td>
+                      <td className="py-2 pr-3">
+                        <span className={cn('text-xs font-medium px-2 py-0.5 rounded',
+                          e.type === 'DEDUCTION' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700')}>
+                          {PAYMENT_TYPE_LABELS[e.type]}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-gray-600">
+                        {e.type === 'DEDUCTION'
+                          ? (e.deductionReason ? DEDUCTION_REASON_LABELS[e.deductionReason] : '—')
+                          : (e.paymentMode ?? '—')}
+                      </td>
+                      <td className={cn('py-2 pr-3 text-right font-medium',
+                        e.type === 'DEDUCTION' ? 'text-orange-600' : 'text-gray-800')}>
+                        {e.type === 'DEDUCTION' ? '− ' : ''}{inr(e.amount)}
+                      </td>
+                      <td className="py-2 pr-3 text-gray-500">{e.remarks ?? '—'}</td>
+                      <td className="py-2 pr-3 text-gray-500">{e.createdByName ?? '—'}</td>
+                      {canManage && (
+                        <td className="py-2 text-right">
+                          <button onClick={() => setDelId(e.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {canManage && <AddPaymentDrawer orderId={orderId} open={addOpen} onClose={() => setAddOpen(false)} />}
+      <ConfirmDialog
+        open={delId !== null}
+        title="Remove entry"
+        description="This will remove the money entry from this order's settlement."
+        confirmLabel="Remove"
+        onConfirm={() => delId !== null && delMutation.mutate(delId)}
+        onCancel={() => setDelId(null)}
+      />
+    </div>
+  )
+}
+
+function SummaryStat({ label, value, highlight }: { label: string; value: string; highlight?: 'ok' | 'due' }) {
+  return (
+    <div className={cn('rounded-lg border p-3',
+      highlight === 'ok' ? 'border-emerald-100 bg-emerald-50'
+        : highlight === 'due' ? 'border-amber-100 bg-amber-50'
+        : 'border-gray-100 bg-gray-50')}>
+      <p className="text-[11px] text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className={cn('text-sm font-semibold mt-0.5',
+        highlight === 'ok' ? 'text-emerald-700' : highlight === 'due' ? 'text-amber-700' : 'text-gray-800')}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function AddPaymentDrawer({ orderId, open, onClose }: { orderId: number; open: boolean; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [type, setType] = useState<OrderPaymentType>('ADVANCE')
+  const [amount, setAmount] = useState('')
+  const [txnDate, setTxnDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('CASH')
+  const [deductionReason, setDeductionReason] = useState<DeductionReason>('FUEL')
+  const [remarks, setRemarks] = useState('')
+
+  function reset() {
+    setType('ADVANCE'); setAmount(''); setTxnDate(format(new Date(), 'yyyy-MM-dd'))
+    setPaymentMode('CASH'); setDeductionReason('FUEL'); setRemarks('')
+  }
+
+  const mutation = useMutation({
+    mutationFn: () => ordersApi.addPayment(orderId, {
+      type,
+      amount: Number(amount),
+      txnDate,
+      paymentMode: type === 'DEDUCTION' ? undefined : paymentMode,
+      deductionReason: type === 'DEDUCTION' ? deductionReason : undefined,
+      remarks: remarks.trim() || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Entry recorded')
+      qc.invalidateQueries({ queryKey: ['order-settlement', orderId] })
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      reset(); onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to record entry')
+    },
+  })
+
+  const valid = amount !== '' && Number(amount) > 0 && !!txnDate
+
+  return (
+    <Sheet open={open} onOpenChange={v => { if (!v) { reset(); onClose() } }}>
+      <SheetContent className="w-full sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Add Payment / Deduction</SheetTitle>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          <div className="space-y-1.5">
+            <Label>Type *</Label>
+            <SearchableSelect
+              value={type}
+              onValueChange={v => setType(v as OrderPaymentType)}
+              options={(Object.keys(PAYMENT_TYPE_LABELS) as OrderPaymentType[]).map(t => ({ value: t, label: PAYMENT_TYPE_LABELS[t] }))}
+              placeholder="Select type…"
+            />
+            <p className="text-xs text-gray-400">
+              {type === 'DEDUCTION'
+                ? 'A client cut (fuel/mamulu/penalty). Closes the balance but is not cash received.'
+                : type === 'ADVANCE' ? 'Money received upfront, before/while the order runs.'
+                : 'Balance / settlement received after delivery.'}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Amount (₹) *</Label>
+            <Input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Date *</Label>
+            <Input type="date" value={txnDate} onChange={e => setTxnDate(e.target.value)} />
+          </div>
+
+          {type === 'DEDUCTION' ? (
+            <div className="space-y-1.5">
+              <Label>Deduction Reason *</Label>
+              <SearchableSelect
+                value={deductionReason}
+                onValueChange={v => setDeductionReason(v as DeductionReason)}
+                options={(Object.keys(DEDUCTION_REASON_LABELS) as DeductionReason[]).map(r => ({ value: r, label: DEDUCTION_REASON_LABELS[r] }))}
+                placeholder="Select reason…"
+              />
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Payment Mode *</Label>
+              <SearchableSelect
+                value={paymentMode}
+                onValueChange={v => setPaymentMode(v as PaymentMode)}
+                options={PAYMENT_MODE_OPTIONS.map(m => ({ value: m, label: m }))}
+                placeholder="Select mode…"
+              />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>Remarks</Label>
+            <Input value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Optional note" />
+          </div>
+        </div>
+
+        <div className="shrink-0 border-t px-6 py-4 flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={() => { reset(); onClose() }}>Cancel</Button>
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || !valid}
+            className="bg-feros-navy hover:bg-feros-navy/90 text-white"
+          >
+            {mutation.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
