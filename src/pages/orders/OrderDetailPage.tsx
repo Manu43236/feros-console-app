@@ -1176,6 +1176,14 @@ export function OrderDetailPage() {
     enabled:  !!orderId,
   })
 
+  // Shares cache with the settlement drawer (same queryKey)
+  const { data: settlementRes } = useQuery({
+    queryKey: ['order-settlement', Number(orderId)],
+    queryFn:  () => ordersApi.getSettlement(Number(orderId)),
+    enabled:  !!orderId,
+  })
+  const settlement = settlementRes?.data
+
   const cancelMutation = useMutation({
     mutationFn: () => ordersApi.cancel(Number(orderId)),
     onSuccess: () => {
@@ -1362,6 +1370,41 @@ export function OrderDetailPage() {
           )}
         </div>
       </div>
+
+      {/* ── Money snapshot (opens settlement drawer) ── */}
+      <button
+        type="button"
+        onClick={() => setSettlementOpen(true)}
+        className="w-full text-left bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:border-feros-navy/30 transition-colors"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-medium uppercase tracking-wide text-gray-400 flex items-center gap-2">
+            <Wallet size={13} /> Payments & Settlement
+          </span>
+          <span className="text-xs text-feros-navy font-medium">View details →</span>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide">Order Value</p>
+            <p className="text-base font-bold text-gray-800">
+              ₹{Number(settlement?.orderValue ?? order.totalFreightAmount ?? 0).toLocaleString('en-IN')}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide">Paid</p>
+            <p className="text-base font-bold text-gray-800">
+              {settlement ? `₹${Number(settlement.totalReceived).toLocaleString('en-IN')}` : '—'}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide">Balance</p>
+            <p className={cn('text-base font-bold',
+              settlement ? (settlement.balance <= 0 ? 'text-emerald-600' : 'text-amber-600') : 'text-gray-800')}>
+              {settlement ? `₹${Number(settlement.balance).toLocaleString('en-IN')}` : '—'}
+            </p>
+          </div>
+        </div>
+      </button>
 
       {/* ── Vehicle Allocations ── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -1596,13 +1639,18 @@ function SettlementDrawer({ orderId, canManage, open, onClose }: {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label>Amount (₹) *</Label>
-                      <Input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
+                      <Input type="number" min="0" step="0.01" max={s.balance} value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Date *</Label>
                       <Input type="date" value={txnDate} onChange={e => setTxnDate(e.target.value)} />
                     </div>
                   </div>
+                  <p className={cn('text-xs', Number(amount) > s.balance ? 'text-red-500' : 'text-gray-400')}>
+                    {Number(amount) > s.balance
+                      ? `Amount exceeds the remaining balance of ${inr(s.balance)}`
+                      : `Remaining balance: ${inr(s.balance)}`}
+                  </p>
 
                   {type === 'DEDUCTION' ? (
                     <div className="space-y-1.5">
@@ -1636,7 +1684,7 @@ function SettlementDrawer({ orderId, canManage, open, onClose }: {
                     <Button
                       size="sm"
                       onClick={() => addMutation.mutate()}
-                      disabled={addMutation.isPending || !valid}
+                      disabled={addMutation.isPending || !valid || Number(amount) > s.balance}
                       className="bg-feros-navy hover:bg-feros-navy/90 text-white"
                     >
                       {addMutation.isPending ? 'Saving…' : 'Save Entry'}
