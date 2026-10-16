@@ -66,18 +66,23 @@ export function MaterialManifest({
 
   return (
     <div className="border-t pt-4">
-      <label className="flex items-center gap-2 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={e => {
-            onEnabledChange(e.target.checked)
-            if (e.target.checked && items.length === 0) onChange([emptyManifestItem()])
-          }}
-          className="h-4 w-4 rounded border-gray-300 text-feros-navy focus:ring-feros-navy"
-        />
+      <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-gray-700">Multiple materials (cargo manifest)</span>
-      </label>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-label="Multiple materials"
+          onClick={() => {
+            const next = !enabled
+            onEnabledChange(next)
+            if (next && items.length === 0) onChange([emptyManifestItem()])
+          }}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-feros-navy focus-visible:ring-offset-2 ${enabled ? 'bg-feros-navy' : 'bg-gray-300'}`}
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </button>
+      </div>
 
       {enabled && (
         <div className="mt-3 space-y-3">
