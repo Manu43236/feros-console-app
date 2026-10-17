@@ -648,7 +648,7 @@ export function OrdersPage() {
                     <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.totalWeight} {o.unitName ?? 'T'}</td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <p className="text-sm text-gray-800">₹{Number(o.freightRate).toLocaleString('en-IN')}</p>
-                      <p className="text-xs text-gray-400">{o.freightRateType.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-gray-400">{o.freightRateType === 'PER_TON' ? `Per ${o.unitName ?? 'Ton'}` : o.freightRateType.replace(/_/g, ' ')}</p>
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <StatusBadge status={o.orderStatus} />

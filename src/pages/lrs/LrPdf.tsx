@@ -141,8 +141,12 @@ export function LrPdfDocument({
     : (lr.deliveredWeight ?? lr.loadedWeight)
   const unit = lr.unitName ?? order?.unitName ?? 'T'
 
+  const rateSuffix = order?.freightRateType === 'PER_TON' ? unit
+    : order?.freightRateType === 'PER_TRIP' ? 'Trip'
+    : order?.freightRateType === 'PER_KM' ? 'KM'
+    : (order?.freightRateType ?? '').replace(/_/g, ' ')
   const rateText = order
-    ? `Rs. ${Number(order.freightRate).toLocaleString('en-IN')} / ${order.freightRateType?.replace(/_/g, ' ')}`
+    ? `Rs. ${Number(order.freightRate).toLocaleString('en-IN')} / ${rateSuffix}`
     : '—'
 
   const consignorCity = order

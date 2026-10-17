@@ -73,8 +73,11 @@ function fmt(d?: string) {
 }
 
 function fmtRate(order: Order) {
-  const type = (order.freightRateType ?? '').replace(/_/g, ' ')
-  return `₹${Number(order.freightRate ?? 0).toLocaleString('en-IN')} / ${type}`
+  const rate = Number(order.freightRate ?? 0).toLocaleString('en-IN')
+  const suffix = order.freightRateType === 'PER_TON' ? (order.unitName ?? 'Ton')
+    : order.freightRateType === 'PER_TRIP' ? 'Trip'
+    : 'KM'
+  return `₹${rate} / ${suffix}`
 }
 
 function statusLabel(s: string) {

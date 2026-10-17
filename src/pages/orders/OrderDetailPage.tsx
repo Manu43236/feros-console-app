@@ -1332,7 +1332,7 @@ export function OrderDetailPage() {
             <span className="text-xs font-medium uppercase tracking-wide">Material</span>
           </div>
           <p className="text-sm font-semibold text-gray-800">{order.materialTypeName}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{order.freightRateType.replace(/_/g, ' ')}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{order.freightRateType === 'PER_TON' ? `Per ${unit}` : order.freightRateType.replace(/_/g, ' ')}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
@@ -1365,7 +1365,7 @@ export function OrderDetailPage() {
           </div>
           <p className="text-sm font-semibold text-gray-800">
             ₹{Number(order.freightRate).toLocaleString('en-IN')}
-            <span className="text-xs font-normal text-gray-400 ml-1">/ {order.freightRateType.replace('PER_', '')}</span>
+            <span className="text-xs font-normal text-gray-400 ml-1">/ {order.freightRateType === 'PER_TON' ? unit : order.freightRateType.replace('PER_', '')}</span>
           </p>
           {order.totalFreightAmount && (
             <p className="text-xs text-gray-400 mt-0.5">Total: ₹{Number(order.totalFreightAmount).toLocaleString('en-IN')}</p>
