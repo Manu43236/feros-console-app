@@ -89,6 +89,7 @@ const schema = z.object({
   materialTypeId:       z.coerce.number().min(0, 'Select material type'),
   customMaterialName:   z.string().optional(),
   totalWeight:          z.coerce.number().positive('Weight must be positive'),
+  unitId:               z.coerce.number().optional(),
   orderDate:            z.string().optional(),
   expectedDeliveryDate: z.string().optional(),
   sourceAddress:        z.string().optional(),
@@ -113,6 +114,9 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
   const { data: clientsRes }   = useQuery({ queryKey: ['clients-all'],        queryFn: () => clientsApi.getAll({ size: 1000 }) })
   const { data: materialsRes } = useQuery({ queryKey: ['material-types'], queryFn: globalMastersApi.getMaterialTypes })
   const { data: statesRes }    = useQuery({ queryKey: ['states'],         queryFn: globalMastersApi.getStates })
+  const { data: unitsRes }     = useQuery({ queryKey: ['units'],          queryFn: globalMastersApi.getUnits })
+  const units  = unitsRes?.data ?? []
+  const tonsId = units.find(u => u.name?.toLowerCase() === 'tons')?.id
 
   const [srcState, setSrcState] = useState<number | undefined>(undefined)
   const [dstState, setDstState] = useState<number | undefined>(undefined)
@@ -163,6 +167,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
         materialTypeId:       order.materialTypeId,
         customMaterialName:   '',
         totalWeight:          order.totalWeight,
+        unitId:               order.unitId,
         orderDate:            order.orderDate?.split('T')[0] ?? '',
         expectedDeliveryDate: order.expectedDeliveryDate?.split('T')[0] ?? '',
         sourceAddress:        order.sourceAddress ?? '',
@@ -219,7 +224,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
   // ── Submit ─────────────────────────────────────────────────────────────────
   const mutation = useMutation({
     mutationFn: (data: FormData) => {
-      const payload: Record<string, unknown> = { ...data }
+      const payload: Record<string, unknown> = { ...data, unitId: data.unitId ?? tonsId }
       if (multi) {
         payload.isMultiMaterial = true
         payload.items = manifestToPayload(items)
@@ -297,9 +302,19 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
             )}
 
             <div className="space-y-1.5">
-              <Label>Total Weight (tons) *</Label>
+              <Label>Quantity *</Label>
               <Input type="number" step="0.01" min="0.01" placeholder="25.00" {...register('totalWeight')} />
               {errors.totalWeight && <p className="text-red-500 text-xs">{errors.totalWeight.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Unit *</Label>
+              <SearchableSelect
+                value={watch('unitId') ? String(watch('unitId')) : (tonsId ? String(tonsId) : '')}
+                onValueChange={v => setValue('unitId', Number(v))}
+                options={units.map(u => ({ value: String(u.id), label: u.name }))}
+                placeholder="Select unit"
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -423,7 +438,7 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
                   value={watchedFreightType ?? 'PER_TON'}
                   onValueChange={v => setValue('freightRateType', v as 'PER_TON' | 'PER_TRIP' | 'PER_KM')}
                   options={[
-                    { value: 'PER_TON', label: 'Per Ton' },
+                    { value: 'PER_TON', label: 'Per Unit' },
                     { value: 'PER_TRIP', label: 'Per Trip' },
                     { value: 'PER_KM', label: 'Per KM' },
                   ]}
@@ -630,7 +645,7 @@ export function OrdersPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.materialTypeName}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.totalWeight} T</td>
+                    <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.totalWeight} {o.unitName ?? 'T'}</td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <p className="text-sm text-gray-800">₹{Number(o.freightRate).toLocaleString('en-IN')}</p>
                       <p className="text-xs text-gray-400">{o.freightRateType.replace(/_/g, ' ')}</p>

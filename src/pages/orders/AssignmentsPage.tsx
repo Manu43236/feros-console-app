@@ -21,7 +21,7 @@ import { format, parseISO } from 'date-fns'
 interface VehicleAssignmentRow {
   orderId: number; orderNumber: string; clientName: string
   allocationId: number; registrationNumber: string
-  allocatedWeight: number; allocationStatus: string
+  allocatedWeight: number; unit: string; allocationStatus: string
   expectedLoadDate?: string; expectedDeliveryDate?: string
   driversCount: number
   assignedByName?: string; assignedAt?: string
@@ -207,7 +207,7 @@ function AddVehicleAssignmentDialog({ open, onClose, orders, vehicles }: {
           )}
 
           <div>
-            <Label>Allocated Weight (tons) <span className="text-red-500">*</span></Label>
+            <Label>Allocated Quantity <span className="text-red-500">*</span></Label>
             <Input
               type="number"
               step="0.01"
@@ -449,6 +449,7 @@ export default function AssignmentsPage() {
         allocationId:       va.id,
         registrationNumber: va.registrationNumber || va.vehicleRegistrationNumber || '—',
         allocatedWeight:    va.allocatedWeight,
+        unit:               o.unitName ?? 'T',
         allocationStatus:   va.allocationStatus,
         expectedLoadDate:   va.expectedLoadDate,
         expectedDeliveryDate: va.expectedDeliveryDate,
@@ -688,7 +689,7 @@ export default function AssignmentsPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     <tr>
-                      {['Order', 'Client', 'Vehicle', 'Weight (T)', 'Load Date', 'Delivery Date', 'Status', 'Drivers', 'Assigned By', 'Assigned At', ''].map(h => (
+                      {['Order', 'Client', 'Vehicle', 'Quantity', 'Load Date', 'Delivery Date', 'Status', 'Drivers', 'Assigned By', 'Assigned At', ''].map(h => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -699,7 +700,7 @@ export default function AssignmentsPage() {
                         <td className="px-4 py-3 font-medium text-feros-navy whitespace-nowrap">{row.orderNumber}</td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{row.clientName}</td>
                         <td className="px-4 py-3 font-medium whitespace-nowrap">{row.registrationNumber}</td>
-                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{row.allocatedWeight}</td>
+                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{row.allocatedWeight} {row.unit}</td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedLoadDate ?? '—'}</td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{row.expectedDeliveryDate ?? '—'}</td>
                         <td className="px-4 py-3 whitespace-nowrap">

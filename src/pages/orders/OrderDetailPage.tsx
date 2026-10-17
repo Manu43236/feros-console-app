@@ -57,8 +57,8 @@ const assignVehicleSchema = z.object({
 })
 type AssignVehicleForm = z.infer<typeof assignVehicleSchema>
 
-function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
-  orderId: number; remainingWeight?: number; open: boolean; onClose: () => void
+function AssignVehicleDialog({ orderId, remainingWeight, open, onClose, unit }: {
+  orderId: number; remainingWeight?: number; open: boolean; onClose: () => void; unit: string
 }) {
   const qc = useQueryClient()
   const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehiclesApi.getAll() })
@@ -111,9 +111,9 @@ function AssignVehicleDialog({ orderId, remainingWeight, open, onClose }: {
 
           <div className="space-y-1.5">
             <Label>
-              Allocated Weight (tons) *
+              Allocated Quantity ({unit}) *
               {remainingWeight !== undefined && (
-                <span className="ml-2 text-xs text-gray-400 font-normal">Remaining: {remainingWeight}T</span>
+                <span className="ml-2 text-xs text-gray-400 font-normal">Remaining: {remainingWeight} {unit}</span>
               )}
             </Label>
             <Input type="number" step="0.01" placeholder="25.00" {...register('allocatedWeight')} />
@@ -256,9 +256,9 @@ const lrFromAllocSchema = z.object({
 type LrFromAllocForm = z.infer<typeof lrFromAllocSchema>
 
 function CreateLrFromAllocationDialog({
-  allocation, orderId, onClose,
+  allocation, orderId, onClose, unit,
 }: {
-  allocation: VehicleAllocation; orderId: number; onClose: () => void
+  allocation: VehicleAllocation; orderId: number; onClose: () => void; unit: string
 }) {
   const navigate = useNavigate()
   const qc       = useQueryClient()
@@ -298,7 +298,7 @@ function CreateLrFromAllocationDialog({
           <DialogTitle>Create LR</DialogTitle>
           <p className="text-sm text-gray-500 mt-1">
             Vehicle: <span className="font-semibold text-gray-800 font-mono">{regNo}</span>
-            <span className="ml-2 text-gray-400">· {allocation.allocatedWeight}T allocated</span>
+            <span className="ml-2 text-gray-400">· {allocation.allocatedWeight} {unit} allocated</span>
           </p>
         </DialogHeader>
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
@@ -308,7 +308,7 @@ function CreateLrFromAllocationDialog({
             {errors.lrDate && <p className="text-red-500 text-xs">{errors.lrDate.message}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label>Loaded Weight (tons)</Label>
+            <Label>Loaded Quantity ({unit})</Label>
             <Input
               type="number" step="0.01" min="0"
               {...register('loadedWeight')}
@@ -802,10 +802,10 @@ function BreakdownBanner({ orderId, breakdown, onReplace, onResolve, onCancel }:
 
 // ── vehicle allocation card ───────────────────────────────────────────────────
 function VehicleAllocationCard({
-  allocation, orderId, canAssign, existingLrId, existingLrInvoiced, existingLrInvoiceNumber,
+  allocation, orderId, canAssign, existingLrId, existingLrInvoiced, existingLrInvoiceNumber, unit,
 }: {
   allocation: VehicleAllocation; orderId: number; canAssign: boolean; existingLrId?: number
-  existingLrInvoiced?: boolean; existingLrInvoiceNumber?: string
+  existingLrInvoiced?: boolean; existingLrInvoiceNumber?: string; unit: string
 }) {
   const navigate  = useNavigate()
   const qc        = useQueryClient()
@@ -902,7 +902,7 @@ function VehicleAllocationCard({
             </span>
           </div>
           <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
-            <span><Scale size={10} className="inline mr-0.5" />{allocation.allocatedWeight}T allocated</span>
+            <span><Scale size={10} className="inline mr-0.5" />{allocation.allocatedWeight} {unit} allocated</span>
             {allocation.expectedLoadDate      && <span>Load: {fmt(allocation.expectedLoadDate)}</span>}
             {allocation.expectedDeliveryDate  && <span>Del: {fmt(allocation.expectedDeliveryDate)}</span>}
           </div>
@@ -1010,6 +1010,7 @@ function VehicleAllocationCard({
           allocation={allocation}
           orderId={orderId}
           onClose={() => setLrDialog(false)}
+          unit={unit}
         />
       )}
       {breakdownDialog && (
@@ -1228,6 +1229,7 @@ export function OrderDetailPage() {
   const hasBreakdown     = (order.vehicleAllocations ?? []).some(a => a.allocationStatus === 'IN_TRANSIT')
   const canManageSettlement = ['SUPER_ADMIN', 'ADMIN', 'OFFICE_STAFF'].includes(role ?? '') || saSession !== null
   const allocations = order.vehicleAllocations ?? []
+  const unit = order.unitName ?? 'T'
   const totalAssigned = allocations.reduce((s, a) => s + Number(a.allocatedWeight), 0)
   const remaining   = Number(order.totalWeight) - totalAssigned
 
@@ -1338,10 +1340,10 @@ export function OrderDetailPage() {
             <Scale size={13} />
             <span className="text-xs font-medium uppercase tracking-wide">Weight</span>
           </div>
-          <p className="text-sm font-semibold text-gray-800">{order.totalWeight} T total</p>
+          <p className="text-sm font-semibold text-gray-800">{order.totalWeight} {order.unitName ?? 'T'} total</p>
           <p className="text-xs mt-0.5">
-            <span className="text-green-600">{totalAssigned}T · {allocations.length} vehicle{allocations.length !== 1 ? 's' : ''}</span>
-            {remaining > 0 && <span className="text-orange-500 ml-1">· {remaining}T left</span>}
+            <span className="text-green-600">{totalAssigned} {unit} · {allocations.length} vehicle{allocations.length !== 1 ? 's' : ''}</span>
+            {remaining > 0 && <span className="text-orange-500 ml-1">· {remaining} {unit} left</span>}
           </p>
         </div>
 
@@ -1483,6 +1485,7 @@ export function OrderDetailPage() {
                 key={a.id}
                 allocation={a}
                 orderId={order.id}
+                unit={unit}
                 canAssign={canAssign}
                 existingLrId={orderLrs.find(lr => lr.vehicleAllocationId === a.id && lr.lrStatus !== 'CANCELLED')?.id}
                 existingLrInvoiced={orderLrs.find(lr => lr.vehicleAllocationId === a.id && lr.lrStatus !== 'CANCELLED')?.invoiceId != null}
@@ -1550,6 +1553,7 @@ export function OrderDetailPage() {
         remainingWeight={remaining > 0 ? remaining : undefined}
         open={assignVehicleOpen}
         onClose={() => setAssignVehicleOpen(false)}
+        unit={unit}
       />
       <OrderForm open={editOpen} onClose={() => setEditOpen(false)} order={order} />
       <SettlementDrawer

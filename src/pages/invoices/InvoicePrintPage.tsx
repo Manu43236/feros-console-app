@@ -64,6 +64,8 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
 
   const totalTrips = lrItems.length
   const totalQty   = lrItems.reduce((s, i) => s + Number(i.billingWeight ?? 0), 0)
+  // Unit label for the quantity columns (invoices are normally one unit); default MT.
+  const unitLabel  = lrItems.find(i => i.unitName)?.unitName ?? 'MT'
 
   // Group summary rows by freight rate (one line per rate)
   const rateGroups = lrItems.reduce<Record<string, { trips: number; qty: number; amount: number; rate: number }>>((acc, item) => {
@@ -207,8 +209,8 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
                     <th style={cell()}>Description Of Goods/Service</th>
                     <th style={cell({ width: 52, textAlign: 'center' })}>Trips</th>
                     <th style={cell({ width: 64, textAlign: 'center' })}>HSN Code</th>
-                    <th style={cell({ width: 90, textAlign: 'right' })}>Quantity(MT)</th>
-                    <th style={cell({ width: 80, textAlign: 'right' })}>Rate/MT</th>
+                    <th style={cell({ width: 90, textAlign: 'right' })}>Quantity({unitLabel})</th>
+                    <th style={cell({ width: 80, textAlign: 'right' })}>Rate/{unitLabel}</th>
                     <th style={cell({ width: 90, textAlign: 'right' })}>Amount in Rs.</th>
                   </tr>
                 </thead>
@@ -362,7 +364,7 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
                 <th style={cell({ width: 90, textAlign: 'center' })}>Trip Date</th>
                 <th style={cell({ width: 100, textAlign: 'center' })}>Vehicle No</th>
                 <th style={cell()}>Material</th>
-                <th style={cell({ width: 90, textAlign: 'right' })}>Net Weight</th>
+                <th style={cell({ width: 90, textAlign: 'right' })}>Net Qty ({unitLabel})</th>
                 <th style={cell({ width: 70, textAlign: 'right' })}>Rate</th>
                 <th style={cell({ width: 90, textAlign: 'right' })}>Bill Amount</th>
               </tr>

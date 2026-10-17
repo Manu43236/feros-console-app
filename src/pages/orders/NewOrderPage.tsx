@@ -33,6 +33,7 @@ const liveSchema = z.object({
   materialTypeId:       z.coerce.number().min(0, 'Select material type'),
   customMaterialName:   z.string().optional(),
   totalWeight:          z.coerce.number().positive('Weight must be positive'),
+  unitId:               z.coerce.number().optional(),
   orderDate:            z.string().optional(),
   expectedDeliveryDate: z.string().optional(),
   sourceAddress:        z.string().optional(),
@@ -61,6 +62,9 @@ function LiveOrderForm() {
   const { data: clientsRes }   = useQuery({ queryKey: ['clients-all'],    queryFn: () => clientsApi.getAll({ size: 1000 }) })
   const { data: materialsRes } = useQuery({ queryKey: ['material-types'], queryFn: globalMastersApi.getMaterialTypes })
   const { data: statesRes }    = useQuery({ queryKey: ['states'],         queryFn: globalMastersApi.getStates })
+  const { data: unitsRes }     = useQuery({ queryKey: ['units'],          queryFn: globalMastersApi.getUnits })
+  const units  = unitsRes?.data ?? []
+  const tonsId = units.find(u => u.name?.toLowerCase() === 'tons')?.id
 
   const { data: srcCitiesRes } = useQuery({
     queryKey: ['cities', srcState],
@@ -107,7 +111,7 @@ function LiveOrderForm() {
 
   const mutation = useMutation({
     mutationFn: (data: LiveFormData) => {
-      const payload: Record<string, unknown> = { ...data }
+      const payload: Record<string, unknown> = { ...data, unitId: data.unitId ?? tonsId }
       if (multi) {
         payload.isMultiMaterial = true
         payload.items = manifestToPayload(items)
@@ -172,9 +176,19 @@ function LiveOrderForm() {
           )}
 
           <div className="space-y-1.5">
-            <Label>Total Weight (tons) *</Label>
+            <Label>Quantity *</Label>
             <Input type="number" step="0.01" min="0.01" placeholder="25.00" {...register('totalWeight')} />
             {errors.totalWeight && <p className="text-red-500 text-xs">{errors.totalWeight.message}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Unit *</Label>
+            <SearchableSelect
+              value={watch('unitId') ? String(watch('unitId')) : (tonsId ? String(tonsId) : '')}
+              onValueChange={v => setValue('unitId', Number(v))}
+              options={units.map(u => ({ value: String(u.id), label: u.name }))}
+              placeholder="Select unit"
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -281,7 +295,7 @@ function LiveOrderForm() {
               <Select value={watchedFreightType ?? 'PER_TON'} onValueChange={v => setValue('freightRateType', v as 'PER_TON' | 'PER_TRIP' | 'PER_KM')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PER_TON">Per Ton</SelectItem>
+                  <SelectItem value="PER_TON">Per Unit</SelectItem>
                   <SelectItem value="PER_TRIP">Per Trip</SelectItem>
                   <SelectItem value="PER_KM">Per KM</SelectItem>
                 </SelectContent>
@@ -340,6 +354,7 @@ const polSchema = z.object({
   materialTypeId:     z.coerce.number().min(0),
   customMaterialName: z.string().optional(),
   totalWeight:        z.coerce.number().positive('Required'),
+  unitId:             z.coerce.number().optional(),
   orderDate:          z.string().min(1, 'Order date is required'),
   sourceAddress:      z.string().optional(),
   sourceStateId:      z.coerce.number().min(1, 'Required'),
@@ -397,6 +412,9 @@ function PolOrderForm() {
   const { data: clientsRes }   = useQuery({ queryKey: ['clients-all'],    queryFn: () => clientsApi.getAll({ size: 1000 }) })
   const { data: materialsRes } = useQuery({ queryKey: ['material-types'], queryFn: globalMastersApi.getMaterialTypes })
   const { data: statesRes }    = useQuery({ queryKey: ['states'],         queryFn: globalMastersApi.getStates })
+  const { data: unitsRes }     = useQuery({ queryKey: ['units'],          queryFn: globalMastersApi.getUnits })
+  const units  = unitsRes?.data ?? []
+  const tonsId = units.find(u => u.name?.toLowerCase() === 'tons')?.id
   const { data: vehiclesRes }  = useQuery({ queryKey: ['vehicles-all'],   queryFn: () => vehiclesApi.getAll() })
   const { data: srcCitiesRes } = useQuery({ queryKey: ['cities', srcState], queryFn: () => globalMastersApi.getCities(srcState), enabled: !!srcState })
   const { data: dstCitiesRes } = useQuery({ queryKey: ['cities', dstState], queryFn: () => globalMastersApi.getCities(dstState), enabled: !!dstState })
@@ -423,6 +441,7 @@ function PolOrderForm() {
     mutationFn: (data: PolFormData) => {
       const payload: Record<string, unknown> = {
         clientId: data.clientId, totalWeight: data.totalWeight, orderDate: data.orderDate,
+        unitId: data.unitId ?? tonsId,
         consignorClientId: data.consignorClientId, consigneeClientId: data.consigneeClientId,
         billingPartyClientId: data.billingPartyClientId,
         sourceAddress: data.sourceAddress, sourceStateId: data.sourceStateId, sourceCityId: data.sourceCityId,
@@ -537,9 +556,19 @@ function PolOrderForm() {
           )}
 
           <div className="space-y-1.5">
-            <Label>Total Weight (tons) *</Label>
+            <Label>Quantity *</Label>
             <Input type="number" step="0.01" min="0.01" placeholder="25.00" {...register('totalWeight')} />
             {errors.totalWeight && <p className="text-red-500 text-xs">{errors.totalWeight.message}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Unit *</Label>
+            <SearchableSelect
+              value={watch('unitId') ? String(watch('unitId')) : (tonsId ? String(tonsId) : '')}
+              onValueChange={v => setValue('unitId', Number(v))}
+              options={units.map(u => ({ value: String(u.id), label: u.name }))}
+              placeholder="Select unit"
+            />
           </div>
         </div>
 
@@ -609,7 +638,7 @@ function PolOrderForm() {
             <Select value={watchedFreightType} onValueChange={v => setValue('freightRateType', v as 'PER_TON' | 'PER_TRIP' | 'PER_KM')}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="PER_TON">Per Ton</SelectItem>
+                <SelectItem value="PER_TON">Per Unit</SelectItem>
                 <SelectItem value="PER_TRIP">Per Trip</SelectItem>
                 <SelectItem value="PER_KM">Per KM</SelectItem>
               </SelectContent>

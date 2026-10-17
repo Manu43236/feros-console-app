@@ -672,6 +672,7 @@ export interface Order {
   billingPartyClientId?: number; billingPartyClientName?: string
   materialTypeId: number; materialTypeName: string
   totalWeight: number; totalWeightFulfilled: number; remainingWeight?: number
+  unitId?: number; unitName?: string
   sourceAddress?: string; sourceCityId: number; sourceCityName: string; sourceStateId: number; sourceStateName: string
   destinationAddress?: string; destinationCityId: number; destinationCityName: string; destinationStateId: number; destinationStateName: string
   routeId?: number; routeName?: string
@@ -781,6 +782,7 @@ export interface Lr {
   vehicleId?: number; vehicleRegistrationNumber: string; vehicleTypeName?: string
   clientId?: number; clientName?: string
   billingClientId?: number; billingClientName?: string
+  unitName?: string
   fromCity?: string; fromState?: string; toCity?: string; toState?: string
   lrDate: string; vehicleCapacity: number; allocatedWeight: number
   loadedWeight?: number; deliveredWeight?: number
@@ -820,6 +822,7 @@ export interface InvoiceLrItem {
   orderId: number; orderNumber: string
   vehicleRegistrationNumber: string
   materialTypeName?: string
+  unitName?: string
   billingWeight?: number; freightRateType?: string; freightRate?: number
   freightAmount: number; chargesAmount: number; checkpostFineAmount: number; totalAmount: number
   remarks?: string; createdAt: string

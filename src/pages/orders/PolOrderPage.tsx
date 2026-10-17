@@ -32,6 +32,7 @@ const schema = z.object({
   materialTypeId:      z.coerce.number().min(0),
   customMaterialName:  z.string().optional(),
   totalWeight:         z.coerce.number().positive('Required'),
+  unitId:              z.coerce.number().optional(),
   orderDate:           z.string().min(1, 'Order date is required'),
   sourceAddress:       z.string().optional(),
   sourceStateId:       z.coerce.number().min(1, 'Required'),
@@ -95,6 +96,9 @@ export default function PolOrderPage() {
   const { data: clientsRes }   = useQuery({ queryKey: ['clients-all'], queryFn: () => clientsApi.getAll({ size: 1000 }) })
   const { data: materialsRes } = useQuery({ queryKey: ['material-types'], queryFn: globalMastersApi.getMaterialTypes })
   const { data: statesRes }    = useQuery({ queryKey: ['states'], queryFn: globalMastersApi.getStates })
+  const { data: unitsRes }     = useQuery({ queryKey: ['units'], queryFn: globalMastersApi.getUnits })
+  const units  = unitsRes?.data ?? []
+  const tonsId = units.find(u => u.name?.toLowerCase() === 'tons')?.id
   const { data: vehiclesRes }  = useQuery({ queryKey: ['vehicles-all'], queryFn: () => vehiclesApi.getAll() })
   const { data: srcCitiesRes } = useQuery({ queryKey: ['cities', srcState], queryFn: () => globalMastersApi.getCities(srcState), enabled: !!srcState })
   const { data: dstCitiesRes } = useQuery({ queryKey: ['cities', dstState], queryFn: () => globalMastersApi.getCities(dstState), enabled: !!dstState })
@@ -135,6 +139,7 @@ export default function PolOrderPage() {
       billingPartyClientId: order.billingPartyClientId,
       materialTypeId:     order.materialTypeId ?? MATERIAL_OTHER,
       totalWeight:        Number(order.totalWeight),
+      unitId:             order.unitId,
       orderDate:          order.orderDate,
       sourceAddress:      order.sourceAddress ?? '',
       sourceStateId:      srcSt,
@@ -206,6 +211,7 @@ export default function PolOrderPage() {
         consigneeClientId:  data.consigneeClientId,
         billingPartyClientId: data.billingPartyClientId,
         totalWeight:        data.totalWeight,
+        unitId:             data.unitId ?? tonsId,
         orderDate:          data.orderDate,
         sourceAddress:      data.sourceAddress,
         sourceStateId:      data.sourceStateId,
@@ -357,9 +363,19 @@ export default function PolOrderPage() {
             )}
 
             <div className="space-y-1.5">
-              <Label>Total Weight (tons) *</Label>
+              <Label>Quantity *</Label>
               <Input type="number" step="0.01" min="0.01" placeholder="25.00" {...register('totalWeight')} />
               {errors.totalWeight && <p className="text-red-500 text-xs">{errors.totalWeight.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Unit *</Label>
+              <SearchableSelect
+                value={watch('unitId') ? String(watch('unitId')) : (tonsId ? String(tonsId) : '')}
+                onValueChange={v => setValue('unitId', Number(v))}
+                options={units.map(u => ({ value: String(u.id), label: u.name }))}
+                placeholder="Select unit"
+              />
             </div>
           </div>
 
@@ -432,7 +448,7 @@ export default function PolOrderPage() {
               <Select value={watchedFreightType} onValueChange={v => setValue('freightRateType', v as 'PER_TON' | 'PER_TRIP' | 'PER_KM')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PER_TON">Per Ton</SelectItem>
+                  <SelectItem value="PER_TON">Per Unit</SelectItem>
                   <SelectItem value="PER_TRIP">Per Trip</SelectItem>
                   <SelectItem value="PER_KM">Per KM</SelectItem>
                 </SelectContent>

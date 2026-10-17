@@ -169,7 +169,7 @@ export function OrderPdfDocument({ order, companyName }: Props) {
             <Text style={S.infoValueSm}>{order.materialTypeName}</Text>
           </View>
           <View style={S.detailBox}>
-            <Text style={S.infoLabel}>Total Weight (MT)</Text>
+            <Text style={S.infoLabel}>Total Quantity ({order.unitName ?? 'MT'})</Text>
             <Text style={S.infoValueSm}>{Number(order.totalWeight).toLocaleString('en-IN')}</Text>
           </View>
           <View style={S.detailBox}>
