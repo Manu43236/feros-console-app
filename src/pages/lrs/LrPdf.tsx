@@ -139,6 +139,7 @@ export function LrPdfDocument({
   const billingWeight = order?.billingOn === 'LOADED_WEIGHT'
     ? lr.loadedWeight
     : (lr.deliveredWeight ?? lr.loadedWeight)
+  const unit = lr.unitName ?? order?.unitName ?? 'T'
 
   const rateText = order
     ? `Rs. ${Number(order.freightRate).toLocaleString('en-IN')} / ${order.freightRateType?.replace(/_/g, ' ')}`
@@ -240,7 +241,7 @@ export function LrPdfDocument({
           <View style={S.th1Row}>
             <Text style={[S.th, { flex: C.pkg }]}>No. of{'\n'}Package</Text>
             <Text style={[S.th, { flex: C.material }]}>Material</Text>
-            <Text style={[S.th, { flex: C.wtActual + C.wtCharged }]}>Weight</Text>
+            <Text style={[S.th, { flex: C.wtActual + C.wtCharged }]}>Quantity ({unit})</Text>
             <Text style={[S.th, { flex: C.rate }]}>Rate</Text>
             <Text style={[S.th, { flex: C.frtRs + C.frtPs }]}>Freight</Text>
             <Text style={[S.thLast, { flex: C.remarks }]}>Remarks</Text>
@@ -265,10 +266,10 @@ export function LrPdfDocument({
               {order?.materialTypeName ?? '—'}
             </Text>
             <Text style={[S.td, { flex: C.wtActual }]}>
-              {lr.loadedWeight != null ? `${lr.loadedWeight} T` : '—'}
+              {lr.loadedWeight != null ? `${lr.loadedWeight} ${unit}` : '—'}
             </Text>
             <Text style={[S.td, { flex: C.wtCharged }]}>
-              {billingWeight != null ? `${billingWeight} T` : '—'}
+              {billingWeight != null ? `${billingWeight} ${unit}` : '—'}
             </Text>
             <Text style={[S.td, { flex: C.rate, fontSize: 7 }]}>{rateText}</Text>
             <Text style={[S.td, { flex: C.frtRs, fontWeight: 'bold' }]}>

@@ -73,8 +73,8 @@ function fmt(d?: string) {
 }
 
 function fmtRate(order: Order) {
-  const type = order.freightRateType.replace(/_/g, ' ')
-  return `₹${order.freightRate.toLocaleString('en-IN')} / ${type}`
+  const type = (order.freightRateType ?? '').replace(/_/g, ' ')
+  return `₹${Number(order.freightRate ?? 0).toLocaleString('en-IN')} / ${type}`
 }
 
 function statusLabel(s: string) {
@@ -122,7 +122,7 @@ export function OrderPdfDocument({ order, companyName }: Props) {
           </View>
           <View style={S.infoBox}>
             <Text style={S.infoLabel}>Billing On</Text>
-            <Text style={S.infoValueSm}>{order.billingOn.replace(/_/g, ' ')}</Text>
+            <Text style={S.infoValueSm}>{order.billingOn?.replace(/_/g, ' ') ?? '—'}</Text>
           </View>
           <View style={S.infoBox}>
             <Text style={S.infoLabel}>Created By</Text>
@@ -130,7 +130,7 @@ export function OrderPdfDocument({ order, companyName }: Props) {
           </View>
         </View>
 
-        {(order.consignorClientName || order.consigneeClientName) && (
+        {!!(order.consignorClientName || order.consigneeClientName) && (
           <View style={[S.infoRow, { marginTop: 6 }]}>
             <View style={S.infoBox}>
               <Text style={S.infoLabel}>Consignor</Text>

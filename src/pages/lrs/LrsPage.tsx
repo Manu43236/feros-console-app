@@ -173,7 +173,7 @@ function CreateLrDialog({ open, onClose }: { open: boolean; onClose: () => void 
           </div>
 
           <div className="space-y-1.5">
-            <Label>Loaded Weight (tons)</Label>
+            <Label>Loaded Quantity</Label>
             <Input type="number" step="0.01" min="0" {...register('loadedWeight')} placeholder="Optional — record now or after loading" />
           </div>
 
@@ -338,9 +338,9 @@ export function LrsPage() {
                         {lr.vehicleRegistrationNumber}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.allocatedWeight}T</td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.loadedWeight != null ? `${lr.loadedWeight}T` : '—'}</td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.deliveredWeight != null ? `${lr.deliveredWeight}T` : '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.allocatedWeight} {lr.unitName ?? 'T'}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.loadedWeight != null ? `${lr.loadedWeight} ${lr.unitName ?? 'T'}` : '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lr.deliveredWeight != null ? `${lr.deliveredWeight} ${lr.unitName ?? 'T'}` : '—'}</td>
                     <td className="px-4 py-3 whitespace-nowrap"><LrStatusBadge status={lr.lrStatus} /></td>
                     <td className="px-4 py-3 whitespace-nowrap"><InvoicedBadge invoiceId={lr.invoiceId} invoiceNumber={lr.invoiceNumber} /></td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{lr.lrDate}</td>

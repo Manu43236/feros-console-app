@@ -60,7 +60,7 @@ const loadSchema = z.object({
 })
 type LoadForm = z.infer<typeof loadSchema>
 
-function RecordLoadingDialog({ lrId, allocatedWeight, open, onClose }: { lrId: number; allocatedWeight?: number; open: boolean; onClose: () => void }) {
+function RecordLoadingDialog({ lrId, allocatedWeight, unit, open, onClose }: { lrId: number; allocatedWeight?: number; unit: string; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const { register, handleSubmit, formState: { errors }, reset } = useForm<LoadForm>({
     resolver: zodResolver(loadSchema) as Resolver<LoadForm>,
@@ -90,8 +90,8 @@ function RecordLoadingDialog({ lrId, allocatedWeight, open, onClose }: { lrId: n
         <DialogHeader><DialogTitle>Record Loading</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label>Loaded Weight (tons) *</Label>
-            <Input type="number" step="0.01" min="0" {...register('loadedWeight')} placeholder="Actual weight loaded on vehicle" autoFocus />
+            <Label>Loaded Quantity ({unit}) *</Label>
+            <Input type="number" step="0.01" min="0" {...register('loadedWeight')} placeholder="Actual quantity loaded on vehicle" autoFocus />
             {errors.loadedWeight && <p className="text-red-500 text-xs">{errors.loadedWeight.message}</p>}
           </div>
           <div className="space-y-1.5">
@@ -120,7 +120,7 @@ const deliverSchema = z.object({
 })
 type DeliverForm = z.infer<typeof deliverSchema>
 
-function MarkDeliveredDialog({ lrId, startOdometer, open, onClose }: { lrId: number; startOdometer?: number; open: boolean; onClose: () => void }) {
+function MarkDeliveredDialog({ lrId, startOdometer, unit, open, onClose }: { lrId: number; startOdometer?: number; unit: string; open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const { register, handleSubmit, formState: { errors }, reset } = useForm<DeliverForm>({
     resolver: zodResolver(deliverSchema) as Resolver<DeliverForm>,
@@ -151,8 +151,8 @@ function MarkDeliveredDialog({ lrId, startOdometer, open, onClose }: { lrId: num
         <DialogHeader><DialogTitle>Mark as Delivered</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label>Delivered Weight (tons) *</Label>
-            <Input type="number" step="0.01" min="0" {...register('deliveredWeight')} placeholder="Actual weight delivered at destination" autoFocus />
+            <Label>Delivered Quantity ({unit}) *</Label>
+            <Input type="number" step="0.01" min="0" {...register('deliveredWeight')} placeholder="Actual quantity delivered at destination" autoFocus />
             {errors.deliveredWeight && <p className="text-red-500 text-xs">{errors.deliveredWeight.message}</p>}
           </div>
           <div className="space-y-1.5">
@@ -448,9 +448,10 @@ function ChargesTab({ lrId, charges, canDelete }: { lrId: number; charges: LrCha
 }
 
 // ─── Edit LR Dialog ────────────────────────────────────────────────────────
-function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, currentDeliveredWeight, currentEwayBillNumber, currentEwayBillDate, currentEwayBillValidUpto, open, onClose, isSuperAdmin }: {
+function EditLrDialog({ lrId, lrStatus, unit, currentRemarks, currentLoadedWeight, currentDeliveredWeight, currentEwayBillNumber, currentEwayBillDate, currentEwayBillValidUpto, open, onClose, isSuperAdmin }: {
   lrId: number
   lrStatus: LrStatus
+  unit: string
   currentRemarks?: string
   currentLoadedWeight?: number
   currentDeliveredWeight?: number
@@ -493,7 +494,7 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
         <div className="space-y-4 pt-2">
           {canEditLoaded && (
             <div>
-              <Label>Correct Loaded Weight (tons)</Label>
+              <Label>Correct Loaded Quantity ({unit})</Label>
               <Input
                 type="number" step="0.01" min="0"
                 value={loadedWeight}
@@ -501,12 +502,12 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
                 placeholder="e.g. 10"
                 className="mt-1"
               />
-              <p className="text-xs text-gray-400 mt-1">Current: {currentLoadedWeight ?? '—'}T</p>
+              <p className="text-xs text-gray-400 mt-1">Current: {currentLoadedWeight ?? '—'} {unit}</p>
             </div>
           )}
           {canEditDelivered && (
             <div>
-              <Label>Correct Delivered Weight (tons)</Label>
+              <Label>Correct Delivered Quantity ({unit})</Label>
               <Input
                 type="number" step="0.01" min="0"
                 value={deliveredWeight}
@@ -514,7 +515,7 @@ function EditLrDialog({ lrId, lrStatus, currentRemarks, currentLoadedWeight, cur
                 placeholder="e.g. 9.5"
                 className="mt-1"
               />
-              <p className="text-xs text-gray-400 mt-1">Current: {currentDeliveredWeight ?? '—'}T · Cannot exceed loaded weight</p>
+              <p className="text-xs text-gray-400 mt-1">Current: {currentDeliveredWeight ?? '—'} {unit} · Cannot exceed loaded quantity</p>
             </div>
           )}
           <div className="border-t pt-3">
@@ -655,6 +656,7 @@ export function LrDetailPage() {
   if (isLoading) return <div className="p-8 text-center text-gray-500"><Spinner /></div>
   if (!lr) return <div className="p-8 text-center text-gray-500">LR not found.</div>
 
+  const unit = lr.unitName ?? 'T'
   const isActive   = isSuperAdmin || (lr.lrStatus !== 'CANCELLED' && lr.lrStatus !== 'DELIVERED')
   const canAdd     = isActive
   const totalFines = checkposts.reduce((s, cp) => s + (cp.fineAmount ?? 0), 0)
@@ -893,26 +895,26 @@ export function LrDetailPage() {
         <StatCard
           icon={<Scale className="h-4 w-4" />}
           label="Allocated"
-          value={`${lr.allocatedWeight}T`}
-          sub="Planned weight"
+          value={`${lr.allocatedWeight} ${unit}`}
+          sub="Planned quantity"
         />
         <StatCard
           icon={<Package className="h-4 w-4" />}
           label="Loaded"
-          value={lr.loadedWeight != null ? `${lr.loadedWeight}T` : '—'}
+          value={lr.loadedWeight != null ? `${lr.loadedWeight} ${unit}` : '—'}
           sub={lr.loadedAt ? `At ${new Date(lr.loadedAt).toLocaleString()}` : lr.loadedWeight != null ? 'Recorded at LR creation' : 'Not yet loaded'}
         />
         <StatCard
           icon={<CheckCircle2 className="h-4 w-4" />}
           label="Delivered"
-          value={lr.deliveredWeight != null ? `${lr.deliveredWeight}T` : '—'}
+          value={lr.deliveredWeight != null ? `${lr.deliveredWeight} ${unit}` : '—'}
           sub={lr.deliveredAt ? `At ${new Date(lr.deliveredAt).toLocaleString()}` : 'Not yet delivered'}
         />
         <StatCard
           icon={<Activity className="h-4 w-4" />}
           label="Variance"
-          value={lr.weightVariance != null ? `${lr.weightVariance > 0 ? '+' : ''}${lr.weightVariance}T` : '—'}
-          sub={lr.isOverloaded ? 'Overloaded' : 'Weight difference'}
+          value={lr.weightVariance != null ? `${lr.weightVariance > 0 ? '+' : ''}${lr.weightVariance} ${unit}` : '—'}
+          sub={lr.isOverloaded ? 'Overloaded' : 'Quantity difference'}
           accent={!!lr.isOverloaded}
         />
       </div>
@@ -1034,11 +1036,11 @@ export function LrDetailPage() {
       </p>
 
       {/* ── Dialogs ── */}
-      <RecordLoadingDialog  lrId={id} allocatedWeight={lr?.allocatedWeight} open={dialog === 'load'}      onClose={() => setDialog(null)} />
-      <MarkDeliveredDialog  lrId={id} startOdometer={lr?.startOdometer} open={dialog === 'deliver'}   onClose={() => setDialog(null)} />
+      <RecordLoadingDialog  lrId={id} allocatedWeight={lr?.allocatedWeight} unit={unit} open={dialog === 'load'}      onClose={() => setDialog(null)} />
+      <MarkDeliveredDialog  lrId={id} startOdometer={lr?.startOdometer} unit={unit} open={dialog === 'deliver'}   onClose={() => setDialog(null)} />
       <AddCheckpostDialog   lrId={id} open={dialog === 'checkpost'} onClose={() => setDialog(null)} />
       <AddChargeDialog      lrId={id} open={dialog === 'charge'}    onClose={() => setDialog(null)} />
-      <EditLrDialog         lrId={id} lrStatus={lr.lrStatus} currentRemarks={lr.remarks} currentLoadedWeight={lr.loadedWeight} currentDeliveredWeight={lr.deliveredWeight} currentEwayBillNumber={lr.ewayBillNumber} currentEwayBillDate={lr.ewayBillDate} currentEwayBillValidUpto={lr.ewayBillValidUpto} open={dialog === 'edit'} onClose={() => setDialog(null)} isSuperAdmin={isSuperAdmin} />
+      <EditLrDialog         lrId={id} lrStatus={lr.lrStatus} unit={unit} currentRemarks={lr.remarks} currentLoadedWeight={lr.loadedWeight} currentDeliveredWeight={lr.deliveredWeight} currentEwayBillNumber={lr.ewayBillNumber} currentEwayBillDate={lr.ewayBillDate} currentEwayBillValidUpto={lr.ewayBillValidUpto} open={dialog === 'edit'} onClose={() => setDialog(null)} isSuperAdmin={isSuperAdmin} />
       <CancelLrDialog       lrId={id} open={dialog === 'cancel'}    onClose={() => setDialog(null)} />
     </div>
   )
