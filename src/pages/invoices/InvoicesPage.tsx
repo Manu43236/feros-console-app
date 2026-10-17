@@ -95,8 +95,10 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   // Intra-state: tenant and client are in the same state
   const isIntraState   = !!(clientId && tenantState && clientState && tenantState === clientState)
 
+  // Group by the LR's billing client (order's billing party, else placing client) — not the
+  // placing client — so a different-payer order (e.g. billed to Client2) invoices correctly.
   const eligibleLrs = allLrs.filter(
-    lr => lr.clientId === clientId && lr.lrStatus === 'DELIVERED' && !invoicedLrIds.has(lr.id)
+    lr => (lr.billingClientId ?? lr.clientId) === clientId && lr.lrStatus === 'DELIVERED' && !invoicedLrIds.has(lr.id)
   )
 
   // Group eligible LRs by order

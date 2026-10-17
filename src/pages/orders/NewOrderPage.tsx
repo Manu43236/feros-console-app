@@ -18,6 +18,7 @@ import { globalMastersApi } from '@/api/masters'
 import { attendanceApi } from '@/api/attendance'
 import type { Attendance } from '@/types'
 import { MaterialManifest, type ManifestItem, manifestToPayload, validateManifest } from './MaterialManifest'
+import { PartyDetails } from './PartyDetails'
 
 // ── shared constants ──────────────────────────────────────────────────────────
 const MATERIAL_OTHER = 0
@@ -26,6 +27,9 @@ const today = new Date().toISOString().split('T')[0]
 // ── Live Order form ───────────────────────────────────────────────────────────
 const liveSchema = z.object({
   clientId:             z.coerce.number().min(1, 'Select a client'),
+  consignorClientId:    z.coerce.number().optional(),
+  consigneeClientId:    z.coerce.number().optional(),
+  billingPartyClientId: z.coerce.number().optional(),
   materialTypeId:       z.coerce.number().min(0, 'Select material type'),
   customMaterialName:   z.string().optional(),
   totalWeight:          z.coerce.number().positive('Weight must be positive'),
@@ -184,6 +188,16 @@ function LiveOrderForm() {
           </div>
         </div>
 
+        <PartyDetails
+          options={(clientsRes?.data?.content ?? []).filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))}
+          consignorClientId={watch('consignorClientId')}
+          consigneeClientId={watch('consigneeClientId')}
+          billingPartyClientId={watch('billingPartyClientId')}
+          onConsignorChange={id => setValue('consignorClientId', id)}
+          onConsigneeChange={id => setValue('consigneeClientId', id)}
+          onBillingPartyChange={id => setValue('billingPartyClientId', id)}
+        />
+
         <MaterialManifest
           enabled={multi}
           onEnabledChange={v => { setMulti(v); if (v) setValue('materialTypeId', MATERIAL_OTHER) }}
@@ -320,6 +334,9 @@ function LiveOrderForm() {
 // ── POL form ──────────────────────────────────────────────────────────────────
 const polSchema = z.object({
   clientId:           z.coerce.number().min(1, 'Select a client'),
+  consignorClientId:  z.coerce.number().optional(),
+  consigneeClientId:  z.coerce.number().optional(),
+  billingPartyClientId: z.coerce.number().optional(),
   materialTypeId:     z.coerce.number().min(0),
   customMaterialName: z.string().optional(),
   totalWeight:        z.coerce.number().positive('Required'),
@@ -406,6 +423,8 @@ function PolOrderForm() {
     mutationFn: (data: PolFormData) => {
       const payload: Record<string, unknown> = {
         clientId: data.clientId, totalWeight: data.totalWeight, orderDate: data.orderDate,
+        consignorClientId: data.consignorClientId, consigneeClientId: data.consigneeClientId,
+        billingPartyClientId: data.billingPartyClientId,
         sourceAddress: data.sourceAddress, sourceStateId: data.sourceStateId, sourceCityId: data.sourceCityId,
         destinationAddress: data.destinationAddress, destinationStateId: data.destinationStateId, destinationCityId: data.destinationCityId,
         freightRateType: data.freightRateType, freightRate: data.freightRate,
@@ -529,6 +548,16 @@ function PolOrderForm() {
           onEnabledChange={v => { setMulti(v); if (v) setValue('materialTypeId', MATERIAL_OTHER) }}
           items={items}
           onChange={setItems}
+        />
+
+        <PartyDetails
+          options={(clientsRes?.data?.content ?? []).filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))}
+          consignorClientId={watch('consignorClientId')}
+          consigneeClientId={watch('consigneeClientId')}
+          billingPartyClientId={watch('billingPartyClientId')}
+          onConsignorChange={id => setValue('consignorClientId', id)}
+          onConsigneeChange={id => setValue('consigneeClientId', id)}
+          onBillingPartyChange={id => setValue('billingPartyClientId', id)}
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-4">

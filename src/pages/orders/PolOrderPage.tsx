@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { ordersApi } from '@/api/orders'
 import { MaterialManifest, type ManifestItem, manifestToPayload, validateManifest } from './MaterialManifest'
+import { PartyDetails } from './PartyDetails'
 import { clientsApi } from '@/api/clients'
 import { vehiclesApi } from '@/api/vehicles'
 import { globalMastersApi } from '@/api/masters'
@@ -25,6 +26,9 @@ const MATERIAL_OTHER = 0
 
 const schema = z.object({
   clientId:            z.coerce.number().min(1, 'Select a client'),
+  consignorClientId:   z.coerce.number().optional(),
+  consigneeClientId:   z.coerce.number().optional(),
+  billingPartyClientId: z.coerce.number().optional(),
   materialTypeId:      z.coerce.number().min(0),
   customMaterialName:  z.string().optional(),
   totalWeight:         z.coerce.number().positive('Required'),
@@ -126,6 +130,9 @@ export default function PolOrderPage() {
 
     reset({
       clientId:           order.clientId,
+      consignorClientId:  order.consignorClientId,
+      consigneeClientId:  order.consigneeClientId,
+      billingPartyClientId: order.billingPartyClientId,
       materialTypeId:     order.materialTypeId ?? MATERIAL_OTHER,
       totalWeight:        Number(order.totalWeight),
       orderDate:          order.orderDate,
@@ -195,6 +202,9 @@ export default function PolOrderPage() {
       }))
       const payload: Record<string, unknown> = {
         clientId:           data.clientId,
+        consignorClientId:  data.consignorClientId,
+        consigneeClientId:  data.consigneeClientId,
+        billingPartyClientId: data.billingPartyClientId,
         totalWeight:        data.totalWeight,
         orderDate:          data.orderDate,
         sourceAddress:      data.sourceAddress,
@@ -352,6 +362,16 @@ export default function PolOrderPage() {
               {errors.totalWeight && <p className="text-red-500 text-xs">{errors.totalWeight.message}</p>}
             </div>
           </div>
+
+          <PartyDetails
+            options={(clientsRes?.data?.content ?? []).filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))}
+            consignorClientId={watch('consignorClientId')}
+            consigneeClientId={watch('consigneeClientId')}
+            billingPartyClientId={watch('billingPartyClientId')}
+            onConsignorChange={id => setValue('consignorClientId', id)}
+            onConsigneeChange={id => setValue('consigneeClientId', id)}
+            onBillingPartyChange={id => setValue('billingPartyClientId', id)}
+          />
 
           <MaterialManifest
             enabled={multi}

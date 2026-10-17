@@ -130,6 +130,23 @@ export function OrderPdfDocument({ order, companyName }: Props) {
           </View>
         </View>
 
+        {(order.consignorClientName || order.consigneeClientName) && (
+          <View style={[S.infoRow, { marginTop: 6 }]}>
+            <View style={S.infoBox}>
+              <Text style={S.infoLabel}>Consignor</Text>
+              <Text style={S.infoValueSm}>{order.consignorClientName ?? '—'}</Text>
+            </View>
+            <View style={S.infoBox}>
+              <Text style={S.infoLabel}>Consignee</Text>
+              <Text style={S.infoValueSm}>{order.consigneeClientName ?? order.clientName}</Text>
+            </View>
+            <View style={S.infoBox}>
+              <Text style={S.infoLabel}>Billing Party</Text>
+              <Text style={S.infoValueSm}>{order.billingPartyClientName ?? order.clientName}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Route */}
         <View style={S.routeRow}>
           <View style={S.routeCity}>

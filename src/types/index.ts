@@ -667,6 +667,9 @@ export interface Order {
   orderDate: string; expectedDeliveryDate?: string
   createdById: number; createdByName: string
   clientId: number; clientName: string
+  consignorClientId?: number; consignorClientName?: string
+  consigneeClientId?: number; consigneeClientName?: string
+  billingPartyClientId?: number; billingPartyClientName?: string
   materialTypeId: number; materialTypeName: string
   totalWeight: number; totalWeightFulfilled: number; remainingWeight?: number
   sourceAddress?: string; sourceCityId: number; sourceCityName: string; sourceStateId: number; sourceStateName: string
@@ -777,6 +780,7 @@ export interface Lr {
   vehicleAllocationId: number
   vehicleId?: number; vehicleRegistrationNumber: string; vehicleTypeName?: string
   clientId?: number; clientName?: string
+  billingClientId?: number; billingClientName?: string
   fromCity?: string; fromState?: string; toCity?: string; toState?: string
   lrDate: string; vehicleCapacity: number; allocatedWeight: number
   loadedWeight?: number; deliveredWeight?: number
@@ -841,6 +845,10 @@ export interface Invoice {
   // Client (for print)
   clientGstin?: string; clientAddress?: string; clientCity?: string
   clientState?: string; clientPincode?: string
+  consignorName?: string; consignorGstin?: string; consignorAddress?: string
+  consignorCity?: string; consignorState?: string; consignorPincode?: string
+  consigneeName?: string; consigneeGstin?: string; consigneeAddress?: string
+  consigneeCity?: string; consigneeState?: string; consigneePincode?: string
   lrItems?: InvoiceLrItem[]
   payments?: InvoicePayment[]
   createdById: number; createdByName: string

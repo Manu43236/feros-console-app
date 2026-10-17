@@ -97,6 +97,14 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
     [invoice.clientState, invoice.clientPincode].filter(Boolean).join(' - ')
   ].filter(Boolean).join(', ')
 
+  const consignorAddr = [invoice.consignorAddress, invoice.consignorCity,
+    [invoice.consignorState, invoice.consignorPincode].filter(Boolean).join(' - ')
+  ].filter(Boolean).join(', ')
+
+  const consigneeAddr = [invoice.consigneeAddress, invoice.consigneeCity,
+    [invoice.consigneeState, invoice.consigneePincode].filter(Boolean).join(' - ')
+  ].filter(Boolean).join(', ')
+
   // Description: tenant master description or fallback (remarks are shown separately above the table)
   const description = invoice.tenantInvoiceDescription || 'Goods Transportation Services'
 
@@ -161,6 +169,24 @@ export function InvoiceDocument({ invoice }: { invoice: import('@/types').Invoic
               </table>
             </td>
           </tr>
+
+          {/* ── Consignor / Consignee (shown when uniform across the invoice's LRs) ── */}
+          {(invoice.consignorName || invoice.consigneeName) && (
+            <tr>
+              <td style={{ ...cell(), width: '50%', verticalAlign: 'top', borderRight: B, borderBottom: B, padding: '6px 8px' }}>
+                <div style={{ fontWeight: 700, marginBottom: 3 }}>CONSIGNOR (SENDER):</div>
+                <div style={{ fontWeight: 700, textTransform: 'uppercase' }}>{invoice.consignorName ?? '—'}</div>
+                {consignorAddr && <div style={{ marginTop: 2 }}>{consignorAddr}</div>}
+                {invoice.consignorGstin && <div style={{ marginTop: 2 }}><strong>GST NO: </strong>{invoice.consignorGstin}</div>}
+              </td>
+              <td style={{ ...cell(), width: '50%', verticalAlign: 'top', borderBottom: B, padding: '6px 8px' }}>
+                <div style={{ fontWeight: 700, marginBottom: 3 }}>CONSIGNEE (RECEIVER):</div>
+                <div style={{ fontWeight: 700, textTransform: 'uppercase' }}>{invoice.consigneeName ?? '—'}</div>
+                {consigneeAddr && <div style={{ marginTop: 2 }}>{consigneeAddr}</div>}
+                {invoice.consigneeGstin && <div style={{ marginTop: 2 }}><strong>GST NO: </strong>{invoice.consigneeGstin}</div>}
+              </td>
+            </tr>
+          )}
 
           {/* ── Remarks ── */}
           {invoice.remarks && (

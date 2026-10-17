@@ -11,6 +11,7 @@ import { ordersApi } from '@/api/orders'
 import { clientsApi } from '@/api/clients'
 import { globalMastersApi } from '@/api/masters'
 import { MaterialManifest, type ManifestItem, manifestToPayload, validateManifest } from './MaterialManifest'
+import { PartyDetails } from './PartyDetails'
 import { toast } from 'sonner'
 import { Plus, Search, ArrowRight, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -82,6 +83,9 @@ const MATERIAL_OTHER_SENTINEL = 0   // synthetic "Other" value
 
 const schema = z.object({
   clientId:             z.coerce.number().min(1, 'Select a client'),
+  consignorClientId:    z.coerce.number().optional(),
+  consigneeClientId:    z.coerce.number().optional(),
+  billingPartyClientId: z.coerce.number().optional(),
   materialTypeId:       z.coerce.number().min(0, 'Select material type'),
   customMaterialName:   z.string().optional(),
   totalWeight:          z.coerce.number().positive('Weight must be positive'),
@@ -153,6 +157,9 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
     if (order) {
       reset({
         clientId:             order.clientId,
+        consignorClientId:    order.consignorClientId,
+        consigneeClientId:    order.consigneeClientId,
+        billingPartyClientId: order.billingPartyClientId,
         materialTypeId:       order.materialTypeId,
         customMaterialName:   '',
         totalWeight:          order.totalWeight,
@@ -305,6 +312,16 @@ export function OrderForm({ open, onClose, order }: { open: boolean; onClose: ()
               <Input type="date" {...register('expectedDeliveryDate')} />
             </div>
           </div>
+
+          <PartyDetails
+            options={(clientsRes?.data?.content ?? []).filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))}
+            consignorClientId={watch('consignorClientId')}
+            consigneeClientId={watch('consigneeClientId')}
+            billingPartyClientId={watch('billingPartyClientId')}
+            onConsignorChange={id => setValue('consignorClientId', id)}
+            onConsigneeChange={id => setValue('consigneeClientId', id)}
+            onBillingPartyChange={id => setValue('billingPartyClientId', id)}
+          />
 
           <MaterialManifest
             enabled={multi}

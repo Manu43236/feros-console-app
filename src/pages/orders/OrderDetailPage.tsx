@@ -1510,6 +1510,24 @@ export function OrderDetailPage() {
               <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Route</p>
               <p className="font-medium text-gray-800">{order.routeName ?? '—'}</p>
             </div>
+            {order.consignorClientName && (
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Consignor</p>
+                <p className="font-medium text-gray-800">{order.consignorClientName}</p>
+              </div>
+            )}
+            {order.consigneeClientName && (
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Consignee</p>
+                <p className="font-medium text-gray-800">{order.consigneeClientName}</p>
+              </div>
+            )}
+            {order.billingPartyClientName && order.billingPartyClientId !== order.clientId && (
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Billing Party</p>
+                <p className="font-medium text-gray-800">{order.billingPartyClientName}</p>
+              </div>
+            )}
             {order.specialInstructions && (
               <div className="sm:col-span-3">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Special Instructions</p>
