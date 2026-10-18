@@ -512,6 +512,7 @@ export function OrdersPage() {
   const [statusFilter, setStatus]   = useState<OrderStatus | 'ALL'>(
     (searchParams.get('status') as OrderStatus) || 'ALL'
   )
+  const [view, setView]             = useState<'ALL' | 'LIVE' | 'POL'>('ALL')
   const [page, setPage]             = useState(0)
 
   // Debounce search input
@@ -520,14 +521,16 @@ export function OrdersPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  // Reset page when status changes
-  useEffect(() => { setPage(0) }, [statusFilter])
+  // Reset page when status / view changes
+  useEffect(() => { setPage(0) }, [statusFilter, view])
 
   const queryParams = {
     page,
     size: PAGE_SIZE,
     search: debouncedSearch || undefined,
     status: (statusFilter === 'ALL' ? undefined : statusFilter) as OrderStatus | undefined,
+    live: view === 'LIVE' ? true : undefined,
+    isPol: view === 'POL' ? true : undefined,
   }
 
   const { data: res, isLoading } = useQuery({
@@ -576,6 +579,16 @@ export function OrdersPage() {
           ]}
           className="h-10 w-48"
         />
+        <SearchableSelect
+          value={view}
+          onValueChange={v => setView(v as 'ALL' | 'LIVE' | 'POL')}
+          options={[
+            { value: 'ALL',  label: 'All Orders' },
+            { value: 'LIVE', label: 'Live Orders' },
+            { value: 'POL',  label: 'POLs' },
+          ]}
+          className="h-10 w-44"
+        />
       </div>
 
       {/* Table */}
@@ -597,7 +610,7 @@ export function OrdersPage() {
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-3">
             <Package size={36} className="text-gray-200" />
             <p className="text-sm">
-              {search || statusFilter !== 'ALL'
+              {search || statusFilter !== 'ALL' || view !== 'ALL'
                 ? 'No orders match your filters'
                 : 'No orders yet. Create your first order.'}
             </p>
@@ -623,7 +636,7 @@ export function OrdersPage() {
                 {orders.map(o => (
                   <tr
                     key={o.id}
-                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer"
+                    className={`border-b border-gray-50 last:border-0 transition-colors cursor-pointer ${o.isPol ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}`}
                     onClick={() => navigate(`/orders/${o.id}`)}
                   >
                     <td className="py-3 px-4 whitespace-nowrap">

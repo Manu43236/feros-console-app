@@ -13,6 +13,7 @@ interface AssignStaffRequest {
 
 export interface OrdersParams {
   page?: number; size?: number; search?: string; status?: OrderStatus | ''
+  live?: boolean; isPol?: boolean
 }
 
 export const ordersApi = {
