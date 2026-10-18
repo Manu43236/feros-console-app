@@ -331,7 +331,7 @@ function OrderSummaryTab() {
               { label: 'Client',           value: order.clientName },
               { label: 'Payment',          value: <StatusBadge status={order.orderPaymentStatus} colorMap={PAYMENT_COLORS} /> },
               { label: 'Material',         value: order.materialTypeName },
-              { label: 'Total Weight',     value: `${order.totalWeight} MT` },
+              { label: 'Total Quantity',   value: `${order.totalWeight} ${order.unitName ?? 'MT'}` },
               { label: 'Order Date',       value: order.orderDate },
               { label: 'Exp. Delivery',    value: order.expectedDeliveryDate ?? '—' },
             ].map(({ label, value }) => (
@@ -393,7 +393,7 @@ function OrderSummaryTab() {
                       )}
                     </div>
                     <span className="text-xs text-gray-500 bg-slate-100 px-2 py-1 rounded-md">
-                      {alloc.allocatedWeight} MT allocated
+                      {alloc.allocatedWeight} {order.unitName ?? 'MT'} allocated
                     </span>
                   </div>
 

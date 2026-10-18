@@ -159,8 +159,8 @@ function OrderSummaryDoc({ order, lrs }: { order: Order; lrs: Lr[] }) {
             <Text style={S.hValueSm}>{order.materialTypeName}</Text>
           </View>
           <View style={S.headerBox}>
-            <Text style={S.hLabel}>Total Weight</Text>
-            <Text style={S.hValueSm}>{order.totalWeight} MT</Text>
+            <Text style={S.hLabel}>Total Quantity</Text>
+            <Text style={S.hValueSm}>{order.totalWeight} {order.unitName ?? 'MT'}</Text>
           </View>
           <View style={S.headerBox}>
             <Text style={S.hLabel}>Expected Delivery</Text>
@@ -210,7 +210,7 @@ function OrderSummaryDoc({ order, lrs }: { order: Order; lrs: Lr[] }) {
                 )}
                 <View style={{ flex: 1 }} />
                 <Text style={{ fontSize: 7, color: '#555' }}>
-                  Alloc. Weight: {alloc.allocatedWeight} MT
+                  Alloc. Weight: {alloc.allocatedWeight} {order.unitName ?? 'MT'}
                 </Text>
               </View>
 
