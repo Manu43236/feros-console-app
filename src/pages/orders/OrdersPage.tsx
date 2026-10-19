@@ -23,6 +23,7 @@ import type { Order, OrderStatus, OrderPaymentStatus } from '@/types'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { AllocationBreakdown } from '@/components/shared/AllocationBreakdown'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -618,6 +619,7 @@ export function OrdersPage() {
           </div>
         ) : (
           <div className="overflow-auto max-h-[calc(100vh-18rem)]">
+            <TooltipProvider delayDuration={200}>
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>
@@ -654,7 +656,22 @@ export function OrdersPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
-                      <AllocationBreakdown summary={o.allocationSummary} compact />
+                      {o.allocationSummary && o.allocationSummary.total > 0 ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-sm font-medium text-gray-800 underline decoration-dotted decoration-gray-300 underline-offset-4 cursor-default">
+                              {o.vehicleAllocations?.length ?? 0}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-white border-gray-200">
+                            <AllocationBreakdown summary={o.allocationSummary} />
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-sm font-medium text-gray-800">
+                          {o.vehicleAllocations?.length ?? 0}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.materialTypeName}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.totalWeight} {o.unitName ?? 'T'}</td>
@@ -677,6 +694,7 @@ export function OrdersPage() {
                 ))}
               </tbody>
             </table>
+            </TooltipProvider>
           </div>
         )}
       </div>
