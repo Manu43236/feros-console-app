@@ -5,7 +5,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Download, ClipboardPaste } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +19,7 @@ import { attendanceApi } from '@/api/attendance'
 import type { Attendance } from '@/types'
 import { MaterialManifest, type ManifestItem, manifestToPayload, validateManifest } from './MaterialManifest'
 import { PartyDetails } from './PartyDetails'
+import { parsePastedLrs, buildTemplateCsv, LR_COLUMNS } from './parsePastedLrs'
 
 // ── shared constants ──────────────────────────────────────────────────────────
 const MATERIAL_OTHER = 0
@@ -394,6 +395,8 @@ function PolOrderForm() {
   const [rowErrors, setRowErrors] = useState<Record<number, Record<string, string>>>({})
   const [multi, setMulti] = useState(false)
   const [items, setItems] = useState<ManifestItem[]>([])
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasteText, setPasteText] = useState('')
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<PolFormData>({
     resolver: zodResolver(polSchema) as Resolver<PolFormData>,
@@ -510,6 +513,30 @@ function PolOrderForm() {
   const vehicles  = vehiclesRes?.data ?? []
   const materials = materialsRes?.data ?? []
   const states    = statesRes?.data ?? []
+
+  function downloadTemplate() {
+    const blob = new Blob([buildTemplateCsv()], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'pol-lr-template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function applyPaste() {
+    const { rows: parsed, unmatchedVehicles, unmatchedDrivers } = parsePastedLrs(pasteText, { vehicles, drivers, cleaners })
+    if (parsed.length === 0) { toast.error('Nothing to parse — paste rows copied from Excel.'); return }
+    const isStarter = rows.length === 1 && !rows[0].vehicleId && !rows[0].loadedWeight
+    setRows(prev => (isStarter ? [] : prev).concat(parsed.map(r => ({ ...emptyRow(), ...r }))))
+    setPasteText('')
+    setPasteOpen(false)
+    const warn = [
+      unmatchedVehicles.length ? `${unmatchedVehicles.length} vehicle(s)` : '',
+      unmatchedDrivers.length ? `${unmatchedDrivers.length} driver(s)` : '',
+    ].filter(Boolean).join(' & ')
+    toast.success(`${parsed.length} row(s) added${warn ? ` · ${warn} unmatched — pick them in the grid below` : ''}`)
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -669,12 +696,44 @@ function PolOrderForm() {
 
       {/* LR Rows */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <h2 className="font-semibold text-gray-800">LR Details</h2>
-          {!watchedOrderDate && (
-            <p className="text-xs text-amber-600">Select order date first to filter drivers/cleaners by attendance</p>
-          )}
+          <div className="flex items-center gap-2">
+            {!watchedOrderDate && (
+              <p className="text-xs text-amber-600">Select order date first to match drivers/cleaners by attendance</p>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={downloadTemplate} className="gap-1.5">
+              <Download className="h-3.5 w-3.5" /> Template
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setPasteOpen(o => !o)} className="gap-1.5">
+              <ClipboardPaste className="h-3.5 w-3.5" /> Paste from Excel
+            </Button>
+          </div>
         </div>
+
+        {pasteOpen && (
+          <div className="border border-dashed border-feros-navy/30 rounded-lg p-3 space-y-2 bg-feros-navy/[0.02]">
+            <p className="text-xs text-gray-500">
+              Paste rows copied from Excel. Columns in order:{' '}
+              <span className="font-medium text-gray-700">{LR_COLUMNS.join(' · ')}</span>
+            </p>
+            <textarea
+              value={pasteText}
+              onChange={e => setPasteText(e.target.value)}
+              rows={5}
+              placeholder="AP31AB1234&#9;Ramesh&#9;Suresh&#9;PL-001&#9;16&#9;15&#9;15&#9;15&#9;15-10-2026&#9;EWB123456&#9;"
+              className="w-full text-xs font-mono border border-gray-200 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-feros-navy/30"
+            />
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" onClick={applyPaste} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+                Fill rows
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => { setPasteText(''); setPasteOpen(false) }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
 
         {rows.map((row, i) => (
           <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-3">
