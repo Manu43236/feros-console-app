@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import type { Order, OrderStatus, OrderPaymentStatus } from '@/types'
 import { cn } from '@/lib/utils'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { AllocationBreakdown } from '@/components/shared/AllocationBreakdown'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -653,9 +654,7 @@ export function OrdersPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-800">
-                        {o.vehicleAllocations?.length ?? 0}
-                      </span>
+                      <AllocationBreakdown summary={o.allocationSummary} compact />
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.materialTypeName}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">{o.totalWeight} {o.unitName ?? 'T'}</td>

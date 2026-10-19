@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import type { StaffAllocation, VehicleAllocation } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { openOrderPdf } from './OrderPdf'
+import { AllocationBreakdown } from '@/components/shared/AllocationBreakdown'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function fmt(date?: string) {
@@ -1463,6 +1464,12 @@ export function OrderDetailPage() {
             </Button>
           )}
         </div>
+
+        {order.allocationSummary && order.allocationSummary.total > 0 && (
+          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+            <AllocationBreakdown summary={order.allocationSummary} />
+          </div>
+        )}
 
         <div className="p-4 space-y-3">
           {allocations.length === 0 ? (

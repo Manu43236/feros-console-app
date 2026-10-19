@@ -680,6 +680,7 @@ export interface Order {
   totalFreightAmount?: number; orderStatus: OrderStatus; orderPaymentStatus: OrderPaymentStatus
   specialInstructions?: string; remarks?: string
   vehicleAllocations?: VehicleAllocation[]
+  allocationSummary?: AllocationSummary
   isPol?: boolean
   isMultiMaterial?: boolean
   items?: OrderItem[]
@@ -704,6 +705,11 @@ export interface StaffAllocation {
   allocationStatus: string; remarks?: string
   allocatedById?: number; allocatedByName?: string
   createdAt: string; updatedAt?: string
+}
+
+export interface AllocationSummary {
+  allocated: number; inTrip: number; delivered: number
+  invoiced: number; cancelled: number; total: number
 }
 
 export interface VehicleAllocation {
