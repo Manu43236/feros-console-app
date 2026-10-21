@@ -283,12 +283,12 @@ export function CreateEquipmentInvoiceDialog({
 
   return (
     <Sheet open={open} onOpenChange={v => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-3xl">
         <SheetHeader>
           <SheetTitle>{clientMode ? 'New Equipment Invoice' : 'Create Equipment Invoice'}</SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-5 pt-4">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {/* ── Client ── */}
           <div className="space-y-1.5">
             <Label>Client{clientMode ? ' *' : ''}</Label>

@@ -2,6 +2,7 @@ import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
 import LeaseInvoicesPage from '@/pages/vehicles/LeaseInvoicesPage'
 import { EquipmentInvoicesPage } from '@/pages/equipment/EquipmentInvoicesPage'
+import { useAuthStore } from '@/store/authStore'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -23,7 +24,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import type { InvoiceStatus } from '@/types'
 import { cn } from '@/lib/utils'
@@ -165,18 +166,18 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   })
 
   return (
-    <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">Create Invoice</DialogTitle>
-        </DialogHeader>
+    <Sheet open onOpenChange={v => !v && onClose()}>
+      <SheetContent className="w-full sm:max-w-2xl">
+        <SheetHeader>
+          <SheetTitle className="text-lg font-semibold">Create Invoice</SheetTitle>
+        </SheetHeader>
 
         <form
           onSubmit={handleSubmit(d => {
             if (selectedLrIds.size === 0) { toast.error('Select at least one LR'); return }
             mutation.mutate(d)
           })}
-          className="space-y-4 pt-1"
+          className="flex-1 overflow-y-auto px-6 py-5 space-y-4"
         >
           {/* ── Client ── */}
           <div className="space-y-1.5">
@@ -425,8 +426,8 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -627,8 +628,19 @@ const TABS: { key: InvoiceTab; label: string }[] = [
 
 export function InvoicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const tabParam = searchParams.get('tab') as InvoiceTab | null
-  const tab: InvoiceTab = tabParam && TABS.some(t => t.key === tabParam) ? tabParam : 'orders'
+  const moduleType         = useAuthStore(s => s.moduleType)
+  const canAccessEquipment = useAuthStore(s => s.canAccessEquipment)
+  const canAccessLeases    = useAuthStore(s => s.canAccessLeases)
+
+  // Only show a tab if the tenant owns that module (and the staff isn't denied it).
+  const hasEquipment = (moduleType === 'EQUIPMENT_ONLY' || moduleType === 'BOTH') && canAccessEquipment !== false
+  const hasLeases    = (moduleType === 'VEHICLES_ONLY' || moduleType === 'BOTH') && canAccessLeases !== false
+  const availableTabs = TABS.filter(t =>
+    t.key === 'leases' ? hasLeases : t.key === 'equipment' ? hasEquipment : true
+  )
+
+  const requested = searchParams.get('tab') as InvoiceTab | null
+  const tab: InvoiceTab = availableTabs.some(t => t.key === requested) ? requested! : availableTabs[0].key
 
   const setTab = (next: InvoiceTab) => {
     const sp = new URLSearchParams(searchParams)
@@ -640,30 +652,34 @@ export function InvoicesPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Orders, vehicle leases &amp; equipment work orders</p>
+        <p className="text-gray-500 text-sm mt-0.5">
+          {availableTabs.map(t => t.label).join(' · ')}
+        </p>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-200">
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={cn(
-              'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
-              tab === t.key
-                ? 'border-feros-navy text-feros-navy'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Tab bar — hidden when only one surface is available */}
+      {availableTabs.length > 1 && (
+        <div className="flex gap-1 border-b border-gray-200">
+          {availableTabs.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={cn(
+                'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+                tab === t.key
+                  ? 'border-feros-navy text-feros-navy'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab === 'orders'    && <OrdersInvoicesTab />}
-      {tab === 'leases'    && <LeaseInvoicesPage embedded />}
-      {tab === 'equipment' && <EquipmentInvoicesPage embedded />}
+      {tab === 'leases'    && hasLeases    && <LeaseInvoicesPage embedded />}
+      {tab === 'equipment' && hasEquipment && <EquipmentInvoicesPage embedded />}
     </div>
   )
 }

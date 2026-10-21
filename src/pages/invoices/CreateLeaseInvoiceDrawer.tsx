@@ -158,12 +158,12 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={v => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-2xl">
         <SheetHeader>
           <SheetTitle>New Lease Invoice</SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-5 mt-4">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {/* Client */}
           <div>
             <Label>Client *</Label>
