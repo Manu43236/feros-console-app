@@ -5,15 +5,15 @@ import { Sparkles, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { leaseInvoicesApi } from '@/api/leaseInvoices'
 import { clientsApi } from '@/api/clients'
 import { tenantsApi } from '@/api/superadmin'
-import type { LeaseInvoicePrefill, VehicleLease } from '@/types'
+import type { LeaseInvoicePrefill } from '@/types'
 import { cn } from '@/lib/utils'
 
 const GST_SLABS = [0, 9, 12, 18, 36]
-
 
 function fmt(n: number) {
   return n.toLocaleString('en-IN', { maximumFractionDigits: 2 })
@@ -21,6 +21,7 @@ function fmt(n: number) {
 
 interface LineItem {
   assignmentId?: number
+  leaseNumber?: string
   registrationNumber: string
   description: string
   days: number
@@ -31,56 +32,63 @@ interface LineItem {
 interface Props {
   open: boolean
   onClose: () => void
-  lease: VehicleLease
 }
 
-export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
+/**
+ * Client-first lease invoice creation — one invoice spanning vehicle lines across
+ * ALL of a client's leases. Right-side drawer (orders pattern), not a modal.
+ */
+export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
   const qc = useQueryClient()
   const today = new Date().toISOString().slice(0, 10)
 
-  const [from, setFrom]             = useState('')
-  const [to, setTo]                 = useState(today)
+  const [clientId, setClientId]       = useState<number | undefined>(undefined)
+  const [from, setFrom]               = useState('')
+  const [to, setTo]                   = useState(today)
   const [invoiceDate, setInvoiceDate] = useState(today)
-  const [dueDate, setDueDate]       = useState('')
-  const [gstSlab, setGstSlab]       = useState(18)
-  const [notes, setNotes]           = useState('')
-  const [items, setItems]           = useState<LineItem[]>([])
-  const [checkedIdx, setCheckedIdx] = useState<Set<number>>(new Set())
+  const [dueDate, setDueDate]         = useState('')
+  const [gstSlab, setGstSlab]         = useState(18)
+  const [notes, setNotes]             = useState('')
+  const [items, setItems]             = useState<LineItem[]>([])
+  const [checkedIdx, setCheckedIdx]   = useState<Set<number>>(new Set())
   const [prefillLoaded, setPrefillLoaded] = useState(false)
 
-  // Get tenant state for intra/inter check
+  const { data: clientsRes } = useQuery({
+    queryKey: ['clients-all'],
+    queryFn: () => clientsApi.getAll({ size: 1000 }),
+    enabled: open,
+  })
   const { data: tenantRes } = useQuery({
     queryKey: ['my-tenant'],
     queryFn: () => tenantsApi.getMy(),
     enabled: open,
   })
-  // Get client state
-  const { data: clientRes } = useQuery({
-    queryKey: ['client', lease.clientId],
-    queryFn: () => clientsApi.getById(lease.clientId),
-    enabled: open,
-  })
 
+  const clients = clientsRes?.data?.content ?? []
+  const clientOptions = clients.filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))
+  const selectedClient = clients.find(c => c.id === clientId)
   const tenantState = tenantRes?.data?.state ?? ''
-  const clientState = clientRes?.data?.stateName ?? ''
+  const clientState = selectedClient?.stateName ?? ''
   const isIntraState = !!(tenantState && clientState && tenantState === clientState)
 
   useEffect(() => {
     if (!open) {
-      setFrom(''); setTo(today); setInvoiceDate(today); setDueDate('')
+      setClientId(undefined); setFrom(''); setTo(today); setInvoiceDate(today); setDueDate('')
       setGstSlab(18); setNotes(''); setItems([]); setCheckedIdx(new Set()); setPrefillLoaded(false)
     }
   }, [open])
 
   async function loadPrefill() {
+    if (!clientId) { toast.error('Select a client first'); return }
     if (!from || !to) { toast.error('Select billing period first'); return }
     if (to > today) { toast.error('End date cannot be in the future'); return }
     try {
-      const res = await leaseInvoicesApi.prefill(lease.id, from, to)
+      const res = await leaseInvoicesApi.prefillByClient(clientId, from, to)
       const prefills: LeaseInvoicePrefill[] = res.data ?? []
-      if (prefills.length === 0) { toast.error('No active vehicles in this period'); return }
+      if (prefills.length === 0) { toast.error('No active lease vehicles for this client in this period'); return }
       const mapped = prefills.map(p => ({
         assignmentId: p.assignmentId,
+        leaseNumber: p.leaseNumber,
         registrationNumber: p.registrationNumber,
         description: `${p.registrationNumber}${p.vehicleType ? ' – ' + p.vehicleType : ''} (${p.daysInPeriod} days)`,
         days: p.daysInPeriod,
@@ -117,7 +125,8 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
   const total   = subtotal + cgstAmt + sgstAmt + igstAmt
 
   const mutation = useMutation({
-    mutationFn: () => leaseInvoicesApi.create(lease.id, {
+    mutationFn: () => leaseInvoicesApi.createForClient({
+      clientId: clientId!,
       invoiceDate,
       dueDate: dueDate || undefined,
       billingPeriodStart: from,
@@ -138,7 +147,7 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
     }),
     onSuccess: () => {
       toast.success('Invoice created')
-      qc.invalidateQueries({ queryKey: ['lease-invoices', lease.id] })
+      qc.invalidateQueries({ queryKey: ['lease-invoices-all'] })
       onClose()
     },
     onError: (e: unknown) => {
@@ -148,13 +157,25 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
   })
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Generate Invoice — {lease.leaseNumber}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={v => !v && onClose()}>
+      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>New Lease Invoice</SheetTitle>
+        </SheetHeader>
 
-        <div className="space-y-5 mt-2">
+        <div className="space-y-5 mt-4">
+          {/* Client */}
+          <div>
+            <Label>Client *</Label>
+            <SearchableSelect
+              className="mt-1"
+              value={clientId ? String(clientId) : ''}
+              onValueChange={v => { setClientId(v ? Number(v) : undefined); setPrefillLoaded(false); setItems([]) }}
+              options={clientOptions}
+              placeholder="Select client…"
+            />
+          </div>
+
           {/* Billing period */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -170,11 +191,11 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
           </div>
 
           <Button variant="outline" size="sm" onClick={loadPrefill}
-            disabled={!from || !to} className="gap-1.5 w-full">
-            <Sparkles size={14} /> Load Vehicles for Period
+            disabled={!clientId || !from || !to} className="gap-1.5 w-full">
+            <Sparkles size={14} /> Load Lease Vehicles for Period
           </Button>
 
-          {/* Line items */}
+          {/* Line items (grouped by lease) */}
           {prefillLoaded && items.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -190,12 +211,11 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
                           checked={checkedIdx.size === items.length}
                           ref={el => { if (el) el.indeterminate = checkedIdx.size > 0 && checkedIdx.size < items.length }}
                           onChange={() => setCheckedIdx(
-                            checkedIdx.size === items.length
-                              ? new Set()
-                              : new Set(items.map((_, i) => i))
+                            checkedIdx.size === items.length ? new Set() : new Set(items.map((_, i) => i))
                           )}
                           className="cursor-pointer" />
                       </th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-gray-500">Lease</th>
                       <th className="text-left px-3 py-2 text-xs font-medium text-gray-500">Description</th>
                       <th className="text-right px-3 py-2 text-xs font-medium text-gray-500 w-16">Days</th>
                       <th className="text-right px-3 py-2 text-xs font-medium text-gray-500 w-24">Rate</th>
@@ -216,6 +236,7 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
                               })}
                               className="cursor-pointer" />
                           </td>
+                          <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">{item.leaseNumber ?? '—'}</td>
                           <td className="px-3 py-2">
                             <input value={item.description}
                               onChange={e => updateItem(idx, 'description', e.target.value)}
@@ -234,9 +255,7 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
                               disabled={!checked}
                               className="w-full text-sm text-right border-0 bg-transparent focus:outline-none focus:bg-gray-50 rounded px-1 disabled:cursor-default" />
                           </td>
-                          <td className="px-3 py-2 text-right font-medium text-gray-800">
-                            ₹{fmt(item.amount)}
-                          </td>
+                          <td className="px-3 py-2 text-right font-medium text-gray-800">₹{fmt(item.amount)}</td>
                         </tr>
                       )
                     })}
@@ -246,12 +265,12 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
             </div>
           )}
 
-          {/* GST */}
+          {/* GST + totals */}
           {prefillLoaded && (
             <div className="space-y-3">
               <div>
                 <Label>GST Rate</Label>
-                <div className="flex gap-2 mt-1">
+                <div className="flex gap-2 mt-1 flex-wrap">
                   {GST_SLABS.map(s => (
                     <button key={s} onClick={() => setGstSlab(s)}
                       className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors',
@@ -264,7 +283,6 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
                 </div>
               </div>
 
-              {/* Intra/Inter indicator */}
               <div className={cn('text-xs px-3 py-2 rounded-md',
                 isIntraState ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700')}>
                 {isIntraState
@@ -272,23 +290,14 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
                   : `Inter-state (${clientState || '?'} ↔ ${tenantState || '?'}) → IGST ${igstPct}%`}
               </div>
 
-              {/* Totals */}
               <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
-                <div className="flex justify-between text-gray-600">
-                  <span>Subtotal</span><span>₹{fmt(subtotal)}</span>
-                </div>
+                <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>₹{fmt(subtotal)}</span></div>
                 {isIntraState && gstSlab > 0 && <>
-                  <div className="flex justify-between text-gray-600">
-                    <span>CGST {cgstPct}%</span><span>₹{fmt(cgstAmt)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>SGST {sgstPct}%</span><span>₹{fmt(sgstAmt)}</span>
-                  </div>
+                  <div className="flex justify-between text-gray-600"><span>CGST {cgstPct}%</span><span>₹{fmt(cgstAmt)}</span></div>
+                  <div className="flex justify-between text-gray-600"><span>SGST {sgstPct}%</span><span>₹{fmt(sgstAmt)}</span></div>
                 </>}
                 {!isIntraState && gstSlab > 0 && (
-                  <div className="flex justify-between text-gray-600">
-                    <span>IGST {igstPct}%</span><span>₹{fmt(igstAmt)}</span>
-                  </div>
+                  <div className="flex justify-between text-gray-600"><span>IGST {igstPct}%</span><span>₹{fmt(igstAmt)}</span></div>
                 )}
                 <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1 mt-1">
                   <span>Total</span><span>₹{fmt(total)}</span>
@@ -317,17 +326,17 @@ export function GenerateLeaseInvoiceDialog({ open, onClose, lease }: Props) {
               className="w-full mt-1 border border-gray-200 rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-feros-navy/30" />
           </div>
 
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex justify-end gap-2 pt-1 pb-4">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
             <Button size="sm"
-              disabled={!prefillLoaded || checkedIdx.size === 0 || !from || !to || !invoiceDate || mutation.isPending}
+              disabled={!prefillLoaded || checkedIdx.size === 0 || !clientId || !from || !to || !invoiceDate || mutation.isPending}
               onClick={() => mutation.mutate()}
               className="bg-feros-navy hover:bg-feros-navy/90 text-white">
               {mutation.isPending ? <><Loader2 size={14} className="animate-spin mr-1" />Creating…</> : 'Create Invoice'}
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

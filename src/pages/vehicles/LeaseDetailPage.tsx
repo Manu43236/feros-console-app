@@ -21,7 +21,6 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
 import type { LeaseDailyLog, LeaseInvoice, LeaseInvoiceStatus, LeaseStatus, LeaseVehicleAssignment, LeaseVehicleSession } from '@/types'
 import { cn } from '@/lib/utils'
-import { GenerateLeaseInvoiceDialog } from './GenerateLeaseInvoiceDialog'
 
 const INV_STATUS_COLORS: Record<LeaseInvoiceStatus, string> = {
   DRAFT: 'bg-gray-100 text-gray-600',
@@ -978,7 +977,6 @@ export default function LeaseDetailPage() {
   const [showAddLog, setShowAddLog] = useState(false)
   const [addLogAssignmentId, setAddLogAssignmentId] = useState('')
   const [addLogDate, setAddLogDate] = useState(new Date().toISOString().slice(0, 10))
-  const [showGenerateInvoice, setShowGenerateInvoice] = useState(false)
   const qcRef = qc
 
   const createLogMutation = useMutation({
@@ -1563,15 +1561,12 @@ export default function LeaseDetailPage() {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</p>
-            <Button size="sm" onClick={() => setShowGenerateInvoice(true)}
-              className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5">
-              <Plus size={13} /> Generate Invoice
-            </Button>
+            <p className="text-xs text-gray-400">Create invoices from the Invoices module → Vehicle Leases tab</p>
           </div>
 
           {invoices.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
-              No invoices yet. Click "Generate Invoice" to create one.
+              No invoices yet. Create one from the Invoices module → Vehicle Leases tab.
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -1608,14 +1603,6 @@ export default function LeaseDetailPage() {
                 </tbody>
               </table>
             </div>
-          )}
-
-          {showGenerateInvoice && (
-            <GenerateLeaseInvoiceDialog
-              open={showGenerateInvoice}
-              onClose={() => setShowGenerateInvoice(false)}
-              lease={lease}
-            />
           )}
         </div>
       )}

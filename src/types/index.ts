@@ -180,8 +180,8 @@ export interface LeaseInvoiceItem {
 export interface LeaseInvoice {
   id: number
   invoiceNumber: string
-  leaseId: number
-  leaseNumber: string
+  leaseId?: number       // null for client-level invoices spanning multiple leases
+  leaseNumber?: string   // null for client-level invoices spanning multiple leases
   clientId: number
   clientName: string
   invoiceDate: string
@@ -212,6 +212,8 @@ export interface LeaseInvoice {
 }
 
 export interface LeaseInvoicePrefill {
+  leaseId?: number       // present in client-level prefill (for grouping)
+  leaseNumber?: string   // present in client-level prefill (for grouping)
   assignmentId: number
   registrationNumber: string
   vehicleType?: string

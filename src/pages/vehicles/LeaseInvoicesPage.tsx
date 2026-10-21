@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { Spinner } from '@/components/ui/loader'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Receipt } from 'lucide-react'
+import { Receipt, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { leaseInvoicesApi } from '@/api/leaseInvoices'
+import { CreateLeaseInvoiceDrawer } from '@/pages/invoices/CreateLeaseInvoiceDrawer'
 import type { LeaseInvoice, LeaseInvoiceStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -23,8 +26,9 @@ const fmtDate = (d?: string | null) =>
 const fmt = (n: number) =>
   Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-export default function LeaseInvoicesPage() {
+export default function LeaseInvoicesPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
+  const [createOpen, setCreateOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['lease-invoices-all'],
@@ -37,14 +41,24 @@ export default function LeaseInvoicesPage() {
     <div className="space-y-5">
 
       {/* ── Header ── */}
-      <div className="relative bg-gradient-to-br from-feros-navy via-feros-navy to-feros-navy/80 rounded-xl overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-48 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
-          <Receipt size={140} />
+      {!embedded && (
+        <div className="relative bg-gradient-to-br from-feros-navy via-feros-navy to-feros-navy/80 rounded-xl overflow-hidden">
+          <div className="absolute right-0 top-0 bottom-0 w-48 opacity-5 flex items-center justify-end pr-6 pointer-events-none">
+            <Receipt size={140} />
+          </div>
+          <div className="relative px-6 py-5">
+            <h1 className="text-2xl font-bold text-white">Lease Invoices</h1>
+            <p className="text-blue-300 text-sm mt-1">All invoices across all vehicle leases</p>
+          </div>
         </div>
-        <div className="relative px-6 py-5">
-          <h1 className="text-2xl font-bold text-white">Lease Invoices</h1>
-          <p className="text-blue-300 text-sm mt-1">All invoices across all vehicle leases</p>
-        </div>
+      )}
+
+      {/* ── Toolbar ── */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">{invoices.length} lease invoice{invoices.length === 1 ? '' : 's'}</p>
+        <Button onClick={() => setCreateOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+          <Plus size={16} /> New Lease Invoice
+        </Button>
       </div>
 
       {/* ── Table ── */}
@@ -74,7 +88,7 @@ export default function LeaseInvoicesPage() {
                   onClick={() => navigate(`/vehicles/leases/invoices/${inv.id}`)}
                   className="border-b border-gray-50 hover:bg-gray-50/60 cursor-pointer">
                   <td className="px-4 py-3 font-medium text-feros-navy whitespace-nowrap">{inv.invoiceNumber}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{inv.leaseNumber}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{inv.leaseNumber ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-700">{inv.clientName}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                     {fmtDate(inv.billingPeriodStart)} → {fmtDate(inv.billingPeriodEnd)}
@@ -92,6 +106,8 @@ export default function LeaseInvoicesPage() {
           </table>
         </div>
       )}
+
+      <CreateLeaseInvoiceDrawer open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   )
 }

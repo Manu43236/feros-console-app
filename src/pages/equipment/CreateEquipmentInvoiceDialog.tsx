@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Trash2, Calculator, Loader2, Pencil, Lock } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Plus, Trash2, Calculator, Loader2, Pencil, Lock, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
-import type { EquipmentBillingType, EquipmentInvoiceCalcResult, GstType, WorkOrderType } from '@/types'
+import { clientsApi } from '@/api/clients'
+import type { EquipmentBillingType, EquipmentInvoiceCalcResult, EquipmentInvoicePrefill, GstType, WorkOrderType } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -96,9 +99,11 @@ export function CreateEquipmentInvoiceDialog({
   workOrderType, agreedJobAmount,
 }: Props) {
   const isJobWo = workOrderType === 'JOB'
+  const clientMode = !woId // central Invoice module: pick a client, prefill billable lines across WOs
   const qc = useQueryClient()
   const today = new Date().toISOString().slice(0, 10)
 
+  const [clientId, setClientId]       = useState<number | undefined>(defaultClientId)
   const [invoiceDate, setInvoiceDate] = useState(today)
   const [dueDate, setDueDate]         = useState('')
   const [from, setFrom]               = useState('')
@@ -112,8 +117,18 @@ export function CreateEquipmentInvoiceDialog({
   const [calculating, setCalculating] = useState(false)
   const [overriddenKeys, setOverriddenKeys] = useState<Set<string>>(new Set())
 
+  // Client list for client-first mode (central Invoice module)
+  const { data: clientsRes } = useQuery({
+    queryKey: ['clients-all'],
+    queryFn: () => clientsApi.getAll({ size: 1000 }),
+    enabled: open && clientMode,
+  })
+  const clientOptions = (clientsRes?.data?.content ?? [])
+    .filter(c => c.isActive).map(c => ({ value: String(c.id), label: c.clientName }))
+
   useEffect(() => {
     if (open) {
+      setClientId(defaultClientId)
       setInvoiceDate(today)
       setDueDate(''); setFrom(''); setTo('')
       setTaxPercent('18')
@@ -163,6 +178,46 @@ export function CreateEquipmentInvoiceDialog({
     }
   }
 
+  // ── Load billable lines across the client's WOs (client-first mode) ───────────
+  function prefillToItems(rows: EquipmentInvoicePrefill[]): LineItem[] {
+    return rows.map(r => {
+      const billing: EquipmentBillingType =
+        r.woRateType === 'DAILY_SHIFT' ? 'DAILY' : r.woRateType === 'MONTHLY' ? 'MONTHLY' : 'HOURLY'
+      const qty = billing === 'DAILY' ? r.suggestedDays : billing === 'MONTHLY' ? r.suggestedMonths : r.suggestedHours
+      const label = r.serialNumber ? `${r.serialNumber} · ${r.equipmentTypeName}` : r.equipmentTypeName
+      return {
+        _key: nextKey(),
+        itemType: 'MACHINE' as const,
+        description: `${label} (${r.woNumber})`,
+        machineAssignmentId: r.machineAssignmentId,
+        billingType: billing,
+        quantity: String(qty),
+        rate: String(r.woRate),
+      }
+    })
+  }
+
+  async function runClientPrefill() {
+    if (!clientId) { toast.error('Select a client first'); return }
+    setCalculating(true)
+    try {
+      const res = await equipmentInvoicesApi.prefillByClient(clientId, {
+        from: from || undefined,
+        to:   to   || undefined,
+      })
+      const rows = res.data ?? []
+      if (rows.length === 0) { toast.info('No billable WO activity for this client'); return }
+      const chargeItems = items.filter(i => i.itemType === 'CHARGE')
+      setItems([...prefillToItems(rows), ...chargeItems])
+      setOverriddenKeys(new Set())
+      toast.success(`Loaded ${rows.length} line(s)`)
+    } catch {
+      toast.error('Failed to load billable lines')
+    } finally {
+      setCalculating(false)
+    }
+  }
+
   // ── Item helpers ─────────────────────────────────────────────────────────────
   function addChargeLine() {
     setItems(prev => [...prev, {
@@ -192,7 +247,7 @@ export function CreateEquipmentInvoiceDialog({
   // ── Save ─────────────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: () => equipmentInvoicesApi.createForClient({
-      clientId: defaultClientId,
+      clientId,
       invoiceDate,
       dueDate:            dueDate || null,
       billingPeriodStart: from    || null,
@@ -224,20 +279,29 @@ export function CreateEquipmentInvoiceDialog({
     },
   })
 
-  const canSave = items.length > 0 && items.every(i => i.description && i.rate)
+  const canSave = !!clientId && items.length > 0 && items.every(i => i.description && i.rate)
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create Equipment Invoice</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={v => !v && onClose()}>
+      <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{clientMode ? 'New Equipment Invoice' : 'Create Equipment Invoice'}</SheetTitle>
+        </SheetHeader>
 
-        <div className="space-y-5 pt-1">
+        <div className="space-y-5 pt-4">
           {/* ── Client ── */}
           <div className="space-y-1.5">
-            <Label>Client</Label>
-            <p className="text-sm font-medium text-gray-800 py-1">{defaultClientName}</p>
+            <Label>Client{clientMode ? ' *' : ''}</Label>
+            {clientMode ? (
+              <SearchableSelect
+                value={clientId ? String(clientId) : ''}
+                onValueChange={v => { setClientId(v ? Number(v) : undefined); setItems([]) }}
+                options={clientOptions}
+                placeholder="Select client…"
+              />
+            ) : (
+              <p className="text-sm font-medium text-gray-800 py-1">{defaultClientName}</p>
+            )}
           </div>
 
           {/* ── Date row ── */}
@@ -260,8 +324,27 @@ export function CreateEquipmentInvoiceDialog({
             </div>
           </div>
 
-          {/* ── Calculate bar (RENTAL only) ── */}
-          {!isJobWo && (
+          {/* ── Load billable lines across WOs (client-first mode) ── */}
+          {clientMode && (
+            <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <Sparkles size={16} className="text-emerald-600 shrink-0" />
+              <p className="text-sm text-emerald-700 flex-1">
+                Load suggested billable lines across all this client's work orders. Edit rates/qty before saving.
+              </p>
+              <Button
+                type="button" variant="outline" size="sm"
+                className="border-emerald-400 text-emerald-700 hover:bg-emerald-100 shrink-0"
+                onClick={runClientPrefill}
+                disabled={calculating || !clientId}
+              >
+                {calculating ? <Loader2 size={14} className="animate-spin mr-1" /> : <Sparkles size={14} className="mr-1" />}
+                Load Lines
+              </Button>
+            </div>
+          )}
+
+          {/* ── Calculate bar (per-WO RENTAL only) ── */}
+          {!clientMode && !isJobWo && (
             <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
               <Calculator size={16} className="text-emerald-600 shrink-0" />
               <p className="text-sm text-emerald-700 flex-1">
@@ -301,7 +384,9 @@ export function CreateEquipmentInvoiceDialog({
 
               {items.length === 0 ? (
                 <div className="px-3 py-8 text-center text-sm text-gray-400">
-                  {isJobWo ? 'Add a charge below.' : 'Click "Calculate" to auto-fill from daily logs, or add a charge below.'}
+                  {isJobWo ? 'Add a charge below.'
+                    : clientMode ? 'Click "Load Lines" to pull billable activity across the client\'s WOs, or add a charge below.'
+                    : 'Click "Calculate" to auto-fill from daily logs, or add a charge below.'}
                 </div>
               ) : (
                 items.map(item => {
@@ -493,7 +578,7 @@ export function CreateEquipmentInvoiceDialog({
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

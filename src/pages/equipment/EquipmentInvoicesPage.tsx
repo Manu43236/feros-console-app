@@ -62,7 +62,7 @@ function InvoiceRow({ inv }: { inv: EquipmentInvoice }) {
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
-export function EquipmentInvoicesPage() {
+export function EquipmentInvoicesPage({ embedded = false }: { embedded?: boolean }) {
   const [page, setPage] = useState(0)
   const [statusFilter, setStatusFilter] = useState<EquipmentInvoiceStatus | ''>('')
   const [createOpen, setCreateOpen] = useState(false)
@@ -81,10 +81,10 @@ export function EquipmentInvoicesPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
+      {/* Header / Toolbar */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Equipment Invoices</h1>
+          {!embedded && <h1 className="text-xl font-semibold text-gray-900">Equipment Invoices</h1>}
           <p className="text-sm text-gray-400 mt-0.5">All invoices across work orders</p>
         </div>
         <Button

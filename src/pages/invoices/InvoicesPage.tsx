@@ -1,5 +1,7 @@
 import { Spinner } from '@/components/ui/loader'
 import { useState } from 'react'
+import LeaseInvoicesPage from '@/pages/vehicles/LeaseInvoicesPage'
+import { EquipmentInvoicesPage } from '@/pages/equipment/EquipmentInvoicesPage'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -431,7 +433,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
 // ── Main page ─────────────────────────────────────────────────────────────
 const ALL_STATUSES: InvoiceStatus[] = ['DRAFT','SENT','PARTIALLY_PAID','PAID','OVERDUE','CANCELLED']
 
-export function InvoicesPage() {
+function OrdersInvoicesTab() {
   const { locked } = useSubscription()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -468,12 +470,9 @@ export function InvoicesPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
+      {/* Toolbar */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{totalCount} total invoices</p>
-        </div>
+        <p className="text-gray-500 text-sm">{totalCount} total order invoices</p>
         {!locked && (
           <Button onClick={() => setCreateOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
             <Plus size={16} /> New Invoice
@@ -614,6 +613,57 @@ export function InvoicesPage() {
       </div>
 
       {createOpen && <CreateInvoiceDialog onClose={() => setCreateOpen(false)} />}
+    </div>
+  )
+}
+
+// ── Unified Invoice module shell: Orders · Vehicle Leases · Equipment ────────
+type InvoiceTab = 'orders' | 'leases' | 'equipment'
+const TABS: { key: InvoiceTab; label: string }[] = [
+  { key: 'orders',    label: 'Orders' },
+  { key: 'leases',    label: 'Vehicle Leases' },
+  { key: 'equipment', label: 'Equipment WOs' },
+]
+
+export function InvoicesPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab') as InvoiceTab | null
+  const tab: InvoiceTab = tabParam && TABS.some(t => t.key === tabParam) ? tabParam : 'orders'
+
+  const setTab = (next: InvoiceTab) => {
+    const sp = new URLSearchParams(searchParams)
+    sp.set('tab', next)
+    setSearchParams(sp, { replace: true })
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
+        <p className="text-gray-500 text-sm mt-0.5">Orders, vehicle leases &amp; equipment work orders</p>
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {TABS.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={cn(
+              'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+              tab === t.key
+                ? 'border-feros-navy text-feros-navy'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'orders'    && <OrdersInvoicesTab />}
+      {tab === 'leases'    && <LeaseInvoicesPage embedded />}
+      {tab === 'equipment' && <EquipmentInvoicesPage embedded />}
     </div>
   )
 }
