@@ -223,6 +223,8 @@ export interface LeaseInvoicePrefill {
   rate: number
   suggestedAmount: number
   rateType: string
+  alreadyInvoiced?: boolean       // locked: this lease-vehicle is already billed for the period
+  invoicedInvoiceNumber?: string  // the invoice it's already on
 }
 
 export interface LeaseDailyLog {

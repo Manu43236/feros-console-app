@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { Sparkles, Loader2, ChevronDown, ChevronRight, Truck, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,12 +21,16 @@ function fmt(n: number) {
 
 interface LineItem {
   assignmentId?: number
+  leaseId?: number
   leaseNumber?: string
   registrationNumber: string
+  vehicleType?: string
   description: string
   days: number
   rate: number
   amount: number
+  alreadyInvoiced: boolean
+  invoicedInvoiceNumber?: string
 }
 
 interface Props {
@@ -35,8 +39,9 @@ interface Props {
 }
 
 /**
- * Client-first lease invoice creation — one invoice spanning vehicle lines across
- * ALL of a client's leases. Right-side drawer (orders pattern), not a modal.
+ * Client-first lease invoice — one invoice across vehicles from ALL the client's leases.
+ * Grouped by lease (Orders-style). A lease-vehicle already billed for the period shows a
+ * green "Invoiced" lock and can't be selected again (frees up once that invoice is cancelled).
  */
 export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
   const qc = useQueryClient()
@@ -50,7 +55,8 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
   const [gstSlab, setGstSlab]         = useState(18)
   const [notes, setNotes]             = useState('')
   const [items, setItems]             = useState<LineItem[]>([])
-  const [checkedIdx, setCheckedIdx]   = useState<Set<number>>(new Set())
+  const [checked, setChecked]         = useState<Set<number>>(new Set()) // keyed by assignmentId
+  const [expanded, setExpanded]       = useState<Set<number>>(new Set()) // keyed by leaseId
   const [prefillLoaded, setPrefillLoaded] = useState(false)
 
   const { data: clientsRes } = useQuery({
@@ -74,7 +80,7 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) {
       setClientId(undefined); setFrom(''); setTo(today); setInvoiceDate(today); setDueDate('')
-      setGstSlab(18); setNotes(''); setItems([]); setCheckedIdx(new Set()); setPrefillLoaded(false)
+      setGstSlab(18); setNotes(''); setItems([]); setChecked(new Set()); setExpanded(new Set()); setPrefillLoaded(false)
     }
   }, [open])
 
@@ -85,36 +91,65 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
     try {
       const res = await leaseInvoicesApi.prefillByClient(clientId, from, to)
       const prefills: LeaseInvoicePrefill[] = res.data ?? []
-      if (prefills.length === 0) { toast.error('No active lease vehicles for this client in this period'); return }
-      const mapped = prefills.map(p => ({
+      if (prefills.length === 0) { toast.error('No lease vehicles for this client in this period'); return }
+      const mapped: LineItem[] = prefills.map(p => ({
         assignmentId: p.assignmentId,
+        leaseId: p.leaseId,
         leaseNumber: p.leaseNumber,
         registrationNumber: p.registrationNumber,
+        vehicleType: p.vehicleType,
         description: `${p.registrationNumber}${p.vehicleType ? ' – ' + p.vehicleType : ''} (${p.daysInPeriod} days)`,
         days: p.daysInPeriod,
         rate: p.rate,
         amount: p.suggestedAmount,
+        alreadyInvoiced: !!p.alreadyInvoiced,
+        invoicedInvoiceNumber: p.invoicedInvoiceNumber,
       }))
       setItems(mapped)
-      setCheckedIdx(new Set(mapped.map((_, i) => i)))
+      // auto-select every selectable (not already invoiced) vehicle
+      setChecked(new Set(mapped.filter(m => !m.alreadyInvoiced && m.assignmentId).map(m => m.assignmentId!)))
+      setExpanded(new Set(mapped.map(m => m.leaseId).filter((v): v is number => v != null)))
       setPrefillLoaded(true)
     } catch {
       toast.error('Failed to load prefill')
     }
   }
 
-  function updateItem(idx: number, field: keyof LineItem, value: string | number) {
-    setItems(prev => prev.map((item, i) => {
-      if (i !== idx) return item
+  function updateItem(assignmentId: number, field: 'days' | 'rate' | 'description', value: string | number) {
+    setItems(prev => prev.map(item => {
+      if (item.assignmentId !== assignmentId) return item
       const updated = { ...item, [field]: value }
-      if (field === 'days' || field === 'rate') {
-        updated.amount = Number(updated.days) * Number(updated.rate)
-      }
+      if (field === 'days' || field === 'rate') updated.amount = Number(updated.days) * Number(updated.rate)
       return updated
     }))
   }
 
-  const selectedItems = items.filter((_, i) => checkedIdx.has(i))
+  function toggleVehicle(assignmentId: number) {
+    setChecked(prev => {
+      const next = new Set(prev)
+      next.has(assignmentId) ? next.delete(assignmentId) : next.add(assignmentId)
+      return next
+    })
+  }
+
+  function toggleLease(leaseId: number) {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      next.has(leaseId) ? next.delete(leaseId) : next.add(leaseId)
+      return next
+    })
+  }
+
+  // Group items by lease, preserving order
+  const leaseGroups: { leaseId: number; leaseNumber: string; rows: LineItem[] }[] = []
+  for (const it of items) {
+    const lid = it.leaseId ?? -1
+    let g = leaseGroups.find(x => x.leaseId === lid)
+    if (!g) { g = { leaseId: lid, leaseNumber: it.leaseNumber ?? '—', rows: [] }; leaseGroups.push(g) }
+    g.rows.push(it)
+  }
+
+  const selectedItems = items.filter(i => i.assignmentId && checked.has(i.assignmentId) && !i.alreadyInvoiced)
   const subtotal = selectedItems.reduce((s, i) => s + Number(i.amount), 0)
   const cgstPct = isIntraState ? gstSlab / 2 : 0
   const sgstPct = isIntraState ? gstSlab / 2 : 0
@@ -192,75 +227,84 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
 
           <Button variant="outline" size="sm" onClick={loadPrefill}
             disabled={!clientId || !from || !to} className="gap-1.5 w-full">
-            <Sparkles size={14} /> Load Lease Vehicles for Period
+            <Sparkles size={14} /> Load Leases for Period
           </Button>
 
-          {/* Line items (grouped by lease) */}
-          {prefillLoaded && items.length > 0 && (
+          {/* Leases → vehicles (grouped, Orders-style) */}
+          {prefillLoaded && leaseGroups.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-500 uppercase tracking-wide">Line Items</Label>
-                <span className="text-xs text-gray-400">{checkedIdx.size} of {items.length} selected</span>
+                <Label className="text-xs text-gray-500 uppercase tracking-wide">Select Vehicles</Label>
+                <span className="text-xs text-gray-400">{selectedItems.length} selected</span>
               </div>
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="px-3 py-2 w-8">
-                        <input type="checkbox"
-                          checked={checkedIdx.size === items.length}
-                          ref={el => { if (el) el.indeterminate = checkedIdx.size > 0 && checkedIdx.size < items.length }}
-                          onChange={() => setCheckedIdx(
-                            checkedIdx.size === items.length ? new Set() : new Set(items.map((_, i) => i))
-                          )}
-                          className="cursor-pointer" />
-                      </th>
-                      <th className="text-left px-3 py-2 text-xs font-medium text-gray-500">Lease</th>
-                      <th className="text-left px-3 py-2 text-xs font-medium text-gray-500">Description</th>
-                      <th className="text-right px-3 py-2 text-xs font-medium text-gray-500 w-16">Days</th>
-                      <th className="text-right px-3 py-2 text-xs font-medium text-gray-500 w-24">Rate</th>
-                      <th className="text-right px-3 py-2 text-xs font-medium text-gray-500 w-28">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => {
-                      const checked = checkedIdx.has(idx)
-                      return (
-                        <tr key={idx} className={cn('border-b border-gray-100', !checked && 'opacity-40')}>
-                          <td className="px-3 py-2">
-                            <input type="checkbox" checked={checked}
-                              onChange={() => setCheckedIdx(prev => {
-                                const next = new Set(prev)
-                                next.has(idx) ? next.delete(idx) : next.add(idx)
-                                return next
-                              })}
-                              className="cursor-pointer" />
-                          </td>
-                          <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">{item.leaseNumber ?? '—'}</td>
-                          <td className="px-3 py-2">
-                            <input value={item.description}
-                              onChange={e => updateItem(idx, 'description', e.target.value)}
-                              disabled={!checked}
-                              className="w-full text-sm border-0 bg-transparent focus:outline-none focus:bg-gray-50 rounded px-1 disabled:cursor-default" />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input type="number" value={item.days} min={1}
-                              onChange={e => updateItem(idx, 'days', Number(e.target.value))}
-                              disabled={!checked}
-                              className="w-full text-sm text-right border-0 bg-transparent focus:outline-none focus:bg-gray-50 rounded px-1 disabled:cursor-default" />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input type="number" value={item.rate}
-                              onChange={e => updateItem(idx, 'rate', Number(e.target.value))}
-                              disabled={!checked}
-                              className="w-full text-sm text-right border-0 bg-transparent focus:outline-none focus:bg-gray-50 rounded px-1 disabled:cursor-default" />
-                          </td>
-                          <td className="px-3 py-2 text-right font-medium text-gray-800">₹{fmt(item.amount)}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+
+              <div className="space-y-2">
+                {leaseGroups.map(group => {
+                  const isOpen = expanded.has(group.leaseId)
+                  const selectable = group.rows.filter(r => !r.alreadyInvoiced)
+                  const allInvoiced = selectable.length === 0
+                  return (
+                    <div key={group.leaseId} className="border border-gray-200 rounded-lg overflow-hidden">
+                      {/* Lease header */}
+                      <button type="button" onClick={() => toggleLease(group.leaseId)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center gap-2">
+                          {isOpen ? <ChevronDown size={15} className="text-gray-400" /> : <ChevronRight size={15} className="text-gray-400" />}
+                          <span className="text-sm font-semibold text-feros-navy">{group.leaseNumber}</span>
+                          <span className="text-xs text-gray-400">{group.rows.length} vehicle{group.rows.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        {allInvoiced
+                          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded"><CheckCircle2 size={12} /> Fully invoiced</span>
+                          : <span className="text-xs text-gray-400">{group.rows.filter(r => r.assignmentId && checked.has(r.assignmentId) && !r.alreadyInvoiced).length}/{selectable.length} selected</span>}
+                      </button>
+
+                      {/* Vehicle rows */}
+                      {isOpen && (
+                        <div className="divide-y divide-gray-100">
+                          {group.rows.map(row => {
+                            const aid = row.assignmentId!
+                            const locked = row.alreadyInvoiced
+                            const isChecked = !locked && checked.has(aid)
+                            return (
+                              <div key={aid} className={cn('flex items-center gap-3 px-3 py-2.5', locked && 'bg-green-50/30')}>
+                                <input type="checkbox" checked={isChecked} disabled={locked}
+                                  onChange={() => toggleVehicle(aid)}
+                                  className={cn('cursor-pointer', locked && 'cursor-not-allowed opacity-40')} />
+                                <Truck size={15} className="text-gray-300 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-800 truncate">{row.registrationNumber}
+                                    {row.vehicleType && <span className="text-gray-400 font-normal"> · {row.vehicleType}</span>}
+                                  </p>
+                                  {locked ? (
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 mt-0.5">
+                                      <CheckCircle2 size={11} /> Already invoiced{row.invoicedInvoiceNumber ? ` · ${row.invoicedInvoiceNumber}` : ''}
+                                    </span>
+                                  ) : (
+                                    <div className="flex items-center gap-3 mt-1">
+                                      <label className="flex items-center gap-1 text-xs text-gray-500">
+                                        Days
+                                        <input type="number" min={1} value={row.days} disabled={!isChecked}
+                                          onChange={e => updateItem(aid, 'days', Number(e.target.value))}
+                                          className="w-14 text-right border border-gray-200 rounded px-1 py-0.5 text-xs disabled:bg-gray-50 disabled:text-gray-400" />
+                                      </label>
+                                      <label className="flex items-center gap-1 text-xs text-gray-500">
+                                        Rate
+                                        <input type="number" min={0} value={row.rate} disabled={!isChecked}
+                                          onChange={e => updateItem(aid, 'rate', Number(e.target.value))}
+                                          className="w-20 text-right border border-gray-200 rounded px-1 py-0.5 text-xs disabled:bg-gray-50 disabled:text-gray-400" />
+                                      </label>
+                                    </div>
+                                  )}
+                                </div>
+                                {!locked && <span className="text-sm font-semibold text-gray-800 shrink-0">₹{fmt(row.amount)}</span>}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -326,10 +370,10 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
               className="w-full mt-1 border border-gray-200 rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-feros-navy/30" />
           </div>
 
-          <div className="flex justify-end gap-2 pt-1 pb-4">
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
             <Button size="sm"
-              disabled={!prefillLoaded || checkedIdx.size === 0 || !clientId || !from || !to || !invoiceDate || mutation.isPending}
+              disabled={!prefillLoaded || selectedItems.length === 0 || !clientId || !from || !to || !invoiceDate || mutation.isPending}
               onClick={() => mutation.mutate()}
               className="bg-feros-navy hover:bg-feros-navy/90 text-white">
               {mutation.isPending ? <><Loader2 size={14} className="animate-spin mr-1" />Creating…</> : 'Create Invoice'}
