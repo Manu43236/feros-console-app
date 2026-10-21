@@ -10,6 +10,34 @@ export const leaseInvoicesApi = {
       `/vehicle-leases/${leaseId}/invoices/prefill`, { params: { from, to } }
     ).then(r => r.data),
 
+  // Client-level: gathers vehicle lines across ALL the client's leases
+  prefillByClient: (clientId: number, from: string, to: string) =>
+    apiClient.get<ApiResponse<LeaseInvoicePrefill[]>>(
+      '/vehicle-leases/invoices/prefill', { params: { clientId, from, to } }
+    ).then(r => r.data),
+
+  createForClient: (data: {
+    clientId: number
+    invoiceDate: string
+    dueDate?: string
+    billingPeriodStart: string
+    billingPeriodEnd: string
+    cgstPercentage?: number
+    sgstPercentage?: number
+    igstPercentage?: number
+    notes?: string
+    items: {
+      leaseVehicleAssignmentId?: number
+      registrationNumber?: string
+      description?: string
+      days?: number
+      rate?: number
+      amount: number
+      sortOrder?: number
+    }[]
+  }) =>
+    apiClient.post<ApiResponse<LeaseInvoice>>('/vehicle-leases/invoices', data).then(r => r.data),
+
   create: (leaseId: number, data: {
     invoiceDate: string
     dueDate?: string
