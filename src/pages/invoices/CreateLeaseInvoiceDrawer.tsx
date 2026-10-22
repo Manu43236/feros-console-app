@@ -57,6 +57,7 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
   const [items, setItems]             = useState<LineItem[]>([])
   const [checked, setChecked]         = useState<Set<number>>(new Set()) // keyed by assignmentId
   const [expanded, setExpanded]       = useState<Set<number>>(new Set()) // keyed by leaseId
+  const [subTab, setSubTab]           = useState<'available' | 'invoiced'>('available')
   const [prefillLoaded, setPrefillLoaded] = useState(false)
 
   const { data: clientsRes } = useQuery({
@@ -80,7 +81,7 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) {
       setClientId(undefined); setFrom(''); setTo(today); setInvoiceDate(today); setDueDate('')
-      setGstSlab(18); setNotes(''); setItems([]); setChecked(new Set()); setExpanded(new Set()); setPrefillLoaded(false)
+      setGstSlab(18); setNotes(''); setItems([]); setChecked(new Set()); setExpanded(new Set()); setSubTab('available'); setPrefillLoaded(false)
     }
   }, [open])
 
@@ -106,9 +107,10 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
         invoicedInvoiceNumber: p.invoicedInvoiceNumber,
       }))
       setItems(mapped)
-      // auto-select every selectable (not already invoiced) vehicle
+      // auto-select every selectable (not already invoiced) vehicle; groups start collapsed
       setChecked(new Set(mapped.filter(m => !m.alreadyInvoiced && m.assignmentId).map(m => m.assignmentId!)))
-      setExpanded(new Set(mapped.map(m => m.leaseId).filter((v): v is number => v != null)))
+      setExpanded(new Set())
+      setSubTab('available')
       setPrefillLoaded(true)
     } catch {
       toast.error('Failed to load prefill')
@@ -140,9 +142,13 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
     })
   }
 
-  // Group items by lease, preserving order
+  const availableCount = items.filter(i => !i.alreadyInvoiced).length
+  const invoicedCount  = items.filter(i => i.alreadyInvoiced).length
+
+  // Group the active sub-tab's rows by lease, preserving order
+  const activeRows = items.filter(i => subTab === 'invoiced' ? i.alreadyInvoiced : !i.alreadyInvoiced)
   const leaseGroups: { leaseId: number; leaseNumber: string; rows: LineItem[] }[] = []
-  for (const it of items) {
+  for (const it of activeRows) {
     const lid = it.leaseId ?? -1
     let g = leaseGroups.find(x => x.leaseId === lid)
     if (!g) { g = { leaseId: lid, leaseNumber: it.leaseNumber ?? '—', rows: [] }; leaseGroups.push(g) }
@@ -230,19 +236,38 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
             <Sparkles size={14} /> Load Leases for Period
           </Button>
 
-          {/* Leases → vehicles (grouped, Orders-style) */}
-          {prefillLoaded && leaseGroups.length > 0 && (
+          {/* Leases → vehicles (grouped, split by invoiced status) */}
+          {prefillLoaded && items.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-500 uppercase tracking-wide">Select Vehicles</Label>
-                <span className="text-xs text-gray-400">{selectedItems.length} selected</span>
+              {/* Sub-tabs: Not Invoiced | Already Invoiced */}
+              <div className="flex gap-1 p-0.5 bg-gray-100 rounded-lg">
+                <button type="button" onClick={() => setSubTab('available')}
+                  className={cn('flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                    subTab === 'available' ? 'bg-white text-feros-navy shadow-sm' : 'text-gray-500 hover:text-gray-800')}>
+                  Not Invoiced ({availableCount})
+                </button>
+                <button type="button" onClick={() => setSubTab('invoiced')}
+                  className={cn('flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                    subTab === 'invoiced' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-800')}>
+                  Already Invoiced ({invoicedCount})
+                </button>
               </div>
 
+              {subTab === 'available' && (
+                <div className="flex items-center justify-end">
+                  <span className="text-xs text-gray-400">{selectedItems.length} selected</span>
+                </div>
+              )}
+
+              {leaseGroups.length === 0 ? (
+                <div className="border border-dashed border-gray-200 rounded-lg p-6 text-center text-sm text-gray-400">
+                  {subTab === 'available' ? 'No un-invoiced vehicles in this period.' : 'Nothing invoiced yet for this period.'}
+                </div>
+              ) : (
               <div className="space-y-2">
                 {leaseGroups.map(group => {
                   const isOpen = expanded.has(group.leaseId)
-                  const selectable = group.rows.filter(r => !r.alreadyInvoiced)
-                  const allInvoiced = selectable.length === 0
+                  const selCount = group.rows.filter(r => r.assignmentId && checked.has(r.assignmentId) && !r.alreadyInvoiced).length
                   return (
                     <div key={group.leaseId} className="border border-gray-200 rounded-lg overflow-hidden">
                       {/* Lease header */}
@@ -253,9 +278,9 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
                           <span className="text-sm font-semibold text-feros-navy">{group.leaseNumber}</span>
                           <span className="text-xs text-gray-400">{group.rows.length} vehicle{group.rows.length !== 1 ? 's' : ''}</span>
                         </div>
-                        {allInvoiced
-                          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded"><CheckCircle2 size={12} /> Fully invoiced</span>
-                          : <span className="text-xs text-gray-400">{group.rows.filter(r => r.assignmentId && checked.has(r.assignmentId) && !r.alreadyInvoiced).length}/{selectable.length} selected</span>}
+                        {subTab === 'invoiced'
+                          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded"><CheckCircle2 size={12} /> Invoiced</span>
+                          : <span className="text-xs text-gray-400">{selCount}/{group.rows.length} selected</span>}
                       </button>
 
                       {/* Vehicle rows */}
@@ -306,6 +331,7 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
                   )
                 })}
               </div>
+              )}
             </div>
           )}
 
