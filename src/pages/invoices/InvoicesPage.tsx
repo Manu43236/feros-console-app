@@ -156,6 +156,9 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
     onSuccess: (res) => {
       toast.success('Invoice created successfully')
       qc.invalidateQueries({ queryKey: ['invoices'] })
+      // Newly-invoiced LRs must drop off the available list immediately
+      qc.invalidateQueries({ queryKey: ['invoiced-lr-ids'] })
+      qc.invalidateQueries({ queryKey: ['lrs-delivered'] })
       onClose()
       navigate(`/invoices/${res.data.id}`)
     },

@@ -256,6 +256,9 @@ export function InvoiceDetailPage() {
       toast.success('Invoice status updated')
       qc.invalidateQueries({ queryKey: ['invoice', id] })
       qc.invalidateQueries({ queryKey: ['invoices'] })
+      // Cancel frees the LRs on the backend — drop the stale invoiced/delivered caches so they reappear
+      qc.invalidateQueries({ queryKey: ['invoiced-lr-ids'] })
+      qc.invalidateQueries({ queryKey: ['lrs-delivered'] })
       if (status === 'CANCELLED') navigate('/invoices')
     },
     onError: () => toast.error('Failed to update status'),
