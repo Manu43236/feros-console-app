@@ -73,10 +73,8 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set())
 
   const { data: clientsRes } = useQuery({ queryKey: ['clients-all'], queryFn: () => clientsApi.getAll({ size: 1000 }) })
-  const { data: lrsRes } = useQuery({ queryKey: ['lrs-delivered'], queryFn: () => lrsApi.getAll({ status: 'DELIVERED', size: 1000 }) })
   const { data: invoicedIdsRes } = useQuery({ queryKey: ['invoiced-lr-ids'], queryFn: invoicesApi.getInvoicedLrIds })
   const { data: tenantRes } = useQuery({ queryKey: ['my-tenant'], queryFn: () => tenantsApi.getMy() })
-  const allLrs        = lrsRes?.data?.content ?? []
   const invoicedLrIds = new Set(invoicedIdsRes?.data ?? [])
   const tenantState   = tenantRes?.data?.state ?? ''
 
@@ -88,6 +86,16 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   const watchedClientId = watch('clientId')
   const taxSlab = Number(watch('taxSlab') ?? 0)
   const clientId = Number(watchedClientId)
+
+  // Fetch delivered LRs for the SELECTED client only — a blanket fetch is capped at 1000 newest
+  // and silently drops older eligible LRs on high-volume tenants. ponytail: 1000/client is plenty;
+  // paginate per client only if one client ever exceeds that.
+  const { data: lrsRes } = useQuery({
+    queryKey: ['lrs-delivered', clientId],
+    queryFn: () => lrsApi.getAll({ status: 'DELIVERED', size: 1000, clientId }),
+    enabled: !!clientId,
+  })
+  const allLrs = lrsRes?.data?.content ?? []
 
   const clientOptions = (clientsRes?.data?.content ?? [])
     .filter(c => c.isActive)

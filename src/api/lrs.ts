@@ -41,7 +41,7 @@ interface AddChargePayload {
 }
 
 export const lrsApi = {
-  getAll: (params?: { page?: number; size?: number; search?: string; status?: string }) =>
+  getAll: (params?: { page?: number; size?: number; search?: string; status?: string; clientId?: number }) =>
     apiClient.get<ApiResponse<PageResponse<Lr>>>('/lrs', { params }).then(r => r.data),
   getById:       (id: number) => apiClient.get<ApiResponse<Lr>>(`/lrs/${id}`).then(r => r.data),
   getByOrder:    (orderId: number) => apiClient.get<ApiResponse<Lr[]>>(`/lrs/order/${orderId}`).then(r => r.data),
