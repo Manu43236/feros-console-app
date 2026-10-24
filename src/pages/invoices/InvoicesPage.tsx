@@ -90,7 +90,7 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
   // Fetch delivered LRs for the SELECTED client only — a blanket fetch is capped at 1000 newest
   // and silently drops older eligible LRs on high-volume tenants. ponytail: 1000/client is plenty;
   // paginate per client only if one client ever exceeds that.
-  const { data: lrsRes } = useQuery({
+  const { data: lrsRes, isLoading: lrsLoading } = useQuery({
     queryKey: ['lrs-delivered', clientId],
     queryFn: () => lrsApi.getAll({ status: 'DELIVERED', size: 1000, clientId }),
     enabled: !!clientId,
@@ -322,6 +322,12 @@ function CreateInvoiceDialog({ onClose }: { onClose: () => void }) {
               <div className="flex flex-col items-center justify-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
                 <Truck className="h-8 w-8 mb-2 opacity-30" />
                 <p className="text-sm">Select a client to see available LRs</p>
+              </div>
+            ) : lrsLoading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="h-16 rounded-lg bg-gray-100 animate-pulse" />
+                ))}
               </div>
             ) : eligibleLrs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
