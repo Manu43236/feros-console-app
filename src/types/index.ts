@@ -448,7 +448,7 @@ export interface WorkEntry {
 
 export interface MachineAssignment {
   id: number; workOrderId: number; equipmentId: number
-  serialNumber?: string; equipmentTypeName: string; makeName?: string; modelName?: string
+  serialNumber?: string; registrationNumber?: string; equipmentTypeName: string; makeName?: string; modelName?: string
   startDate: string; endDate?: string; endReason?: AssignmentEndReason; isActive: boolean
   operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string
   hiredOperatorName?: string; hiredOperatorPhone?: string

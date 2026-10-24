@@ -188,7 +188,7 @@ function CloseMachineDialog({ woId, assignment, open, onClose }: {
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Remove Machine</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
-          <p className="text-sm text-gray-600">Machine: <strong>{assignment?.serialNumber ?? `#${assignment?.equipmentId}`}</strong></p>
+          <p className="text-sm text-gray-600">Machine: <strong>{assignment?.registrationNumber ?? assignment?.serialNumber ?? `Machine #${assignment?.equipmentId}`}</strong></p>
           <div className="space-y-1.5">
             <Label>End Date</Label>
             <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
@@ -380,7 +380,7 @@ function AddLogDialog({ woId, clientId, assignments, open, onClose }: {
                 value={form.machineAssignmentId}
                 onChange={e => setForm(f => ({ ...f, machineAssignmentId: e.target.value }))}>
                 {assignments.map(a => (
-                  <option key={a.id} value={a.id}>{a.serialNumber ?? `Machine #${a.equipmentId}`} ({a.equipmentTypeName})</option>
+                  <option key={a.id} value={a.id}>{a.registrationNumber ?? a.serialNumber ?? `Machine #${a.equipmentId}`} ({a.equipmentTypeName})</option>
                 ))}
               </select>
               {(() => {
@@ -867,7 +867,7 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
         <DialogHeader><DialogTitle>Start Work</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-1">
           <p className="text-xs text-gray-500">
-            Machine: <strong>{assignment?.serialNumber ?? `#${assignment?.equipmentId}`}</strong>
+            Machine: <strong>{assignment?.registrationNumber ?? assignment?.serialNumber ?? `Machine #${assignment?.equipmentId}`}</strong>
           </p>
 
           <div>
@@ -1021,7 +1021,7 @@ function AssignDivisionDialog({ woId, clientId, assignment, open, onClose }: {
         <DialogHeader><DialogTitle>Assign Division</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-1">
           <p className="text-xs text-gray-500">
-            Machine: <strong>{assignment?.serialNumber ?? `#${assignment?.equipmentId}`}</strong>
+            Machine: <strong>{assignment?.registrationNumber ?? assignment?.serialNumber ?? `Machine #${assignment?.equipmentId}`}</strong>
           </p>
           {options.length === 0 ? (
             <p className="text-sm text-gray-400 italic">This client has no divisions set up.</p>
@@ -1381,7 +1381,7 @@ function MachineTermsDialog({ woId, assignment, open, onClose }: {
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Machine Terms — {assignment.serialNumber ?? `#${assignment.equipmentId}`}</DialogTitle>
+          <DialogTitle>Machine Terms — {assignment.registrationNumber ?? assignment.serialNumber ?? `Machine #${assignment.equipmentId}`}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 pt-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1500,7 +1500,7 @@ function SwapMachineDialog({ woId, assignment, open, onClose }: {
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Swap Machine</DialogTitle></DialogHeader>
-        <p className="text-xs text-gray-500">Closes <strong>{assignment.serialNumber ?? `#${assignment.equipmentId}`}</strong> and opens a new assignment with the same terms.</p>
+        <p className="text-xs text-gray-500">Closes <strong>{assignment.registrationNumber ?? assignment.serialNumber ?? `Machine #${assignment.equipmentId}`}</strong> and opens a new assignment with the same terms.</p>
         <div className="space-y-3 pt-1">
           <div className="space-y-1.5">
             <Label>Replacement Machine *</Label>
@@ -1563,7 +1563,7 @@ function ConditionSurveyDialog({ woId, assignment, open, onClose }: {
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Condition Survey — {assignment.serialNumber ?? `#${assignment.equipmentId}`}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Condition Survey — {assignment.registrationNumber ?? assignment.serialNumber ?? `Machine #${assignment.equipmentId}`}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -1982,7 +1982,7 @@ export function WorkOrderDetailPage() {
                   return (
                     <div key={a.id} className="flex items-center gap-3 flex-wrap text-xs">
                       <span className="font-medium text-red-700">
-                        {a.serialNumber ?? `Machine #${a.equipmentId}`}
+                        {a.registrationNumber ?? a.serialNumber ?? `Machine #${a.equipmentId}`}
                       </span>
                       <span className="text-red-600">
                         Down {hrs >= 1 ? `${hrs.toFixed(1)}h` : `${Math.round(hrs * 60)}m`}
@@ -2052,7 +2052,7 @@ export function WorkOrderDetailPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-800">
-                        {a.serialNumber ?? `Machine #${a.equipmentId}`}
+                        {a.registrationNumber ?? a.serialNumber ?? `Machine #${a.equipmentId}`}
                         <span className="text-gray-400 font-normal ml-2">· {a.equipmentTypeName}</span>
                         {a.makeName && <span className="text-gray-400 font-normal"> · {a.makeName} {a.modelName}</span>}
                       </p>
