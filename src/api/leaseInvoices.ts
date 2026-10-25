@@ -1,6 +1,32 @@
 import apiClient from './client'
 import type { ApiResponse, LeaseInvoice, LeaseInvoicePrefill, LeaseInvoiceStatus } from '@/types'
 
+// Day-wise / vehicle-wise / session-wise annexure for a lease invoice
+export interface LeaseInvoiceAnnexureSession {
+  divisionName?: string | null
+  driverName?: string | null
+  startTime?: string | null
+  endTime?: string | null
+  kmDriven?: number | null
+  hoursWorked?: number | null
+}
+export interface LeaseInvoiceAnnexureVehicle {
+  registrationNumber?: string | null
+  sessions: LeaseInvoiceAnnexureSession[]
+}
+export interface LeaseInvoiceAnnexureDay {
+  date: string
+  vehicles: LeaseInvoiceAnnexureVehicle[]
+}
+export interface LeaseInvoiceAnnexureLease {
+  leaseId: number
+  leaseNumber?: string | null
+  days: LeaseInvoiceAnnexureDay[]
+}
+export interface LeaseInvoiceAnnexure {
+  leases: LeaseInvoiceAnnexureLease[]
+}
+
 export const leaseInvoicesApi = {
   getAll: () =>
     apiClient.get<ApiResponse<LeaseInvoice[]>>('/vehicle-leases/invoices').then(r => r.data),
@@ -64,6 +90,9 @@ export const leaseInvoicesApi = {
 
   getById: (id: number) =>
     apiClient.get<ApiResponse<LeaseInvoice>>(`/vehicle-leases/invoices/${id}`).then(r => r.data),
+
+  getAnnexure: (id: number) =>
+    apiClient.get<ApiResponse<LeaseInvoiceAnnexure>>(`/vehicle-leases/invoices/${id}/annexure`).then(r => r.data),
 
   updateStatus: (id: number, status: LeaseInvoiceStatus) =>
     apiClient.put<ApiResponse<LeaseInvoice>>(`/vehicle-leases/invoices/${id}/status`, { status }).then(r => r.data),

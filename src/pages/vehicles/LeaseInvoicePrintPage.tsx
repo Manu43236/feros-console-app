@@ -40,6 +40,16 @@ const fmt = (n: number | undefined | null) =>
 const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
 
+// Full timestamp — dd-MM-yyyy hh:mm AM/PM — so midnight-crossing sessions read naturally
+const fmtDateTime = (d?: string | null) =>
+  d ? new Date(d).toLocaleString('en-IN', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  }).replace(',', '') : '—'
+
+const fmtNum = (n?: number | null) =>
+  n != null ? Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '—'
+
 const B = '1px solid #000'
 const cell = (style?: React.CSSProperties): React.CSSProperties => ({
   border: B, padding: '4px 6px', fontSize: 11, ...style,
@@ -57,6 +67,13 @@ export function LeaseInvoicePrintPage() {
   })
 
   const inv = data?.data
+
+  const { data: annexureData } = useQuery({
+    queryKey: ['lease-invoice-annexure', Number(id)],
+    queryFn: () => leaseInvoicesApi.getAnnexure(Number(id)),
+    enabled: !!id,
+  })
+  const annexure = annexureData?.data
 
   async function handleDownloadPdf() {
     if (!printRef.current) return
@@ -256,6 +273,63 @@ export function LeaseInvoicePrintPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Annexure — day-wise / vehicle-wise / session-wise */}
+        {annexure && annexure.leases.length > 0 && (
+          <div style={{ maxWidth: 860, margin: '16px auto 0', fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#000', padding: '16px', background: '#fff', pageBreakBefore: 'always' }}>
+            <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 14, marginBottom: 10 }}>
+              ANNEXURE — SESSION DETAILS
+            </div>
+            <div style={{ textAlign: 'center', fontSize: 10, color: '#555', marginBottom: 12 }}>
+              Invoice {inv.invoiceNumber} · {billingLabel}
+            </div>
+
+            {annexure.leases.map(lease => (
+              <div key={lease.leaseId} style={{ marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, fontSize: 12, background: '#1e3a5f', color: '#fff', padding: '5px 8px' }}>
+                  Lease: {lease.leaseNumber ?? `#${lease.leaseId}`}
+                </div>
+                {lease.days.map(day => (
+                  <div key={day.date} style={{ marginTop: 6 }}>
+                    <div style={{ fontWeight: 700, background: '#e8edf2', padding: '3px 8px', border: B, borderBottom: 'none' }}>
+                      {fmtDate(day.date)}
+                    </div>
+                    {day.vehicles.map(veh => (
+                      <table key={veh.registrationNumber ?? ''} style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: '#f0f0f0' }}>
+                            <th style={{ ...cell(), textAlign: 'left', width: 140 }}>
+                              {veh.registrationNumber ?? '—'}
+                            </th>
+                            <th style={{ ...cell(), textAlign: 'left' }}>Division</th>
+                            <th style={{ ...cell(), textAlign: 'left' }}>Driver</th>
+                            <th style={{ ...cell(), textAlign: 'left', width: 150 }}>Start</th>
+                            <th style={{ ...cell(), textAlign: 'left', width: 150 }}>End</th>
+                            <th style={{ ...cell(), textAlign: 'right', width: 60 }}>Km</th>
+                            <th style={{ ...cell(), textAlign: 'right', width: 60 }}>Hrs</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {veh.sessions.map((s, i) => (
+                            <tr key={i}>
+                              <td style={{ ...cell() }}>&nbsp;</td>
+                              <td style={{ ...cell() }}>{s.divisionName ?? '—'}</td>
+                              <td style={{ ...cell() }}>{s.driverName ?? '—'}</td>
+                              <td style={{ ...cell() }}>{fmtDateTime(s.startTime)}</td>
+                              <td style={{ ...cell() }}>{fmtDateTime(s.endTime)}</td>
+                              <td style={{ ...cell(), textAlign: 'right' }}>{fmtNum(s.kmDriven)}</td>
+                              <td style={{ ...cell(), textAlign: 'right' }}>{fmtNum(s.hoursWorked)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
