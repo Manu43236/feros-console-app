@@ -22,7 +22,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { staffApi } from '@/api/staff'
 import { clientsApi } from '@/api/clients'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide, IdleAttribution } from '@/types'
+import type { WorkOrder, WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide, IdleAttribution } from '@/types'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
 import { equipmentReceivablesApi } from '@/api/equipmentReceivables'
 import type { EquipmentAdvanceRequest, EquipmentRetentionReleaseRequest, PaymentMode } from '@/types'
@@ -908,7 +908,7 @@ function ShiftCrewPanel({ woId, wo, assignments }: {
 
   const assign = useMutation({
     mutationFn: (p: { shiftId: number; operatorStaffId?: number; cleanerStaffId?: number }) =>
-      workOrdersApi.assignShift(woId, Number(machineId), { shiftId: p.shiftId, workDate: date, ...p }),
+      workOrdersApi.assignShift(woId, Number(machineId), { workDate: date, ...p }),
     onSuccess: () => {
       toast.success('Shift crew assigned')
       qc.invalidateQueries({ queryKey: ['wo-shift-assignments', woId, date] })
