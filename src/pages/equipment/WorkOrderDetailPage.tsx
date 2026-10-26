@@ -23,6 +23,8 @@ import { staffApi } from '@/api/staff'
 import { clientsApi } from '@/api/clients'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { WorkOrder, WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide, IdleAttribution } from '@/types'
+import { useAuthStore } from '@/store/authStore'
+import { openWorkOrderPdf } from './WorkOrderPdf'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
 import { equipmentReceivablesApi } from '@/api/equipmentReceivables'
 import type { EquipmentAdvanceRequest, EquipmentRetentionReleaseRequest, PaymentMode } from '@/types'
@@ -1902,6 +1904,9 @@ export function WorkOrderDetailPage() {
     },
   })
 
+  const companyName = useAuthStore(s => s.companyName) ?? ''
+  const [pdfLoading, setPdfLoading] = useState(false)
+
   const reopenMutation = useMutation({
     mutationFn: () => workOrdersApi.reopen(Number(id)),
     onSuccess: () => { toast.success('Work order reopened'); qc.invalidateQueries({ queryKey: ['work-order', Number(id)] }) },
@@ -2032,6 +2037,16 @@ export function WorkOrderDetailPage() {
               <ArrowLeft size={15} /> Work Orders
             </button>
             <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              <Button size="sm" variant="outline" disabled={pdfLoading}
+                onClick={async () => {
+                  setPdfLoading(true)
+                  try { await openWorkOrderPdf(wo, assignments, companyName) }
+                  catch { toast.error('Failed to generate work order copy') }
+                  finally { setPdfLoading(false) }
+                }}
+                className="text-[#c8a96e] border-[#c8a96e]/40 hover:bg-white/10 bg-transparent gap-1.5">
+                <FileText size={14} /> {pdfLoading ? 'Generating…' : 'Work Order Copy'}
+              </Button>
               {(woStatus === 'CONFIRMED' || woStatus === 'IN_PROGRESS') && (
                 <Button size="sm" variant="outline" onClick={() => setExtendOpen(true)}
                   className="text-[#c8a96e] border-[#c8a96e]/40 hover:bg-white/10 bg-transparent gap-1.5">
