@@ -2,7 +2,7 @@ import apiClient from './client'
 import type { ApiResponse, PageResponse, WorkOrder, WorkOrderDetail, MachineAssignment, DailyLog, WorkEntry, WoAmendment, MachineConditionSurvey, DieselSummaryItem } from '@/types'
 
 export const workOrdersApi = {
-  getAll: (params?: { page?: number; size?: number; status?: string; clientId?: number }) =>
+  getAll: (params?: { page?: number; size?: number; status?: string; clientId?: number; search?: string }) =>
     apiClient.get<ApiResponse<PageResponse<WorkOrder>>>('/work-orders', { params }).then(r => r.data),
 
   getById: (id: number) =>

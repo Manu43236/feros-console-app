@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { HScroll } from '@/components/ui/h-scroll'
 import type { LeaseStatus, RateType } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -326,7 +327,7 @@ export default function LeasesPage() {
             <p className="text-sm">No leases found. Create one to deploy vehicles to a client site.</p>
           </div>
         ) : (
-          <div className="overflow-auto">
+          <HScroll>
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>
@@ -364,7 +365,7 @@ export default function LeasesPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </HScroll>
         )}
       </div>
 

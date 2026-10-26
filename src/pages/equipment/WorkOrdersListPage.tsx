@@ -1,5 +1,5 @@
 import { Spinner } from '@/components/ui/loader'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, type Resolver } from 'react-hook-form'
@@ -9,7 +9,7 @@ import { useSubscription } from '@/context/SubscriptionContext'
 import { workOrdersApi } from '@/api/workOrders'
 import { clientsApi } from '@/api/clients'
 import { toast } from 'sonner'
-import { Plus, ClipboardList } from 'lucide-react'
+import { Plus, ClipboardList, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { HScroll } from '@/components/ui/h-scroll'
 import type { WorkOrderStatus, WorkOrderType, ProviderSide } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -284,7 +285,14 @@ export function WorkOrdersListPage() {
   const [page, setPage] = useState(0)
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | ''>('')
   const [clientFilter, setClientFilter] = useState<number | ''>('')
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(0) }, 400)
+    return () => clearTimeout(t)
+  }, [search])
 
   const { data: clientsRes } = useQuery({
     queryKey: ['clients', 0, ''],
@@ -293,8 +301,9 @@ export function WorkOrdersListPage() {
   const clients = clientsRes?.data?.content ?? []
 
   const { data: res, isLoading } = useQuery({
-    queryKey: ['work-orders', page, statusFilter, clientFilter],
-    queryFn: () => workOrdersApi.getAll({ page, size: 20, status: statusFilter || undefined, clientId: clientFilter || undefined }),
+    queryKey: ['work-orders', page, statusFilter, clientFilter, debouncedSearch],
+    queryFn: () => workOrdersApi.getAll({ page, size: 20, status: statusFilter || undefined, clientId: clientFilter || undefined, search: debouncedSearch || undefined }),
+    placeholderData: (prev) => prev,
   })
 
   const workOrders = res?.data?.content ?? []
@@ -318,6 +327,16 @@ export function WorkOrdersListPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
+        {/* Search */}
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Search WO #, client, site…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-8 w-64 h-9 text-sm"
+          />
+        </div>
         {/* Status pills */}
         <div className="flex gap-2 flex-wrap">
           <button
@@ -367,10 +386,14 @@ export function WorkOrdersListPage() {
         ) : workOrders.length === 0 ? (
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-3">
             <ClipboardList size={36} className="text-gray-200" />
-            <p className="text-sm">No work orders yet. Create your first one.</p>
+            <p className="text-sm">
+              {search || statusFilter || clientFilter
+                ? 'No work orders match your filters'
+                : 'No work orders yet. Create your first one.'}
+            </p>
           </div>
         ) : (
-          <div className="overflow-auto">
+          <HScroll>
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                 <tr>
@@ -405,7 +428,7 @@ export function WorkOrdersListPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </HScroll>
         )}
       </div>
 

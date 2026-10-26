@@ -1,5 +1,6 @@
 import { Spinner } from '@/components/ui/loader'
-import { useState, Fragment, useRef, useEffect } from 'react'
+import { useState, Fragment } from 'react'
+import { HScroll } from '@/components/ui/h-scroll'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Download, Package, ArrowDownToLine, ArrowUpFromLine, ClipboardList, Truck } from 'lucide-react'
@@ -96,30 +97,11 @@ function ExportBtn({ onExport, loading }: { onExport: (f: 'csv' | 'pdf') => void
 
 // ── Table wrapper ──────────────────────────────────────────────────────────────
 function TableWrap({ children }: { children: React.ReactNode }) {
-  const topRef = useRef<HTMLDivElement>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const mirrorRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const top = topRef.current, bottom = bottomRef.current, mirror = mirrorRef.current
-    if (!top || !bottom || !mirror) return
-    const ro = new ResizeObserver(() => { mirror.style.width = `${bottom.scrollWidth}px` })
-    ro.observe(bottom)
-    let syncing = false
-    const t = top, b = bottom
-    function onTop()    { if (!syncing) { syncing = true; b.scrollLeft = t.scrollLeft; syncing = false } }
-    function onBottom() { if (!syncing) { syncing = true; t.scrollLeft = b.scrollLeft; syncing = false } }
-    top.addEventListener('scroll', onTop)
-    bottom.addEventListener('scroll', onBottom)
-    return () => { ro.disconnect(); top.removeEventListener('scroll', onTop); bottom.removeEventListener('scroll', onBottom) }
-  }, [])
   return (
     <div className="rounded-lg border overflow-hidden">
-      <div ref={topRef} className="overflow-x-auto border-b bg-gray-50" style={{ height: 14 }}>
-        <div ref={mirrorRef} style={{ height: 1 }} />
-      </div>
-      <div ref={bottomRef} className="overflow-x-auto">
+      <HScroll className="overflow-x-auto">
         <table className="min-w-full text-sm">{children}</table>
-      </div>
+      </HScroll>
     </div>
   )
 }

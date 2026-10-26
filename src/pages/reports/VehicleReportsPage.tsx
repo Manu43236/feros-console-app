@@ -1,5 +1,6 @@
 import { Spinner } from '@/components/ui/loader'
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
+import { HScroll } from '@/components/ui/h-scroll'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Download, Truck, Fuel, Wrench, AlertTriangle, FileText, ClipboardList } from 'lucide-react'
@@ -70,46 +71,13 @@ function ReportTable({ headers, rows, loading }: {
   rows: React.ReactNode[][]
   loading: boolean
 }) {
-  const topRef    = useRef<HTMLDivElement>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const mirrorRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const top = topRef.current
-    const bottom = bottomRef.current
-    const mirror = mirrorRef.current
-    if (!top || !bottom || !mirror) return
-
-    const ro = new ResizeObserver(() => {
-      mirror.style.width = `${bottom.scrollWidth}px`
-    })
-    ro.observe(bottom)
-
-    let syncing = false
-    const t = top, b = bottom
-    function onTop()    { if (!syncing) { syncing = true; b.scrollLeft = t.scrollLeft; syncing = false } }
-    function onBottom() { if (!syncing) { syncing = true; t.scrollLeft = b.scrollLeft; syncing = false } }
-
-    top.addEventListener('scroll', onTop)
-    bottom.addEventListener('scroll', onBottom)
-    return () => {
-      ro.disconnect()
-      top.removeEventListener('scroll', onTop)
-      bottom.removeEventListener('scroll', onBottom)
-    }
-  }, [rows])
-
   if (loading) return <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
   if (rows.length === 0) return (
     <div className="text-center py-16 text-gray-400 text-sm">No records found for this period</div>
   )
   return (
     <div className="rounded-lg border overflow-hidden">
-      {/* Top scrollbar — synced with table */}
-      <div ref={topRef} className="overflow-x-auto border-b bg-gray-50" style={{ height: 14 }}>
-        <div ref={mirrorRef} style={{ height: 1 }} />
-      </div>
-      <div ref={bottomRef} className="overflow-x-auto">
+      <HScroll className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
             <tr>
@@ -133,7 +101,7 @@ function ReportTable({ headers, rows, loading }: {
         <div className="px-4 py-2 border-t bg-gray-50 text-xs text-gray-500">
           {rows.length} record{rows.length !== 1 ? 's' : ''}
         </div>
-      </div>
+      </HScroll>
     </div>
   )
 }
