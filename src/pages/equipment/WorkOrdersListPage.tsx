@@ -112,12 +112,13 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   return (
     <Sheet open={open} onOpenChange={v => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader>
+      <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
+        <SheetHeader className="px-6 py-4 border-b shrink-0">
           <SheetTitle>New Work Order</SheetTitle>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {/* Work Order Type */}
           <div className="space-y-1.5">
             <Label>Work Order Type</Label>
@@ -325,8 +326,9 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
             <Label>Notes</Label>
             <Input placeholder="Any remarks…" {...register('notes')} />
           </div>
+          </div>
 
-          <div className="flex justify-end gap-3 pt-2 border-t">
+          <div className="shrink-0 border-t bg-white px-6 py-4 flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className={btnPrimary}>
               {mutation.isPending ? 'Creating…' : 'Create Work Order'}
