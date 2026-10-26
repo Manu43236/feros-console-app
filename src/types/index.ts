@@ -415,6 +415,44 @@ export interface WorkOrder {
   workOrderType?: WorkOrderType
   agreedJobAmount?: number
   jobDescription?: string
+  // Crew shift-duty (equipment mirror of lease shifts)
+  shiftDuty?: boolean
+  shifts?: WorkOrderShift[]
+}
+
+export interface WorkOrderShift {
+  id: number; shiftNumber: number
+  startTime: string; endTime: string
+  operatorPay: number; cleanerPay?: number
+}
+
+export interface OperatorAssignmentRow {
+  staffName: string; role: string
+  machine?: string; equipmentType?: string
+  workOrderNumber?: string; clientName?: string
+  assignmentType?: string; fromDate?: string; toDate?: string; pay?: number
+}
+
+export interface MachineStaffCostRow {
+  machine?: string; equipmentType?: string
+  workOrderNumber?: string; clientName?: string
+  operatorCost?: number; cleanerCost?: number; totalCost?: number
+}
+
+export interface WorkOrderShiftInput {
+  shiftNumber: number
+  startTime: string; endTime: string
+  operatorPay: number; cleanerPay?: number
+}
+
+export interface MachineShiftAssignment {
+  id: number; assignmentId: number
+  equipmentId: number; registrationNumber?: string; equipmentName?: string
+  shiftId: number; shiftNumber: number; startTime: string; endTime: string
+  workDate: string
+  operatorStaffId?: number; operatorName?: string; clientOperator: boolean
+  cleanerStaffId?: number; cleanerName?: string; clientCleaner: boolean
+  operatorPay?: number; cleanerPay?: number
 }
 
 export interface WoAmendment {
@@ -452,6 +490,7 @@ export interface MachineAssignment {
   startDate: string; endDate?: string; endReason?: AssignmentEndReason; isActive: boolean
   operatorType?: OperatorType; operatorStaffId?: number; operatorStaffName?: string
   hiredOperatorName?: string; hiredOperatorPhone?: string
+  cleanerStaffId?: number; cleanerStaffName?: string; clientCleanerName?: string
   activeWorkEntry?: WorkEntry | null
   divisionId?: number | null; divisionName?: string | null
   rateType?: RateType; rateAmount?: number

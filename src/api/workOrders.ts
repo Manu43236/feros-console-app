@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse, PageResponse, WorkOrder, WorkOrderDetail, MachineAssignment, DailyLog, WorkEntry, WoAmendment, MachineConditionSurvey, DieselSummaryItem } from '@/types'
+import type { ApiResponse, PageResponse, WorkOrder, WorkOrderDetail, MachineAssignment, DailyLog, WorkEntry, WoAmendment, MachineConditionSurvey, DieselSummaryItem, MachineShiftAssignment } from '@/types'
 
 export const workOrdersApi = {
   getAll: (params?: { page?: number; size?: number; status?: string; clientId?: number; search?: string }) =>
@@ -26,8 +26,19 @@ export const workOrdersApi = {
   closeMachine: (woId: number, assignmentId: number, data: { endDate?: string; endReason: string }) =>
     apiClient.put<ApiResponse<void>>(`/work-orders/${woId}/machines/${assignmentId}/close`, data).then(r => r.data),
 
-  assignOperator: (woId: number, assignmentId: number, data: { operatorType?: string; operatorStaffId?: number; hiredOperatorName?: string; hiredOperatorPhone?: string }) =>
+  assignOperator: (woId: number, assignmentId: number, data: { operatorType?: string; operatorStaffId?: number; hiredOperatorName?: string; hiredOperatorPhone?: string; swap?: boolean }) =>
     apiClient.put<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/operator`, data).then(r => r.data),
+
+  // Crew parity — standing cleaner (mirror of operator)
+  assignCleaner: (woId: number, assignmentId: number, data: { cleanerStaffId?: number; clientCleanerName?: string; swap?: boolean }) =>
+    apiClient.put<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/cleaner`, data).then(r => r.data),
+
+  // Crew parity — shift-based assignment (mirror of lease shift assignment)
+  assignShift: (woId: number, assignmentId: number, data: { shiftId: number; workDate: string; operatorStaffId?: number; cleanerStaffId?: number }) =>
+    apiClient.put<ApiResponse<MachineShiftAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/shift-assignments`, data).then(r => r.data),
+
+  getShiftAssignments: (woId: number, from: string, to: string) =>
+    apiClient.get<ApiResponse<MachineShiftAssignment[]>>(`/work-orders/${woId}/shift-assignments`, { params: { from, to } }).then(r => r.data),
 
   setAttachment: (woId: number, assignmentId: number, attachmentId: number | null) =>
     apiClient.put<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/attachment`, { attachmentId }).then(r => r.data),

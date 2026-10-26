@@ -2,7 +2,7 @@ import { Spinner } from '@/components/ui/loader'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm, Controller, type Resolver } from 'react-hook-form'
+import { useForm, Controller, useFieldArray, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSubscription } from '@/context/SubscriptionContext'
@@ -59,6 +59,15 @@ const schema = z.object({
   overtimeRateMultiplier: z.coerce.number().optional(),
   escalationClause:      z.string().optional(),
   penaltyClause:         z.string().optional(),
+  // Crew shift-duty (equipment mirror of lease shifts)
+  shiftDuty:             z.boolean().optional(),
+  shifts:                z.array(z.object({
+    shiftNumber: z.coerce.number(),
+    startTime:   z.string().min(1, 'Start required'),
+    endTime:     z.string().min(1, 'End required'),
+    operatorPay: z.coerce.number(),
+    cleanerPay:  z.coerce.number().optional(),
+  })).optional(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -79,12 +88,16 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
     defaultValues: { workOrderType: 'RENTAL' },
   })
   const workOrderType = watch('workOrderType')
+  const shiftDuty = watch('shiftDuty')
+  const { fields: shiftFields, append: appendShift, remove: removeShift } = useFieldArray({ control, name: 'shifts' })
 
   const mutation = useMutation({
     mutationFn: (data: FormData) => workOrdersApi.create({
       ...data,
       endDate: data.endDate || undefined,
       billingCycleMonths: data.billingCycleMonths || undefined,
+      shiftDuty: !!data.shiftDuty,
+      shifts: data.shiftDuty ? data.shifts : undefined,
     }),
     onSuccess: () => {
       toast.success('Work order created')
@@ -251,6 +264,60 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
                 <Input placeholder="e.g. ₹500/hr beyond 8hr downtime…" {...register('penaltyClause')} />
               </div>
             </div>
+          </div>
+
+          {/* Crew — shift duty (equipment mirror of lease shifts) */}
+          <div className="border-t pt-4">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <Controller name="shiftDuty" control={control} render={({ field }) => (
+                <button type="button" role="switch" aria-checked={!!field.value}
+                  onClick={() => field.onChange(!field.value)}
+                  className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                    field.value ? 'bg-feros-equip-sidebar' : 'bg-gray-300')}>
+                  <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                    field.value ? 'translate-x-6' : 'translate-x-1')} />
+                </button>
+              )} />
+              <span className="text-sm font-medium text-gray-700">Shift-duty work order (per-shift crew &amp; pay)</span>
+            </label>
+
+            {shiftDuty && (
+              <div className="mt-3 space-y-3">
+                {shiftFields.map((f, i) => (
+                  <div key={f.id} className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end p-3 bg-gray-50 rounded-md border">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Shift #</Label>
+                      <Input type="number" {...register(`shifts.${i}.shiftNumber` as const)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Start</Label>
+                      <Input type="time" {...register(`shifts.${i}.startTime` as const)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">End</Label>
+                      <Input type="time" {...register(`shifts.${i}.endTime` as const)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Operator Pay ₹</Label>
+                      <Input type="number" step="0.01" {...register(`shifts.${i}.operatorPay` as const)} />
+                    </div>
+                    <div className="space-y-1 flex gap-2">
+                      <div className="flex-1">
+                        <Label className="text-xs">Cleaner Pay ₹</Label>
+                        <Input type="number" step="0.01" {...register(`shifts.${i}.cleanerPay` as const)} />
+                      </div>
+                      <Button type="button" variant="outline" size="sm" className="mb-0.5" onClick={() => removeShift(i)}>✕</Button>
+                    </div>
+                  </div>
+                ))}
+                {shiftFields.length < 4 && (
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => appendShift({ shiftNumber: shiftFields.length + 1, startTime: '', endTime: '', operatorPay: 0, cleanerPay: undefined })}>
+                    + Add Shift
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Notes */}

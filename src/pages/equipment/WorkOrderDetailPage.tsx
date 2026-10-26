@@ -799,6 +799,183 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
   )
 }
 
+// ── Assign Cleaner Dialog (mirror of operator, equipment crew parity) ──────────
+function AssignCleanerDialog({ woId, assignment, open, onClose }: {
+  woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [mode, setMode] = useState<'OWN' | 'CLIENT' | ''>('')
+  const [staffId, setStaffId] = useState('')
+  const [clientName, setClientName] = useState('')
+
+  const { data: staffRes } = useQuery({
+    queryKey: ['staff-all-cleaners'],
+    queryFn: () => staffApi.getAll({}),
+    enabled: open,
+  })
+  const cleaners = (staffRes?.data ?? []).filter(s => s.roleName === 'CLEANER')
+
+  const mutation = useMutation({
+    mutationFn: () => workOrdersApi.assignCleaner(woId, assignment!.id, {
+      cleanerStaffId: mode === 'OWN' ? Number(staffId) : undefined,
+      clientCleanerName: mode === 'CLIENT' ? clientName : undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Cleaner assigned')
+      qc.invalidateQueries({ queryKey: ['work-order', woId] })
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to assign cleaner')
+    },
+  })
+
+  const isValid = !mode || (mode === 'OWN' && !!staffId) || (mode === 'CLIENT' && !!clientName)
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Assign Cleaner</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div>
+            <Label className="text-xs text-gray-500 mb-1.5 block">Cleaner Type</Label>
+            <div className="flex gap-2">
+              {(['OWN', 'CLIENT'] as const).map(t => (
+                <button key={t} onClick={() => { setMode(t); setStaffId(''); setClientName('') }}
+                  className={cn('flex-1 py-2 text-sm rounded-lg border transition-colors',
+                    mode === t ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
+                  {t === 'OWN' ? 'Own Staff' : "Client's Own"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {mode === 'OWN' && (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1.5 block">Select Cleaner</Label>
+              <select className="w-full border rounded-md px-3 py-2 text-sm" value={staffId} onChange={e => setStaffId(e.target.value)}>
+                <option value="">— Select cleaner —</option>
+                {cleaners.map(s => <option key={s.userId} value={String(s.userId)}>{s.userName}</option>)}
+              </select>
+              {cleaners.length === 0 && <p className="text-xs text-amber-600 mt-1">No cleaners found. Add cleaners in Staff first.</p>}
+            </div>
+          )}
+
+          {mode === 'CLIENT' && (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1.5 block">Cleaner Name *</Label>
+              <Input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Client's cleaner name" />
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            {(assignment?.cleanerStaffId || assignment?.clientCleanerName) && (
+              <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => { setMode(''); setStaffId(''); setClientName(''); mutation.mutate() }}>
+                Remove
+              </Button>
+            )}
+            <Button className="flex-1 bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white"
+              disabled={!isValid || mutation.isPending} onClick={() => mutation.mutate()}>
+              {mutation.isPending ? 'Saving…' : 'Assign'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Shift Crew Panel (shift-duty WOs — per-day, per-shift operator + cleaner) ──
+function ShiftCrewPanel({ woId, wo, assignments }: {
+  woId: number; wo: WorkOrder; assignments: MachineAssignment[]
+}) {
+  const qc = useQueryClient()
+  const today = new Date().toISOString().slice(0, 10)
+  const [date, setDate] = useState(today)
+  const [machineId, setMachineId] = useState<number | ''>(assignments[0]?.id ?? '')
+
+  const { data: staffRes } = useQuery({ queryKey: ['staff-all-crew'], queryFn: () => staffApi.getAll({}) })
+  const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR')
+  const cleaners = (staffRes?.data ?? []).filter(s => s.roleName === 'CLEANER')
+
+  const { data: rowsRes } = useQuery({
+    queryKey: ['wo-shift-assignments', woId, date],
+    queryFn: () => workOrdersApi.getShiftAssignments(woId, date, date),
+  })
+  const rows = rowsRes?.data ?? []
+
+  const assign = useMutation({
+    mutationFn: (p: { shiftId: number; operatorStaffId?: number; cleanerStaffId?: number }) =>
+      workOrdersApi.assignShift(woId, Number(machineId), { shiftId: p.shiftId, workDate: date, ...p }),
+    onSuccess: () => {
+      toast.success('Shift crew assigned')
+      qc.invalidateQueries({ queryKey: ['wo-shift-assignments', woId, date] })
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to assign shift crew')
+    },
+  })
+
+  const shifts = wo.shifts ?? []
+  const rowFor = (shiftId: number) => rows.find(r => r.shiftId === shiftId && r.assignmentId === Number(machineId))
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <Label className="text-xs text-gray-500 mb-1 block">Date</Label>
+          <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-9" />
+        </div>
+        <div className="min-w-[200px]">
+          <Label className="text-xs text-gray-500 mb-1 block">Machine</Label>
+          <select className="w-full border rounded-md px-3 py-2 text-sm h-9" value={machineId}
+            onChange={e => setMachineId(e.target.value ? Number(e.target.value) : '')}>
+            {assignments.map(a => <option key={a.id} value={a.id}>{a.registrationNumber ?? a.serialNumber ?? a.equipmentTypeName}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {shifts.length === 0 && <p className="text-sm text-gray-400">No shifts defined on this work order.</p>}
+
+      <div className="space-y-3">
+        {shifts.map(sh => {
+          const r = rowFor(sh.id)
+          return (
+            <div key={sh.id} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end p-3 bg-gray-50 rounded-lg border">
+              <div className="text-sm">
+                <span className="font-medium text-gray-700">Shift {sh.shiftNumber}</span>
+                <span className="text-gray-400"> · {sh.startTime}–{sh.endTime}</span>
+                <div className="text-xs text-gray-400">Op ₹{sh.operatorPay}{sh.cleanerPay != null ? ` · Cl ₹${sh.cleanerPay}` : ''}</div>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500 mb-1 block">Operator</Label>
+                <select className="w-full border rounded-md px-2 py-1.5 text-sm" defaultValue={r?.operatorStaffId ?? ''}
+                  disabled={!machineId}
+                  onChange={e => assign.mutate({ shiftId: sh.id, operatorStaffId: e.target.value ? Number(e.target.value) : undefined, cleanerStaffId: r?.cleanerStaffId })}>
+                  <option value="">Client's own</option>
+                  {operators.map(s => <option key={s.userId} value={s.userId}>{s.userName}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500 mb-1 block">Cleaner</Label>
+                <select className="w-full border rounded-md px-2 py-1.5 text-sm" defaultValue={r?.cleanerStaffId ?? ''}
+                  disabled={!machineId}
+                  onChange={e => assign.mutate({ shiftId: sh.id, operatorStaffId: r?.operatorStaffId, cleanerStaffId: e.target.value ? Number(e.target.value) : undefined })}>
+                  <option value="">Client's own</option>
+                  {cleaners.map(s => <option key={s.userId} value={s.userId}>{s.userName}</option>)}
+                </select>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Start Work Dialog ─────────────────────────────────────────────────────────
 function StartWorkDialog({ woId, assignment, open, onClose }: {
   woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
@@ -1695,6 +1872,7 @@ export function WorkOrderDetailPage() {
   const [deletingLogId, setDeletingLogId] = useState<number | null>(null)
   const [extendOpen, setExtendOpen] = useState(false)
   const [assigningOperatorFor, setAssigningOperatorFor] = useState<MachineAssignment | null>(null)
+  const [assigningCleanerFor, setAssigningCleanerFor] = useState<MachineAssignment | null>(null)
   const [assigningAttachmentFor, setAssigningAttachmentFor] = useState<MachineAssignment | null>(null)
   const [startingWorkFor, setStartingWorkFor] = useState<MachineAssignment | null>(null)
   const [stoppingWorkFor, setStoppingWorkFor] = useState<MachineAssignment | null>(null)
@@ -2041,6 +2219,12 @@ export function WorkOrderDetailPage() {
               <Plus size={13} /> Assign Machine
             </Button>
           </div>
+          {wo.shiftDuty && assignments.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Shift Crew (per day · per shift)</p>
+              <ShiftCrewPanel woId={Number(id)} wo={wo} assignments={assignments} />
+            </div>
+          )}
           {assignments.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
               No machines assigned yet
@@ -2199,6 +2383,24 @@ export function WorkOrderDetailPage() {
                         <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
                           onClick={() => setAssigningOperatorFor(a)}>
                           {a.operatorType ? 'Change' : 'Assign Operator'}
+                        </Button>
+                      )}
+                    </div>
+                    {/* Cleaner row (equipment crew parity) */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <User size={12} />
+                        {a.cleanerStaffName
+                          ? <span className="font-medium text-gray-700">{a.cleanerStaffName}</span>
+                          : a.clientCleanerName
+                            ? <span className="font-medium text-gray-700">{a.clientCleanerName} <span className="text-gray-400">(Client)</span></span>
+                            : <span className="text-gray-400 italic">No cleaner assigned</span>
+                        }
+                      </div>
+                      {a.isActive && (
+                        <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
+                          onClick={() => setAssigningCleanerFor(a)}>
+                          {(a.cleanerStaffId || a.clientCleanerName) ? 'Change' : 'Assign Cleaner'}
                         </Button>
                       )}
                     </div>
@@ -2723,6 +2925,7 @@ export function WorkOrderDetailPage() {
       <AddMachineDialog woId={Number(id)} open={addMachineOpen} onClose={() => setAddMachineOpen(false)} workOrderType={wo.workOrderType} />
       <CloseMachineDialog woId={Number(id)} assignment={closingAssignment} open={!!closingAssignment} onClose={() => setClosingAssignment(null)} />
       <AssignOperatorDialog woId={Number(id)} assignment={assigningOperatorFor} open={!!assigningOperatorFor} onClose={() => setAssigningOperatorFor(null)} />
+      <AssignCleanerDialog woId={Number(id)} assignment={assigningCleanerFor} open={!!assigningCleanerFor} onClose={() => setAssigningCleanerFor(null)} />
       <AssignAttachmentDialog woId={Number(id)} assignment={assigningAttachmentFor} open={!!assigningAttachmentFor} onClose={() => setAssigningAttachmentFor(null)} />
       <AssignDivisionDialog woId={Number(id)} clientId={wo.clientId} assignment={assigningDivisionFor} open={!!assigningDivisionFor} onClose={() => setAssigningDivisionFor(null)} />
       <StartWorkDialog woId={Number(id)} assignment={startingWorkFor} open={!!startingWorkFor} onClose={() => setStartingWorkFor(null)} />

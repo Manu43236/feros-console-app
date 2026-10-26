@@ -8,6 +8,8 @@ import type {
   BreakdownReportRow,
   DocumentExpiryRow,
   MaintenanceServiceRow,
+  OperatorAssignmentRow,
+  MachineStaffCostRow,
   AttendanceDailyRow,
   AttendanceSummaryRow,
   AttendanceRoleSummaryRow,
@@ -745,4 +747,29 @@ export const reportsApi = {
     apiClient.get<ApiResponse<TripSummaryRow[]>>('/reports/trips/summary', {
       params: { startDate, endDate, ...(orderNumber ? { orderNumber } : {}) },
     }).then(r => r.data),
+
+  // ── Equipment crew parity reports ──────────────────────────────────────────
+  getOperatorAssignments: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<OperatorAssignmentRow[]>>('/reports/equipment/operator-assignments', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportOperatorAssignments: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/equipment/operator-assignments/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `operator-assignments-${startDate}-${endDate}.${format}`)
+  },
+
+  getMachineStaffCost: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<MachineStaffCostRow[]>>('/reports/equipment/machine-staff-cost', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportMachineStaffCost: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/equipment/machine-staff-cost/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `machine-staff-cost-${startDate}-${endDate}.${format}`)
+  },
 }

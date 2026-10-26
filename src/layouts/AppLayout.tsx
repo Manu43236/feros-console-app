@@ -291,6 +291,7 @@ const EQUIPMENT_ADMIN_NAV: SectionedNav = {
       items: [
         { to: '/equipment/invoices',   label: 'Invoices',   icon: Receipt },
         { to: '/equipment/analytics',  label: 'Analytics',  icon: TrendingUp },
+        { to: '/equipment/crew-reports', label: 'Crew Reports', icon: Users },
         { to: '/masters',              label: 'Masters',    icon: Settings },
         { to: '/equipment/reports',    label: 'Reports',    icon: BarChart2 },
       ],
