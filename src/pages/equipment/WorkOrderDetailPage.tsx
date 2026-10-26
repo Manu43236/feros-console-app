@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { staffApi } from '@/api/staff'
+import { attendanceApi } from '@/api/attendance'
 import { clientsApi } from '@/api/clients'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { WorkOrder, WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide, IdleAttribution } from '@/types'
@@ -715,12 +716,22 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
   const [hiredName, setHiredName] = useState('')
   const [hiredPhone, setHiredPhone] = useState('')
 
+  const today = new Date().toISOString().slice(0, 10)
   const { data: staffRes } = useQuery({
     queryKey: ['staff-equipment'],
     queryFn: () => staffApi.getAll({ equipmentOnly: true }),
     enabled: open,
   })
-  const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR')
+  const { data: attRes } = useQuery({
+    queryKey: ['attendance-by-date', today],
+    queryFn: () => attendanceApi.getByDate(today),
+    enabled: open,
+  })
+  const presentIds = new Set((attRes?.data ?? [])
+    .filter(a => a.approvalStatus === 'PENDING' || a.approvalStatus === 'APPROVED')
+    .map(a => a.userId))
+  // Only operators whose attendance is taken today are assignable (matches the backend gate).
+  const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR' && presentIds.has(s.userId))
 
   const mutation = useMutation({
     mutationFn: () => workOrdersApi.assignOperator(woId, assignment!.id, {
@@ -762,11 +773,13 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
           {operatorType === 'OWN_STAFF' && (
             <div>
               <Label className="text-xs text-gray-500 mb-1.5 block">Select Operator</Label>
-              <select className="w-full border rounded-md px-3 py-2 text-sm" value={staffId} onChange={e => setStaffId(e.target.value)}>
-                <option value="">— Select operator —</option>
-                {operators.map(s => <option key={s.userId} value={String(s.userId)}>{s.userName}</option>)}
-              </select>
-              {operators.length === 0 && <p className="text-xs text-amber-600 mt-1">No operators found. Add operators in Staff first.</p>}
+              <SearchableSelect
+                value={staffId}
+                onValueChange={setStaffId}
+                options={operators.map(s => ({ value: String(s.userId), label: s.userName }))}
+                placeholder="Search operator…"
+              />
+              {operators.length === 0 && <p className="text-xs text-amber-600 mt-1">No operators with attendance marked today. Mark their attendance first.</p>}
             </div>
           )}
 
@@ -810,12 +823,21 @@ function AssignCleanerDialog({ woId, assignment, open, onClose }: {
   const [staffId, setStaffId] = useState('')
   const [clientName, setClientName] = useState('')
 
+  const today = new Date().toISOString().slice(0, 10)
   const { data: staffRes } = useQuery({
     queryKey: ['staff-all-cleaners'],
     queryFn: () => staffApi.getAll({}),
     enabled: open,
   })
-  const cleaners = (staffRes?.data ?? []).filter(s => s.roleName === 'CLEANER')
+  const { data: attRes } = useQuery({
+    queryKey: ['attendance-by-date', today],
+    queryFn: () => attendanceApi.getByDate(today),
+    enabled: open,
+  })
+  const presentIds = new Set((attRes?.data ?? [])
+    .filter(a => a.approvalStatus === 'PENDING' || a.approvalStatus === 'APPROVED')
+    .map(a => a.userId))
+  const cleaners = (staffRes?.data ?? []).filter(s => s.roleName === 'CLEANER' && presentIds.has(s.userId))
 
   const mutation = useMutation({
     mutationFn: () => workOrdersApi.assignCleaner(woId, assignment!.id, {
@@ -856,11 +878,13 @@ function AssignCleanerDialog({ woId, assignment, open, onClose }: {
           {mode === 'OWN' && (
             <div>
               <Label className="text-xs text-gray-500 mb-1.5 block">Select Cleaner</Label>
-              <select className="w-full border rounded-md px-3 py-2 text-sm" value={staffId} onChange={e => setStaffId(e.target.value)}>
-                <option value="">— Select cleaner —</option>
-                {cleaners.map(s => <option key={s.userId} value={String(s.userId)}>{s.userName}</option>)}
-              </select>
-              {cleaners.length === 0 && <p className="text-xs text-amber-600 mt-1">No cleaners found. Add cleaners in Staff first.</p>}
+              <SearchableSelect
+                value={staffId}
+                onValueChange={setStaffId}
+                options={cleaners.map(s => ({ value: String(s.userId), label: s.userName }))}
+                placeholder="Search cleaner…"
+              />
+              {cleaners.length === 0 && <p className="text-xs text-amber-600 mt-1">No cleaners with attendance marked today. Mark their attendance first.</p>}
             </div>
           )}
 
@@ -899,8 +923,16 @@ function ShiftCrewPanel({ woId, wo, assignments }: {
   const [machineId, setMachineId] = useState<number | ''>(assignments[0]?.id ?? '')
 
   const { data: staffRes } = useQuery({ queryKey: ['staff-all-crew'], queryFn: () => staffApi.getAll({}) })
-  const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR')
-  const cleaners = (staffRes?.data ?? []).filter(s => s.roleName === 'CLEANER')
+  // Only staff whose attendance is taken (PENDING/APPROVED) on the selected date are selectable.
+  const { data: attRes } = useQuery({
+    queryKey: ['attendance-by-date', date],
+    queryFn: () => attendanceApi.getByDate(date),
+  })
+  const presentIds = new Set((attRes?.data ?? [])
+    .filter(a => a.approvalStatus === 'PENDING' || a.approvalStatus === 'APPROVED')
+    .map(a => a.userId))
+  const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR' && presentIds.has(s.userId))
+  const cleaners = (staffRes?.data ?? []).filter(s => s.roleName === 'CLEANER' && presentIds.has(s.userId))
 
   const { data: rowsRes } = useQuery({
     queryKey: ['wo-shift-assignments', woId, date],
@@ -931,12 +963,14 @@ function ShiftCrewPanel({ woId, wo, assignments }: {
           <Label className="text-xs text-gray-500 mb-1 block">Date</Label>
           <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-9" />
         </div>
-        <div className="min-w-[200px]">
+        <div className="min-w-[220px]">
           <Label className="text-xs text-gray-500 mb-1 block">Machine</Label>
-          <select className="w-full border rounded-md px-3 py-2 text-sm h-9" value={machineId}
-            onChange={e => setMachineId(e.target.value ? Number(e.target.value) : '')}>
-            {assignments.map(a => <option key={a.id} value={a.id}>{a.registrationNumber ?? a.serialNumber ?? a.equipmentTypeName}</option>)}
-          </select>
+          <SearchableSelect
+            value={machineId ? String(machineId) : ''}
+            onValueChange={v => setMachineId(v ? Number(v) : '')}
+            options={assignments.map(a => ({ value: String(a.id), label: a.registrationNumber ?? a.serialNumber ?? a.equipmentTypeName }))}
+            placeholder="Select machine"
+          />
         </div>
       </div>
 
@@ -945,6 +979,8 @@ function ShiftCrewPanel({ woId, wo, assignments }: {
       <div className="space-y-3">
         {shifts.map(sh => {
           const r = rowFor(sh.id)
+          const opOpts = [{ value: 'client', label: "Client's own" }, ...operators.map(s => ({ value: String(s.userId), label: s.userName }))]
+          const clOpts = [{ value: 'client', label: "Client's own" }, ...cleaners.map(s => ({ value: String(s.userId), label: s.userName }))]
           return (
             <div key={sh.id} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end p-3 bg-gray-50 rounded-lg border">
               <div className="text-sm">
@@ -954,21 +990,21 @@ function ShiftCrewPanel({ woId, wo, assignments }: {
               </div>
               <div>
                 <Label className="text-xs text-gray-500 mb-1 block">Operator</Label>
-                <select className="w-full border rounded-md px-2 py-1.5 text-sm" defaultValue={r?.operatorStaffId ?? ''}
-                  disabled={!machineId}
-                  onChange={e => assign.mutate({ shiftId: sh.id, operatorStaffId: e.target.value ? Number(e.target.value) : undefined, cleanerStaffId: r?.cleanerStaffId })}>
-                  <option value="">Client's own</option>
-                  {operators.map(s => <option key={s.userId} value={s.userId}>{s.userName}</option>)}
-                </select>
+                <SearchableSelect
+                  value={r?.operatorStaffId ? String(r.operatorStaffId) : 'client'}
+                  onValueChange={v => machineId && assign.mutate({ shiftId: sh.id, operatorStaffId: v === 'client' ? undefined : Number(v), cleanerStaffId: r?.cleanerStaffId })}
+                  options={opOpts}
+                  placeholder="Select operator"
+                />
               </div>
               <div>
                 <Label className="text-xs text-gray-500 mb-1 block">Cleaner</Label>
-                <select className="w-full border rounded-md px-2 py-1.5 text-sm" defaultValue={r?.cleanerStaffId ?? ''}
-                  disabled={!machineId}
-                  onChange={e => assign.mutate({ shiftId: sh.id, operatorStaffId: r?.operatorStaffId, cleanerStaffId: e.target.value ? Number(e.target.value) : undefined })}>
-                  <option value="">Client's own</option>
-                  {cleaners.map(s => <option key={s.userId} value={s.userId}>{s.userName}</option>)}
-                </select>
+                <SearchableSelect
+                  value={r?.cleanerStaffId ? String(r.cleanerStaffId) : 'client'}
+                  onValueChange={v => machineId && assign.mutate({ shiftId: sh.id, operatorStaffId: r?.operatorStaffId, cleanerStaffId: v === 'client' ? undefined : Number(v) })}
+                  options={clOpts}
+                  placeholder="Select cleaner"
+                />
               </div>
             </div>
           )
