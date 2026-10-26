@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { HScroll } from '@/components/ui/h-scroll'
@@ -111,11 +111,11 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
   })
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>New Work Order</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={v => !v && onClose()}>
+      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>New Work Order</SheetTitle>
+        </SheetHeader>
 
         <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="space-y-5 pt-2">
           {/* Work Order Type */}
@@ -333,8 +333,8 @@ function WorkOrderFormDialog({ open, onClose }: { open: boolean; onClose: () => 
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
