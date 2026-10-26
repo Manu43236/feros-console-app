@@ -11,7 +11,7 @@ import {
   ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
   Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2, Receipt, Boxes,
-  FileText, Camera, RefreshCw, Upload, Fuel, CreditCard, Landmark,
+  FileText, Camera, RefreshCw, Upload, Fuel, CreditCard, Landmark, RotateCcw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -1902,6 +1902,15 @@ export function WorkOrderDetailPage() {
     },
   })
 
+  const reopenMutation = useMutation({
+    mutationFn: () => workOrdersApi.reopen(Number(id)),
+    onSuccess: () => { toast.success('Work order reopened'); qc.invalidateQueries({ queryKey: ['work-order', Number(id)] }) },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to reopen work order')
+    },
+  })
+
   const { data: sessionsRes } = useQuery({
     queryKey: ['work-entries', Number(id), sessionsFrom, sessionsTo],
     queryFn: () => workOrdersApi.getAllWorkEntries(Number(id), {
@@ -2215,9 +2224,23 @@ export function WorkOrderDetailPage() {
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500">{assignments.length} machine{assignments.length !== 1 ? 's' : ''} assigned</p>
-            <Button size="sm" onClick={() => setAddMachineOpen(true)} className={`${btnPrimary} gap-1.5`}>
-              <Plus size={13} /> Assign Machine
-            </Button>
+            {['COMPLETED', 'INVOICED', 'CANCELLED'].includes(woStatus) ? (
+              woStatus === 'COMPLETED' ? (
+                <Button size="sm" variant="outline" className="gap-1.5"
+                  disabled={reopenMutation.isPending}
+                  onClick={() => reopenMutation.mutate()}>
+                  <RotateCcw size={13} /> {reopenMutation.isPending ? 'Reopening…' : 'Reopen to add machine'}
+                </Button>
+              ) : (
+                <span className="text-xs text-gray-400 italic">
+                  {woStatus === 'INVOICED' ? 'Invoiced — locked' : 'Cancelled — locked'}
+                </span>
+              )
+            ) : (
+              <Button size="sm" onClick={() => setAddMachineOpen(true)} className={`${btnPrimary} gap-1.5`}>
+                <Plus size={13} /> Assign Machine
+              </Button>
+            )}
           </div>
           {wo.shiftDuty && assignments.length > 0 && (
             <div className="mb-4">

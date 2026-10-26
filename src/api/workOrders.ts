@@ -17,6 +17,9 @@ export const workOrdersApi = {
   updateStatus: (id: number, status: string) =>
     apiClient.put<ApiResponse<WorkOrder>>(`/work-orders/${id}/status`, { status }).then(r => r.data),
 
+  reopen: (id: number) =>
+    apiClient.put<ApiResponse<WorkOrder>>(`/work-orders/${id}/reopen`).then(r => r.data),
+
   extend: (id: number, newEndDate: string) =>
     apiClient.put<ApiResponse<WorkOrder>>(`/work-orders/${id}/extend`, { newEndDate }).then(r => r.data),
 
