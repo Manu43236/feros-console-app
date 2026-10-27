@@ -1020,16 +1020,22 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
   const prefilled = assignment?.operatorType
   const preStaffId = assignment?.operatorStaffId ? String(assignment.operatorStaffId) : ''
   const preHiredName = assignment?.hiredOperatorName ?? ''
+  // The machine already has an operator → don't ask again, just confirm + HMR.
+  const hasAssignedOperator = !!(assignment?.operatorType && (assignment?.operatorStaffName || assignment?.hiredOperatorName))
+  const assignedOperatorLabel = assignment?.operatorStaffName ?? (assignment?.hiredOperatorName ? `${assignment.hiredOperatorName} (Hired)` : '')
 
   function reset() { setOperatorType('OWN_STAFF'); setStaffId(''); setHiredName(''); setStartMeter(''); setMeterPrefilled(false) }
 
   const mutation = useMutation({
-    mutationFn: () => workOrdersApi.startWork(woId, assignment!.id, {
-      operatorType,
-      operatorStaffId: operatorType === 'OWN_STAFF' ? Number(staffId || preStaffId) : undefined,
-      hiredOperatorName: operatorType === 'HIRED' ? (hiredName || preHiredName) : undefined,
-      startMeter: Number(startMeter),
-    }),
+    mutationFn: () => {
+      const opType = hasAssignedOperator ? (assignment!.operatorType as OperatorType) : operatorType
+      return workOrdersApi.startWork(woId, assignment!.id, {
+        operatorType: opType,
+        operatorStaffId: opType === 'OWN_STAFF' ? Number(hasAssignedOperator ? assignment!.operatorStaffId : (staffId || preStaffId)) : undefined,
+        hiredOperatorName: opType === 'HIRED' ? (hasAssignedOperator ? assignment!.hiredOperatorName : (hiredName || preHiredName)) : undefined,
+        startMeter: Number(startMeter),
+      })
+    },
     onSuccess: () => { toast.success('Work started'); qc.invalidateQueries({ queryKey: ['work-order', woId] }); reset(); onClose() },
     onError: (e: unknown) => {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -1041,6 +1047,7 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
   const effectiveStaffId = staffId || preStaffId
   const effectiveHiredName = hiredName || preHiredName
   const isValid = !!startMeter && (
+    hasAssignedOperator ||
     (effectiveOpType === 'OWN_STAFF' && !!effectiveStaffId) ||
     (effectiveOpType === 'HIRED' && !!effectiveHiredName)
   )
@@ -1054,34 +1061,46 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
             Machine: <strong>{assignment?.registrationNumber ?? assignment?.serialNumber ?? `Machine #${assignment?.equipmentId}`}</strong>
           </p>
 
-          <div>
-            <Label className="text-xs text-gray-500 mb-1.5 block">Operator Type</Label>
-            <div className="flex gap-2">
-              {(['OWN_STAFF', 'HIRED'] as OperatorType[]).map(t => (
-                <button key={t} onClick={() => setOperatorType(t)}
-                  className={cn('flex-1 py-2 text-sm rounded-lg border transition-colors',
-                    effectiveOpType === t ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
-                  {t === 'OWN_STAFF' ? 'Own Staff' : 'Hired'}
-                </button>
-              ))}
+          {hasAssignedOperator ? (
+            <div className="flex items-center gap-1.5 text-sm">
+              <User size={14} className="text-gray-400" />
+              <span className="text-gray-500">Operator:</span>
+              <span className="font-medium text-gray-800">{assignedOperatorLabel}</span>
             </div>
-          </div>
+          ) : (
+            <>
+              <div>
+                <Label className="text-xs text-gray-500 mb-1.5 block">Operator Type</Label>
+                <div className="flex gap-2">
+                  {(['OWN_STAFF', 'HIRED'] as OperatorType[]).map(t => (
+                    <button key={t} onClick={() => setOperatorType(t)}
+                      className={cn('flex-1 py-2 text-sm rounded-lg border transition-colors',
+                        effectiveOpType === t ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
+                      {t === 'OWN_STAFF' ? 'Own Staff' : 'Hired'}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {effectiveOpType === 'OWN_STAFF' && (
-            <div>
-              <Label className="text-xs text-gray-500 mb-1.5 block">Operator *</Label>
-              <select className="w-full border rounded-md px-3 py-2 text-sm" value={staffId || preStaffId} onChange={e => setStaffId(e.target.value)}>
-                <option value="">— Select operator —</option>
-                {operators.map(s => <option key={s.userId} value={String(s.userId)}>{s.userName}</option>)}
-              </select>
-              {operators.length === 0 && <p className="text-xs text-amber-600 mt-1">No operators found. Add operators in Staff first.</p>}
-            </div>
-          )}
-          {effectiveOpType === 'HIRED' && (
-            <div>
-              <Label className="text-xs text-gray-500 mb-1.5 block">Operator Name *</Label>
-              <Input value={hiredName || preHiredName} onChange={e => setHiredName(e.target.value)} placeholder="Enter name" />
-            </div>
+              {effectiveOpType === 'OWN_STAFF' && (
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1.5 block">Operator *</Label>
+                  <SearchableSelect
+                    value={staffId || preStaffId}
+                    onValueChange={setStaffId}
+                    options={operators.map(s => ({ value: String(s.userId), label: s.userName }))}
+                    placeholder="Search operator…"
+                  />
+                  {operators.length === 0 && <p className="text-xs text-amber-600 mt-1">No operators found. Add operators in Staff first.</p>}
+                </div>
+              )}
+              {effectiveOpType === 'HIRED' && (
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1.5 block">Operator Name *</Label>
+                  <Input value={hiredName || preHiredName} onChange={e => setHiredName(e.target.value)} placeholder="Enter name" />
+                </div>
+              )}
+            </>
           )}
 
           <div>
