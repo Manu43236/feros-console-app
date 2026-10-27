@@ -2466,6 +2466,8 @@ export function WorkOrderDetailPage() {
                             onClick={() => setStoppingWorkFor(a)}>
                             <Square size={10} /> Stop
                           </Button>
+                        ) : wo.shiftDuty ? (
+                          <span className="text-[11px] text-gray-400 italic whitespace-nowrap">Operator starts their shift session</span>
                         ) : (
                           <Button size="sm" variant="outline" className="text-xs h-6 px-2 text-green-700 border-green-200 hover:bg-green-50 gap-1"
                             disabled={!a.operatorType}
