@@ -984,10 +984,11 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
 }
 
 // ── Start Work Dialog ─────────────────────────────────────────────────────────
-function StartWorkDialog({ woId, assignment, open, onClose }: {
-  woId: number; assignment: MachineAssignment | null; open: boolean; onClose: () => void
+function StartWorkDialog({ woId, assignment, shiftDuty, open, onClose }: {
+  woId: number; assignment: MachineAssignment | null; shiftDuty?: boolean; open: boolean; onClose: () => void
 }) {
   const qc = useQueryClient()
+  const today = new Date().toISOString().slice(0, 10)
   const [operatorType, setOperatorType] = useState<OperatorType>('OWN_STAFF')
   const [staffId, setStaffId] = useState('')
   const [hiredName, setHiredName] = useState('')
@@ -999,6 +1000,16 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
     enabled: open,
   })
   const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR')
+
+  // Shift-duty WOs: the operator comes from the shift covering now (today's roster).
+  const { data: shiftRowsRes } = useQuery({
+    queryKey: ['wo-shift-assignments', woId, today],
+    queryFn: () => workOrdersApi.getShiftAssignments(woId, today, today),
+    enabled: open && !!shiftDuty && !!assignment?.id,
+  })
+  const currentShift = (shiftRowsRes?.data ?? [])
+    .filter(r => r.assignmentId === assignment?.id)
+    .find(r => shiftCoversNow(r.startTime, r.endTime))
 
   // Fetch work entries to find last completed session's end meter
   const { data: entriesRes } = useQuery({
@@ -1020,19 +1031,29 @@ function StartWorkDialog({ woId, assignment, open, onClose }: {
   const prefilled = assignment?.operatorType
   const preStaffId = assignment?.operatorStaffId ? String(assignment.operatorStaffId) : ''
   const preHiredName = assignment?.hiredOperatorName ?? ''
-  // The machine already has an operator → don't ask again, just confirm + HMR.
-  const hasAssignedOperator = !!(assignment?.operatorType && (assignment?.operatorStaffName || assignment?.hiredOperatorName))
-  const assignedOperatorLabel = assignment?.operatorStaffName ?? (assignment?.hiredOperatorName ? `${assignment.hiredOperatorName} (Hired)` : '')
+
+  // Resolve the operator automatically — standing operator first, else the current shift's operator.
+  // When one is found we don't ask again: just confirm + HMR.
+  const autoOperator: { label: string; opType: OperatorType; staffId?: number; hired?: string } | null =
+    assignment?.operatorType === 'OWN_STAFF' && assignment?.operatorStaffName
+      ? { label: assignment.operatorStaffName, opType: 'OWN_STAFF', staffId: assignment.operatorStaffId }
+      : assignment?.operatorType === 'HIRED' && assignment?.hiredOperatorName
+        ? { label: `${assignment.hiredOperatorName} (Hired)`, opType: 'HIRED', hired: assignment.hiredOperatorName }
+        : currentShift?.operatorStaffId
+          ? { label: `${currentShift.operatorName ?? 'Operator'} · Shift ${currentShift.shiftNumber}`, opType: 'OWN_STAFF', staffId: currentShift.operatorStaffId }
+          : null
+  const hasAssignedOperator = !!autoOperator
+  const assignedOperatorLabel = autoOperator?.label ?? ''
 
   function reset() { setOperatorType('OWN_STAFF'); setStaffId(''); setHiredName(''); setStartMeter(''); setMeterPrefilled(false) }
 
   const mutation = useMutation({
     mutationFn: () => {
-      const opType = hasAssignedOperator ? (assignment!.operatorType as OperatorType) : operatorType
+      const opType = autoOperator ? autoOperator.opType : operatorType
       return workOrdersApi.startWork(woId, assignment!.id, {
         operatorType: opType,
-        operatorStaffId: opType === 'OWN_STAFF' ? Number(hasAssignedOperator ? assignment!.operatorStaffId : (staffId || preStaffId)) : undefined,
-        hiredOperatorName: opType === 'HIRED' ? (hasAssignedOperator ? assignment!.hiredOperatorName : (hiredName || preHiredName)) : undefined,
+        operatorStaffId: opType === 'OWN_STAFF' ? Number(autoOperator ? autoOperator.staffId : (staffId || preStaffId)) : undefined,
+        hiredOperatorName: opType === 'HIRED' ? (autoOperator ? autoOperator.hired : (hiredName || preHiredName)) : undefined,
         startMeter: Number(startMeter),
       })
     },
@@ -1879,6 +1900,15 @@ function AssignAttachmentDialog({ woId, assignment, open, onClose }: {
 function hoursDown(since: string | undefined): number {
   if (!since) return 0
   return (Date.now() - new Date(since).getTime()) / 3_600_000
+}
+
+// True when the current local time falls in a shift window (HH:mm[:ss]); start > end crosses midnight.
+function shiftCoversNow(start?: string, end?: string): boolean {
+  if (!start || !end) return false
+  const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0) }
+  const now = new Date(); const nm = now.getHours() * 60 + now.getMinutes()
+  const s = toMin(start), e = toMin(end)
+  return s < e ? (nm >= s && nm < e) : (nm >= s || nm < e)
 }
 
 // ── Main Detail Page ──────────────────────────────────────────────────────────
@@ -2977,7 +3007,7 @@ export function WorkOrderDetailPage() {
       <AssignCleanerDialog woId={Number(id)} assignment={assigningCleanerFor} open={!!assigningCleanerFor} onClose={() => setAssigningCleanerFor(null)} />
       <AssignAttachmentDialog woId={Number(id)} assignment={assigningAttachmentFor} open={!!assigningAttachmentFor} onClose={() => setAssigningAttachmentFor(null)} />
       <AssignDivisionDialog woId={Number(id)} clientId={wo.clientId} assignment={assigningDivisionFor} open={!!assigningDivisionFor} onClose={() => setAssigningDivisionFor(null)} />
-      <StartWorkDialog woId={Number(id)} assignment={startingWorkFor} open={!!startingWorkFor} onClose={() => setStartingWorkFor(null)} />
+      <StartWorkDialog woId={Number(id)} assignment={startingWorkFor} shiftDuty={wo.shiftDuty} open={!!startingWorkFor} onClose={() => setStartingWorkFor(null)} />
       <StopWorkDialog woId={Number(id)} assignment={stoppingWorkFor} open={!!stoppingWorkFor} onClose={() => setStoppingWorkFor(null)} />
       <AddLogDialog woId={Number(id)} clientId={wo.clientId} assignments={activeAssignments} open={addLogOpen} onClose={() => setAddLogOpen(false)} />
       <EditLogDialog woId={Number(id)} clientId={wo.clientId} log={editingLog} open={!!editingLog} onClose={() => setEditingLog(null)} />
