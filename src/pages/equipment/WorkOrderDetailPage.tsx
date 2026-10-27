@@ -23,7 +23,9 @@ import { staffApi } from '@/api/staff'
 import { attendanceApi } from '@/api/attendance'
 import { clientsApi } from '@/api/clients'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { WorkOrder, WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide, IdleAttribution } from '@/types'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { MoreVertical } from 'lucide-react'
+import type { WorkOrderStatus, DailyLogStatus, AssignmentEndReason, MachineAssignment, OperatorType, WorkEntry, DailyLog, EquipmentInvoice, EquipmentInvoiceStatus, HireType, ProviderSide, IdleAttribution } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 import { openWorkOrderPdf } from './WorkOrderPdf'
 import { equipmentInvoicesApi } from '@/api/equipmentInvoices'
@@ -914,16 +916,15 @@ function AssignCleanerDialog({ woId, assignment, open, onClose }: {
 }
 
 // ── Shift Crew Panel (shift-duty WOs — per-day, per-shift operator + cleaner) ──
-function ShiftCrewPanel({ woId, wo, assignments }: {
-  woId: number; wo: WorkOrder; assignments: MachineAssignment[]
+// Per-machine shift roster — rendered inside the machine card (lease pattern).
+function MachineShiftGrid({ woId, machineId, shifts }: {
+  woId: number; machineId: number; shifts: import('@/types').WorkOrderShift[]
 }) {
   const qc = useQueryClient()
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
-  const [machineId, setMachineId] = useState<number | ''>(assignments[0]?.id ?? '')
 
   const { data: staffRes } = useQuery({ queryKey: ['staff-all-crew'], queryFn: () => staffApi.getAll({}) })
-  // Only staff whose attendance is taken (PENDING/APPROVED) on the selected date are selectable.
   const { data: attRes } = useQuery({
     queryKey: ['attendance-by-date', date],
     queryFn: () => attendanceApi.getByDate(date),
@@ -942,70 +943,38 @@ function ShiftCrewPanel({ woId, wo, assignments }: {
 
   const assign = useMutation({
     mutationFn: (p: { shiftId: number; operatorStaffId?: number; cleanerStaffId?: number }) =>
-      workOrdersApi.assignShift(woId, Number(machineId), { workDate: date, ...p }),
-    onSuccess: () => {
-      toast.success('Shift crew assigned')
-      qc.invalidateQueries({ queryKey: ['wo-shift-assignments', woId, date] })
-    },
-    onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to assign shift crew')
-    },
+      workOrdersApi.assignShift(woId, machineId, { workDate: date, ...p }),
+    onSuccess: () => { toast.success('Shift crew saved'); qc.invalidateQueries({ queryKey: ['wo-shift-assignments', woId, date] }) },
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to assign shift crew'),
   })
 
-  const shifts = wo.shifts ?? []
-  const rowFor = (shiftId: number) => rows.find(r => r.shiftId === shiftId && r.assignmentId === Number(machineId))
+  const rowFor = (shiftId: number) => rows.find(r => r.shiftId === shiftId && r.assignmentId === machineId)
+  const opOpts = [{ value: 'client', label: "Client's own" }, ...operators.map(s => ({ value: String(s.userId), label: s.userName }))]
+  const clOpts = [{ value: 'client', label: "Client's own" }, ...cleaners.map(s => ({ value: String(s.userId), label: s.userName }))]
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <Label className="text-xs text-gray-500 mb-1 block">Date</Label>
-          <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-9" />
-        </div>
-        <div className="min-w-[220px]">
-          <Label className="text-xs text-gray-500 mb-1 block">Machine</Label>
-          <SearchableSelect
-            value={machineId ? String(machineId) : ''}
-            onValueChange={v => setMachineId(v ? Number(v) : '')}
-            options={assignments.map(a => ({ value: String(a.id), label: a.registrationNumber ?? a.serialNumber ?? a.equipmentTypeName }))}
-            placeholder="Select machine"
-          />
-        </div>
+    <div className="mt-2 pt-2 border-t border-gray-50">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-gray-600">Shift crew</span>
+        <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-7 w-auto text-xs px-2" />
       </div>
-
-      {shifts.length === 0 && <p className="text-sm text-gray-400">No shifts defined on this work order.</p>}
-
-      <div className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-2">
         {shifts.map(sh => {
           const r = rowFor(sh.id)
-          const opOpts = [{ value: 'client', label: "Client's own" }, ...operators.map(s => ({ value: String(s.userId), label: s.userName }))]
-          const clOpts = [{ value: 'client', label: "Client's own" }, ...cleaners.map(s => ({ value: String(s.userId), label: s.userName }))]
           return (
-            <div key={sh.id} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end p-3 bg-gray-50 rounded-lg border">
-              <div className="text-sm">
-                <span className="font-medium text-gray-700">Shift {sh.shiftNumber}</span>
-                <span className="text-gray-400"> · {sh.startTime}–{sh.endTime}</span>
-                <div className="text-xs text-gray-400">Op ₹{sh.operatorPay}{sh.cleanerPay != null ? ` · Cl ₹${sh.cleanerPay}` : ''}</div>
+            <div key={sh.id} className="rounded-lg border border-gray-150 bg-gray-50 p-2.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-700">Shift {sh.shiftNumber}</span>
+                <span className="text-[11px] text-gray-400">{sh.startTime}–{sh.endTime}</span>
               </div>
-              <div>
-                <Label className="text-xs text-gray-500 mb-1 block">Operator</Label>
-                <SearchableSelect
-                  value={r?.operatorStaffId ? String(r.operatorStaffId) : 'client'}
-                  onValueChange={v => machineId && assign.mutate({ shiftId: sh.id, operatorStaffId: v === 'client' ? undefined : Number(v), cleanerStaffId: r?.cleanerStaffId })}
-                  options={opOpts}
-                  placeholder="Select operator"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500 mb-1 block">Cleaner</Label>
-                <SearchableSelect
-                  value={r?.cleanerStaffId ? String(r.cleanerStaffId) : 'client'}
-                  onValueChange={v => machineId && assign.mutate({ shiftId: sh.id, operatorStaffId: r?.operatorStaffId, cleanerStaffId: v === 'client' ? undefined : Number(v) })}
-                  options={clOpts}
-                  placeholder="Select cleaner"
-                />
-              </div>
+              <SearchableSelect
+                value={r?.operatorStaffId ? String(r.operatorStaffId) : 'client'}
+                onValueChange={v => assign.mutate({ shiftId: sh.id, operatorStaffId: v === 'client' ? undefined : Number(v), cleanerStaffId: r?.cleanerStaffId })}
+                options={opOpts} placeholder="Operator" />
+              <SearchableSelect
+                value={r?.cleanerStaffId ? String(r.cleanerStaffId) : 'client'}
+                onValueChange={v => assign.mutate({ shiftId: sh.id, operatorStaffId: r?.operatorStaffId, cleanerStaffId: v === 'client' ? undefined : Number(v) })}
+                options={clOpts} placeholder="Cleaner" />
             </div>
           )
         })}
@@ -2293,12 +2262,6 @@ export function WorkOrderDetailPage() {
               </Button>
             )}
           </div>
-          {wo.shiftDuty && assignments.length > 0 && (
-            <div className="mb-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">Shift Crew (per day · per shift)</p>
-              <ShiftCrewPanel woId={Number(id)} wo={wo} assignments={assignments} />
-            </div>
-          )}
           {assignments.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
               No machines assigned yet
@@ -2348,67 +2311,54 @@ export function WorkOrderDetailPage() {
                       {a.machineWorkStatus === 'IN_REPAIR' && (
                         <Badge className="bg-amber-100 text-amber-700 text-[10px]">In Repair</Badge>
                       )}
-                      {a.isActive && (
-                        <>
-                          <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
-                            onClick={() => setMachineTermsFor(a)}>
-                            Terms
-                          </Button>
-                          {(() => {
-                            const hrs = hoursDown(a.activeBreakdownSince)
-                            const threshold = wo.breakdownPenaltyThresholdHours
-                            const penaltyTriggered = a.machineWorkStatus === 'BREAKDOWN' && threshold != null && hrs >= threshold
-                            return penaltyTriggered
-                              ? <Button size="sm" className="text-xs h-6 px-2 bg-red-600 hover:bg-red-700 text-white gap-1"
-                                  onClick={() => setSwapMachineFor(a)}>
-                                  <RefreshCw size={10} /> Swap Now
-                                </Button>
-                              : <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
-                                  onClick={() => setSwapMachineFor(a)}>
-                                  <RefreshCw size={10} className="mr-0.5" /> Swap
-                                </Button>
-                          })()}
-                          <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
-                            onClick={() => setSurveyFor(a)}>
-                            <Camera size={10} className="mr-0.5" /> Survey
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-xs text-red-600 border-red-200 hover:bg-red-50"
-                            onClick={() => setClosingAssignment(a)}>
-                            Remove
-                          </Button>
-                        </>
+                      {a.isActive && (() => {
+                        const hrs = hoursDown(a.activeBreakdownSince)
+                        const threshold = wo.breakdownPenaltyThresholdHours
+                        const penaltyTriggered = a.machineWorkStatus === 'BREAKDOWN' && threshold != null && hrs >= threshold
+                        return (
+                          <>
+                            {penaltyTriggered && (
+                              <Button size="sm" className="text-xs h-6 px-2 bg-red-600 hover:bg-red-700 text-white gap-1"
+                                onClick={() => setSwapMachineFor(a)}>
+                                <RefreshCw size={10} /> Swap Now
+                              </Button>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-gray-500"><MoreVertical size={15} /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setMachineTermsFor(a)}>Terms</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setAssigningAttachmentFor(a)}>{a.attachmentName ? 'Change Attachment' : 'Link Attachment'}</DropdownMenuItem>
+                                {!penaltyTriggered && <DropdownMenuItem onClick={() => setSwapMachineFor(a)}>Swap Machine</DropdownMenuItem>}
+                                <DropdownMenuItem onClick={() => setSurveyFor(a)}>Condition Survey</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setClosingAssignment(a)} className="text-red-600">Remove</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                  {/* Division + attachment (compact meta) */}
+                  <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                      <span className="flex items-center gap-1.5">
+                        <MapPin size={12} />
+                        {a.divisionName
+                          ? <span className="font-medium text-feros-equip-sidebar">{a.divisionName}</span>
+                          : <span className="text-gray-400 italic">No division</span>}
+                      </span>
+                      {a.attachmentName && (
+                        <span className="flex items-center gap-1.5">
+                          <Boxes size={12} /><span className="font-medium text-gray-700">{a.attachmentName}</span>
+                        </span>
                       )}
                     </div>
-                  </div>
-                  {/* Division row */}
-                  <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <MapPin size={12} />
-                      {a.divisionName
-                        ? <span className="font-medium text-feros-equip-sidebar">{a.divisionName}</span>
-                        : <span className="text-gray-400 italic">No division assigned</span>
-                      }
-                    </div>
                     {a.isActive && (
-                      <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
+                      <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar whitespace-nowrap"
                         onClick={() => setAssigningDivisionFor(a)}>
-                        {a.divisionName ? 'Change' : 'Assign Division'}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Attachment row */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <Boxes size={12} />
-                      {a.attachmentName
-                        ? <span className="font-medium text-gray-700">{a.attachmentName}{a.attachmentType ? ` · ${a.attachmentType}` : ''}</span>
-                        : <span className="text-gray-400 italic">No attachment</span>}
-                    </div>
-                    {a.isActive && (
-                      <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
-                        onClick={() => setAssigningAttachmentFor(a)}>
-                        {a.attachmentName ? 'Change' : 'Link Attachment'}
+                        {a.divisionName ? 'Change Division' : 'Assign Division'}
                       </Button>
                     )}
                   </div>
@@ -2441,8 +2391,12 @@ export function WorkOrderDetailPage() {
                     </div>
                   )}
 
-                  {/* Operator + work status row */}
+                  {/* Crew — shift grid for shift-duty WOs, standing operator+cleaner otherwise */}
                   <div className="space-y-2">
+                    {wo.shiftDuty ? (
+                      a.isActive && <MachineShiftGrid woId={Number(id)} machineId={a.id} shifts={wo.shifts ?? []} />
+                    ) : (
+                    <>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
                         <User size={12} />
@@ -2478,6 +2432,8 @@ export function WorkOrderDetailPage() {
                         </Button>
                       )}
                     </div>
+                    </>
+                    )}
                     {/* Work entry status */}
                     {a.isActive && (
                       <div className="flex items-center justify-between">
