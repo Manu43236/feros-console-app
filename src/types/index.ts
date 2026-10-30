@@ -450,8 +450,8 @@ export interface MachineShiftAssignment {
   equipmentId: number; registrationNumber?: string; equipmentName?: string
   shiftId: number; shiftNumber: number; startTime: string; endTime: string
   workDate: string
-  operatorStaffId?: number; operatorName?: string; clientOperator: boolean
-  cleanerStaffId?: number; cleanerName?: string; clientCleaner: boolean
+  operatorStaffId?: number; operatorName?: string; clientOperator: boolean; clientOperatorName?: string
+  cleanerStaffId?: number; cleanerName?: string; clientCleaner: boolean; clientCleanerName?: string
   operatorPay?: number; cleanerPay?: number
 }
 

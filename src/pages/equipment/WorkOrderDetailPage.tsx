@@ -923,6 +923,8 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
   const qc = useQueryClient()
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
+  // Local name state keyed by shiftId for client operator/cleaner names
+  const [clientNames, setClientNames] = useState<Record<number, { op: string; cl: string }>>({})
 
   const { data: staffRes } = useQuery({ queryKey: ['staff-all-crew'], queryFn: () => staffApi.getAll({}) })
   const { data: attRes } = useQuery({
@@ -938,19 +940,31 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
   const { data: rowsRes } = useQuery({
     queryKey: ['wo-shift-assignments', woId, date],
     queryFn: () => workOrdersApi.getShiftAssignments(woId, date, date),
+    onSuccess: (rows: import('@/types').MachineShiftAssignment[]) => {
+      // Pre-fill local name state from saved data
+      const names: Record<number, { op: string; cl: string }> = {}
+      rows.forEach(r => {
+        names[r.shiftId] = { op: r.clientOperatorName ?? '', cl: r.clientCleanerName ?? '' }
+      })
+      setClientNames(names)
+    },
   })
   const rows = rowsRes?.data ?? []
 
   const assign = useMutation({
-    mutationFn: (p: { shiftId: number; operatorStaffId?: number; cleanerStaffId?: number }) =>
+    mutationFn: (p: { shiftId: number; operatorStaffId?: number; clientOperatorName?: string; cleanerStaffId?: number; clientCleanerName?: string }) =>
       workOrdersApi.assignShift(woId, machineId, { workDate: date, ...p }),
     onSuccess: () => { toast.success('Shift crew saved'); qc.invalidateQueries({ queryKey: ['wo-shift-assignments', woId, date] }) },
     onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to assign shift crew'),
   })
 
   const rowFor = (shiftId: number) => rows.find(r => r.shiftId === shiftId && r.assignmentId === machineId)
-  const opOpts = [{ value: 'client', label: "Client's own" }, ...operators.map(s => ({ value: String(s.userId), label: s.userName }))]
-  const clOpts = [{ value: 'client', label: "Client's own" }, ...cleaners.map(s => ({ value: String(s.userId), label: s.userName }))]
+  // '' = nothing assigned (no row), 'client' = client's own, '<id>' = own staff
+  const opValue  = (r: import('@/types').MachineShiftAssignment | undefined) => r ? (r.operatorStaffId ? String(r.operatorStaffId) : 'client') : ''
+  const clValue  = (r: import('@/types').MachineShiftAssignment | undefined) => r ? (r.cleanerStaffId  ? String(r.cleanerStaffId)  : 'client') : ''
+
+  const opOpts = [{ value: '', label: 'Not assigned' }, { value: 'client', label: "Client's own" }, ...operators.map(s => ({ value: String(s.userId), label: s.userName }))]
+  const clOpts = [{ value: '', label: 'Not assigned' }, { value: 'client', label: "Client's own" }, ...cleaners.map(s => ({ value: String(s.userId), label: s.userName }))]
 
   return (
     <div className="mt-2 pt-2 border-t border-gray-50">
@@ -961,20 +975,75 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
       <div className="grid gap-2 sm:grid-cols-2">
         {shifts.map(sh => {
           const r = rowFor(sh.id)
+          const names = clientNames[sh.id] ?? { op: '', cl: '' }
+          const opVal = opValue(r)
+          const clVal = clValue(r)
           return (
             <div key={sh.id} className="rounded-lg border border-gray-150 bg-gray-50 p-2.5 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-700">Shift {sh.shiftNumber}</span>
                 <span className="text-[11px] text-gray-400">{sh.startTime}–{sh.endTime}</span>
               </div>
+
+              {/* Operator */}
               <SearchableSelect
-                value={r?.operatorStaffId ? String(r.operatorStaffId) : 'client'}
-                onValueChange={v => assign.mutate({ shiftId: sh.id, operatorStaffId: v === 'client' ? undefined : Number(v), cleanerStaffId: r?.cleanerStaffId })}
+                value={opVal}
+                onValueChange={v => {
+                  if (v === '') return // "Not assigned" — no row needed, nothing to save
+                  assign.mutate({
+                    shiftId: sh.id,
+                    operatorStaffId: v === 'client' ? undefined : Number(v),
+                    clientOperatorName: v === 'client' ? (names.op || undefined) : undefined,
+                    cleanerStaffId: r?.cleanerStaffId,
+                    clientCleanerName: clVal === 'client' ? (names.cl || undefined) : undefined,
+                  })
+                }}
                 options={opOpts} placeholder="Operator" />
+              {opVal === 'client' && (
+                <Input
+                  value={names.op}
+                  onChange={e => setClientNames(prev => ({ ...prev, [sh.id]: { ...names, op: e.target.value } }))}
+                  onBlur={() => assign.mutate({
+                    shiftId: sh.id,
+                    operatorStaffId: undefined,
+                    clientOperatorName: names.op || undefined,
+                    cleanerStaffId: r?.cleanerStaffId,
+                    clientCleanerName: clVal === 'client' ? (names.cl || undefined) : undefined,
+                  })}
+                  placeholder="Client's operator name (optional)"
+                  className="h-7 text-xs"
+                />
+              )}
+
+              {/* Cleaner */}
               <SearchableSelect
-                value={r?.cleanerStaffId ? String(r.cleanerStaffId) : 'client'}
-                onValueChange={v => assign.mutate({ shiftId: sh.id, operatorStaffId: r?.operatorStaffId, cleanerStaffId: v === 'client' ? undefined : Number(v) })}
+                value={clVal}
+                onValueChange={v => {
+                  if (v === '') return
+                  assign.mutate({
+                    shiftId: sh.id,
+                    operatorStaffId: r?.operatorStaffId,
+                    clientOperatorName: opVal === 'client' ? (names.op || undefined) : undefined,
+                    cleanerStaffId: v === 'client' ? undefined : Number(v),
+                    clientCleanerName: v === 'client' ? (names.cl || undefined) : undefined,
+                  })
+                }}
                 options={clOpts} placeholder="Cleaner" />
+              {clVal === 'client' && (
+                <Input
+                  value={names.cl}
+                  onChange={e => setClientNames(prev => ({ ...prev, [sh.id]: { ...names, cl: e.target.value } }))}
+                  onBlur={() => assign.mutate({
+                    shiftId: sh.id,
+                    operatorStaffId: r?.operatorStaffId,
+                    clientOperatorName: opVal === 'client' ? (names.op || undefined) : undefined,
+                    cleanerStaffId: undefined,
+                    clientCleanerName: names.cl || undefined,
+                  })}
+                  placeholder="Client's cleaner name (optional)"
+                  className="h-7 text-xs"
+                />
+              )}
             </div>
           )
         })}
@@ -2081,15 +2150,12 @@ export function WorkOrderDetailPage() {
   const nextStatuses = NEXT_STATUSES[woStatus] ?? []
   const activeAssignments = assignments.filter(a => a.isActive)
 
-  // A machine can only start a session once an operator is assigned — standing operator
-  // (own-staff or hired), or for shift-duty WOs the operator on the shift covering now.
+  // Session start gate: for non-shift-duty WOs, require an operator. For shift-duty WOs the
+  // supervisor can always start — operator assignment is for payroll tracking only, not a gate.
   const hasOperator = (a: MachineAssignment): boolean => {
     if (a.operatorType === 'OWN_STAFF' && a.operatorStaffName) return true
     if (a.operatorType === 'HIRED' && a.hiredOperatorName) return true
-    if (wo.shiftDuty) {
-      return (todayShiftRes?.data ?? [])
-        .some(r => r.assignmentId === a.id && r.operatorStaffId && shiftCoversNow(r.startTime, r.endTime))
-    }
+    if (wo.shiftDuty) return true
     return false
   }
 
