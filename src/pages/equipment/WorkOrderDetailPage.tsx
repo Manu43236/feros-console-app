@@ -2020,6 +2020,15 @@ export function WorkOrderDetailPage() {
     enabled: !!id && tab === 'machines',
   })
 
+  // Today's shift roster — used to gate the Start button on shift-duty WOs
+  // (an operator must be assigned before a session can start).
+  const woToday = new Date().toISOString().slice(0, 10)
+  const { data: todayShiftRes } = useQuery({
+    queryKey: ['wo-shift-assignments', Number(id), woToday],
+    queryFn: () => workOrdersApi.getShiftAssignments(Number(id), woToday, woToday),
+    enabled: !!id && tab === 'machines' && !!res?.data?.workOrder.shiftDuty,
+  })
+
   const { data: dieselSummaryRes } = useQuery({
     queryKey: ['diesel-summary', Number(id)],
     queryFn: () => workOrdersApi.getDieselSummary(Number(id)),
@@ -2071,6 +2080,18 @@ export function WorkOrderDetailPage() {
   const woStatus = wo.status as WorkOrderStatus
   const nextStatuses = NEXT_STATUSES[woStatus] ?? []
   const activeAssignments = assignments.filter(a => a.isActive)
+
+  // A machine can only start a session once an operator is assigned — standing operator
+  // (own-staff or hired), or for shift-duty WOs the operator on the shift covering now.
+  const hasOperator = (a: MachineAssignment): boolean => {
+    if (a.operatorType === 'OWN_STAFF' && a.operatorStaffName) return true
+    if (a.operatorType === 'HIRED' && a.hiredOperatorName) return true
+    if (wo.shiftDuty) {
+      return (todayShiftRes?.data ?? [])
+        .some(r => r.assignmentId === a.id && r.operatorStaffId && shiftCoversNow(r.startTime, r.endTime))
+    }
+    return false
+  }
 
   return (
     <div className="space-y-5">
@@ -2515,12 +2536,19 @@ export function WorkOrderDetailPage() {
                             onClick={() => setStoppingWorkFor(a)}>
                             <Square size={10} /> Stop
                           </Button>
-                        ) : (
-                          // Supervisors start on behalf of operators (they pick the operator in the dialog).
+                        ) : hasOperator(a) ? (
                           <Button size="sm" variant="outline" className="text-xs h-6 px-2 text-green-700 border-green-200 hover:bg-green-50 gap-1"
                             onClick={() => setStartingWorkFor(a)}>
                             <Play size={10} /> Start
                           </Button>
+                        ) : (
+                          // No operator assigned — block start and tell the supervisor to assign one first.
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-amber-600">Operator not assigned</span>
+                            <Button size="sm" variant="outline" disabled className="text-xs h-6 px-2 text-gray-400 border-gray-200 gap-1 cursor-not-allowed">
+                              <Play size={10} /> Start
+                            </Button>
+                          </div>
                         )}
                       </div>
                     )}
