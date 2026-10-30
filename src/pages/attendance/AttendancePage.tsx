@@ -25,7 +25,17 @@ import type { Attendance } from '@/types'
 
 type StaffUser = { id: number; name: string; phone: string; role: string; isActive: boolean }
 
-const ATTENDANCE_ROLES = ['DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MANAGER', 'STORE_KEEPER', 'TECHNICIAN']
+// Top admins don't mark field attendance, so they're excluded from attendance lists/filters.
+// Everything else is sourced live from the backend roles master → new roles appear automatically.
+const NON_FIELD_ROLES = ['SUPER_ADMIN', 'ADMIN']
+const roleLabel = (r: string) => r.split('_').map(w => w[0] + w.slice(1).toLowerCase()).join(' ')
+// Role filter options for every attendance tab — '' = All Roles. Rendered via SearchableSelect.
+// Fetched from the roles master (react-query dedupes across tabs) so the list stays in sync with the backend.
+function useRoleFilterOptions() {
+  const { data } = useQuery({ queryKey: ['roles'], queryFn: globalMastersApi.getRoles })
+  const roles = (data?.data ?? []).map(r => r.name).filter(n => !NON_FIELD_ROLES.includes(n))
+  return [{ value: '', label: 'All Roles' }, ...roles.map(r => ({ value: r, label: roleLabel(r) }))]
+}
 const PAGE_SIZE = 20
 function todayStr() { return format(new Date(), 'yyyy-MM-dd') }
 
@@ -694,6 +704,7 @@ function PendingApprovalsTab() {
   const [search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
+  const roleOptions = useRoleFilterOptions()
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-pending'],
@@ -772,16 +783,13 @@ function PendingApprovalsTab() {
               onChange={e => { setDateFilter(e.target.value); setPage(0) }}
               className="h-8 text-sm w-36"
             />
-            <select
+            <SearchableSelect
               value={roleFilter}
-              onChange={e => { setRoleFilter(e.target.value); setPage(0) }}
-              className="h-8 text-sm border border-input rounded-md px-2 bg-white text-gray-700"
-            >
-              <option value="">All Roles</option>
-              <option value="DRIVER">Driver</option>
-              <option value="CLEANER">Cleaner</option>
-              <option value="SUPERVISOR">Supervisor</option>
-            </select>
+              onValueChange={v => { setRoleFilter(v); setPage(0) }}
+              options={roleOptions}
+              className="w-36"
+              triggerClassName="h-8"
+            />
             {(search || dateFilter || roleFilter) && (
               <button onClick={() => { setSearch(''); setDateFilter(''); setRoleFilter(''); setPage(0) }}
                 className="text-xs text-gray-400 hover:text-gray-600 px-1">✕ Clear</button>
@@ -889,14 +897,17 @@ function RejectedTab() {
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
   const [mapCoords, setMapCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [page, setPage] = useState(0)
+  const [roleFilter, setRoleFilter] = useState('')
+  const roleOptions = useRoleFilterOptions()
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-rejected'],
     queryFn: attendanceApi.getRejected,
   })
   const records = data?.data ?? []
-  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
-  const pageRows   = records.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const filtered = records.filter(r => !roleFilter || r.roleName === roleFilter)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageRows   = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   if (isLoading) return <div className="py-12 text-center text-sm text-gray-400"><Spinner /></div>
 
@@ -915,9 +926,16 @@ function RejectedTab() {
         <div className="px-5 py-3.5 border-b bg-gray-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-semibold text-gray-700">Rejected Attendance</h2>
-            <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">{records.length} rejected</span>
+            <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">{filtered.length} rejected</span>
           </div>
           <div className="flex items-center gap-2">
+            <SearchableSelect
+              value={roleFilter}
+              onValueChange={v => { setRoleFilter(v); setPage(0) }}
+              options={roleOptions}
+              className="w-36"
+              triggerClassName="h-8"
+            />
             <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
               className="px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
             <span className="text-xs text-gray-500">{page + 1} / {totalPages}</span>
@@ -992,16 +1010,17 @@ function DutyTimesTab({
 }) {
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const roleOptions = useRoleFilterOptions()
   useEffect(() => { setPage(0) }, [selectedDate])
   useEffect(() => { setPage(0) }, [search])
+  useEffect(() => { setPage(0) }, [roleFilter])
 
   const q = search.trim().toLowerCase()
-  const filtered = q
-    ? records.filter(r =>
-        r.userName.toLowerCase().includes(q) ||
-        r.assignedVehicleNumber?.toLowerCase().includes(q)
-      )
-    : records
+  const filtered = records.filter(r =>
+    (!q || r.userName.toLowerCase().includes(q) || r.assignedVehicleNumber?.toLowerCase().includes(q)) &&
+    (!roleFilter || r.roleName === roleFilter)
+  )
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageRows   = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
@@ -1086,6 +1105,13 @@ function DutyTimesTab({
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1 max-w-xs text-xs border rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-feros-navy/30 bg-white"
+          />
+          <SearchableSelect
+            value={roleFilter}
+            onValueChange={setRoleFilter}
+            options={roleOptions}
+            className="w-36 shrink-0"
+            triggerClassName="h-8"
           />
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
@@ -1180,6 +1206,8 @@ export function AttendancePage() {
   const [activeTab, setActiveTab]       = useState<Tab>('daily')
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [dailySearch, setDailySearch]   = useState('')
+  const [dailyRole, setDailyRole]       = useState('')
+  const roleOptions = useRoleFilterOptions()
   const [dailyPage, setDailyPage]       = useState(0)
   const [markOpen, setMarkOpen]         = useState(false)
   const [bulkOpen, setBulkOpen]         = useState(false)
@@ -1196,7 +1224,7 @@ export function AttendancePage() {
   const records = [...(attendanceData?.data ?? [])].sort((a, b) => b.id - a.id)
 
   const { data: usersData } = useQuery({ queryKey: ['staff-users'], queryFn: () => staffApi.getUsers() })
-  const allUsers: StaffUser[] = ((usersData?.data ?? []) as StaffUser[]).filter(u => ATTENDANCE_ROLES.includes(u.role ?? ''))
+  const allUsers: StaffUser[] = ((usersData?.data ?? []) as StaffUser[]).filter(u => !NON_FIELD_ROLES.includes(u.role ?? ''))
 
   const { data: attTypesData } = useQuery({ queryKey: ['attendance-types'], queryFn: globalMastersApi.getAttendanceTypes })
   const attendanceTypes = (attTypesData?.data ?? []) as { id: number; name: string }[]
@@ -1235,8 +1263,8 @@ export function AttendancePage() {
   )
   const unmarked = allUsers.length - records.length
 
-  const filteredMarked   = records.filter(r => !dailySearch || r.userName?.toLowerCase().includes(dailySearch.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(dailySearch.toLowerCase()))
-  const filteredUnmarked = isAdmin ? allUsers.filter(u => !existingMap[u.id] && (!dailySearch || u.name?.toLowerCase().includes(dailySearch.toLowerCase()))) : []
+  const filteredMarked   = records.filter(r => (!dailySearch || r.userName?.toLowerCase().includes(dailySearch.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(dailySearch.toLowerCase())) && (!dailyRole || r.roleName === dailyRole))
+  const filteredUnmarked = isAdmin ? allUsers.filter(u => !existingMap[u.id] && (!dailySearch || u.name?.toLowerCase().includes(dailySearch.toLowerCase())) && (!dailyRole || u.role === dailyRole)) : []
   const allDailyRows = [
     ...filteredMarked.map(r => ({ kind: 'marked' as const, r })),
     ...filteredUnmarked.map(u => ({ kind: 'unmarked' as const, u })),
@@ -1367,6 +1395,13 @@ export function AttendancePage() {
                   className="pl-8 h-8 text-sm"
                 />
               </div>
+              <SearchableSelect
+                value={dailyRole}
+                onValueChange={v => { setDailyRole(v); setDailyPage(0) }}
+                options={roleOptions}
+                className="w-36 shrink-0"
+                triggerClassName="h-8"
+              />
               {unmarked > 0 && (
                 <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full shrink-0">
                   {unmarked} not marked
