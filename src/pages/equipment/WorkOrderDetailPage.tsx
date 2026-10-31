@@ -965,16 +965,17 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
   const { data: rowsRes } = useQuery({
     queryKey: ['wo-shift-assignments', woId, date],
     queryFn: () => workOrdersApi.getShiftAssignments(woId, date, date),
-    onSuccess: (rows: import('@/types').MachineShiftAssignment[]) => {
-      // Pre-fill local name state from saved data
-      const names: Record<number, { op: string; cl: string }> = {}
-      rows.forEach(r => {
-        names[r.shiftId] = { op: r.clientOperatorName ?? '', cl: r.clientCleanerName ?? '' }
-      })
-      setClientNames(names)
-    },
   })
   const rows = rowsRes?.data ?? []
+
+  // Pre-fill local client-name state from saved shift rows when they load (v5 has no onSuccess).
+  useEffect(() => {
+    const names: Record<number, { op: string; cl: string }> = {}
+    ;(rowsRes?.data ?? []).forEach(r => {
+      names[r.shiftId] = { op: r.clientOperatorName ?? '', cl: r.clientCleanerName ?? '' }
+    })
+    setClientNames(names)
+  }, [rowsRes])
 
   const assign = useMutation({
     mutationFn: (p: { shiftId: number; operatorStaffId?: number; clientOperatorName?: string; cleanerStaffId?: number; clientCleanerName?: string }) =>
