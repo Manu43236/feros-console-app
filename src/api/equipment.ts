@@ -40,6 +40,8 @@ export interface Equipment {
   isActive: boolean
   monthlyDepreciation: number | null
   notes: string | null
+  currentOperatorName: string | null
+  currentCleanerName: string | null
   createdAt: string
   updatedAt: string
 }

@@ -461,7 +461,7 @@ export function EquipmentListPage() {
 
   function openAdd() { setEditing(null); setDlgOpen(true) }
   function openEdit(m: Equipment) { setEditing(m); setDlgOpen(true) }
-  const colCount = canManageMachines ? 9 : 8
+  const colCount = canManageMachines ? 11 : 10
 
   return (
     <div className="space-y-5">
@@ -494,7 +494,7 @@ export function EquipmentListPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {['Make', 'Model', 'Type', 'Serial No.', 'Reg. No.', 'Ownership', 'Status', 'Work Status'].map(h => (
+              {['Make', 'Model', 'Type', 'Serial No.', 'Reg. No.', 'Ownership', 'Status', 'Work Status', 'Operator', 'Cleaner'].map(h => (
                 <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
               ))}
               {canManageMachines && <th className="px-3 py-2" />}
@@ -523,6 +523,12 @@ export function EquipmentListPage() {
                   </span>
                 </td>
                 <td className="px-3 py-2"><WorkStatusBadge status={m.workStatus} /></td>
+                <td className="px-3 py-2">{m.currentOperatorName
+                  ? <span className="text-xs font-medium text-gray-800">{m.currentOperatorName}</span>
+                  : <span className="text-gray-300 text-sm">—</span>}</td>
+                <td className="px-3 py-2">{m.currentCleanerName
+                  ? <span className="text-xs font-medium text-gray-800">{m.currentCleanerName}</span>
+                  : <span className="text-gray-300 text-sm">—</span>}</td>
                 {canManageMachines && (
                   <td className="px-3 py-2 text-right" onClick={e => e.stopPropagation()}>
                     <button onClick={() => openEdit(m)} className="p-1.5 text-gray-400 hover:text-[#1C1400] rounded transition-colors" title="Edit machine">

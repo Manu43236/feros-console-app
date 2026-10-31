@@ -751,6 +751,17 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
     onError: () => toast.error('Failed to assign operator'),
   })
 
+  // Unassign — explicit clear (null operatorType), independent of dialog state.
+  const removeMutation = useMutation({
+    mutationFn: () => workOrdersApi.assignOperator(woId, assignment!.id, { operatorType: undefined }),
+    onSuccess: () => {
+      toast.success('Operator removed')
+      qc.invalidateQueries({ queryKey: ['work-order', woId] })
+      onClose()
+    },
+    onError: () => toast.error('Failed to remove operator'),
+  })
+
   // Client's operator needs no name (optional), so any chosen type is valid.
   const isValid = !operatorType || operatorType === 'CLIENT_PROVIDED' ||
     (operatorType === 'OWN_STAFF' && !!staffId)
@@ -802,8 +813,9 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
           <div className="flex gap-2 pt-1">
             {assignment?.operatorType && (
               <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                onClick={() => { setOperatorType(''); mutation.mutate() }}>
-                Remove
+                disabled={removeMutation.isPending || mutation.isPending}
+                onClick={() => removeMutation.mutate()}>
+                {removeMutation.isPending ? 'Removing…' : 'Remove'}
               </Button>
             )}
             <Button className="flex-1 bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white"
@@ -858,6 +870,17 @@ function AssignCleanerDialog({ woId, assignment, open, onClose }: {
     },
   })
 
+  // Unassign — explicit clear (no staff, no client name), independent of dialog state.
+  const removeMutation = useMutation({
+    mutationFn: () => workOrdersApi.assignCleaner(woId, assignment!.id, { cleanerStaffId: undefined, clientCleanerName: undefined }),
+    onSuccess: () => {
+      toast.success('Cleaner removed')
+      qc.invalidateQueries({ queryKey: ['work-order', woId] })
+      onClose()
+    },
+    onError: () => toast.error('Failed to remove cleaner'),
+  })
+
   const isValid = !mode || (mode === 'OWN' && !!staffId) || (mode === 'CLIENT' && !!clientName)
 
   return (
@@ -901,8 +924,9 @@ function AssignCleanerDialog({ woId, assignment, open, onClose }: {
           <div className="flex gap-2 pt-1">
             {(assignment?.cleanerStaffId || assignment?.clientCleanerName) && (
               <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                onClick={() => { setMode(''); setStaffId(''); setClientName(''); mutation.mutate() }}>
-                Remove
+                disabled={removeMutation.isPending || mutation.isPending}
+                onClick={() => removeMutation.mutate()}>
+                {removeMutation.isPending ? 'Removing…' : 'Remove'}
               </Button>
             )}
             <Button className="flex-1 bg-feros-equip-sidebar hover:bg-feros-equip-sidebar/90 text-white"
