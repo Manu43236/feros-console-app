@@ -739,8 +739,9 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
     mutationFn: () => workOrdersApi.assignOperator(woId, assignment!.id, {
       operatorType: operatorType || undefined,
       operatorStaffId: operatorType === 'OWN_STAFF' ? Number(staffId) : undefined,
-      hiredOperatorName: operatorType === 'HIRED' ? hiredName : undefined,
-      hiredOperatorPhone: operatorType === 'HIRED' ? hiredPhone : undefined,
+      // Client's operator — name & phone optional, no payroll.
+      hiredOperatorName: operatorType === 'CLIENT_PROVIDED' ? (hiredName || undefined) : undefined,
+      hiredOperatorPhone: operatorType === 'CLIENT_PROVIDED' ? (hiredPhone || undefined) : undefined,
     }),
     onSuccess: () => {
       toast.success('Operator assigned')
@@ -750,9 +751,9 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
     onError: () => toast.error('Failed to assign operator'),
   })
 
-  const isValid = !operatorType ||
-    (operatorType === 'OWN_STAFF' && !!staffId) ||
-    (operatorType === 'HIRED' && !!hiredName)
+  // Client's operator needs no name (optional), so any chosen type is valid.
+  const isValid = !operatorType || operatorType === 'CLIENT_PROVIDED' ||
+    (operatorType === 'OWN_STAFF' && !!staffId)
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -762,11 +763,11 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
           <div>
             <Label className="text-xs text-gray-500 mb-1.5 block">Operator Type</Label>
             <div className="flex gap-2">
-              {(['OWN_STAFF', 'HIRED'] as OperatorType[]).map(t => (
+              {(['OWN_STAFF', 'CLIENT_PROVIDED'] as OperatorType[]).map(t => (
                 <button key={t} onClick={() => { setOperatorType(t); setStaffId(''); setHiredName(''); setHiredPhone('') }}
                   className={cn('flex-1 py-2 text-sm rounded-lg border transition-colors',
                     operatorType === t ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
-                  {t === 'OWN_STAFF' ? 'Own Staff' : 'Hired'}
+                  {t === 'OWN_STAFF' ? 'Own Staff' : "Client's Operator"}
                 </button>
               ))}
             </div>
@@ -785,11 +786,11 @@ function AssignOperatorDialog({ woId, assignment, open, onClose }: {
             </div>
           )}
 
-          {operatorType === 'HIRED' && (
+          {operatorType === 'CLIENT_PROVIDED' && (
             <div className="space-y-3">
               <div>
-                <Label className="text-xs text-gray-500 mb-1.5 block">Operator Name *</Label>
-                <Input value={hiredName} onChange={e => setHiredName(e.target.value)} placeholder="Enter name" />
+                <Label className="text-xs text-gray-500 mb-1.5 block">Operator Name (optional)</Label>
+                <Input value={hiredName} onChange={e => setHiredName(e.target.value)} placeholder="Client's operator name" />
               </div>
               <div>
                 <Label className="text-xs text-gray-500 mb-1.5 block">Phone (optional)</Label>
@@ -1058,7 +1059,7 @@ function StartWorkDialog({ woId, assignment, shiftDuty, open, onClose }: {
 }) {
   const qc = useQueryClient()
   const today = new Date().toISOString().slice(0, 10)
-  const [operatorType, setOperatorType] = useState<OperatorType>('OWN_STAFF')
+  const [operatorType, setOperatorType] = useState<OperatorType | ''>('')
   const [staffId, setStaffId] = useState('')
   const [hiredName, setHiredName] = useState('')
   const [startMeter, setStartMeter] = useState('')
@@ -1106,23 +1107,26 @@ function StartWorkDialog({ woId, assignment, shiftDuty, open, onClose }: {
   const autoOperator: { label: string; opType: OperatorType; staffId?: number; hired?: string } | null =
     assignment?.operatorType === 'OWN_STAFF' && assignment?.operatorStaffName
       ? { label: assignment.operatorStaffName, opType: 'OWN_STAFF', staffId: assignment.operatorStaffId }
-      : assignment?.operatorType === 'HIRED' && assignment?.hiredOperatorName
-        ? { label: `${assignment.hiredOperatorName} (Hired)`, opType: 'HIRED', hired: assignment.hiredOperatorName }
+      : (assignment?.operatorType === 'CLIENT_PROVIDED' || assignment?.operatorType === 'HIRED')
+        ? { label: assignment.hiredOperatorName ? `${assignment.hiredOperatorName} (Client)` : "Client's operator", opType: 'CLIENT_PROVIDED', hired: assignment.hiredOperatorName ?? undefined }
         : currentShift?.operatorStaffId
           ? { label: `${currentShift.operatorName ?? 'Operator'} · Shift ${currentShift.shiftNumber}`, opType: 'OWN_STAFF', staffId: currentShift.operatorStaffId }
-          : null
+          : shiftDuty
+            ? { label: currentShift?.clientOperatorName ? `${currentShift.clientOperatorName} (Client)` : "Client's operator", opType: 'CLIENT_PROVIDED', hired: currentShift?.clientOperatorName ?? undefined }
+            : null
   const hasAssignedOperator = !!autoOperator
   const assignedOperatorLabel = autoOperator?.label ?? ''
 
-  function reset() { setOperatorType('OWN_STAFF'); setStaffId(''); setHiredName(''); setStartMeter(''); setMeterPrefilled(false) }
+  function reset() { setOperatorType(''); setStaffId(''); setHiredName(''); setStartMeter(''); setMeterPrefilled(false) }
 
   const mutation = useMutation({
     mutationFn: () => {
-      const opType = autoOperator ? autoOperator.opType : operatorType
+      const opType = (autoOperator ? autoOperator.opType : operatorType) as OperatorType
       return workOrdersApi.startWork(woId, assignment!.id, {
         operatorType: opType,
         operatorStaffId: opType === 'OWN_STAFF' ? Number(autoOperator ? autoOperator.staffId : (staffId || preStaffId)) : undefined,
-        hiredOperatorName: opType === 'HIRED' ? (autoOperator ? autoOperator.hired : (hiredName || preHiredName)) : undefined,
+        // Client's operator — name optional.
+        hiredOperatorName: opType !== 'OWN_STAFF' ? (autoOperator ? autoOperator.hired : (hiredName || preHiredName || undefined)) : undefined,
         startMeter: Number(startMeter),
       })
     },
@@ -1133,13 +1137,12 @@ function StartWorkDialog({ woId, assignment, shiftDuty, open, onClose }: {
     },
   })
 
-  const effectiveOpType = operatorType ?? prefilled ?? 'OWN_STAFF'
+  const effectiveOpType = operatorType || prefilled || ''
   const effectiveStaffId = staffId || preStaffId
-  const effectiveHiredName = hiredName || preHiredName
   const isValid = !!startMeter && (
     hasAssignedOperator ||
     (effectiveOpType === 'OWN_STAFF' && !!effectiveStaffId) ||
-    (effectiveOpType === 'HIRED' && !!effectiveHiredName)
+    effectiveOpType === 'CLIENT_PROVIDED'
   )
 
   return (
@@ -1162,11 +1165,11 @@ function StartWorkDialog({ woId, assignment, shiftDuty, open, onClose }: {
               <div>
                 <Label className="text-xs text-gray-500 mb-1.5 block">Operator Type</Label>
                 <div className="flex gap-2">
-                  {(['OWN_STAFF', 'HIRED'] as OperatorType[]).map(t => (
+                  {(['OWN_STAFF', 'CLIENT_PROVIDED'] as OperatorType[]).map(t => (
                     <button key={t} onClick={() => setOperatorType(t)}
                       className={cn('flex-1 py-2 text-sm rounded-lg border transition-colors',
                         effectiveOpType === t ? 'bg-feros-equip-sidebar text-white border-feros-equip-sidebar' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
-                      {t === 'OWN_STAFF' ? 'Own Staff' : 'Hired'}
+                      {t === 'OWN_STAFF' ? 'Own Staff' : "Client's Operator"}
                     </button>
                   ))}
                 </div>
@@ -1184,10 +1187,10 @@ function StartWorkDialog({ woId, assignment, shiftDuty, open, onClose }: {
                   {operators.length === 0 && <p className="text-xs text-amber-600 mt-1">No operators found. Add operators in Staff first.</p>}
                 </div>
               )}
-              {effectiveOpType === 'HIRED' && (
+              {effectiveOpType === 'CLIENT_PROVIDED' && (
                 <div>
-                  <Label className="text-xs text-gray-500 mb-1.5 block">Operator Name *</Label>
-                  <Input value={hiredName || preHiredName} onChange={e => setHiredName(e.target.value)} placeholder="Enter name" />
+                  <Label className="text-xs text-gray-500 mb-1.5 block">Operator Name (optional)</Label>
+                  <Input value={hiredName || preHiredName} onChange={e => setHiredName(e.target.value)} placeholder="Client's operator name" />
                 </div>
               )}
             </>
@@ -2089,15 +2092,6 @@ export function WorkOrderDetailPage() {
     enabled: !!id && tab === 'machines',
   })
 
-  // Today's shift roster — used to gate the Start button on shift-duty WOs
-  // (an operator must be assigned before a session can start).
-  const woToday = new Date().toISOString().slice(0, 10)
-  const { data: todayShiftRes } = useQuery({
-    queryKey: ['wo-shift-assignments', Number(id), woToday],
-    queryFn: () => workOrdersApi.getShiftAssignments(Number(id), woToday, woToday),
-    enabled: !!id && tab === 'machines' && !!res?.data?.workOrder.shiftDuty,
-  })
-
   const { data: dieselSummaryRes } = useQuery({
     queryKey: ['diesel-summary', Number(id)],
     queryFn: () => workOrdersApi.getDieselSummary(Number(id)),
@@ -2153,10 +2147,9 @@ export function WorkOrderDetailPage() {
   // Session start gate: for non-shift-duty WOs, require an operator. For shift-duty WOs the
   // supervisor can always start — operator assignment is for payroll tracking only, not a gate.
   const hasOperator = (a: MachineAssignment): boolean => {
-    if (a.operatorType === 'OWN_STAFF' && a.operatorStaffName) return true
-    if (a.operatorType === 'HIRED' && a.hiredOperatorName) return true
     if (wo.shiftDuty) return true
-    return false
+    if (a.operatorType === 'OWN_STAFF') return !!a.operatorStaffName
+    return !!a.operatorType // CLIENT_PROVIDED / HIRED — client's/external operator (name optional)
   }
 
   return (
@@ -2538,8 +2531,8 @@ export function WorkOrderDetailPage() {
                         <User size={12} />
                         {a.operatorType === 'OWN_STAFF' && a.operatorStaffName
                           ? <span className="font-medium text-gray-700">{a.operatorStaffName}</span>
-                          : a.operatorType === 'HIRED' && a.hiredOperatorName
-                            ? <span className="font-medium text-gray-700">{a.hiredOperatorName} <span className="text-gray-400">(Hired)</span></span>
+                          : (a.operatorType === 'CLIENT_PROVIDED' || a.operatorType === 'HIRED')
+                            ? <span className="font-medium text-gray-700">{a.hiredOperatorName ?? "Client's operator"} <span className="text-gray-400">(Client)</span></span>
                             : <span className="text-gray-400 italic">No operator assigned</span>
                         }
                       </div>
