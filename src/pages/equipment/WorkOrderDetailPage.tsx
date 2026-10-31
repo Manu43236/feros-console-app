@@ -984,6 +984,12 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
     onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to assign shift crew'),
   })
 
+  const clear = useMutation({
+    mutationFn: (shiftId: number) => workOrdersApi.clearShift(woId, machineId, shiftId, date),
+    onSuccess: () => { toast.success('Shift crew cleared'); qc.invalidateQueries({ queryKey: ['wo-shift-assignments', woId, date] }) },
+    onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to clear shift'),
+  })
+
   const rowFor = (shiftId: number) => rows.find(r => r.shiftId === shiftId && r.assignmentId === machineId)
   // '' = nothing assigned (no row), 'client' = client's own, '<id>' = own staff
   const opValue  = (r: import('@/types').MachineShiftAssignment | undefined) => r ? (r.operatorStaffId ? String(r.operatorStaffId) : 'client') : ''
@@ -1008,7 +1014,18 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
             <div key={sh.id} className="rounded-lg border border-gray-150 bg-gray-50 p-2.5 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-700">Shift {sh.shiftNumber}</span>
-                <span className="text-[11px] text-gray-400">{sh.startTime}–{sh.endTime}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-gray-400">{sh.startTime}–{sh.endTime}</span>
+                  {r && (
+                    <button
+                      disabled={clear.isPending}
+                      onClick={() => clear.mutate(sh.id)}
+                      className="text-[11px] text-red-500 hover:text-red-700 disabled:opacity-50"
+                      title="Clear this shift's operator & cleaner">
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Operator */}
@@ -1096,15 +1113,27 @@ function StartWorkDialog({ woId, assignment, shiftDuty, open, onClose }: {
   })
   const operators = (staffRes?.data ?? []).filter(s => s.roleName === 'OPERATOR')
 
-  // Shift-duty WOs: the operator comes from the shift covering now (today's roster).
+  // Shift-duty WOs: the operator comes from the shift covering now. Fetch yesterday+today so
+  // an overnight shift running in the early morning (started yesterday) resolves correctly.
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
   const { data: shiftRowsRes } = useQuery({
-    queryKey: ['wo-shift-assignments', woId, today],
-    queryFn: () => workOrdersApi.getShiftAssignments(woId, today, today),
+    queryKey: ['wo-shift-assignments', woId, yesterday, today],
+    queryFn: () => workOrdersApi.getShiftAssignments(woId, yesterday, today),
     enabled: open && !!shiftDuty && !!assignment?.id,
   })
-  const currentShift = (shiftRowsRes?.data ?? [])
-    .filter(r => r.assignmentId === assignment?.id)
-    .find(r => shiftCoversNow(r.startTime, r.endTime))
+  const currentShift = (() => {
+    const rows = (shiftRowsRes?.data ?? []).filter(r => r.assignmentId === assignment?.id)
+    const now = new Date(); const nm = now.getHours() * 60 + now.getMinutes()
+    const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0) }
+    for (const r of rows) {
+      const st = toMin(r.startTime), en = toMin(r.endTime)
+      let wd: string | null = null
+      if (st < en) { if (nm >= st && nm < en) wd = today }
+      else { if (nm >= st) wd = today; else if (nm < en) wd = yesterday }
+      if (wd && r.workDate === wd) return r
+    }
+    return undefined
+  })()
 
   // Fetch work entries to find last completed session's end meter
   const { data: entriesRes } = useQuery({
@@ -1999,15 +2028,6 @@ function hoursDown(since: string | undefined): number {
   return (Date.now() - new Date(since).getTime()) / 3_600_000
 }
 
-// True when the current local time falls in a shift window (HH:mm[:ss]); start > end crosses midnight.
-function shiftCoversNow(start?: string, end?: string): boolean {
-  if (!start || !end) return false
-  const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0) }
-  const now = new Date(); const nm = now.getHours() * 60 + now.getMinutes()
-  const s = toMin(start), e = toMin(end)
-  return s < e ? (nm >= s && nm < e) : (nm >= s || nm < e)
-}
-
 // ── Main Detail Page ──────────────────────────────────────────────────────────
 export function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -2117,6 +2137,16 @@ export function WorkOrderDetailPage() {
     enabled: !!id && tab === 'machines',
   })
 
+  // Shift roster for yesterday + today — needed so an overnight shift running in the early
+  // morning (which started yesterday) resolves to the correct crew for the "Now" line.
+  const woToday = new Date().toISOString().slice(0, 10)
+  const woYesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const { data: rosterRes } = useQuery({
+    queryKey: ['wo-shift-assignments', Number(id), woYesterday, woToday],
+    queryFn: () => workOrdersApi.getShiftAssignments(Number(id), woYesterday, woToday),
+    enabled: !!id && tab === 'machines' && !!res?.data?.workOrder.shiftDuty,
+  })
+
   const { data: dieselSummaryRes } = useQuery({
     queryKey: ['diesel-summary', Number(id)],
     queryFn: () => workOrdersApi.getDieselSummary(Number(id)),
@@ -2175,6 +2205,34 @@ export function WorkOrderDetailPage() {
     if (wo.shiftDuty) return true
     if (a.operatorType === 'OWN_STAFF') return !!a.operatorStaffName
     return !!a.operatorType // CLIENT_PROVIDED / HIRED — client's/external operator (name optional)
+  }
+
+  // Crew label for a shift roster row: own-staff name, or the client's own (named or not).
+  const crewLineFromRow = (row?: import('@/types').MachineShiftAssignment): string => {
+    const op = !row ? '—'
+      : row.operatorStaffId ? (row.operatorName ?? 'Operator')
+      : row.clientOperatorName ? `${row.clientOperatorName} (Client)` : "Client's operator"
+    const cl = !row ? null
+      : row.cleanerStaffId ? (row.cleanerName ?? 'Cleaner')
+      : row.clientCleanerName ? `${row.clientCleanerName} (Client)` : null
+    return `${op}${cl ? ` · Cleaner ${cl}` : ''}`
+  }
+
+  // The shift running now for a machine, resolving overnight shifts to the correct start
+  // date (yesterday in the early morning). Returns null when no shift covers now.
+  const currentShiftFor = (assignmentId: number): { shiftNumber: number; label: string } | null => {
+    const now = new Date(); const nm = now.getHours() * 60 + now.getMinutes()
+    const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0) }
+    for (const s of wo.shifts ?? []) {
+      const st = toMin(s.startTime), en = toMin(s.endTime)
+      let workDate: string | null = null
+      if (st < en) { if (nm >= st && nm < en) workDate = woToday }
+      else { if (nm >= st) workDate = woToday; else if (nm < en) workDate = woYesterday }
+      if (!workDate) continue
+      const row = (rosterRes?.data ?? []).find(r => r.assignmentId === assignmentId && r.shiftId === s.id && r.workDate === workDate)
+      return { shiftNumber: s.shiftNumber, label: crewLineFromRow(row) }
+    }
+    return null
   }
 
   return (
@@ -2548,7 +2606,21 @@ export function WorkOrderDetailPage() {
                   {/* Crew — shift grid for shift-duty WOs, standing operator+cleaner otherwise */}
                   <div className="space-y-2">
                     {wo.shiftDuty ? (
-                      a.isActive && <MachineShiftGrid woId={Number(id)} machineId={a.id} shifts={wo.shifts ?? []} />
+                      <>
+                        {/* Current shift running now (overnight shifts resolve to yesterday in the early morning) */}
+                        {(() => {
+                          const cur = currentShiftFor(a.id)
+                          return (
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <Clock size={12} className="text-feros-equip-sidebar shrink-0" />
+                              <span className="font-semibold text-gray-700">
+                                {cur ? `Now · Shift ${cur.shiftNumber}: ${cur.label}` : 'No active shift right now'}
+                              </span>
+                            </div>
+                          )
+                        })()}
+                        {a.isActive && <MachineShiftGrid woId={Number(id)} machineId={a.id} shifts={wo.shifts ?? []} />}
+                      </>
                     ) : (
                     <>
                     <div className="flex items-center justify-between">

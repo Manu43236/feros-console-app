@@ -40,6 +40,10 @@ export const workOrdersApi = {
   assignShift: (woId: number, assignmentId: number, data: { shiftId: number; workDate: string; operatorStaffId?: number; clientOperatorName?: string; cleanerStaffId?: number; clientCleanerName?: string }) =>
     apiClient.put<ApiResponse<MachineShiftAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/shift-assignments`, data).then(r => r.data),
 
+  // Whole-shift clear — removes operator AND cleaner for one shift/day.
+  clearShift: (woId: number, assignmentId: number, shiftId: number, workDate: string) =>
+    apiClient.delete<ApiResponse<void>>(`/work-orders/${woId}/machines/${assignmentId}/shift-assignments`, { params: { shiftId, workDate } }).then(r => r.data),
+
   getShiftAssignments: (woId: number, from: string, to: string) =>
     apiClient.get<ApiResponse<MachineShiftAssignment[]>>(`/work-orders/${woId}/shift-assignments`, { params: { from, to } }).then(r => r.data),
 
