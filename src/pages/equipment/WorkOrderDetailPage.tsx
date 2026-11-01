@@ -11,7 +11,7 @@ import {
   ArrowLeft, Plus, Wrench, Activity,
   CheckCircle2, XCircle, AlertTriangle, Clock,
   Construction, CalendarDays, Gauge, User, Play, Square, MapPin, Timer, Pencil, Trash2, Receipt, Boxes,
-  FileText, Camera, RefreshCw, Upload, Fuel, CreditCard, Landmark, RotateCcw,
+  FileText, Camera, RefreshCw, Upload, Fuel, CreditCard, Landmark, RotateCcw, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -978,7 +978,7 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
   }, [rowsRes])
 
   const assign = useMutation({
-    mutationFn: (p: { shiftId: number; operatorStaffId?: number; clientOperatorName?: string; cleanerStaffId?: number; clientCleanerName?: string }) =>
+    mutationFn: (p: { shiftId: number; operatorStaffId?: number; clientOperator?: boolean; clientOperatorName?: string; cleanerStaffId?: number; clientCleaner?: boolean; clientCleanerName?: string }) =>
       workOrdersApi.assignShift(woId, machineId, { workDate: date, ...p }),
     onSuccess: () => { toast.success('Shift crew saved'); qc.invalidateQueries({ queryKey: ['wo-shift-assignments', woId, date] }) },
     onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to assign shift crew'),
@@ -991,9 +991,25 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
   })
 
   const rowFor = (shiftId: number) => rows.find(r => r.shiftId === shiftId && r.assignmentId === machineId)
-  // '' = nothing assigned (no row), 'client' = client's own, '<id>' = own staff
-  const opValue  = (r: import('@/types').MachineShiftAssignment | undefined) => r ? (r.operatorStaffId ? String(r.operatorStaffId) : 'client') : ''
-  const clValue  = (r: import('@/types').MachineShiftAssignment | undefined) => r ? (r.cleanerStaffId  ? String(r.cleanerStaffId)  : 'client') : ''
+
+  // Save a shift's operator + cleaner states. Each is own-staff / client's own / unassigned.
+  // When both are unassigned the whole row is dropped.
+  type Crew = { staffId?: number; client: boolean; name?: string }
+  const saveShift = (shiftId: number, op: Crew, cl: Crew) => {
+    if (!op.staffId && !op.client && !cl.staffId && !cl.client) { clear.mutate(shiftId); return }
+    assign.mutate({
+      shiftId,
+      operatorStaffId: op.staffId,
+      clientOperator: op.client,
+      clientOperatorName: op.client ? op.name : undefined,
+      cleanerStaffId: cl.staffId,
+      clientCleaner: cl.client,
+      clientCleanerName: cl.client ? cl.name : undefined,
+    })
+  }
+  // '' = unassigned, 'client' = client's own, '<id>' = own staff
+  const opValue  = (r: import('@/types').MachineShiftAssignment | undefined) => r?.operatorStaffId ? String(r.operatorStaffId) : (r?.clientOperator ? 'client' : '')
+  const clValue  = (r: import('@/types').MachineShiftAssignment | undefined) => r?.cleanerStaffId  ? String(r.cleanerStaffId)  : (r?.clientCleaner ? 'client' : '')
 
   const opOpts = [{ value: '', label: 'Not assigned' }, { value: 'client', label: "Client's own" }, ...operators.map(s => ({ value: String(s.userId), label: s.userName }))]
   const clOpts = [{ value: '', label: 'Not assigned' }, { value: 'client', label: "Client's own" }, ...cleaners.map(s => ({ value: String(s.userId), label: s.userName }))]
@@ -1029,60 +1045,56 @@ function MachineShiftGrid({ woId, machineId, shifts }: {
               </div>
 
               {/* Operator */}
-              <SearchableSelect
-                value={opVal}
-                onValueChange={v => {
-                  if (v === '') return // "Not assigned" — no row needed, nothing to save
-                  assign.mutate({
-                    shiftId: sh.id,
-                    operatorStaffId: v === 'client' ? undefined : Number(v),
-                    clientOperatorName: v === 'client' ? (names.op || undefined) : undefined,
-                    cleanerStaffId: r?.cleanerStaffId,
-                    clientCleanerName: clVal === 'client' ? (names.cl || undefined) : undefined,
-                  })
-                }}
-                options={opOpts} placeholder="Operator" />
+              <div className="flex items-center gap-1">
+                <SearchableSelect
+                  className="flex-1"
+                  value={opVal}
+                  onValueChange={v => saveShift(sh.id,
+                    { staffId: v !== '' && v !== 'client' ? Number(v) : undefined, client: v === 'client', name: names.op },
+                    { staffId: clVal !== '' && clVal !== 'client' ? Number(clVal) : undefined, client: clVal === 'client', name: names.cl })}
+                  options={opOpts} placeholder="Operator" />
+                {opVal !== '' && (
+                  <button title="Unassign operator"
+                    onClick={() => saveShift(sh.id, { client: false },
+                      { staffId: clVal !== '' && clVal !== 'client' ? Number(clVal) : undefined, client: clVal === 'client', name: names.cl })}
+                    className="text-gray-400 hover:text-red-600 shrink-0 p-0.5"><X size={13} /></button>
+                )}
+              </div>
               {opVal === 'client' && (
                 <Input
                   value={names.op}
                   onChange={e => setClientNames(prev => ({ ...prev, [sh.id]: { ...names, op: e.target.value } }))}
-                  onBlur={() => assign.mutate({
-                    shiftId: sh.id,
-                    operatorStaffId: undefined,
-                    clientOperatorName: names.op || undefined,
-                    cleanerStaffId: r?.cleanerStaffId,
-                    clientCleanerName: clVal === 'client' ? (names.cl || undefined) : undefined,
-                  })}
+                  onBlur={() => saveShift(sh.id, { client: true, name: names.op },
+                    { staffId: clVal !== '' && clVal !== 'client' ? Number(clVal) : undefined, client: clVal === 'client', name: names.cl })}
                   placeholder="Client's operator name (optional)"
                   className="h-7 text-xs"
                 />
               )}
 
               {/* Cleaner */}
-              <SearchableSelect
-                value={clVal}
-                onValueChange={v => {
-                  if (v === '') return
-                  assign.mutate({
-                    shiftId: sh.id,
-                    operatorStaffId: r?.operatorStaffId,
-                    clientOperatorName: opVal === 'client' ? (names.op || undefined) : undefined,
-                    cleanerStaffId: v === 'client' ? undefined : Number(v),
-                    clientCleanerName: v === 'client' ? (names.cl || undefined) : undefined,
-                  })
-                }}
-                options={clOpts} placeholder="Cleaner" />
+              <div className="flex items-center gap-1">
+                <SearchableSelect
+                  className="flex-1"
+                  value={clVal}
+                  onValueChange={v => saveShift(sh.id,
+                    { staffId: opVal !== '' && opVal !== 'client' ? Number(opVal) : undefined, client: opVal === 'client', name: names.op },
+                    { staffId: v !== '' && v !== 'client' ? Number(v) : undefined, client: v === 'client', name: names.cl })}
+                  options={clOpts} placeholder="Cleaner" />
+                {clVal !== '' && (
+                  <button title="Unassign cleaner"
+                    onClick={() => saveShift(sh.id,
+                      { staffId: opVal !== '' && opVal !== 'client' ? Number(opVal) : undefined, client: opVal === 'client', name: names.op },
+                      { client: false })}
+                    className="text-gray-400 hover:text-red-600 shrink-0 p-0.5"><X size={13} /></button>
+                )}
+              </div>
               {clVal === 'client' && (
                 <Input
                   value={names.cl}
                   onChange={e => setClientNames(prev => ({ ...prev, [sh.id]: { ...names, cl: e.target.value } }))}
-                  onBlur={() => assign.mutate({
-                    shiftId: sh.id,
-                    operatorStaffId: r?.operatorStaffId,
-                    clientOperatorName: opVal === 'client' ? (names.op || undefined) : undefined,
-                    cleanerStaffId: undefined,
-                    clientCleanerName: names.cl || undefined,
-                  })}
+                  onBlur={() => saveShift(sh.id,
+                    { staffId: opVal !== '' && opVal !== 'client' ? Number(opVal) : undefined, client: opVal === 'client', name: names.op },
+                    { client: true, name: names.cl })}
                   placeholder="Client's cleaner name (optional)"
                   className="h-7 text-xs"
                 />
@@ -2211,10 +2223,12 @@ export function WorkOrderDetailPage() {
   const crewLineFromRow = (row?: import('@/types').MachineShiftAssignment): string => {
     const op = !row ? '—'
       : row.operatorStaffId ? (row.operatorName ?? 'Operator')
-      : row.clientOperatorName ? `${row.clientOperatorName} (Client)` : "Client's operator"
+      : row.clientOperator ? (row.clientOperatorName ? `${row.clientOperatorName} (Client)` : "Client's operator")
+      : '—'
     const cl = !row ? null
       : row.cleanerStaffId ? (row.cleanerName ?? 'Cleaner')
-      : row.clientCleanerName ? `${row.clientCleanerName} (Client)` : null
+      : row.clientCleaner ? (row.clientCleanerName ? `${row.clientCleanerName} (Client)` : "Client's cleaner")
+      : null
     return `${op}${cl ? ` · Cleaner ${cl}` : ''}`
   }
 

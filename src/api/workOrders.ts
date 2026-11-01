@@ -37,7 +37,7 @@ export const workOrdersApi = {
     apiClient.put<ApiResponse<MachineAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/cleaner`, data).then(r => r.data),
 
   // Crew parity — shift-based assignment (mirror of lease shift assignment)
-  assignShift: (woId: number, assignmentId: number, data: { shiftId: number; workDate: string; operatorStaffId?: number; clientOperatorName?: string; cleanerStaffId?: number; clientCleanerName?: string }) =>
+  assignShift: (woId: number, assignmentId: number, data: { shiftId: number; workDate: string; operatorStaffId?: number; clientOperator?: boolean; clientOperatorName?: string; cleanerStaffId?: number; clientCleaner?: boolean; clientCleanerName?: string }) =>
     apiClient.put<ApiResponse<MachineShiftAssignment>>(`/work-orders/${woId}/machines/${assignmentId}/shift-assignments`, data).then(r => r.data),
 
   // Whole-shift clear — removes operator AND cleaner for one shift/day.
