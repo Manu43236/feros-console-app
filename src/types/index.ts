@@ -957,6 +957,7 @@ export interface Attendance {
   remarks?: string; selfieUrl?: string
   locationName?: string; latitude?: number | null; longitude?: number | null
   assignedVehicleNumber?: string
+  assignedMachineNumber?: string
   shiftLabel?: string
   approvalStatus: AttendanceApprovalStatus
   approvedById?: number; approvedByName?: string; approvedAt?: string

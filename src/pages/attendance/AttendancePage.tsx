@@ -714,7 +714,7 @@ function PendingApprovalsTab() {
     new Date(b.markedAt ?? b.attendanceDate).getTime() - new Date(a.markedAt ?? a.attendanceDate).getTime()
   )
   const filtered = records.filter(r =>
-    (!search || r.userName?.toLowerCase().includes(search.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(search.toLowerCase())) &&
+    (!search || r.userName?.toLowerCase().includes(search.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(search.toLowerCase()) || r.assignedMachineNumber?.toLowerCase().includes(search.toLowerCase())) &&
     (!dateFilter || r.attendanceDate === dateFilter) &&
     (!roleFilter || r.roleName === roleFilter)
   )
@@ -833,7 +833,7 @@ function PendingApprovalsTab() {
                 </th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
-                <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle / Machine</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Date</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Type</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Marked At</th>
@@ -850,7 +850,7 @@ function PendingApprovalsTab() {
                   <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
                   <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
                   <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
-                    {r.assignedVehicleNumber ?? '—'}
+                    {r.assignedVehicleNumber ?? r.assignedMachineNumber ?? '—'}
                     {r.shiftLabel && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-feros-navy/5 text-feros-navy font-medium">{r.shiftLabel}</span>}
                   </td>
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
@@ -949,7 +949,7 @@ function RejectedTab() {
               <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
                 <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
-                <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle</th>
+                <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle / Machine</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Date</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Type</th>
                 <th className="text-left px-5 py-3 whitespace-nowrap">Marked At</th>
@@ -964,7 +964,7 @@ function RejectedTab() {
                   <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
                   <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
                   <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
-                    {r.assignedVehicleNumber ?? '—'}
+                    {r.assignedVehicleNumber ?? r.assignedMachineNumber ?? '—'}
                     {r.shiftLabel && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-feros-navy/5 text-feros-navy font-medium">{r.shiftLabel}</span>}
                   </td>
                   <td className="px-5 py-3 text-gray-700 whitespace-nowrap">{r.attendanceDate}</td>
@@ -1018,7 +1018,7 @@ function DutyTimesTab({
 
   const q = search.trim().toLowerCase()
   const filtered = records.filter(r =>
-    (!q || r.userName.toLowerCase().includes(q) || r.assignedVehicleNumber?.toLowerCase().includes(q)) &&
+    (!q || r.userName.toLowerCase().includes(q) || r.assignedVehicleNumber?.toLowerCase().includes(q) || r.assignedMachineNumber?.toLowerCase().includes(q)) &&
     (!roleFilter || r.roleName === roleFilter)
   )
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -1263,7 +1263,7 @@ export function AttendancePage() {
   )
   const unmarked = allUsers.length - records.length
 
-  const filteredMarked   = records.filter(r => (!dailySearch || r.userName?.toLowerCase().includes(dailySearch.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(dailySearch.toLowerCase())) && (!dailyRole || r.roleName === dailyRole))
+  const filteredMarked   = records.filter(r => (!dailySearch || r.userName?.toLowerCase().includes(dailySearch.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(dailySearch.toLowerCase()) || r.assignedMachineNumber?.toLowerCase().includes(dailySearch.toLowerCase())) && (!dailyRole || r.roleName === dailyRole))
   const filteredUnmarked = isAdmin ? allUsers.filter(u => !existingMap[u.id] && (!dailySearch || u.name?.toLowerCase().includes(dailySearch.toLowerCase())) && (!dailyRole || u.role === dailyRole)) : []
   const allDailyRows = [
     ...filteredMarked.map(r => ({ kind: 'marked' as const, r })),
@@ -1424,7 +1424,7 @@ export function AttendancePage() {
                     <tr className="border-b text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
                       <th className="text-left px-5 py-3 whitespace-nowrap">Staff</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Role</th>
-                      <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle</th>
+                      <th className="text-left px-5 py-3 whitespace-nowrap">Vehicle / Machine</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Status</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Approval</th>
                       <th className="text-left px-5 py-3 whitespace-nowrap">Location</th>
@@ -1442,7 +1442,7 @@ export function AttendancePage() {
                             <td className="px-5 py-3 font-medium text-gray-800 whitespace-nowrap">{r.userName}</td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{r.roleName}</td>
                             <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
-                    {r.assignedVehicleNumber ?? '—'}
+                    {r.assignedVehicleNumber ?? r.assignedMachineNumber ?? '—'}
                     {r.shiftLabel && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-feros-navy/5 text-feros-navy font-medium">{r.shiftLabel}</span>}
                   </td>
                             <td className="px-5 py-3 whitespace-nowrap"><AttendanceBadge type={r.attendanceTypeName} /></td>
