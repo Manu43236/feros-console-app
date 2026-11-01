@@ -2209,6 +2209,8 @@ export function WorkOrderDetailPage() {
   const { workOrder: wo, assignments, logs } = res.data
   const woStatus = wo.status as WorkOrderStatus
   const nextStatuses = NEXT_STATUSES[woStatus] ?? []
+  // Crew edits + session start only make sense on live WOs — not drafts or terminal states.
+  const crewEditable = !['DRAFT', 'COMPLETED', 'CANCELLED'].includes(woStatus)
   const activeAssignments = assignments.filter(a => a.isActive)
 
   // Session start gate: for non-shift-duty WOs, require an operator. For shift-duty WOs the
@@ -2581,7 +2583,7 @@ export function WorkOrderDetailPage() {
                         </span>
                       )}
                     </div>
-                    {a.isActive && (
+                    {a.isActive && crewEditable && (
                       <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar whitespace-nowrap"
                         onClick={() => setAssigningDivisionFor(a)}>
                         {a.divisionName ? 'Change Division' : 'Assign Division'}
@@ -2647,7 +2649,7 @@ export function WorkOrderDetailPage() {
                             : <span className="text-gray-400 italic">No operator assigned</span>
                         }
                       </div>
-                      {a.isActive && (
+                      {a.isActive && crewEditable && (
                         <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
                           onClick={() => setAssigningOperatorFor(a)}>
                           {a.operatorType ? 'Change' : 'Assign Operator'}
@@ -2665,7 +2667,7 @@ export function WorkOrderDetailPage() {
                             : <span className="text-gray-400 italic">No cleaner assigned</span>
                         }
                       </div>
-                      {a.isActive && (
+                      {a.isActive && crewEditable && (
                         <Button size="sm" variant="ghost" className="text-xs h-6 px-2 text-feros-equip-sidebar"
                           onClick={() => setAssigningCleanerFor(a)}>
                           {(a.cleanerStaffId || a.clientCleanerName) ? 'Change' : 'Assign Cleaner'}
@@ -2706,7 +2708,7 @@ export function WorkOrderDetailPage() {
                             onClick={() => setStoppingWorkFor(a)}>
                             <Square size={10} /> Stop
                           </Button>
-                        ) : hasOperator(a) ? (
+                        ) : !crewEditable ? null : hasOperator(a) ? (
                           <Button size="sm" variant="outline" className="text-xs h-6 px-2 text-green-700 border-green-200 hover:bg-green-50 gap-1"
                             onClick={() => setStartingWorkFor(a)}>
                             <Play size={10} /> Start
