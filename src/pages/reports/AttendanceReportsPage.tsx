@@ -10,7 +10,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
 import { downloadDailyFleetAttendancePdf, downloadTablePdf } from './DailyFleetAttendancePdf'
-import type { AttendanceDailyRow, AttendanceSummaryRow, AttendanceRoleSummaryRow, DailyFleetAttendanceReport } from '@/types'
+import type { AttendanceDailyRow, AttendanceSummaryRow, AttendanceRoleSummaryRow, DailyFleetAttendanceReport, DailyMachineAttendanceReport } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -203,6 +203,35 @@ function DailyFleetTable({ report, filter, loading }: { report: DailyFleetAttend
   />
 }
 
+// ── Machine (equipment) Attendance helpers ─────────────────────────────────────
+type MachineFilter = 'all' | 'operators' | 'cleaners' | 'unassigned' | 'empty'
+function applyMachineFilter(rows: DailyMachineAttendanceReport['rows'], filter: MachineFilter) {
+  if (filter === 'operators')  return rows.filter(r => r.operatorName !== '—')
+  if (filter === 'cleaners')   return rows.filter(r => r.cleanerName !== '—')
+  if (filter === 'unassigned') return rows.filter(r => r.operatorName === '—')
+  if (filter === 'empty')      return rows.filter(r => r.operatorName === '—' && r.cleanerName === '—')
+  return rows
+}
+
+function DailyMachineTable({ report, filter, loading }: { report: DailyMachineAttendanceReport | undefined; filter: MachineFilter; loading: boolean }) {
+  const rows = applyMachineFilter(report?.rows ?? [], filter)
+  return <ReportTable
+    loading={loading}
+    headers={['#', 'Machine No.', 'Type', 'Operator', 'Cleaner']}
+    rows={rows.map((r, i) => [
+      <span className="text-gray-400">{i + 1}</span>,
+      <span className="font-medium">{r.registrationNumber}</span>,
+      dash(r.equipmentType),
+      r.operatorName === '—'
+        ? <span className="text-gray-300">—</span>
+        : <span className="text-green-700 font-medium whitespace-pre-line">{r.operatorName}</span>,
+      r.cleanerName === '—'
+        ? <span className="text-gray-300">—</span>
+        : <span className="text-teal-700 font-medium whitespace-pre-line">{r.cleanerName}</span>,
+    ])}
+  />
+}
+
 const ROLE_LABELS: Record<string, string> = {
   DRIVER: 'Drivers', CLEANER: 'Cleaners', SUPERVISOR: 'Supervisors',
   OFFICE_STAFF: 'Office Staff', SERVICE_MANAGER: 'Service Managers',
@@ -278,12 +307,15 @@ export default function AttendanceReportsPage() {
   const [fleetScope, setFleetScope] = useState<'INTRA_STATE' | 'INTER_STATE'>('INTRA_STATE')
   const [roleSummaryDate, setRoleSummaryDate] = useState(todayStr())
   const [fleetFilter, setFleetFilter] = useState<'all' | 'drivers' | 'cleaners' | 'unassigned' | 'empty'>('all')
+  const [fleetView, setFleetView] = useState<'vehicles' | 'machines'>('vehicles')
+  const [machineFilter, setMachineFilter] = useState<MachineFilter>('all')
 
   function handleTabChange(key: TabKey) {
     setTab(key)
     setVehicleFilter('ALL')
     setRoleFilter('ALL')
     setFleetFilter('all')
+    setMachineFilter('all')
   }
 
   function applyPreset(p: DatePreset) {
@@ -307,7 +339,12 @@ export default function AttendanceReportsPage() {
   const fleetQuery = useQuery({
     queryKey: ['report-daily-fleet', fleetDate, fleetScope],
     queryFn: () => reportsApi.getDailyFleetAttendance(fleetDate, fleetScope),
-    enabled: tab === 'fleet',
+    enabled: tab === 'fleet' && fleetView === 'vehicles',
+  })
+  const machineQuery = useQuery({
+    queryKey: ['report-daily-machine', fleetDate],
+    queryFn: () => reportsApi.getDailyMachineAttendance(fleetDate),
+    enabled: tab === 'fleet' && fleetView === 'machines',
   })
   const roleSummaryQuery = useQuery({
     queryKey: ['report-attendance-role-summary', roleSummaryDate],
@@ -367,6 +404,28 @@ export default function AttendanceReportsPage() {
             csvRows,
             `role-summary-attendance-${roleSummaryDate}.pdf`,
           )
+        }
+      } else if (tab === 'fleet' && fleetView === 'machines') {
+        const report = machineQuery.data?.data
+        if (report) {
+          const filtered = applyMachineFilter(report.rows, machineFilter)
+          const label = machineFilter !== 'all' ? machineFilter.charAt(0).toUpperCase() + machineFilter.slice(1) : ''
+          const headers = ['#', 'Machine No.', 'Type', 'Operator', 'Cleaner']
+          const csvRows = filtered.map((r, i) => [String(i + 1), r.registrationNumber, r.equipmentType, r.operatorName, r.cleanerName])
+          if (format === 'csv') {
+            const content = [headers, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+            a.download = `machine-attendance-${report.date}${label ? `-${label.toLowerCase()}` : ''}.csv`
+            a.click()
+          } else {
+            await downloadTablePdf(
+              'Machine Attendance — Daily',
+              `Date: ${report.date}${label ? ` · ${label}` : ''}`,
+              headers, csvRows,
+              `machine-attendance-${report.date}${label ? `-${label.toLowerCase()}` : ''}.pdf`,
+            )
+          }
         }
       } else if (tab === 'fleet') {
         const report = fleetQuery.data?.data
@@ -466,6 +525,24 @@ export default function AttendanceReportsPage() {
         </div>
       )}
 
+      {/* Daily Attendance sub-tabs: Vehicles (as-is) | Machines (operators/cleaners on equipment) */}
+      {tab === 'fleet' && (
+        <div className="flex gap-1 w-fit bg-white border rounded-lg p-1">
+          {([['vehicles', 'Vehicles'], ['machines', 'Machines']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => { setFleetView(key); setFleetFilter('all'); setMachineFilter('all') }}
+              className={cn(
+                'px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors',
+                fleetView === key ? 'bg-feros-navy text-white' : 'text-gray-600 hover:bg-gray-100'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
         {(tab === 'daily' || tab === 'summary') && (
@@ -539,8 +616,8 @@ export default function AttendanceReportsPage() {
           </div>
         )}
 
-        {/* Fleet Attendance controls */}
-        {tab === 'fleet' && (() => {
+        {/* Fleet Attendance controls — Vehicles */}
+        {tab === 'fleet' && fleetView === 'vehicles' && (() => {
           const report = fleetQuery.data?.data
           const stats: { label: string; value: number; key: typeof fleetFilter; base: string; active: string }[] = report ? [
             { label: 'Total Vehicles', value: report.totalVehicles, key: 'all',        base: 'bg-blue-50 text-blue-700 border-blue-200',      active: 'bg-blue-700 text-white border-blue-700' },
@@ -589,12 +666,49 @@ export default function AttendanceReportsPage() {
           )
         })()}
 
+        {/* Fleet Attendance controls — Machines (no scope; operator/cleaner counts) */}
+        {tab === 'fleet' && fleetView === 'machines' && (() => {
+          const report = machineQuery.data?.data
+          const stats: { label: string; value: number; key: MachineFilter; base: string; active: string }[] = report ? [
+            { label: 'Total Machines', value: report.totalMachines, key: 'all',        base: 'bg-blue-50 text-blue-700 border-blue-200',      active: 'bg-blue-700 text-white border-blue-700' },
+            { label: 'Operators',      value: report.operators,     key: 'operators',  base: 'bg-green-50 text-green-700 border-green-200',    active: 'bg-green-700 text-white border-green-700' },
+            { label: 'Cleaners',       value: report.cleaners,      key: 'cleaners',   base: 'bg-teal-50 text-teal-700 border-teal-200',      active: 'bg-teal-700 text-white border-teal-700' },
+            { label: 'Unassigned',     value: report.unassigned,    key: 'unassigned', base: 'bg-red-50 text-red-700 border-red-200',         active: 'bg-red-700 text-white border-red-700' },
+            { label: 'Empty',          value: report.empty,         key: 'empty',      base: 'bg-orange-50 text-orange-700 border-orange-200', active: 'bg-orange-700 text-white border-orange-700' },
+          ] : []
+          return (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                <Input type="date" value={fleetDate} onChange={e => setFleetDate(e.target.value)} className="w-40" />
+              </div>
+              {stats.length > 0 && (
+                <div className="flex gap-3 items-end">
+                  {stats.map(s => (
+                    <button
+                      key={s.key}
+                      onClick={() => setMachineFilter(f => f === s.key ? 'all' : s.key)}
+                      className={cn(
+                        'border rounded-lg px-3 py-1.5 text-center min-w-[80px] transition-colors cursor-pointer',
+                        machineFilter === s.key ? s.active : s.base
+                      )}
+                    >
+                      <div className="text-xs font-medium opacity-80">{s.label}</div>
+                      <div className="text-xl font-bold">{s.value}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )
+        })()}
+
         {/* Download buttons */}
         <div className="ml-auto flex items-end gap-2">
-          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('csv')} className="gap-1.5">
+          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && fleetView === 'vehicles' && !fleetQuery.data?.data) || (tab === 'fleet' && fleetView === 'machines' && !machineQuery.data?.data)} onClick={() => handleDownload('csv')} className="gap-1.5">
             <Download size={14} />CSV
           </Button>
-          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && !fleetQuery.data?.data)} onClick={() => handleDownload('pdf')} className="gap-1.5">
+          <Button variant="outline" size="sm" disabled={downloading || (tab === 'fleet' && fleetView === 'vehicles' && !fleetQuery.data?.data) || (tab === 'fleet' && fleetView === 'machines' && !machineQuery.data?.data)} onClick={() => handleDownload('pdf')} className="gap-1.5">
             <Download size={14} />PDF
           </Button>
         </div>
@@ -604,7 +718,8 @@ export default function AttendanceReportsPage() {
       {tab === 'daily' && dailyView === 'vehicles'   && <DailyTable     rows={filteredDaily}  loading={dailyQuery.isLoading} />}
       {tab === 'daily' && dailyView === 'equipments' && <EquipmentTable rows={equipmentDaily} loading={dailyQuery.isLoading} />}
       {tab === 'summary'      && <SummaryTable      rows={filteredSummary}                  loading={summaryQuery.isLoading} />}
-      {tab === 'fleet'        && <DailyFleetTable   report={fleetQuery.data?.data}          filter={fleetFilter} loading={fleetQuery.isLoading} />}
+      {tab === 'fleet' && fleetView === 'vehicles' && <DailyFleetTable   report={fleetQuery.data?.data}   filter={fleetFilter}   loading={fleetQuery.isLoading} />}
+      {tab === 'fleet' && fleetView === 'machines' && <DailyMachineTable report={machineQuery.data?.data} filter={machineFilter} loading={machineQuery.isLoading} />}
       {tab === 'role-summary' && <RoleSummaryTable  rows={roleSummaryQuery.data?.data ?? []} loading={roleSummaryQuery.isLoading} />}
     </div>
   )

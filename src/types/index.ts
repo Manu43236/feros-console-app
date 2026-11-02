@@ -2067,6 +2067,23 @@ export interface DailyFleetAttendanceReport {
   rows: DailyFleetAttendanceRow[]
 }
 
+export interface DailyMachineAttendanceRow {
+  registrationNumber: string
+  equipmentType: string
+  operatorName: string
+  cleanerName: string
+}
+
+export interface DailyMachineAttendanceReport {
+  date: string
+  totalMachines: number
+  operators: number
+  cleaners: number
+  unassigned: number
+  empty: number
+  rows: DailyMachineAttendanceRow[]
+}
+
 export interface FuelMileageRow {
   vehicleId: number
   registrationNumber: string

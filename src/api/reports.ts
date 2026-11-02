@@ -2,6 +2,7 @@ import apiClient from './client'
 import type { ApiResponse } from '@/types'
 import type {
   DailyFleetAttendanceReport,
+  DailyMachineAttendanceReport,
   VehicleMasterRow,
   FleetStatusRow,
   FuelMileageRow,
@@ -742,6 +743,9 @@ export const reportsApi = {
 
   getDailyFleetAttendance: (date: string, scope: 'INTRA_STATE' | 'INTER_STATE') =>
     apiClient.get<ApiResponse<DailyFleetAttendanceReport>>('/reports/vehicles/daily-fleet-attendance', { params: { date, scope } }).then(r => r.data),
+
+  getDailyMachineAttendance: (date: string) =>
+    apiClient.get<ApiResponse<DailyMachineAttendanceReport>>('/reports/equipment/daily-machine-attendance', { params: { date } }).then(r => r.data),
 
   getTripSummary: (startDate: string, endDate: string, orderNumber?: string) =>
     apiClient.get<ApiResponse<TripSummaryRow[]>>('/reports/trips/summary', {
