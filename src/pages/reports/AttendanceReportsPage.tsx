@@ -126,6 +126,28 @@ function DailyTable({ rows, loading }: { rows: AttendanceDailyRow[]; loading: bo
   />
 }
 
+// Equipment sub-tab — operators/cleaners on equipment, with their machine shift
+function EquipmentTable({ rows, loading }: { rows: AttendanceDailyRow[]; loading: boolean }) {
+  return <ReportTable
+    loading={loading}
+    headers={['Date', 'Employee', 'Role', 'Equipment', 'Shift', 'Type', 'Mark In', 'Mark Out', 'Hours', 'Approval', 'Leave Type', 'Remarks']}
+    rows={rows.map(r => [
+      r.attendanceDate,
+      <span className="font-medium">{r.employeeName}</span>,
+      <span className="text-xs text-gray-500">{r.role.replace(/_/g, ' ')}</span>,
+      r.equipmentRegistrationNumber ?? '—',
+      r.shiftLabel ? <span className="text-xs text-feros-navy">{r.shiftLabel}</span> : '—',
+      <Badge label={r.attendanceType} />,
+      fmtTime(r.markedAt),
+      fmtTime(r.markedOutAt),
+      r.hoursWorked != null ? `${r.hoursWorked} h` : '—',
+      <Badge label={r.approvalStatus} />,
+      dash(r.leaveType),
+      dash(r.remarks),
+    ])}
+  />
+}
+
 function SummaryTable({ rows, loading }: { rows: AttendanceSummaryRow[]; loading: boolean }) {
   return <ReportTable
     loading={loading}
@@ -245,6 +267,7 @@ function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AttendanceReportsPage() {
   const [tab, setTab] = useState<TabKey>('daily')
+  const [dailyView, setDailyView] = useState<'vehicles' | 'equipments'>('vehicles')
   const [preset, setPreset] = useState<DatePreset>('this-month')
   const [startDate, setStartDate] = useState(thisMonthStart())
   const [endDate, setEndDate] = useState(todayStr())
@@ -295,7 +318,31 @@ export default function AttendanceReportsPage() {
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
-      if (tab === 'daily')   await reportsApi.exportAttendanceDaily(startDate, endDate, format)
+      if (tab === 'daily' && dailyView === 'equipments') {
+        // Client-side export — equipment sub-tab (vehicle export stays server-rendered, untouched)
+        const headers = ['Date', 'Employee', 'Role', 'Equipment', 'Shift', 'Type', 'Mark In', 'Mark Out', 'Hours', 'Approval', 'Leave Type', 'Remarks']
+        const csvRows = equipmentDaily.map(r => [
+          r.attendanceDate, r.employeeName, r.role.replace(/_/g, ' '),
+          r.equipmentRegistrationNumber ?? '—', r.shiftLabel ?? '—', r.attendanceType,
+          fmtTime(r.markedAt), fmtTime(r.markedOutAt), r.hoursWorked != null ? `${r.hoursWorked} h` : '—',
+          r.approvalStatus, r.leaveType ?? '—', r.remarks ?? '—',
+        ])
+        if (format === 'csv') {
+          const content = [headers, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+          a.download = `equipment-attendance-${startDate}_${endDate}.csv`
+          a.click()
+        } else {
+          await downloadTablePdf(
+            'Equipment Attendance — Daily Register',
+            `${startDate} to ${endDate}`,
+            headers, csvRows,
+            `equipment-attendance-${startDate}_${endDate}.pdf`,
+          )
+        }
+      }
+      else if (tab === 'daily')   await reportsApi.exportAttendanceDaily(startDate, endDate, format)
       else if (tab === 'summary') await reportsApi.exportAttendanceSummary(startDate, endDate, format)
       else if (tab === 'role-summary') {
         const rows = roleSummaryQuery.data?.data ?? []
@@ -369,6 +416,10 @@ export default function AttendanceReportsPage() {
     (vehicleFilter === 'ALL' || r.vehicleRegistrationNumber === vehicleFilter) &&
     (roleFilter === 'ALL' || r.role === roleFilter)
   )
+  // Equipment sub-tab: attendance-driven — only staff on equipment that day (role filter still applies)
+  const equipmentDaily = (dailyQuery.data?.data ?? []).filter(r =>
+    r.equipmentRegistrationNumber && (roleFilter === 'ALL' || r.role === roleFilter)
+  )
 
   return (
     <div className="space-y-6">
@@ -396,6 +447,24 @@ export default function AttendanceReportsPage() {
           </button>
         ))}
       </div>
+
+      {/* Daily Register sub-tabs: Vehicles (as-is) | Equipments (operators/cleaners on equipment) */}
+      {tab === 'daily' && (
+        <div className="flex gap-1 w-fit bg-white border rounded-lg p-1">
+          {([['vehicles', 'Vehicles'], ['equipments', 'Equipments']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setDailyView(key)}
+              className={cn(
+                'px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors',
+                dailyView === key ? 'bg-feros-navy text-white' : 'text-gray-600 hover:bg-gray-100'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Controls card */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
@@ -532,7 +601,8 @@ export default function AttendanceReportsPage() {
       </div>
 
       {/* Table */}
-      {tab === 'daily'        && <DailyTable        rows={filteredDaily}                    loading={dailyQuery.isLoading} />}
+      {tab === 'daily' && dailyView === 'vehicles'   && <DailyTable     rows={filteredDaily}  loading={dailyQuery.isLoading} />}
+      {tab === 'daily' && dailyView === 'equipments' && <EquipmentTable rows={equipmentDaily} loading={dailyQuery.isLoading} />}
       {tab === 'summary'      && <SummaryTable      rows={filteredSummary}                  loading={summaryQuery.isLoading} />}
       {tab === 'fleet'        && <DailyFleetTable   report={fleetQuery.data?.data}          filter={fleetFilter} loading={fleetQuery.isLoading} />}
       {tab === 'role-summary' && <RoleSummaryTable  rows={roleSummaryQuery.data?.data ?? []} loading={roleSummaryQuery.isLoading} />}
