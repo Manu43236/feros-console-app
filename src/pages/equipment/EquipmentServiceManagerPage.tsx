@@ -18,7 +18,7 @@ function toBoardService(s: EquipmentServiceRecord): BoardService {
   return {
     id: s.id,
     serviceNumber: s.serviceNumber ?? undefined,
-    assetName: s.equipmentName ?? s.equipmentIdentifier ?? 'Machine',
+    assetName: [s.equipmentName, s.equipmentIdentifier].filter(Boolean).join(' · ') || 'Machine',
     status: s.status,
     tasks: (s.tasks ?? []).map(t => ({
       id: t.id,
@@ -78,7 +78,7 @@ export function EquipmentServiceManagerPage() {
       return {
         id: b.id,
         assetId: b.equipmentId,
-        assetName: b.equipmentName ?? b.equipmentIdentifier ?? 'Machine',
+        assetName: [b.equipmentName, b.equipmentIdentifier].filter(Boolean).join(' · ') || 'Machine',
         date: b.breakdownDate,
         location: b.location ?? undefined,
         typeLabel: b.reason ?? undefined,
