@@ -42,10 +42,12 @@ export type BulkInvoiceStockInResponse = {
 
 export const stockApi = {
   getStock:             () => apiClient.get<ApiResponse<StockItem[]>>('/inventory/stock').then(r => r.data),
-  stockIn:              (data: { sparePartId: number; quantity: number; unitCost?: number; supplierName?: string; notes?: string }) =>
+  stockIn:              (data: { sparePartId: number; quantity: number; unitCost?: number; supplierName?: string; invoiceNo?: string; invoiceDate?: string; notes?: string }) =>
     apiClient.post<ApiResponse<void>>('/inventory/stock-in', data).then(r => r.data),
   stockOut:             (data: { sparePartId: number; quantity: number; type: 'DAMAGE' | 'ADJUSTMENT'; notes?: string }) =>
     apiClient.post<ApiResponse<void>>('/inventory/stock-out', data).then(r => r.data),
+  adjustStock:          (sparePartId: number, data: { newQuantity: number; unitCost?: number; reason?: string }) =>
+    apiClient.put<ApiResponse<void>>(`/inventory/stock/${sparePartId}/adjust`, data).then(r => r.data),
   bulkInvoiceStockIn:   (data: BulkInvoiceStockInRequest) =>
     apiClient.post<ApiResponse<BulkInvoiceStockInResponse>>('/inventory/stock-in/bulk-invoice', data).then(r => r.data),
   bulkStockIn:          (file: File) => {

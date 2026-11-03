@@ -1816,8 +1816,8 @@ export interface SparePartsTransaction {
   transactionType: StockTransactionType; quantity: number
   unitCost?: number; totalCost?: number
   referenceType: StockReferenceType
-  servicePartId?: number; serviceNumber?: string; vehicleRegistrationNumber?: string
-  supplierName?: string; notes?: string
+  servicePartId?: number; serviceNumber?: string; vehicleRegistrationNumber?: string; equipmentName?: string
+  supplierName?: string; invoiceNo?: string; invoiceDate?: string; notes?: string
   createdById: number; createdByName: string; createdAt: string
 }
 

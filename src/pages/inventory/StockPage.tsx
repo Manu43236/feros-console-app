@@ -4,7 +4,7 @@ import { useSubscription } from '@/context/SubscriptionContext'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { stockApi, sparePartsApi } from '@/api/inventory'
 import { globalMastersApi } from '@/api/masters'
-import type { SparePart } from '@/types'
+import type { SparePart, StockItem } from '@/types'
 import { toast } from 'sonner'
 import { Plus, Minus, Search, AlertTriangle, Boxes } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -115,6 +115,8 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
     quantity: 1,
     unitCost: '',
     supplierName: '',
+    invoiceNo: '',
+    invoiceDate: '',
     notes: '',
   })
 
@@ -127,6 +129,8 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
       quantity: form.quantity,
       unitCost: form.unitCost ? Number(form.unitCost) : undefined,
       supplierName: form.supplierName || undefined,
+      invoiceNo: form.invoiceNo || undefined,
+      invoiceDate: form.invoiceDate || undefined,
       notes: form.notes || undefined,
     }),
     onSuccess: () => {
@@ -178,6 +182,16 @@ function StockInDialog({ onClose }: { onClose: () => void }) {
           <div>
             <Label>Supplier Name</Label>
             <Input value={form.supplierName} onChange={e => setForm(f => ({ ...f, supplierName: e.target.value }))} placeholder="Optional" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label>Invoice No</Label>
+              <Input value={form.invoiceNo} onChange={e => setForm(f => ({ ...f, invoiceNo: e.target.value }))} placeholder="Optional" />
+            </div>
+            <div>
+              <Label>Invoice Date</Label>
+              <Input type="date" value={form.invoiceDate} onChange={e => setForm(f => ({ ...f, invoiceDate: e.target.value }))} />
+            </div>
           </div>
           <div>
             <Label>Notes</Label>
@@ -308,12 +322,80 @@ function StockOutDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Adjust Stock Dialog (ADMIN only) ─────────────────────────────────────────────
+function AdjustStockDialog({ item, onClose }: { item: StockItem; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({
+    newQuantity: String(item.quantity),
+    unitCost: item.lastUnitCost != null ? String(item.lastUnitCost) : '',
+    reason: '',
+  })
+
+  const mutation = useMutation({
+    mutationFn: () => stockApi.adjustStock(item.sparePartId, {
+      newQuantity: Number(form.newQuantity),
+      unitCost: form.unitCost ? Number(form.unitCost) : undefined,
+      reason: form.reason || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Stock adjusted')
+      qc.invalidateQueries({ queryKey: ['stock'] })
+      qc.invalidateQueries({ queryKey: ['inventory-transactions'] })
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? 'Failed to adjust stock')
+    },
+  })
+
+  return (
+    <Dialog open onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Adjust Stock — {item.partName}</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Current: <strong>{item.quantity} {item.unit}</strong>. The change is recorded as an audited adjustment.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label>New Quantity *</Label>
+              <Input type="number" min={0} value={form.newQuantity}
+                onChange={e => setForm(f => ({ ...f, newQuantity: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Unit Cost (₹)</Label>
+              <Input type="number" min={0} placeholder="Optional" value={form.unitCost}
+                onChange={e => setForm(f => ({ ...f, unitCost: e.target.value }))} />
+            </div>
+          </div>
+          <div>
+            <Label>Reason</Label>
+            <Input value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+              placeholder="e.g. Physical count correction" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={mutation.isPending || form.newQuantity === ''}
+            onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Saving…' : 'Save Adjustment'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function StockPage() {
   const { locked } = useSubscription()
+  const role = useAuthStore(s => s.role)
+  const isAdmin = role === 'ADMIN'
   const [search, setSearch] = useState('')
   const [showStockIn, setShowStockIn] = useState(false)
   const [showStockOut, setShowStockOut] = useState(false)
+  const [adjustItem, setAdjustItem] = useState<StockItem | null>(null)
   const [filterLow, setFilterLow] = useState(false)
 
   const { data, isLoading } = useQuery({ queryKey: ['stock'], queryFn: stockApi.getStock })
@@ -399,6 +481,7 @@ export default function StockPage() {
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Quantity</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Min Level</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                {isAdmin && <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -419,6 +502,14 @@ export default function StockPage() {
                       <span className="text-xs font-medium text-green-600">OK</span>
                     )}
                   </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3 text-right">
+                      <button className="text-xs font-medium text-blue-600 hover:underline"
+                        onClick={() => setAdjustItem(item)}>
+                        Adjust
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -428,6 +519,7 @@ export default function StockPage() {
 
       {showStockIn  && <StockInDialog  onClose={() => setShowStockIn(false)}  />}
       {showStockOut && <StockOutDialog onClose={() => setShowStockOut(false)} />}
+      {adjustItem   && <AdjustStockDialog item={adjustItem} onClose={() => setAdjustItem(null)} />}
     </div>
   )
 }

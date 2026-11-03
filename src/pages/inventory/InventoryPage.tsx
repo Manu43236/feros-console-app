@@ -547,7 +547,10 @@ function TransactionsTab() {
   const filtered = transactions.filter(t => {
     const matchSearch = t.partName.toLowerCase().includes(search.toLowerCase()) ||
       (t.serviceNumber ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (t.vehicleRegistrationNumber ?? '').toLowerCase().includes(search.toLowerCase())
+      (t.vehicleRegistrationNumber ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (t.equipmentName ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (t.supplierName ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (t.invoiceNo ?? '').toLowerCase().includes(search.toLowerCase())
     return matchSearch && (typeFilter === 'ALL' || t.transactionType === typeFilter)
   })
 
@@ -592,7 +595,8 @@ function TransactionsTab() {
                   <th className="text-right px-4 py-2.5 font-medium text-gray-600">Qty</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">Reference</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">By</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-gray-600">Cost</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-gray-600">Unit Price</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-gray-600">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -603,10 +607,12 @@ function TransactionsTab() {
                     <td className="px-4 py-3"><p className="font-medium text-gray-900">{t.partName}</p><p className="text-xs text-gray-400">{t.unit}</p></td>
                     <td className="px-4 py-3 text-right font-semibold">{t.quantity}</td>
                     <td className="px-4 py-3 text-gray-700">
-                      {t.serviceNumber ? <div><p>{t.serviceNumber}</p><p className="text-xs text-gray-400">{t.vehicleRegistrationNumber}</p></div>
-                        : t.supplierName ?? <span className="text-gray-400">—</span>}
+                      {t.serviceNumber ? <div><p>{t.serviceNumber}</p><p className="text-xs text-gray-400">{t.vehicleRegistrationNumber ?? t.equipmentName}</p></div>
+                        : t.supplierName ? <div><p>{t.supplierName}</p>{t.invoiceNo && <p className="text-xs text-gray-400">Inv {t.invoiceNo}{t.invoiceDate ? ` · ${fmtDate(t.invoiceDate)}` : ''}</p>}</div>
+                        : <span className="text-gray-400">—</span>}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{t.createdByName}</td>
+                    <td className="px-4 py-3 text-right text-gray-700">{t.unitCost ? `₹${t.unitCost.toLocaleString('en-IN')}` : '—'}</td>
                     <td className="px-4 py-3 text-right text-gray-700">{t.totalCost ? `₹${t.totalCost.toLocaleString('en-IN')}` : '—'}</td>
                   </tr>
                 ))}
