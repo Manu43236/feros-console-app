@@ -557,6 +557,7 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
     removalReason:      '' as TyreRemovalReason | '',
     retreaderName:      '',
     expectedReturnDate: '',
+    repairCost:         '',
     notes:              '',
   })
 
@@ -567,6 +568,7 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
       removalReason:      form.removalReason as TyreRemovalReason,
       retreaderName:      form.retreaderName || undefined,
       expectedReturnDate: form.expectedReturnDate || undefined,
+      repairCost:         form.repairCost ? Number(form.repairCost) : undefined,
       notes:              form.notes || undefined,
     }),
     onSuccess: () => {
@@ -577,8 +579,9 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
     onError: (e: unknown) => { const _m = getApiError(e, 'Failed to remove tyre'); if (_m) toast.error(_m) },
   })
 
-  const isRetread = form.removalReason === 'RETREAD'
-  const isScrap   = form.removalReason === 'SCRAP'
+  const isRetread   = form.removalReason === 'RETREAD'
+  const isScrap     = form.removalReason === 'SCRAP' || form.removalReason === 'WORN'
+  const isRepairable = form.removalReason === 'PUNCTURE' || form.removalReason === 'DAMAGE'
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -617,6 +620,13 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
                 <Label>Expected Return Date</Label>
                 <Input type="date" value={form.expectedReturnDate} onChange={e => setForm(f => ({ ...f, expectedReturnDate: e.target.value }))} />
               </div>
+            </div>
+          )}
+          {isRepairable && (
+            <div className="space-y-1.5">
+              <Label>Repair Cost (₹)</Label>
+              <Input type="number" value={form.repairCost} onChange={e => setForm(f => ({ ...f, repairCost: e.target.value }))} placeholder="Optional — e.g. 500" />
+              <p className="text-xs text-gray-500">Tyre returns to stock. Repair cost is added to its lifetime cost.</p>
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

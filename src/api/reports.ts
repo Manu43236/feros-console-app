@@ -58,6 +58,8 @@ import type {
   TyreLifeRow,
   TyreRequestRow,
   TyreRotationRow,
+  TyreCostPerKmRow,
+  TyreReplacementRow,
   PayrollSummaryReportRow,
   SalaryRegisterRow,
   AdvanceRegisterRow,
@@ -685,6 +687,22 @@ export const reportsApi = {
   exportTyreRotationLog: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
     const res = await apiClient.get('/reports/tyres/rotations/export', { params: { startDate, endDate, format }, responseType: 'blob' })
     triggerDownload(res.data as Blob, `tyre-rotations-${startDate}-${endDate}.${format}`)
+  },
+
+  getTyreCostPerKm: () =>
+    apiClient.get<ApiResponse<TyreCostPerKmRow[]>>('/reports/tyres/cost-per-km').then(r => r.data),
+
+  exportTyreCostPerKm: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/tyres/cost-per-km/export', { params: { format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `tyre-cost-per-km.${format}`)
+  },
+
+  getTyreReplacementForecast: () =>
+    apiClient.get<ApiResponse<TyreReplacementRow[]>>('/reports/tyres/replacement-forecast').then(r => r.data),
+
+  exportTyreReplacementForecast: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/tyres/replacement-forecast/export', { params: { format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `tyre-replacement-forecast.${format}`)
   },
 
   // ── Payroll Reports ─────────────────────────────────────────────────────────

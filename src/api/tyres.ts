@@ -62,6 +62,7 @@ export const tyreRequestsApi = {
 
 export interface TyreRequestItem {
   id: number
+  vehicleId: number
   vehicleRegistrationNumber: string
   positionCode: string
   requestedByName: string

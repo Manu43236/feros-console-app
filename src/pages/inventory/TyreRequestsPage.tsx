@@ -25,6 +25,17 @@ function ApprovalDialog({ request, onClose }: { request: TyreRequestItem; onClos
   })
   const availableTyres = tyresData?.data ?? []
 
+  // Sizes currently fitted on this vehicle — used for a non-blocking size advisory
+  const { data: posData } = useQuery({
+    queryKey: ['tyre-current-positions', request.vehicleId],
+    queryFn: () => tyresApi.getCurrentPositions(request.vehicleId),
+    enabled: action === 'APPROVED' && !!request.vehicleId,
+  })
+  const fittedSizes = [...new Set((posData?.data ?? [])
+    .map(p => p.currentFitting?.tyreSize).filter((s): s is string => !!s))]
+  const selectedSize = availableTyres.find(t => t.id === selectedTyreId)?.size
+  const sizeMismatch = !!selectedSize && fittedSizes.length > 0 && !fittedSizes.includes(selectedSize)
+
   const mutation = useMutation({
     mutationFn: () => {
       if (action === 'APPROVED') {
@@ -93,6 +104,11 @@ function ApprovalDialog({ request, onClose }: { request: TyreRequestItem; onClos
                   placeholder={loadingTyres ? 'Loading…' : 'Search by serial number…'}
                   className="mt-1"
                 />
+                {sizeMismatch && (
+                  <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+                    Selected size <strong>{selectedSize}</strong> differs from this vehicle's fitted tyres ({fittedSizes.join(', ')}). You can still issue it.
+                  </p>
+                )}
               </div>
               <div>
                 <Label>Fitted at Km (optional)</Label>

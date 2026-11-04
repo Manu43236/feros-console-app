@@ -1334,19 +1334,16 @@ export interface TyresByVehicleResponse {
   vehicleId: number; regNo: string; vehicleType: string; activeTyreCount: number
   tyres: TyreFittingItem[]
 }
-export interface KmPerTyreResponse {
-  fittingId: number; tyreId: number; serialNumber: string; brand: string; size: string
-  tyreType: string; vehicleId: number; vehicleRegNo: string; positionCode: string
-  fittedDate: string; fittedAtKm: number; removedAtKm: number; kmDriven: number; active: boolean
+export interface TyreCostPerKmRow {
+  tyreId: number; serialNumber: string; brand: string; size: string; tyreType: string; status: string
+  purchaseCost: number; totalRetreadingCost: number; totalRepairCost: number
+  effectiveCost: number; billableKm: number; costPerKm: number | null
 }
-export interface TyreReplacementProjectionResponse {
+export interface TyreReplacementRow {
   tyreId: number; serialNumber: string; brand: string; size: string
-  vehicleId: number; vehicleRegNo: string; positionCode: string; fittedDate: string
-  totalLifetimeKm: number; maxLifetimeKm: number; remainingKm: number; urgency: string
-}
-export interface TyreCostPerKmResponse {
-  tyreId: number; serialNumber: string; brand: string; size: string; tyreType: string
-  purchaseCost: number; totalLifetimeKm: number; costPerKm: number
+  vehicleRegistration: string; positionCode: string; fittedDate: string | null
+  totalLifetimeKm: number; maxLifetimeKm: number; remainingKm: number
+  percentLifeUsed: number; urgency: 'HIGH' | 'MEDIUM' | 'LOW'
 }
 
 // ─── Tenant ───────────────────────────────────────────────────────────────────
@@ -1913,6 +1910,7 @@ export interface Tyre {
   purchaseCondition?: TyrePurchaseCondition
   kmAtPurchase?: number
   totalRetreadingCost?: number
+  totalRepairCost?: number
   scrapReason?: string
   scrapDate?: string
   supplierName?: string

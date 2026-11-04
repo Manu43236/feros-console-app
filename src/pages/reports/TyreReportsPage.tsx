@@ -3,12 +3,12 @@ import { useState } from 'react'
 import { HScroll } from '@/components/ui/h-scroll'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, CircleDot, ArrowDownToLine, ArrowUpFromLine, BarChart2, ClipboardList, RotateCcw } from 'lucide-react'
+import { Download, CircleDot, ArrowDownToLine, ArrowUpFromLine, BarChart2, ClipboardList, RotateCcw, IndianRupee, CalendarClock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { TyreInventoryRow, TyreFittingRow, TyreRemovalRow, TyreLifeRow, TyreRequestRow, TyreRotationRow } from '@/types'
+import type { TyreInventoryRow, TyreFittingRow, TyreRemovalRow, TyreLifeRow, TyreRequestRow, TyreRotationRow, TyreCostPerKmRow, TyreReplacementRow } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -25,6 +25,8 @@ const TABS = [
   { key: 'life',       label: 'Tyre Life',         icon: BarChart2 },
   { key: 'requests',   label: 'Request Register',  icon: ClipboardList },
   { key: 'rotations',  label: 'Rotation Log',      icon: RotateCcw },
+  { key: 'cost-per-km', label: 'Cost / KM',        icon: IndianRupee },
+  { key: 'replacement', label: 'Replacement Forecast', icon: CalendarClock },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'this-month' | 'custom'
@@ -157,6 +159,8 @@ export default function TyreReportsPage() {
   const lifeQ = useQuery({ queryKey: ['report-tyre-life'],       queryFn: () => reportsApi.getTyreLifeReport(), enabled: tab === 'life' })
   const reqQ  = useQuery({ queryKey: ['report-tyre-requests',  effectiveStart, effectiveEnd], queryFn: () => reportsApi.getTyreRequests(effectiveStart, effectiveEnd), enabled: tab === 'requests' })
   const rotQ  = useQuery({ queryKey: ['report-tyre-rotations', effectiveStart, effectiveEnd], queryFn: () => reportsApi.getTyreRotationLog(effectiveStart, effectiveEnd), enabled: tab === 'rotations' })
+  const cpkQ  = useQuery({ queryKey: ['report-tyre-cost-per-km'], queryFn: () => reportsApi.getTyreCostPerKm(), enabled: tab === 'cost-per-km' })
+  const repQ  = useQuery({ queryKey: ['report-tyre-replacement'], queryFn: () => reportsApi.getTyreReplacementForecast(), enabled: tab === 'replacement' })
 
   async function doExport(format: 'csv' | 'pdf') {
     setExporting(true)
@@ -167,10 +171,12 @@ export default function TyreReportsPage() {
       else if (tab === 'life')      await reportsApi.exportTyreLifeReport(format)
       else if (tab === 'requests')  await reportsApi.exportTyreRequests(effectiveStart, effectiveEnd, format)
       else if (tab === 'rotations') await reportsApi.exportTyreRotationLog(effectiveStart, effectiveEnd, format)
+      else if (tab === 'cost-per-km') await reportsApi.exportTyreCostPerKm(format)
+      else if (tab === 'replacement') await reportsApi.exportTyreReplacementForecast(format)
     } catch { toast.error('Export failed') } finally { setExporting(false) }
   }
 
-  const needsDate = tab !== 'inventory' && tab !== 'life'
+  const needsDate = tab !== 'inventory' && tab !== 'life' && tab !== 'cost-per-km' && tab !== 'replacement'
 
   return (
     <div className="space-y-6">
@@ -213,6 +219,8 @@ export default function TyreReportsPage() {
         {tab === 'life'      && <TyreLifeTab      rows={lifeQ.data?.data} loading={lifeQ.isLoading} />}
         {tab === 'requests'  && <RequestsTab      rows={reqQ.data?.data}  loading={reqQ.isLoading} />}
         {tab === 'rotations' && <RotationsTab     rows={rotQ.data?.data}  loading={rotQ.isLoading} />}
+        {tab === 'cost-per-km' && <CostPerKmTab   rows={cpkQ.data?.data}  loading={cpkQ.isLoading} />}
+        {tab === 'replacement' && <ReplacementTab rows={repQ.data?.data}  loading={repQ.isLoading} />}
       </div>
     </div>
   )
@@ -381,6 +389,96 @@ function TyreLifeTab({ rows, loading }: { rows?: TyreLifeRow[]; loading: boolean
               <Td><LifeBar pct={r.percentLifeUsed} /></Td>
               <Td right>{r.retreadCount}</Td>
               <Td><TyreStatusBadge status={r.status} /></Td>
+            </tr>
+          ))}
+        </tbody>
+      </TableWrap>
+    </div>
+  )
+}
+
+// ── Cost per KM ─────────────────────────────────────────────────────────────
+function CostPerKmTab({ rows, loading }: { rows?: TyreCostPerKmRow[]; loading: boolean }) {
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
+  if (!rows?.length) return <div className="p-8 text-center text-gray-400">No tyres found</div>
+  const withCost = rows.filter(r => r.costPerKm != null)
+  const avg = withCost.length
+    ? withCost.reduce((s, r) => s + (r.costPerKm ?? 0), 0) / withCost.length
+    : null
+  return (
+    <div>
+      <div className="px-4 py-2 border-b text-sm text-gray-500 flex gap-4">
+        <span>{rows.length} tyres</span>
+        {avg != null && <span>Fleet avg <span className="font-medium text-gray-700">₹{fmt(avg)}/km</span></span>}
+      </div>
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th><Th>Status</Th>
+            <Th right>Purchase</Th><Th right>Retread</Th><Th right>Repair</Th>
+            <Th right>Effective Cost</Th><Th right>Billable KM</Th><Th right>Cost / KM</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.tyreId} className="hover:bg-gray-50">
+              <Td><span className="font-mono font-medium">{r.serialNumber}</span></Td>
+              <Td>{r.brand}</Td>
+              <Td muted>{r.size}</Td>
+              <Td muted>{r.tyreType}</Td>
+              <Td><TyreStatusBadge status={r.status} /></Td>
+              <Td right muted>₹{fmt(r.purchaseCost)}</Td>
+              <Td right muted>₹{fmt(r.totalRetreadingCost)}</Td>
+              <Td right muted>₹{fmt(r.totalRepairCost)}</Td>
+              <Td right>₹{fmt(r.effectiveCost)}</Td>
+              <Td right muted>{fmtKm(r.billableKm)}</Td>
+              <Td right>{r.costPerKm != null ? <span className="font-semibold">₹{fmt(r.costPerKm)}</span> : <span className="text-gray-400">—</span>}</Td>
+            </tr>
+          ))}
+        </tbody>
+      </TableWrap>
+    </div>
+  )
+}
+
+// ── Replacement Forecast ──────────────────────────────────────────────────────
+const URGENCY_STYLE: Record<string, string> = {
+  HIGH:   'bg-red-100 text-red-700',
+  MEDIUM: 'bg-amber-100 text-amber-700',
+  LOW:    'bg-green-100 text-green-700',
+}
+function ReplacementTab({ rows, loading }: { rows?: TyreReplacementRow[]; loading: boolean }) {
+  if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
+  if (!rows?.length) return <div className="p-8 text-center text-gray-400">No fitted tyres with a max-km limit set</div>
+  const high = rows.filter(r => r.urgency === 'HIGH').length
+  return (
+    <div>
+      <div className="px-4 py-2 border-b text-sm text-gray-500 flex gap-4">
+        <span>{rows.length} fitted tyres</span>
+        {high > 0 && <span className="text-red-600 font-medium">{high} need replacement soon (≥90% life)</span>}
+      </div>
+      <TableWrap>
+        <thead>
+          <tr>
+            <Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Vehicle</Th><Th>Position</Th>
+            <Th>Fitted</Th><Th right>Lifetime KM</Th><Th right>Max KM</Th><Th right>Remaining</Th>
+            <Th>Life Used</Th><Th>Urgency</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.tyreId} className={cn('hover:bg-gray-50', r.urgency === 'HIGH' && 'bg-red-50/50')}>
+              <Td><span className="font-mono font-medium">{r.serialNumber}</span></Td>
+              <Td>{r.brand}</Td>
+              <Td muted>{r.size}</Td>
+              <Td><span className="font-medium">{r.vehicleRegistration}</span></Td>
+              <Td>{r.positionCode}</Td>
+              <Td muted>{fmtDate(r.fittedDate)}</Td>
+              <Td right>{fmtKm(r.totalLifetimeKm)}</Td>
+              <Td right muted>{fmtKm(r.maxLifetimeKm)}</Td>
+              <Td right>{fmtKm(r.remainingKm)}</Td>
+              <Td><LifeBar pct={r.percentLifeUsed} /></Td>
+              <Td><span className={cn('px-2 py-0.5 rounded text-xs font-medium', URGENCY_STYLE[r.urgency])}>{r.urgency}</span></Td>
             </tr>
           ))}
         </tbody>
