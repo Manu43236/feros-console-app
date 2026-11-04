@@ -1929,21 +1929,27 @@ function RemoveTyreDialog({ open, onClose, fitting, currentKm }: {
   const [km, setKm]     = useState(currentKm?.toString() ?? '')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [reason, setReason]               = useState<TyreRemovalReason | ''>('')
+  const [reasonDetail, setReasonDetail]   = useState('')
   const [retreaderName, setRetreaderName] = useState('')
   const [expectedReturnDate, setExpectedReturnDate] = useState('')
+  const [repairCost, setRepairCost]       = useState('')
   const [notes, setNotes] = useState('')
 
-  const isRetread = reason === 'RETREAD'
-  const isScrap   = reason === 'SCRAP'
+  const isRetread    = reason === 'RETREAD'
+  const isScrap      = reason === 'SCRAP' || reason === 'WORN'
+  const isRepairable = reason === 'PUNCTURE' || reason === 'DAMAGE'
+  const isOther      = reason === 'OTHER'
 
   const mutation = useMutation({
     mutationFn: () => tyresApi.removeTyre(fitting.id, {
-      removedAtKm:        Number(km),
-      removedDate:        date || undefined,
-      removalReason:      reason as TyreRemovalReason,
-      retreaderName:      retreaderName || undefined,
-      expectedReturnDate: expectedReturnDate || undefined,
-      notes:              notes || undefined,
+      removedAtKm:         Number(km),
+      removedDate:         date || undefined,
+      removalReason:       reason as TyreRemovalReason,
+      removalReasonDetail: reasonDetail.trim() || undefined,
+      retreaderName:       retreaderName || undefined,
+      expectedReturnDate:  expectedReturnDate || undefined,
+      repairCost:          repairCost ? Number(repairCost) : undefined,
+      notes:               notes || undefined,
     }),
     onSuccess: () => {
       toast.success('Tyre removed')
@@ -1974,12 +1980,30 @@ function RemoveTyreDialog({ open, onClose, fitting, currentKm }: {
             <Label>Removal Reason *</Label>
             <SearchableSelect
               value={reason}
-              onValueChange={val => { setReason(val as TyreRemovalReason); setRetreaderName(''); setExpectedReturnDate('') }}
+              onValueChange={val => { setReason(val as TyreRemovalReason); setReasonDetail(''); setRetreaderName(''); setExpectedReturnDate(''); setRepairCost('') }}
               options={REMOVAL_REASONS.map(r => ({ value: r.value, label: r.label }))}
               placeholder="Select reason…"
               showSearch={false}
             />
           </div>
+          {isOther && (
+            <div className="space-y-1.5">
+              <Label>Specify Purpose *</Label>
+              <Input
+                value={reasonDetail}
+                onChange={e => setReasonDetail(e.target.value)}
+                placeholder="e.g. Transferring to AP-31-TG-1234, swapped for better tread"
+              />
+              <p className="text-xs text-gray-500">Tyre returns to stock. Describe why it was removed.</p>
+            </div>
+          )}
+          {isRepairable && (
+            <div className="space-y-1.5">
+              <Label>Repair Cost (₹)</Label>
+              <Input type="number" value={repairCost} onChange={e => setRepairCost(e.target.value)} placeholder="Optional — e.g. 500" />
+              <p className="text-xs text-gray-500">Tyre returns to stock. Repair cost is added to its lifetime cost.</p>
+            </div>
+          )}
           {isRetread && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -2009,7 +2033,7 @@ function RemoveTyreDialog({ open, onClose, fitting, currentKm }: {
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button
-              disabled={!km || !reason || mutation.isPending}
+              disabled={!km || !reason || mutation.isPending || (isOther && !reasonDetail.trim())}
               onClick={() => mutation.mutate()}
               className={`${isScrap ? 'bg-red-600 hover:bg-red-700' : 'bg-feros-navy hover:bg-feros-navy/90'} text-white`}
             >
@@ -2415,7 +2439,11 @@ function TyresTabContent({ vehicle }: { vehicle: { id: number; currentOdometerRe
                     <td className="px-3 py-2"><p className="font-medium">{f.tyreSerialNumber}</p><p className="text-xs text-gray-400">{f.tyreBrand} {f.tyreSize}</p></td>
                     <td className="px-3 py-2 font-mono text-xs">{f.positionCode}</td>
                     <td className="px-3 py-2 text-xs">{fmtD(f.fittedDate)}</td>
-                    <td className="px-3 py-2 text-xs">{f.removedDate ? fmtD(f.removedDate) : <span className="text-blue-600">Currently fitted</span>}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {f.removedDate ? fmtD(f.removedDate) : <span className="text-blue-600">Currently fitted</span>}
+                      {f.removalReason && <p className="text-gray-400">{f.removalReason.replace('_', ' ')}</p>}
+                      {f.removalReasonDetail && <p className="text-gray-400 italic">{f.removalReasonDetail}</p>}
+                    </td>
                     <td className="px-3 py-2 text-xs">{f.kmDriven != null ? Number(f.kmDriven).toLocaleString('en-IN') : '—'}</td>
                   </tr>
                 ))}

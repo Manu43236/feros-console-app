@@ -23,6 +23,14 @@ function fmtDate(d?: string) {
   try { return format(parseISO(d), 'dd MMM yyyy') } catch { return d }
 }
 
+// Real-state stock bucket: a tyre that has been retreaded (ever) counts as Retreaded,
+// whatever it was bought as. Then second-hand, else new. Mutually exclusive.
+function conditionOf(t: Tyre): TyrePurchaseCondition {
+  if ((t.retreadCount ?? 0) > 0 || t.purchaseCondition === 'RETREADED') return 'RETREADED'
+  if (t.purchaseCondition === 'SECOND_HAND') return 'SECOND_HAND'
+  return 'NEW'
+}
+
 const STATUS_COLORS: Record<TyreStatus, string> = {
   IN_STOCK:   'bg-green-100 text-green-700',
   FITTED:     'bg-blue-100 text-blue-700',
@@ -555,6 +563,7 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
     removedAtKm:        '',
     removedDate:        new Date().toISOString().split('T')[0],
     removalReason:      '' as TyreRemovalReason | '',
+    removalReasonDetail: '',
     retreaderName:      '',
     expectedReturnDate: '',
     repairCost:         '',
@@ -563,13 +572,14 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
 
   const mutation = useMutation({
     mutationFn: () => tyresApi.removeTyre(tyre.currentFittingId!, {
-      removedAtKm:        Number(form.removedAtKm),
-      removedDate:        form.removedDate || undefined,
-      removalReason:      form.removalReason as TyreRemovalReason,
-      retreaderName:      form.retreaderName || undefined,
-      expectedReturnDate: form.expectedReturnDate || undefined,
-      repairCost:         form.repairCost ? Number(form.repairCost) : undefined,
-      notes:              form.notes || undefined,
+      removedAtKm:         Number(form.removedAtKm),
+      removedDate:         form.removedDate || undefined,
+      removalReason:       form.removalReason as TyreRemovalReason,
+      removalReasonDetail: form.removalReasonDetail.trim() || undefined,
+      retreaderName:       form.retreaderName || undefined,
+      expectedReturnDate:  form.expectedReturnDate || undefined,
+      repairCost:          form.repairCost ? Number(form.repairCost) : undefined,
+      notes:               form.notes || undefined,
     }),
     onSuccess: () => {
       toast.success('Tyre removed successfully')
@@ -582,6 +592,7 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
   const isRetread   = form.removalReason === 'RETREAD'
   const isScrap     = form.removalReason === 'SCRAP' || form.removalReason === 'WORN'
   const isRepairable = form.removalReason === 'PUNCTURE' || form.removalReason === 'DAMAGE'
+  const isOther     = form.removalReason === 'OTHER'
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -604,12 +615,23 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
             <Label>Removal Reason *</Label>
             <SearchableSelect
               value={form.removalReason}
-              onValueChange={val => setForm(f => ({ ...f, removalReason: val as TyreRemovalReason, retreaderName: '', expectedReturnDate: '' }))}
+              onValueChange={val => setForm(f => ({ ...f, removalReason: val as TyreRemovalReason, removalReasonDetail: '', retreaderName: '', expectedReturnDate: '' }))}
               options={REMOVAL_REASONS.map(r => ({ value: r.value, label: r.label }))}
               placeholder="Select reason…"
               showSearch={false}
             />
           </div>
+          {isOther && (
+            <div className="space-y-1.5">
+              <Label>Specify Purpose *</Label>
+              <Input
+                value={form.removalReasonDetail}
+                onChange={e => setForm(f => ({ ...f, removalReasonDetail: e.target.value }))}
+                placeholder="e.g. Transferring to AP-31-TG-1234, swapped for better tread"
+              />
+              <p className="text-xs text-gray-500">Tyre returns to stock. Describe why it was removed.</p>
+            </div>
+          )}
           {isRetread && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -647,7 +669,7 @@ function RemoveTyreDialog({ open, onClose, tyre }: { open: boolean; onClose: () 
         <div className="flex gap-2 justify-end pt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            disabled={mutation.isPending || !form.removalReason || !form.removedAtKm}
+            disabled={mutation.isPending || !form.removalReason || !form.removedAtKm || (isOther && !form.removalReasonDetail.trim())}
             onClick={() => mutation.mutate()}
             className={cn(isScrap ? 'bg-red-600 hover:bg-red-700' : 'bg-feros-navy hover:bg-feros-navy/90', 'text-white')}
           >
@@ -969,6 +991,7 @@ function TyreDetailSheet({ tyre, open, onClose, onEdit, onFit, onRemove, onBackT
                       {f.removedDate && (
                         <div>Removed {fmtDate(f.removedDate)} at {Number(f.removedAtKm).toLocaleString('en-IN')} km · {Number(f.kmDriven ?? 0).toLocaleString('en-IN')} km driven · {f.removalReason?.replace('_', ' ')}</div>
                       )}
+                      {f.removalReasonDetail && <div className="italic">Purpose: {f.removalReasonDetail}</div>}
                     </div>
                   </div>
                 ))}
@@ -1050,7 +1073,7 @@ export default function TyreInventoryPage() {
 
   const filtered = tyres.filter(t => {
     const matchStatus = statusFilter === 'ALL' || t.status === statusFilter
-    const matchCondition = conditionFilter === 'ALL' || t.purchaseCondition === conditionFilter
+    const matchCondition = conditionFilter === 'ALL' || conditionOf(t) === conditionFilter
     const q = search.toLowerCase()
     const matchSearch = !q ||
       t.serialNumber.toLowerCase().includes(q) ||
@@ -1069,6 +1092,18 @@ export default function TyreInventoryPage() {
     retreading: tyres.filter(t => t.status === 'RETREADING').length,
     scrapped:   tyres.filter(t => t.status === 'SCRAPPED').length,
   }
+
+  const conditionCounts: Record<TyrePurchaseCondition, number> = {
+    NEW:         tyres.filter(t => conditionOf(t) === 'NEW').length,
+    RETREADED:   tyres.filter(t => conditionOf(t) === 'RETREADED').length,
+    SECOND_HAND: tyres.filter(t => conditionOf(t) === 'SECOND_HAND').length,
+  }
+
+  const CONDITION_CARDS: { value: TyrePurchaseCondition; label: string; color: string }[] = [
+    { value: 'NEW',         label: 'New',         color: 'bg-green-50  border-green-200'  },
+    { value: 'RETREADED',   label: 'Retreaded',   color: 'bg-violet-50 border-violet-200' },
+    { value: 'SECOND_HAND', label: 'Second Hand', color: 'bg-amber-50  border-amber-200'  },
+  ]
 
   const STAT_CARDS: { label: string; value: number; color: string; filter: ActiveFilter }[] = [
     { label: 'Total',      value: stats.total,      color: 'bg-gray-50   border-gray-200',   filter: 'ALL'        },
@@ -1117,6 +1152,23 @@ export default function TyreInventoryPage() {
         ))}
       </div>
 
+      {/* Stock by condition — click to filter */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Stock by Condition</p>
+        <div className="grid grid-cols-3 gap-3">
+          {CONDITION_CARDS.map(({ value, label, color }) => (
+            <button
+              key={value}
+              onClick={() => setConditionFilter(conditionFilter === value ? 'ALL' : value)}
+              className={cn('rounded-xl border p-4 text-left transition-all hover:shadow-sm', color, conditionFilter === value && 'ring-2 ring-feros-orange')}
+            >
+              <p className="text-xs text-gray-500 font-medium">{label}</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">{conditionCounts[value]}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Search + condition filter */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-sm">
@@ -1133,9 +1185,9 @@ export default function TyreInventoryPage() {
           value={conditionFilter}
           onChange={e => setConditionFilter(e.target.value as TyrePurchaseCondition | 'ALL')}
         >
-          <option value="ALL">All conditions</option>
+          <option value="ALL">All conditions ({tyres.length})</option>
           {PURCHASE_CONDITIONS.map(c => (
-            <option key={c.value} value={c.value}>{CONDITION_LABELS[c.value]}</option>
+            <option key={c.value} value={c.value}>{CONDITION_LABELS[c.value]} ({conditionCounts[c.value]})</option>
           ))}
         </select>
       </div>

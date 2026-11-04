@@ -1968,6 +1968,7 @@ export interface TyreFitting {
   removedAtKm?: number
   removedDate?: string
   removalReason?: TyreRemovalReason
+  removalReasonDetail?: string
   removedById?: number
   removedByName?: string
   rotationLogId?: number
