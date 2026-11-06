@@ -27,6 +27,7 @@ import { LeaseInvoiceDetailPage } from '@/pages/vehicles/LeaseInvoiceDetailPage'
 import LeaseInvoicesPage         from '@/pages/vehicles/LeaseInvoicesPage'
 import TyreInventoryPage       from '@/pages/inventory/TyreInventoryPage'
 import TyreRequestsPage        from '@/pages/inventory/TyreRequestsPage'
+import DefRequestsPage         from '@/pages/inventory/DefRequestsPage'
 import { OrdersPage }       from '@/pages/orders/OrdersPage'
 import { OrderDetailPage }  from '@/pages/orders/OrderDetailPage'
 import AssignmentsPage      from '@/pages/orders/AssignmentsPage'
@@ -159,6 +160,7 @@ export default function App() {
           {/* Inventory */}
           <Route path="inventory/tyres"         element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER']}><TyreInventoryPage /></ProtectedRoute>} />
           <Route path="inventory/tyre-requests" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','STORE_KEEPER']}><TyreRequestsPage /></ProtectedRoute>} />
+          <Route path="inventory/def-requests"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','STORE_KEEPER']}><DefRequestsPage /></ProtectedRoute>} />
           <Route path="inventory" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF','STORE_KEEPER','SERVICE_MANAGER']}><InventoryPage /></ProtectedRoute>} />
 
           {/* Orders & LRs */}

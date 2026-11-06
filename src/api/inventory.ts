@@ -74,3 +74,33 @@ export const inventoryTransactionsApi = {
   getAll:    () => apiClient.get<ApiResponse<SparePartsTransaction[]>>('/inventory/transactions').then(r => r.data),
   getByPart: (sparePartId: number) => apiClient.get<ApiResponse<SparePartsTransaction[]>>(`/inventory/transactions/part/${sparePartId}`).then(r => r.data),
 }
+
+// DEF / consumable issue requests — supervisor requests (vehicle only), store-keeper issues the item + qty.
+export interface ConsumableRequestItem {
+  id: number
+  vehicleId: number
+  vehicleRegistrationNumber: string
+  sparePartId?: number
+  sparePartName?: string
+  quantityIssued?: number
+  requestedById: number
+  requestedByName: string
+  approvedById?: number
+  approvedByName?: string
+  status: 'PENDING' | 'ISSUED' | 'REJECTED'
+  rejectionReason?: string
+  notes?: string
+  approvedAt?: string
+  createdAt?: string
+}
+
+export const consumableRequestsApi = {
+  getPending: () =>
+    apiClient.get<ApiResponse<ConsumableRequestItem[]>>('/consumable-requests/pending').then(r => r.data),
+  getAll: () =>
+    apiClient.get<ApiResponse<ConsumableRequestItem[]>>('/consumable-requests').then(r => r.data),
+  issue: (id: number, data: { sparePartId: number; quantity: number; notes?: string }) =>
+    apiClient.patch<ApiResponse<ConsumableRequestItem>>(`/consumable-requests/${id}/issue`, data).then(r => r.data),
+  reject: (id: number, data: { rejectionReason: string }) =>
+    apiClient.patch<ApiResponse<ConsumableRequestItem>>(`/consumable-requests/${id}/reject`, data).then(r => r.data),
+}

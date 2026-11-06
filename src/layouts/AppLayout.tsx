@@ -240,6 +240,7 @@ const STORE_KEEPER_NAV: FlatNav = [
   { to: '/inventory',               label: 'Spare Parts',   icon: Boxes,         moduleKey: 'SPARE_PARTS' },
   { to: '/inventory/tyres',         label: 'Tyres',         icon: CircleDot,     moduleKey: 'TYRES' },
   { to: '/inventory/tyre-requests', label: 'Tyre Requests', icon: ClipboardList, moduleKey: 'TYRE_REQUESTS' },
+  { to: '/inventory/def-requests',  label: 'DEF Requests',  icon: Fuel },
   { to: '/my/attendance',           label: 'My Attendance', icon: Calendar },
   { to: '/my/payslip',              label: 'My Payslip',    icon: Wallet },
 ]
