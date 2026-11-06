@@ -141,16 +141,29 @@ function IssueDialog({ request, onClose }: { request: ConsumableRequestItem; onC
   )
 }
 
+// ── Status badge ──────────────────────────────────────────────────────────────
+const STATUS_STYLE: Record<ConsumableRequestItem['status'], { label: string; cls: string }> = {
+  PENDING:  { label: 'Pending',  cls: 'bg-orange-50 text-orange-700' },
+  ISSUED:   { label: 'Issued',   cls: 'bg-green-50 text-green-700' },
+  REJECTED: { label: 'Rejected', cls: 'bg-red-50 text-red-700' },
+}
+
+const FILTERS = ['PENDING', 'ISSUED', 'REJECTED', 'ALL'] as const
+type Filter = typeof FILTERS[number]
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function DefRequestsPage() {
   const [selected, setSelected] = useState<ConsumableRequestItem | null>(null)
+  const [filter, setFilter] = useState<Filter>('PENDING')
 
   const { data, isLoading } = useQuery({
     queryKey: ['consumable-requests'],
-    queryFn: consumableRequestsApi.getPending,
+    queryFn: consumableRequestsApi.getAll,
     refetchInterval: 30_000,
   })
-  const requests: ConsumableRequestItem[] = data?.data ?? []
+  const all: ConsumableRequestItem[] = data?.data ?? []
+  const pendingCount = all.filter(r => r.status === 'PENDING').length
+  const requests = filter === 'ALL' ? all : all.filter(r => r.status === filter)
 
   return (
     <div className="p-6 space-y-5">
@@ -162,8 +175,23 @@ export default function DefRequestsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border p-4">
           <p className="text-xs text-gray-500">Pending Requests</p>
-          <p className="text-2xl font-bold text-orange-600">{requests.length}</p>
+          <p className="text-2xl font-bold text-orange-600">{pendingCount}</p>
         </div>
+      </div>
+
+      {/* Status filter */}
+      <div className="flex gap-2">
+        {FILTERS.map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              filter === f ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {f === 'ALL' ? 'All' : STATUS_STYLE[f].label}
+          </button>
+        ))}
       </div>
 
       <div className="bg-white rounded-xl border overflow-hidden">
@@ -172,7 +200,7 @@ export default function DefRequestsPage() {
         ) : requests.length === 0 ? (
           <div className="p-10 flex flex-col items-center gap-2 text-gray-400">
             <CircleDot size={36} />
-            <p className="text-sm">No pending DEF requests</p>
+            <p className="text-sm">No {filter === 'ALL' ? '' : STATUS_STYLE[filter as ConsumableRequestItem['status']].label.toLowerCase() + ' '}DEF requests</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -180,6 +208,8 @@ export default function DefRequestsPage() {
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Vehicle</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Requested By</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Issued / Reason</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Notes</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -189,15 +219,29 @@ export default function DefRequestsPage() {
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{r.vehicleRegistrationNumber}</td>
                   <td className="px-4 py-3 text-gray-700">{r.requestedByName}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLE[r.status].cls}`}>
+                      {STATUS_STYLE[r.status].label}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">
+                    {r.status === 'ISSUED'
+                      ? `${r.quantityIssued ?? ''}× ${r.sparePartName ?? ''}`.trim()
+                      : r.status === 'REJECTED'
+                        ? (r.rejectionReason ?? '—')
+                        : '—'}
+                  </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{r.notes ?? '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end">
-                      <button
-                        onClick={() => setSelected(r)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100"
-                      >
-                        <CheckCircle2 size={13} /> Process
-                      </button>
+                      {r.status === 'PENDING' && (
+                        <button
+                          onClick={() => setSelected(r)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100"
+                        >
+                          <CheckCircle2 size={13} /> Process
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
