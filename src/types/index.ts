@@ -2129,11 +2129,16 @@ export interface MaintenanceServiceRow {
   completedDate: string | null
   serviceType: string
   triggeredBy: string
+  reason: string | null
   taskCount: number
   totalCost: number | null
   status: string
   vendorName: string | null
   nextServiceDueOdometer: number | null
+  raisedAt: string | null
+  startedAt: string | null
+  completedAt: string | null
+  durationLabel: string | null
 }
 
 // ─── Attendance Report rows ────────────────────────────────────────────────────

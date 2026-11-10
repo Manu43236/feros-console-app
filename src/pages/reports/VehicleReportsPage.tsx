@@ -108,6 +108,13 @@ function ReportTable({ headers, rows, loading }: {
 
 // ── Formatters ─────────────────────────────────────────────────────────────────
 const dash = (v: unknown) => (v != null && v !== '' ? String(v) : '—')
+const fmtDt = (v: string | null) => {
+  if (!v) return '—'
+  const d = new Date(v)
+  return isNaN(d.getTime()) ? '—' : d.toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+}
 const fmtRupee = (v: number | null) => v != null ? `₹${v.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'
 const fmtNum = (v: number | null, dec = 2) => v != null ? v.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : '—'
 
@@ -272,14 +279,17 @@ function DocExpiryTable({ rows, loading }: { rows: DocumentExpiryRow[]; loading:
 function MaintenanceTable({ rows, loading }: { rows: MaintenanceServiceRow[]; loading: boolean }) {
   return <ReportTable
     loading={loading}
-    headers={['Vehicle No.', 'Type', 'Service No.', 'Service Date', 'Completed', 'Type', 'Triggered By', 'Tasks', 'Cost', 'Status', 'Vendor', 'Next Due KM']}
+    headers={['Vehicle No.', 'Type', 'Service No.', 'Service Date', 'Completed', 'Type', 'Triggered By', 'Reason', 'Tasks', 'Cost', 'Status', 'Vendor', 'Next Due KM', 'Raised At', 'Started At', 'Completed At', 'Duration']}
     rows={rows.map(r => [
       <span className="font-medium">{r.registrationNumber}</span>,
       dash(r.vehicleType), dash(r.serviceNumber), dash(r.serviceDate), dash(r.completedDate),
       <Badge label={r.serviceType} />, <Badge label={r.triggeredBy} />,
+      <span className="whitespace-normal max-w-[16rem] inline-block">{dash(r.reason)}</span>,
       r.taskCount, fmtRupee(r.totalCost), <Badge label={r.status} />,
       dash(r.vendorName),
       r.nextServiceDueOdometer != null ? `${r.nextServiceDueOdometer.toLocaleString('en-IN')} km` : '—',
+      fmtDt(r.raisedAt), fmtDt(r.startedAt), fmtDt(r.completedAt),
+      <span className="font-medium tabular-nums">{dash(r.durationLabel)}</span>,
     ])}
   />
 }
