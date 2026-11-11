@@ -2044,6 +2044,7 @@ export interface FleetStatusRow {
   vehicleBodyType?: string
   currentStatus: string
   inRepairType?: 'BREAKDOWN' | 'GENERAL'
+  tripScope?: 'INTER_STATE' | 'INTRA_STATE' | null
 }
 
 export interface DailyFleetAttendanceRow {

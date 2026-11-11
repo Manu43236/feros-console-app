@@ -146,17 +146,21 @@ function FleetStatusDoc({ rows, statusLabel, date }: { rows: FleetStatusRow[]; s
         <View style={S.tableHeader}>
           <Text style={[S.hCell, S.colNo]}>#</Text>
           <Text style={[S.hCell, S.colVehicle]}>Vehicle No.</Text>
-          <Text style={[S.hCell, { width: '16%' }]}>Tyre Type</Text>
-          <Text style={[S.hCell, { width: '16%' }]}>Body Type</Text>
-          <Text style={[S.hCell, { width: '32%' }]}>Status</Text>
+          <Text style={[S.hCell, { width: '15%' }]}>Tyre Type</Text>
+          <Text style={[S.hCell, { width: '15%' }]}>Body Type</Text>
+          <Text style={[S.hCell, { width: '14%' }]}>Scope</Text>
+          <Text style={[S.hCell, { width: '24%' }]}>Status</Text>
         </View>
         {sorted.map((row, i) => (
           <View key={i} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
             <Text style={[S.cell, S.colNo]}>{i + 1}</Text>
             <Text style={[S.cell, S.colVehicle]}>{row.registrationNumber}</Text>
-            <Text style={[S.cell, { width: '16%' }]}>{row.vehicleType ?? '—'}</Text>
-            <Text style={[S.cell, { width: '16%' }]}>{row.vehicleBodyType ?? row.vehicleType ?? '—'}</Text>
-            <Text style={[S.cell, { width: '32%' }]}>
+            <Text style={[S.cell, { width: '15%' }]}>{row.vehicleType ?? '—'}</Text>
+            <Text style={[S.cell, { width: '15%' }]}>{row.vehicleBodyType ?? row.vehicleType ?? '—'}</Text>
+            <Text style={[S.cell, { width: '14%' }]}>
+              {row.tripScope === 'INTER_STATE' ? 'Inter-State' : row.tripScope === 'INTRA_STATE' ? 'Intra-State' : '—'}
+            </Text>
+            <Text style={[S.cell, { width: '24%' }]}>
               {row.currentStatus === 'IN_REPAIR'
                 ? (row.inRepairType === 'BREAKDOWN' ? 'BREAKDOWN IN REPAIR' : 'IN SERVICE')
                 : row.currentStatus}

@@ -167,6 +167,10 @@ function fleetStatusLabel(r: FleetStatusRow) {
   return r.currentStatus
 }
 
+const scopeLabel = (r: FleetStatusRow) =>
+  r.tripScope === 'INTER_STATE' ? 'Inter-State' : r.tripScope === 'INTRA_STATE' ? 'Intra-State' : '—'
+const scopeMatch = (r: FleetStatusRow, f: string) => f === 'ALL' || r.tripScope === f
+
 const tyreNum = (s: string) => parseInt(s) || 0
 
 function FleetTable({ rows, loading }: { rows: FleetStatusRow[]; loading: boolean }) {
@@ -175,11 +179,12 @@ function FleetTable({ rows, loading }: { rows: FleetStatusRow[]; loading: boolea
     || tyreNum(a.vehicleType ?? '') - tyreNum(b.vehicleType ?? ''))
   return <ReportTable
     loading={loading}
-    headers={['Vehicle No.', 'Tyre Type', 'Body Type', 'Status']}
+    headers={['Vehicle No.', 'Tyre Type', 'Body Type', 'Scope', 'Status']}
     rows={sorted.map(r => [
       <span className="font-medium">{r.registrationNumber}</span>,
       dash(r.vehicleType),
       dash(r.vehicleBodyType ?? r.vehicleType),
+      scopeLabel(r),
       <Badge label={fleetStatusLabel(r)} />,
     ])}
   />
@@ -330,6 +335,7 @@ export default function VehicleReportsPage() {
   const [downloading, setDownloading] = useState(false)
   const [fleetView, setFleetView] = useState<'detail' | 'summary'>('detail')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [scopeFilter, setScopeFilter] = useState('ALL')
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
   const [brandFilter, setBrandFilter] = useState('ALL')
   const [fuelTypeFilter, setFuelTypeFilter] = useState('ALL')
@@ -340,6 +346,7 @@ export default function VehicleReportsPage() {
   function handleTabChange(key: TabKey) {
     setTab(key)
     setStatusFilter('ALL')
+    setScopeFilter('ALL')
     setVehicleFilter('ALL')
     setBrandFilter('ALL')
     setFuelTypeFilter('ALL')
@@ -422,7 +429,8 @@ const fuelQuery = useQuery({
     try {
       if (tab === 'vehicle-master') await reportsApi.exportVehicleMaster(format)
       else if (tab === 'fleet-status') {
-        const allRows = fleetQuery.data?.data ?? []
+        const allRows = (fleetQuery.data?.data ?? []).filter(r => scopeMatch(r, scopeFilter))
+        const scopeSuffix = scopeFilter === 'ALL' ? '' : ` (${scopeFilter === 'INTER_STATE' ? 'Inter-State' : 'Intra-State'})`
         if (fleetView === 'summary') {
           const summary = buildFleetSummary(allRows)
           if (format === 'csv') {
@@ -443,10 +451,10 @@ const fuelQuery = useQuery({
             if (statusFilter === 'IN_REPAIR_MAINTENANCE') return r.currentStatus === 'IN_REPAIR' && r.inRepairType !== 'BREAKDOWN'
             return r.currentStatus === statusFilter
           })
-          const label = statusFilter !== 'ALL' ? statusFilter.replace(/_/g, ' ') : 'ALL'
+          const label = (statusFilter !== 'ALL' ? statusFilter.replace(/_/g, ' ') : 'ALL') + scopeSuffix
           if (format === 'csv') {
-            const header = ['#', 'Vehicle No.', 'Tyre Type', 'Body Type', 'Status']
-            const csvRows = filtered.map((r, i) => [i + 1, r.registrationNumber, r.vehicleType ?? '—', r.vehicleBodyType ?? r.vehicleType ?? '—', fleetStatusLabel(r)])
+            const header = ['#', 'Vehicle No.', 'Tyre Type', 'Body Type', 'Scope', 'Status']
+            const csvRows = filtered.map((r, i) => [i + 1, r.registrationNumber, r.vehicleType ?? '—', r.vehicleBodyType ?? r.vehicleType ?? '—', scopeLabel(r), fleetStatusLabel(r)])
             const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
             const a = document.createElement('a')
             a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
@@ -577,7 +585,7 @@ const fuelQuery = useQuery({
 
         {/* Fleet Status — Detail/Summary sub-tabs + chip filters */}
         {tab === 'fleet-status' && (() => {
-          const allRows = fleetQuery.data?.data ?? []
+          const allRows = (fleetQuery.data?.data ?? []).filter(r => scopeMatch(r, scopeFilter))
           const counts: Record<string, number> = {}
           for (const r of allRows) {
             if (r.currentStatus === 'IN_REPAIR') {
@@ -600,15 +608,27 @@ const fuelQuery = useQuery({
           ]
           return (
             <div className="flex flex-col gap-3 w-full">
-              {/* Detail / Summary sub-tabs */}
-              <div className="flex gap-1">
-                {(['detail', 'summary'] as const).map(v => (
-                  <button key={v} onClick={() => setFleetView(v)}
-                    className={cn('px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors',
-                      fleetView === v ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
-                    {v === 'detail' ? 'Detail' : 'Summary'}
-                  </button>
-                ))}
+              {/* Detail / Summary sub-tabs + Scope filter */}
+              <div className="flex gap-4 items-center flex-wrap">
+                <div className="flex gap-1">
+                  {(['detail', 'summary'] as const).map(v => (
+                    <button key={v} onClick={() => setFleetView(v)}
+                      className={cn('px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                        fleetView === v ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
+                      {v === 'detail' ? 'Detail' : 'Summary'}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-1 items-center">
+                  <span className="text-xs text-gray-500 mr-1">Scope:</span>
+                  {([['ALL', 'All'], ['INTER_STATE', 'Inter-State'], ['INTRA_STATE', 'Intra-State']] as const).map(([val, lbl]) => (
+                    <button key={val} onClick={() => setScopeFilter(val)}
+                      className={cn('px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                        scopeFilter === val ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
               </div>
               {/* Chip filter — only for detail view */}
               {fleetView === 'detail' && (
@@ -780,16 +800,16 @@ const fuelQuery = useQuery({
         loading={vehicleMasterQuery.isLoading}
       />}
       {tab === 'fleet-status' && fleetView === 'detail' && <FleetTable
-        rows={(fleetQuery.data?.data ?? []).filter(r => {
+        rows={(fleetQuery.data?.data ?? []).filter(r => scopeMatch(r, scopeFilter) && (() => {
           if (statusFilter === 'ALL') return true
           if (statusFilter === 'IN_REPAIR_BREAKDOWN') return r.currentStatus === 'IN_REPAIR' && r.inRepairType === 'BREAKDOWN'
           if (statusFilter === 'IN_REPAIR_MAINTENANCE') return r.currentStatus === 'IN_REPAIR' && r.inRepairType !== 'BREAKDOWN'
           return r.currentStatus === statusFilter
-        })}
+        })())}
         loading={fleetQuery.isLoading}
       />}
       {tab === 'fleet-status' && fleetView === 'summary' && <FleetSummaryTable
-        rows={fleetQuery.data?.data ?? []}
+        rows={(fleetQuery.data?.data ?? []).filter(r => scopeMatch(r, scopeFilter))}
         loading={fleetQuery.isLoading}
       />}
 {tab === 'fuel-mileage'  && <FuelMileageTable rows={(fuelQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}        loading={fuelQuery.isLoading} />}
