@@ -170,7 +170,9 @@ function fleetStatusLabel(r: FleetStatusRow) {
 const tyreNum = (s: string) => parseInt(s) || 0
 
 function FleetTable({ rows, loading }: { rows: FleetStatusRow[]; loading: boolean }) {
-  const sorted = [...rows].sort((a, b) => tyreNum(a.vehicleType ?? '') - tyreNum(b.vehicleType ?? ''))
+  const sorted = [...rows].sort((a, b) =>
+    (a.vehicleBodyType ?? a.vehicleType ?? '').localeCompare(b.vehicleBodyType ?? b.vehicleType ?? '')
+    || tyreNum(a.vehicleType ?? '') - tyreNum(b.vehicleType ?? ''))
   return <ReportTable
     loading={loading}
     headers={['Vehicle No.', 'Tyre Type', 'Body Type', 'Status']}
@@ -210,7 +212,7 @@ function buildFleetSummary(rows: FleetStatusRow[]): FleetSummaryRow[] {
   }
   return [...map.values()]
     .map(s => ({ ...s, utilization: s.total > 0 ? Math.round((s.assigned + s.onTrip + s.onLease) / s.total * 100) : 0 }))
-    .sort((a, b) => tyreNum(a.vehicleType) - tyreNum(b.vehicleType) || a.vehicleBodyType.localeCompare(b.vehicleBodyType))
+    .sort((a, b) => a.vehicleBodyType.localeCompare(b.vehicleBodyType) || tyreNum(a.vehicleType) - tyreNum(b.vehicleType))
 }
 
 function FleetSummaryTable({ rows, loading }: { rows: FleetStatusRow[]; loading: boolean }) {
