@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import { downloadFleetStatusPdf, downloadFleetStatusSummaryPdf } from './DailyFleetAttendancePdf'
+import { downloadFleetStatusPdf, downloadFleetStatusSummaryPdf, downloadTablePdf } from './DailyFleetAttendancePdf'
 import type {
   VehicleMasterRow, FleetStatusRow, FuelMileageRow,
   BreakdownReportRow, DocumentExpiryRow, MaintenanceServiceRow,
@@ -116,6 +116,11 @@ const fmtDt = (v: string | null) => {
   })
 }
 const fmtRupee = (v: number | null) => v != null ? `₹${v.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'
+
+// Days-left threshold below which a document counts as "expiring soon" (amber).
+const AMBER_DAYS = 30
+const docStatus = (daysLeft: number): 'GREEN' | 'AMBER' | 'RED' =>
+  daysLeft < 0 ? 'RED' : daysLeft <= AMBER_DAYS ? 'AMBER' : 'GREEN'
 const fmtNum = (v: number | null, dec = 2) => v != null ? v.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : '—'
 
 // ── Table renderers ────────────────────────────────────────────────────────────
@@ -263,15 +268,16 @@ function BreakdownsTable({ rows, loading }: { rows: BreakdownReportRow[]; loadin
 function DocExpiryTable({ rows, loading }: { rows: DocumentExpiryRow[]; loading: boolean }) {
   return <ReportTable
     loading={loading}
-    headers={['Vehicle No.', 'Type', 'Document', 'Doc No.', 'Expiry Date', 'Days Left', 'Status']}
+    headers={['Vehicle No.', 'Type', 'Document', 'Doc No.', 'Issue Date', 'Expiry Date', 'Issuer', 'Renewal Cost', 'Days Left', 'Status']}
     rows={rows.map(r => [
       <span className="font-medium">{r.registrationNumber}</span>,
       dash(r.vehicleType), r.documentType,
-      dash(r.documentNumber), r.expiryDate,
-      <span className={r.daysLeft < 0 ? 'text-red-600 font-medium' : r.daysLeft <= 30 ? 'text-amber-600 font-medium' : 'text-gray-700'}>
+      dash(r.documentNumber), dash(r.issueDate), r.expiryDate, dash(r.issuerName),
+      fmtRupee(r.cost),
+      <span className={r.daysLeft < 0 ? 'text-red-600 font-medium' : r.daysLeft <= AMBER_DAYS ? 'text-amber-600 font-medium' : 'text-gray-700'}>
         {r.daysLeft < 0 ? `${Math.abs(r.daysLeft)}d overdue` : `${r.daysLeft}d`}
       </span>,
-      <ExpiryBadge status={r.expiryStatus} />,
+      <ExpiryBadge status={docStatus(r.daysLeft)} />,
     ])}
   />
 }
@@ -314,7 +320,11 @@ export default function VehicleReportsPage() {
   const [preset, setPreset] = useState<DatePreset>('this-month')
   const [startDate, setStartDate] = useState(thisMonthStart())
   const [endDate, setEndDate] = useState(todayStr())
-  const [days, setDays] = useState(30)
+  const [days, setDays] = useState(90)
+  const [docTypeFilter, setDocTypeFilter] = useState('ALL')
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState('ALL')
+  const [expiryFrom, setExpiryFrom] = useState('')
+  const [expiryTo, setExpiryTo] = useState('')
   const [downloading, setDownloading] = useState(false)
   const [fleetView, setFleetView] = useState<'detail' | 'summary'>('detail')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -334,6 +344,10 @@ export default function VehicleReportsPage() {
     setOwnershipFilter('ALL')
     setIotFilter('ALL')
     setFinanceFilter('ALL')
+    setDocTypeFilter('ALL')
+    setVehicleTypeFilter('ALL')
+    setExpiryFrom('')
+    setExpiryTo('')
     setFleetView('detail')
   }
 
@@ -378,6 +392,29 @@ const fuelQuery = useQuery({
   })
 
 
+  // ── Document Expiry — client-side filters (shared by chips, table, export) ──
+  const docAllRows = docExpiryQuery.data?.data ?? []
+  const docFilteredExceptStatus = docAllRows.filter(r =>
+    (vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter) &&
+    (docTypeFilter === 'ALL' || r.documentType === docTypeFilter) &&
+    (vehicleTypeFilter === 'ALL' || r.vehicleType === vehicleTypeFilter) &&
+    (!expiryFrom || r.expiryDate >= expiryFrom) &&
+    (!expiryTo || r.expiryDate <= expiryTo) &&
+    r.daysLeft <= days
+  )
+  const docCounts = {
+    expired:  docFilteredExceptStatus.filter(r => docStatus(r.daysLeft) === 'RED').length,
+    expiring: docFilteredExceptStatus.filter(r => docStatus(r.daysLeft) === 'AMBER').length,
+    valid:    docFilteredExceptStatus.filter(r => docStatus(r.daysLeft) === 'GREEN').length,
+  }
+  const docRows = docFilteredExceptStatus.filter(r =>
+    statusFilter === 'ALL' ||
+    (statusFilter === 'EXPIRED'  && docStatus(r.daysLeft) === 'RED') ||
+    (statusFilter === 'EXPIRING' && docStatus(r.daysLeft) === 'AMBER') ||
+    (statusFilter === 'VALID'    && docStatus(r.daysLeft) === 'GREEN')
+  )
+  const docStatusLabel = (s: string) => s === 'RED' ? 'Expired' : s === 'AMBER' ? 'Expiring' : 'Valid'
+
   async function handleDownload(format: 'csv' | 'pdf') {
     setDownloading(true)
     try {
@@ -420,7 +457,25 @@ const fuelQuery = useQuery({
       }
       else if (tab === 'fuel-mileage') await reportsApi.exportFuelMileage(startDate, endDate, format)
       else if (tab === 'breakdowns') await reportsApi.exportBreakdowns(startDate, endDate, format)
-      else if (tab === 'doc-expiry') await reportsApi.exportDocumentExpiry(days, format)
+      else if (tab === 'doc-expiry') {
+        const header = ['Vehicle No.', 'Vehicle Type', 'Document', 'Doc No.', 'Issue Date', 'Expiry Date', 'Issuer', 'Renewal Cost', 'Days Left', 'Status']
+        const dataRows = docRows.map(r => [
+          r.registrationNumber, r.vehicleType ?? '—', r.documentType, r.documentNumber ?? '—',
+          r.issueDate ?? '—', r.expiryDate, r.issuerName ?? '—',
+          r.cost != null ? `₹${r.cost.toLocaleString('en-IN')}` : '—',
+          r.daysLeft < 0 ? `${Math.abs(r.daysLeft)}d overdue` : `${r.daysLeft}d`,
+          docStatusLabel(docStatus(r.daysLeft)),
+        ])
+        if (format === 'csv') {
+          const content = [header, ...dataRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+          a.download = `document-expiry-${todayStr()}.csv`
+          a.click()
+        } else {
+          await downloadTablePdf('Vehicle Document Expiry Report', `As on ${todayStr()}`, header, dataRows, `document-expiry-${todayStr()}.pdf`)
+        }
+      }
       else if (tab === 'maintenance') await reportsApi.exportMaintenanceService(startDate, endDate, format)
     } catch {
       toast.error('Export failed')
@@ -595,17 +650,56 @@ const fuelQuery = useQuery({
           )
         })()}
 
-        {/* Document Expiry — days ahead */}
-        {tab === 'doc-expiry' && (
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Expiring within (days)</label>
-            <Input
-              type="number" min={1} max={365} value={days}
-              onChange={e => setDays(Math.max(1, parseInt(e.target.value) || 30))}
-              className="w-28"
-            />
-          </div>
-        )}
+        {/* Document Expiry — doc-type / vehicle-type / status / due-date / days */}
+        {tab === 'doc-expiry' && (() => {
+          const uniq = (getter: (r: DocumentExpiryRow) => string | null) =>
+            Array.from(new Set(docAllRows.map(getter).filter(Boolean) as string[])).sort()
+          return (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Document Type</label>
+                <SearchableSelect value={docTypeFilter} onValueChange={setDocTypeFilter}
+                  options={[{ value: 'ALL', label: 'All Documents' }, ...uniq(r => r.documentType).map(v => ({ value: v, label: v }))]}
+                  className="w-44" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle Type</label>
+                <SearchableSelect value={vehicleTypeFilter} onValueChange={setVehicleTypeFilter}
+                  options={[{ value: 'ALL', label: 'All Types' }, ...uniq(r => r.vehicleType).map(v => ({ value: v, label: v }))]}
+                  showSearch={false} className="w-36" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <SearchableSelect value={statusFilter} onValueChange={setStatusFilter}
+                  options={[
+                    { value: 'ALL', label: 'All' },
+                    { value: 'EXPIRED', label: 'Expired' },
+                    { value: 'EXPIRING', label: 'Expiring' },
+                    { value: 'VALID', label: 'Valid' },
+                  ]} showSearch={false} className="w-32" />
+              </div>
+              <div className="flex items-end gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Expiry From</label>
+                  <Input type="date" value={expiryFrom} onChange={e => setExpiryFrom(e.target.value)} className="w-36" />
+                </div>
+                <span className="pb-2 text-gray-400 text-sm">→</span>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Expiry To</label>
+                  <Input type="date" value={expiryTo} onChange={e => setExpiryTo(e.target.value)} className="w-36" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Within (days)</label>
+                <Input
+                  type="number" min={1} max={3650} value={days}
+                  onChange={e => setDays(Math.max(1, parseInt(e.target.value) || 90))}
+                  className="w-24"
+                />
+              </div>
+            </>
+          )
+        })()}
 
         {/* Date range reports */}
         {usesDateRange && (
@@ -698,7 +792,23 @@ const fuelQuery = useQuery({
       />}
 {tab === 'fuel-mileage'  && <FuelMileageTable rows={(fuelQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}        loading={fuelQuery.isLoading} />}
       {tab === 'breakdowns'    && <BreakdownsTable  rows={(breakdownQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}   loading={breakdownQuery.isLoading} />}
-      {tab === 'doc-expiry'    && <DocExpiryTable   rows={(docExpiryQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)}   loading={docExpiryQuery.isLoading} />}
+      {tab === 'doc-expiry'    && <>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {([
+            { key: 'ALL',      label: 'All',      count: docFilteredExceptStatus.length, base: 'bg-feros-navy/10 text-feros-navy border-feros-navy/20', active: 'bg-feros-navy text-white border-feros-navy' },
+            { key: 'EXPIRED',  label: 'Expired',  count: docCounts.expired,  base: 'bg-red-50 text-red-700 border-red-200',       active: 'bg-red-700 text-white border-red-700' },
+            { key: 'EXPIRING', label: 'Expiring', count: docCounts.expiring, base: 'bg-amber-50 text-amber-700 border-amber-200', active: 'bg-amber-600 text-white border-amber-600' },
+            { key: 'VALID',    label: 'Valid',    count: docCounts.valid,    base: 'bg-green-50 text-green-700 border-green-200', active: 'bg-green-700 text-white border-green-700' },
+          ]).map(c => (
+            <button key={c.key} onClick={() => setStatusFilter(c.key)}
+              className={cn('border rounded-lg px-3 py-1.5 text-center min-w-[84px] transition-colors', statusFilter === c.key ? c.active : c.base)}>
+              <div className="text-xs font-medium opacity-80">{c.label}</div>
+              <div className="text-xl font-bold">{c.count}</div>
+            </button>
+          ))}
+        </div>
+        <DocExpiryTable rows={docRows} loading={docExpiryQuery.isLoading} />
+      </>}
       {tab === 'maintenance'   && <MaintenanceTable rows={(maintenanceQuery.data?.data ?? []).filter(r => vehicleFilter === 'ALL' || r.registrationNumber === vehicleFilter)} loading={maintenanceQuery.isLoading} />}
     </div>
   )

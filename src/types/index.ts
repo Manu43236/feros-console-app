@@ -2115,7 +2115,11 @@ export interface DocumentExpiryRow {
   vehicleType: string
   documentType: string
   documentNumber: string | null
+  issueDate: string | null
   expiryDate: string
+  issuerName: string | null
+  cost: number | null
+  paidOn: string | null
   daysLeft: number
   expiryStatus: 'GREEN' | 'AMBER' | 'RED'
 }
