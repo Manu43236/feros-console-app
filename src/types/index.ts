@@ -1055,6 +1055,7 @@ export interface LrRegisterRow {
   driverName: string; cleanerName: string
   fromCity: string; fromState: string; toCity: string; toState: string
   materialType: string
+  freightRate?: number; freightRateType?: string
   allocatedWeight?: number; loadedWeight?: number; deliveredWeight?: number
   weightVariance?: number; isOverloaded?: boolean
   loadedAt?: string; deliveredAt?: string
@@ -2230,6 +2231,8 @@ export interface ClientTripSummaryRow {
   completedTrips: number
   inTransitTrips: number
   cancelledTrips: number
+  completedInvoiceCount: number
+  pendingInvoiceCount: number
   totalAllocatedWeight: number
   totalLoadedWeight: number
   totalDeliveredWeight: number
@@ -2243,6 +2246,7 @@ export interface TripSummaryRow {
   lrNumber: string
   lrCreatedAt: string
   registrationNumber: string
+  vehicleScope?: string
   vehicleAssignedAt: string | null
   tripStartTime: string | null
   tripEndTime: string | null

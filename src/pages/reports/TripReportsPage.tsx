@@ -92,6 +92,11 @@ function ReportTable({ headers, rows, loading }: {
 
 // ── Formatters ─────────────────────────────────────────────────────────────────
 const dash = (v: unknown) => (v != null && v !== '' ? String(v) : '—')
+function fmtRateQty(rate?: number, type?: string) {
+  if (rate == null) return '—'
+  const basis = !type || type === '—' ? '' : ` / ${type.replace('PER_', '').replace(/_/g, ' ')}`
+  return `₹${rate}${basis}`
+}
 function fmtDateTime(dt: string | null | undefined) {
   if (!dt) return '—'
   return new Date(dt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
@@ -102,7 +107,7 @@ function LrRegisterTable({ rows, loading }: { rows: LrRegisterRow[]; loading: bo
   return <ReportTable
     loading={loading}
     headers={['LR No.', 'LR Date', 'Order No.', 'Client', 'Vehicle', 'Driver', 'Cleaner',
-      'From', 'To', 'Material', 'Alloc. Wt', 'Loaded Wt', 'Delivered Wt', 'Variance',
+      'From', 'To', 'Material', 'Rate / Qty', 'Alloc. Wt', 'Loaded Wt', 'Delivered Wt', 'Variance',
       'Overloaded', 'Loaded At', 'Delivered At', 'E-Way Bill', 'Invoiced', 'Status', 'Remarks']}
     rows={rows.map(r => [
       <span className="font-medium text-feros-navy">{r.lrNumber}</span>,
@@ -115,6 +120,7 @@ function LrRegisterTable({ rows, loading }: { rows: LrRegisterRow[]; loading: bo
       `${r.fromCity}, ${r.fromState}`,
       `${r.toCity}, ${r.toState}`,
       r.materialType,
+      fmtRateQty(r.freightRate, r.freightRateType),
       dash(r.allocatedWeight),
       dash(r.loadedWeight),
       dash(r.deliveredWeight),
@@ -209,6 +215,7 @@ function ClientSummaryTable({ rows, loading }: { rows: ClientTripSummaryRow[]; l
   return <ReportTable
     loading={loading}
     headers={['Client', 'Total Trips', 'Completed', 'In Transit', 'Cancelled',
+      'Invoices Completed', 'Invoices Pending',
       'Total Alloc. Wt', 'Total Loaded Wt', 'Total Delivered Wt']}
     rows={rows.map(r => [
       <span className="font-medium">{r.clientName}</span>,
@@ -216,6 +223,8 @@ function ClientSummaryTable({ rows, loading }: { rows: ClientTripSummaryRow[]; l
       <span className="text-green-700 font-medium">{r.completedTrips}</span>,
       <span className={r.inTransitTrips > 0 ? 'text-amber-600 font-medium' : 'text-gray-400'}>{r.inTransitTrips}</span>,
       <span className={r.cancelledTrips > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>{r.cancelledTrips}</span>,
+      <span className="text-green-700 font-medium">{r.completedInvoiceCount}</span>,
+      <span className={r.pendingInvoiceCount > 0 ? 'text-amber-600 font-medium' : 'text-gray-400'}>{r.pendingInvoiceCount}</span>,
       dash(r.totalAllocatedWeight),
       dash(r.totalLoadedWeight),
       dash(r.totalDeliveredWeight),
@@ -244,7 +253,7 @@ const LR_STATUS_COLORS: Record<string, string> = {
 function TripSummaryTable({ rows, loading }: { rows: TripSummaryRow[]; loading: boolean }) {
   return <ReportTable
     loading={loading}
-    headers={['Order No.', 'Client', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Trip Start', 'Delivery Time', 'Duration', 'Driver', 'Status']}
+    headers={['Order No.', 'Client', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Scope', 'Assigned At', 'Trip Start', 'Delivery Time', 'Duration', 'Driver', 'Status']}
     rows={rows.map(r => {
       const cls = LR_STATUS_COLORS[r.lrStatus] ?? 'bg-gray-100 text-gray-600'
       return [
@@ -255,6 +264,7 @@ function TripSummaryTable({ rows, loading }: { rows: TripSummaryRow[]; loading: 
         <span className="font-medium text-feros-navy">{r.lrNumber}</span>,
         fmtDateTime(r.lrCreatedAt),
         r.registrationNumber,
+        <span className="text-xs text-gray-500">{(r.vehicleScope ?? '—').replace(/_/g, ' ')}</span>,
         fmtDateTime(r.vehicleAssignedAt),
         fmtDateTime(r.tripStartTime),
         fmtDateTime(r.tripEndTime),
@@ -370,10 +380,11 @@ export default function TripReportsPage() {
     try {
       if (tab === 'lr-register') {
         const rows = filteredLrRows
-        const headers = ['LR No.', 'LR Date', 'Order No.', 'Client', 'Vehicle', 'Driver', 'Cleaner', 'From', 'To', 'Material', 'Alloc. Wt', 'Loaded Wt', 'Delivered Wt', 'Variance', 'Overloaded', 'Loaded At', 'Delivered At', 'E-Way Bill', 'Invoiced', 'Status', 'Remarks']
+        const headers = ['LR No.', 'LR Date', 'Order No.', 'Client', 'Vehicle', 'Driver', 'Cleaner', 'From', 'To', 'Material', 'Rate / Qty', 'Alloc. Wt', 'Loaded Wt', 'Delivered Wt', 'Variance', 'Overloaded', 'Loaded At', 'Delivered At', 'E-Way Bill', 'Invoiced', 'Status', 'Remarks']
         const csvRows = rows.map(r => [
           r.lrNumber, r.lrDate, r.orderNumber, r.clientName, r.vehicleRegistrationNumber, r.driverName, r.cleanerName,
           `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`, r.materialType,
+          fmtRateQty(r.freightRate, r.freightRateType),
           r.allocatedWeight ?? '—', r.loadedWeight ?? '—', r.deliveredWeight ?? '—', r.weightVariance ?? '—',
           r.isOverloaded ? 'Yes' : 'No', fmtDateTime(r.loadedAt), fmtDateTime(r.deliveredAt),
           r.ewayBillNumber ?? '—', r.isInvoiced ? 'Yes' : 'No', r.lrStatus, r.remarks ?? '—',
@@ -415,10 +426,11 @@ export default function TripReportsPage() {
       } else if (tab === 'trip-summary') {
         const rows = filteredTripSummaryRows
         if (format === 'csv') {
-          const header = ['#', 'Order No.', 'Client', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned At', 'Trip Start', 'Delivery Time', 'Duration (hrs)', 'Driver', 'Status']
+          const header = ['#', 'Order No.', 'Client', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Scope', 'Assigned At', 'Trip Start', 'Delivery Time', 'Duration (hrs)', 'Driver', 'Status']
           const csvRows = rows.map((r, i) => [
             i + 1, r.orderNumber, r.clientName, fmtDateTime(r.orderCreatedAt) ?? '—', r.material,
             r.lrNumber, fmtDateTime(r.lrCreatedAt) ?? '—', r.registrationNumber,
+            (r.vehicleScope ?? '—').replace(/_/g, ' '),
             fmtDateTime(r.vehicleAssignedAt) ?? '—', fmtDateTime(r.tripStartTime) ?? '—',
             fmtDateTime(r.tripEndTime) ?? '—', r.durationHours ?? '—', r.driverName, r.lrStatus,
           ])

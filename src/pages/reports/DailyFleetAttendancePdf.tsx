@@ -248,8 +248,8 @@ function TripSummaryDoc({ rows, startDate, endDate }: { rows: TripSummaryRow[]; 
         </View>
         <View style={S.divider} />
         <View style={S.tableHeader}>
-          {['#', 'Order No.', 'Client', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Assigned', 'Trip Start', 'Delivery Time', 'Duration', 'Driver', 'Status'].map((h, i) => (
-            <Text key={i} style={[S.hCell, { width: i === 0 ? '3%' : i === 4 ? '7%' : i === 11 ? '6%' : i === 13 ? '8%' : '9%' }]}>{h}</Text>
+          {['#', 'Order No.', 'Client', 'Order Created', 'Material', 'LR No.', 'LR Created', 'Vehicle', 'Scope', 'Assigned', 'Trip Start', 'Delivery Time', 'Duration', 'Driver', 'Status'].map((h, i) => (
+            <Text key={i} style={[S.hCell, { width: i === 0 ? '3%' : i === 4 ? '7%' : i === 8 ? '6%' : i === 12 ? '6%' : i === 13 ? '8%' : '8%' }]}>{h}</Text>
           ))}
         </View>
         {rows.map((r, i) => {
@@ -267,10 +267,11 @@ function TripSummaryDoc({ rows, startDate, endDate }: { rows: TripSummaryRow[]; 
                 i + 1,
                 r.orderNumber, r.clientName, fmtDT(r.orderCreatedAt), r.material,
                 r.lrNumber, fmtDT(r.lrCreatedAt), r.registrationNumber,
+                (r.vehicleScope ?? '—').replace(/_/g, ' '),
                 fmtDT(r.vehicleAssignedAt), fmtDT(r.tripStartTime), fmtDT(r.tripEndTime),
                 h, r.driverName, r.lrStatus.replace(/_/g, ' '),
               ].map((v, j) => (
-                <Text key={j} style={[S.cell, { width: j === 0 ? '3%' : j === 4 ? '7%' : j === 11 ? '6%' : j === 13 ? '8%' : '9%' }]}>{v}</Text>
+                <Text key={j} style={[S.cell, { width: j === 0 ? '3%' : j === 4 ? '7%' : j === 8 ? '6%' : j === 12 ? '6%' : j === 13 ? '8%' : '8%' }]}>{v}</Text>
               ))}
             </View>
           )
