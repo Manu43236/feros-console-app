@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { HScroll } from '@/components/ui/h-scroll'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, DollarSign, BookOpen, TrendingDown, Users, CalendarRange, Truck } from 'lucide-react'
+import { Download, DollarSign, BookOpen, TrendingDown, Users, CalendarRange, Truck, Scale } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -13,7 +13,7 @@ import { vehiclesApi } from '@/api/vehicles'
 import type {
   PayrollSummaryReportRow, SalaryRegisterRow,
   AdvanceRegisterRow, PayrollByRoleRow, PayrollYtdRow,
-  VehiclePayrollCostRow,
+  VehiclePayrollCostRow, PayrollDifferenceRow,
 } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -39,6 +39,7 @@ const TABS = [
   { key: 'by-role',         label: 'By Role',          icon: Users },
   { key: 'ytd',             label: 'Year-to-Date',     icon: CalendarRange },
   { key: 'vehicle-cost',    label: 'Vehicle Cost',     icon: Truck },
+  { key: 'difference',      label: 'Payroll Difference', icon: Scale },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'this-month' | 'custom'
@@ -665,6 +666,122 @@ function VehicleCostTab() {
   )
 }
 
+// ── Payroll Difference Tab (By Role vs Vehicle Cost reconciliation) ─────────────
+function ReconCard({ label, value, tone }: { label: string; value: number | null | undefined; tone: 'navy' | 'green' | 'amber' }) {
+  const toneCls = tone === 'green' ? 'text-green-700' : tone === 'amber' ? 'text-amber-700' : 'text-feros-navy'
+  return (
+    <div className="flex-1 bg-white border rounded-xl px-4 py-3">
+      <div className="text-[11px] uppercase tracking-wide text-gray-500">{label}</div>
+      <div className={cn('text-xl font-bold mt-1', toneCls)}>{fmt(value)}</div>
+    </div>
+  )
+}
+
+function DifferenceTab() {
+  const [preset, setPreset] = useState<DatePreset>('this-month')
+  const [start, setStart] = useState(thisMonthStart())
+  const [end, setEnd] = useState(todayStr())
+  const [exportLoading, setExportLoading] = useState(false)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['payroll-difference', start, end],
+    queryFn: () => reportsApi.getPayrollDifference(start, end),
+  })
+  const res = data?.data
+  const rows: PayrollDifferenceRow[] = res?.rows ?? []
+
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    setExportLoading(true)
+    try { await reportsApi.exportPayrollDifference(start, end, format) }
+    catch { toast.error('Export failed') }
+    finally { setExportLoading(false) }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white border rounded-xl p-4 flex flex-wrap items-end gap-4">
+        <div className="flex gap-2">
+          {(['this-month', 'custom'] as DatePreset[]).map(p => (
+            <button key={p} onClick={() => {
+              setPreset(p)
+              if (p === 'this-month') { setStart(thisMonthStart()); setEnd(todayStr()) }
+            }} className={cn('px-3 py-1.5 rounded text-sm font-medium border transition-colors', preset === p ? 'bg-feros-navy text-white border-feros-navy' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400')}>
+              {p === 'this-month' ? 'This Month' : 'Custom'}
+            </button>
+          ))}
+        </div>
+        {preset === 'custom' && (
+          <>
+            <Input type="date" value={start} onChange={e => setStart(e.target.value)} className="w-40" />
+            <Input type="date" value={end} onChange={e => setEnd(e.target.value)} className="w-40" />
+          </>
+        )}
+        <ExportBtn onExport={handleExport} loading={exportLoading} />
+      </div>
+
+      {/* Reconciliation summary */}
+      <div className="flex flex-wrap gap-3">
+        <ReconCard label="Payroll by Role (Gross)" value={res?.totalGross} tone="navy" />
+        <ReconCard label="Vehicle Cost" value={res?.totalVehicleCost} tone="green" />
+        <ReconCard label="Difference" value={res?.totalDifference} tone="amber" />
+      </div>
+      {res && (
+        <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-gray-700">
+          <span className="font-semibold">By Role = Vehicle Cost + Difference.</span>{' '}
+          The difference is pay not tied to a single vehicle —{' '}
+          Trip Bonus <span className="font-medium">{fmt(res.totalTripBonus)}</span>,{' '}
+          Overtime <span className="font-medium">{fmt(res.totalOvertime)}</span>,{' '}
+          Other / standby <span className="font-medium">{fmt(res.totalOther)}</span>.{' '}
+          It is present in each employee's payslip; the Vehicle Cost view simply does not attribute it to a vehicle.
+        </div>
+      )}
+
+      <ScrollWrap>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <Th>Employee</Th><Th>Role</Th>
+              <Th right>Gross</Th><Th right>Vehicle Cost</Th><Th right>Difference</Th>
+              <Th right>Trip Bonus</Th><Th right>Overtime</Th><Th right>Other</Th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-100">
+            {isLoading ? (
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400">No difference — By Role and Vehicle Cost reconcile fully for this period.</td></tr>
+            ) : rows.map((r, i) => (
+              <tr key={i} className="hover:bg-gray-50">
+                <Td><span className="font-medium">{r.employeeName}</span></Td>
+                <Td muted>{r.role}</Td>
+                <Td right>{fmt(r.grossPay)}</Td>
+                <Td right muted>{fmt(r.vehicleCost)}</Td>
+                <Td right><span className="font-semibold text-amber-700">{fmt(r.difference)}</span></Td>
+                <Td right muted>{fmt(r.tripBonus)}</Td>
+                <Td right muted>{fmt(r.overtimePay)}</Td>
+                <Td right muted>{fmt(r.otherPay)}</Td>
+              </tr>
+            ))}
+          </tbody>
+          {rows.length > 0 && res && (
+            <tfoot>
+              <tr className="bg-feros-navy/5 font-semibold">
+                <td colSpan={2} className="px-4 py-3 text-sm text-gray-700">Total (all staff)</td>
+                <td className="px-4 py-3 text-sm text-right">{fmt(res.totalGross)}</td>
+                <td className="px-4 py-3 text-sm text-right text-green-700">{fmt(res.totalVehicleCost)}</td>
+                <td className="px-4 py-3 text-sm text-right text-amber-700">{fmt(res.totalDifference)}</td>
+                <td className="px-4 py-3 text-sm text-right">{fmt(res.totalTripBonus)}</td>
+                <td className="px-4 py-3 text-sm text-right">{fmt(res.totalOvertime)}</td>
+                <td className="px-4 py-3 text-sm text-right">{fmt(res.totalOther)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </ScrollWrap>
+    </div>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function PayrollReportsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('summary')
@@ -706,6 +823,7 @@ export default function PayrollReportsPage() {
         {activeTab === 'by-role'         && <ByRoleTab />}
         {activeTab === 'ytd'             && <YtdTab />}
         {activeTab === 'vehicle-cost'    && <VehicleCostTab />}
+        {activeTab === 'difference'      && <DifferenceTab />}
       </div>
     </div>
   )

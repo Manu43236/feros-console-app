@@ -64,6 +64,7 @@ import type {
   SalaryRegisterRow,
   AdvanceRegisterRow,
   PayrollByRoleRow,
+  PayrollDifferenceResponse,
   PayrollYtdRow,
   VehiclePayrollCostResponse,
   TripSummaryRow,
@@ -737,6 +738,14 @@ export const reportsApi = {
   exportPayrollByRole: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
     const res = await apiClient.get('/reports/payroll/by-role/export', { params: { startDate, endDate, format }, responseType: 'blob' })
     triggerDownload(res.data as Blob, `payroll-by-role-${startDate}-${endDate}.${format}`)
+  },
+
+  getPayrollDifference: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<PayrollDifferenceResponse>>('/reports/payroll/difference', { params: { startDate, endDate } }).then(r => r.data),
+
+  exportPayrollDifference: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/payroll/difference/export', { params: { startDate, endDate, format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `payroll-difference-${startDate}-${endDate}.${format}`)
   },
 
   getPayrollYtd: (year: number) =>

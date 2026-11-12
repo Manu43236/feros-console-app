@@ -2900,6 +2900,29 @@ export interface VehiclePayrollCostResponse {
   totalAmount: number
 }
 
+export interface PayrollDifferenceRow {
+  employeeName: string
+  role: string
+  grossPay: number
+  vehicleCost: number
+  difference: number
+  tripBonus: number
+  overtimePay: number
+  otherPay: number
+}
+
+export interface PayrollDifferenceResponse {
+  startDate: string
+  endDate: string
+  totalGross: number
+  totalVehicleCost: number
+  totalDifference: number
+  totalTripBonus: number
+  totalOvertime: number
+  totalOther: number
+  rows: PayrollDifferenceRow[]
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 export interface Page<T> {
   content: T[]
