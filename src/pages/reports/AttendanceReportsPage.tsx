@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { HScroll } from '@/components/ui/h-scroll'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Users, ClipboardList, CalendarCheck, BarChart2 } from 'lucide-react'
+import { Download, Users, ClipboardList, CalendarCheck, BarChart2, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -31,8 +31,13 @@ const TABS = [
   { key: 'summary',      label: 'Monthly Summary',  icon: Users          },
   { key: 'fleet',        label: 'Daily Attendance', icon: CalendarCheck  },
   { key: 'role-summary', label: 'Role Summary',     icon: BarChart2      },
+  { key: 'office-staff', label: 'Office Staff',     icon: Building2      },
 ] as const
 type TabKey = typeof TABS[number]['key']
+
+// Office Staff report = role summary scoped to non-field roles (everyone except driver/cleaner)
+const FIELD_ROLES = new Set(['DRIVER', 'CLEANER'])
+const isOfficeRole = (role: string) => !FIELD_ROLES.has(role)
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
 
 const ROLES = ['ALL', 'DRIVER', 'CLEANER', 'SUPERVISOR', 'OFFICE_STAFF', 'SERVICE_MANAGER', 'STORE_KEEPER']
@@ -293,6 +298,51 @@ function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
   )
 }
 
+// Office Staff — day snapshot of Total / Present / Absent / Leave per non-field role, with a grand-total row.
+function OfficeStaffTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[]; loading: boolean }) {
+  if (loading) return <div className="text-center py-16 text-gray-400 text-sm"><Spinner /></div>
+  const office = rows.filter(r => isOfficeRole(r.role))
+  if (office.length === 0) return (
+    <div className="text-center py-16 text-gray-400 text-sm">No office staff found for this period</div>
+  )
+  const totals = office.reduce(
+    (t, r) => ({ staff: t.staff + r.staffCount, present: t.present + r.present, absent: t.absent + r.absent, leave: t.leave + r.onLeave }),
+    { staff: 0, present: 0, absent: 0, leave: 0 }
+  )
+  const HEADERS = ['Role', 'Total', 'Present', 'Absent', 'Leave']
+  return (
+    <div className="rounded-lg border overflow-hidden overflow-x-auto">
+      <table className="min-w-full text-sm">
+        <thead>
+          <tr>
+            {HEADERS.map(h => (
+              <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {office.map((r, i) => (
+            <tr key={r.role} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+              <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' ')}</td>
+              <td className="px-4 py-3 text-gray-700 font-semibold">{r.staffCount}</td>
+              <td className="px-4 py-3"><span className={r.present > 0 ? 'text-green-700 font-semibold' : 'text-gray-400'}>{r.present}</span></td>
+              <td className="px-4 py-3"><span className={r.absent > 0 ? 'text-red-600 font-semibold' : 'text-gray-400'}>{r.absent}</span></td>
+              <td className="px-4 py-3"><span className={r.onLeave > 0 ? 'text-blue-600 font-semibold' : 'text-gray-400'}>{r.onLeave}</span></td>
+            </tr>
+          ))}
+          <tr className="bg-feros-navy/5 border-t-2 border-feros-navy/20 font-bold">
+            <td className="px-4 py-3 text-gray-900">TOTAL</td>
+            <td className="px-4 py-3 text-gray-900">{totals.staff}</td>
+            <td className="px-4 py-3 text-green-700">{totals.present}</td>
+            <td className="px-4 py-3 text-red-600">{totals.absent}</td>
+            <td className="px-4 py-3 text-blue-600">{totals.leave}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AttendanceReportsPage() {
   const [tab, setTab] = useState<TabKey>('daily')
@@ -349,7 +399,7 @@ export default function AttendanceReportsPage() {
   const roleSummaryQuery = useQuery({
     queryKey: ['report-attendance-role-summary', roleSummaryDate],
     queryFn: () => reportsApi.getAttendanceRoleSummary(roleSummaryDate, roleSummaryDate),
-    enabled: tab === 'role-summary',
+    enabled: tab === 'role-summary' || tab === 'office-staff',
   })
 
   async function handleDownload(format: 'csv' | 'pdf') {
@@ -403,6 +453,29 @@ export default function AttendanceReportsPage() {
             headers,
             csvRows,
             `role-summary-attendance-${roleSummaryDate}.pdf`,
+          )
+        }
+      } else if (tab === 'office-staff') {
+        const office = (roleSummaryQuery.data?.data ?? []).filter(r => isOfficeRole(r.role))
+        const headers = ['Role', 'Total', 'Present', 'Absent', 'Leave']
+        const csvRows = office.map(r => [
+          ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' '),
+          String(r.staffCount), String(r.present), String(r.absent), String(r.onLeave),
+        ])
+        const t = office.reduce((a, r) => [a[0] + r.staffCount, a[1] + r.present, a[2] + r.absent, a[3] + r.onLeave], [0, 0, 0, 0])
+        csvRows.push(['TOTAL', ...t.map(String)])
+        if (format === 'csv') {
+          const content = [headers, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
+          a.download = `office-staff-attendance-${roleSummaryDate}.csv`
+          a.click()
+        } else {
+          await downloadTablePdf(
+            'Office & Workshop Staff — Attendance',
+            `Date: ${roleSummaryDate}`,
+            headers, csvRows,
+            `office-staff-attendance-${roleSummaryDate}.pdf`,
           )
         }
       } else if (tab === 'fleet' && fleetView === 'machines') {
@@ -608,8 +681,8 @@ export default function AttendanceReportsPage() {
           </>
         )}
 
-        {/* Role Summary — single date picker */}
-        {tab === 'role-summary' && (
+        {/* Role Summary / Office Staff — single date picker */}
+        {(tab === 'role-summary' || tab === 'office-staff') && (
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
             <Input type="date" value={roleSummaryDate} onChange={e => setRoleSummaryDate(e.target.value)} className="w-40" />
@@ -721,6 +794,7 @@ export default function AttendanceReportsPage() {
       {tab === 'fleet' && fleetView === 'vehicles' && <DailyFleetTable   report={fleetQuery.data?.data}   filter={fleetFilter}   loading={fleetQuery.isLoading} />}
       {tab === 'fleet' && fleetView === 'machines' && <DailyMachineTable report={machineQuery.data?.data} filter={machineFilter} loading={machineQuery.isLoading} />}
       {tab === 'role-summary' && <RoleSummaryTable  rows={roleSummaryQuery.data?.data ?? []} loading={roleSummaryQuery.isLoading} />}
+      {tab === 'office-staff' && <OfficeStaffTable  rows={roleSummaryQuery.data?.data ?? []} loading={roleSummaryQuery.isLoading} />}
     </div>
   )
 }
