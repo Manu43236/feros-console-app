@@ -109,20 +109,28 @@ function ReportTable({ headers, rows, loading }: {
 const dash = (v: unknown) => (v != null && v !== '' ? String(v) : '—')
 
 // ── Table renderers ────────────────────────────────────────────────────────────
+const INVOICE_COLORS: Record<string, string> = {
+  INVOICED:     'bg-green-100 text-green-700',
+  NOT_INVOICED: 'bg-gray-100 text-gray-600',
+}
+
 function OrderRegisterTable({ rows, loading }: { rows: OrderRegisterRow[]; loading: boolean }) {
   return <ReportTable loading={loading}
     headers={['Order No.', 'Date', 'Exp. Delivery', 'Duration', 'Client', 'Material', 'From', 'To',
-      'Total Wt', 'Fulfilled Wt', 'Freight Amt', 'Vehicles', 'Status', 'Payment']}
+      'Total Wt', 'Delivered Qty', 'Rate', 'Freight Amt', 'Advance', 'Balance', 'Vehicles', 'Status', 'Payment', 'Invoice']}
     rows={rows.map(r => [
       <span className="font-medium text-feros-navy">{r.orderNumber}</span>,
       r.orderDate, dash(r.expectedDeliveryDate),
       r.durationDays != null ? <span className="text-gray-600">{r.durationDays}d</span> : <span className="text-gray-300">—</span>,
       r.clientName, r.materialType,
       `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`,
-      dash(r.totalWeight), dash(r.totalWeightFulfilled), dash(r.totalFreightAmount),
+      dash(r.totalWeight), dash(r.totalWeightFulfilled), dash(r.freightRate), dash(r.totalFreightAmount),
+      dash(r.advanceReceived),
+      <span className={cn('font-medium', (r.balance ?? 0) > 0 ? 'text-amber-600' : 'text-green-600')}>{dash(r.balance)}</span>,
       <span className="font-medium">{r.vehicleCount}</span>,
       <StatusBadge status={r.orderStatus} colorMap={STATUS_COLORS} />,
       <StatusBadge status={r.orderPaymentStatus} colorMap={PAYMENT_COLORS} />,
+      <StatusBadge status={r.invoiceStatus} colorMap={INVOICE_COLORS} />,
     ])}
   />
 }
@@ -131,7 +139,7 @@ function OrderRegisterTable({ rows, loading }: { rows: OrderRegisterRow[]; loadi
 function ClientSummaryTable({ rows, loading }: { rows: OrderClientSummaryRow[]; loading: boolean }) {
   return <ReportTable loading={loading}
     headers={['Client', 'Total Orders', 'Completed', 'In Progress', 'Cancelled',
-      'Total Wt', 'Fulfilled Wt', 'Total Freight']}
+      'Total Wt', 'Fulfilled Wt', 'Total Freight', 'Balance']}
     rows={rows.map(r => [
       <span className="font-medium">{r.clientName}</span>,
       <span className="font-medium">{r.totalOrders}</span>,
@@ -139,6 +147,7 @@ function ClientSummaryTable({ rows, loading }: { rows: OrderClientSummaryRow[]; 
       <span className={r.inProgressOrders > 0 ? 'text-amber-600 font-medium' : 'text-gray-400'}>{r.inProgressOrders}</span>,
       <span className={r.cancelledOrders > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>{r.cancelledOrders}</span>,
       dash(r.totalWeight), dash(r.totalWeightFulfilled), dash(r.totalFreightAmount),
+      <span className={cn('font-medium', (r.balance ?? 0) > 0 ? 'text-amber-600' : 'text-green-600')}>{dash(r.balance)}</span>,
     ])}
   />
 }
@@ -146,7 +155,7 @@ function ClientSummaryTable({ rows, loading }: { rows: OrderClientSummaryRow[]; 
 function OverdueTable({ rows, loading }: { rows: OverdueOrderRow[]; loading: boolean }) {
   return <ReportTable loading={loading}
     headers={['Order No.', 'Date', 'Exp. Delivery', 'Days Overdue', 'Client', 'Material',
-      'From', 'To', 'Total Wt', 'Fulfilled Wt', 'Status']}
+      'From', 'To', 'Total Wt', 'Fulfilled Wt', 'Balance Pending', 'Status']}
     rows={rows.map(r => [
       <span className="font-medium text-feros-navy">{r.orderNumber}</span>,
       r.orderDate, r.expectedDeliveryDate,
@@ -155,6 +164,7 @@ function OverdueTable({ rows, loading }: { rows: OverdueOrderRow[]; loading: boo
       </span>,
       r.clientName, r.materialType, r.fromCity, r.toCity,
       dash(r.totalWeight), dash(r.totalWeightFulfilled),
+      <span className={cn('font-medium', (r.balance ?? 0) > 0 ? 'text-amber-600' : 'text-green-600')}>{dash(r.balance)}</span>,
       <StatusBadge status={r.orderStatus} colorMap={STATUS_COLORS} />,
     ])}
   />
@@ -490,23 +500,24 @@ const clientSummaryQuery = useQuery({
     setDownloading(true)
     try {
       if (tab === 'register') {
-        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Duration', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Fulfilled Wt', 'Freight Amt', 'Vehicles', 'Status', 'Payment']
+        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Duration', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Delivered Qty', 'Rate', 'Freight Amt', 'Advance', 'Balance', 'Vehicles', 'Status', 'Payment', 'Invoice']
         const rows = registerRows.map(r => [
           r.orderNumber, r.orderDate, r.expectedDeliveryDate ?? '—', r.durationDays != null ? `${r.durationDays}d` : '—',
           r.clientName, r.materialType, `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`,
-          String(r.totalWeight ?? '—'), String(r.totalWeightFulfilled ?? '—'), String(r.totalFreightAmount ?? '—'),
-          String(r.vehicleCount), r.orderStatus, r.orderPaymentStatus,
+          String(r.totalWeight ?? '—'), String(r.totalWeightFulfilled ?? '—'), String(r.freightRate ?? '—'), String(r.totalFreightAmount ?? '—'),
+          String(r.advanceReceived ?? '—'), String(r.balance ?? '—'),
+          String(r.vehicleCount), r.orderStatus, r.orderPaymentStatus, (r.invoiceStatus ?? 'NOT_INVOICED').replace(/_/g, ' '),
         ])
         const clientSuffix = clientFilters.length > 0 ? ` · Clients: ${clientFilters.join(', ')}` : ''
         const subtitle = `${startDate} to ${endDate}${statusFilter !== 'ALL' ? ` · Status: ${statusFilter}` : ''}${clientSuffix}`
         if (format === 'csv') clientCsv(headers, rows, `order-register-${startDate}-${endDate}.csv`)
         else await downloadTablePdf('Order Register', subtitle, headers, rows, `order-register-${startDate}-${endDate}.pdf`)
       } else if (tab === 'overdue') {
-        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Days Overdue', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Fulfilled Wt', 'Status']
+        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Days Overdue', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Fulfilled Wt', 'Balance Pending', 'Status']
         const rows = overdueRows.map(r => [
           r.orderNumber, r.orderDate, r.expectedDeliveryDate, `${r.daysOverdue} days`,
           r.clientName, r.materialType, r.fromCity, r.toCity,
-          String(r.totalWeight ?? '—'), String(r.totalWeightFulfilled ?? '—'), r.orderStatus,
+          String(r.totalWeight ?? '—'), String(r.totalWeightFulfilled ?? '—'), String(r.balance ?? '—'), r.orderStatus,
         ])
         const subtitle = `Min. ${thresholdDays}+ days overdue${clientFilters.length > 0 ? ` · Clients: ${clientFilters.join(', ')}` : ''}`
         if (format === 'csv') clientCsv(headers, rows, `overdue-orders.csv`)

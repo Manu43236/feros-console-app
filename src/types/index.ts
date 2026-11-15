@@ -2288,6 +2288,9 @@ export interface OrderRegisterRow {
   totalFreightAmount?: number
   orderStatus: string
   orderPaymentStatus: string
+  invoiceStatus?: string
+  advanceReceived?: number
+  balance?: number
   vehicleCount: number
   durationDays?: number
 }
@@ -2317,6 +2320,7 @@ export interface OrderClientSummaryRow {
   totalWeight: number
   totalWeightFulfilled: number
   totalFreightAmount: number
+  balance?: number
 }
 
 export interface OverdueOrderRow {
@@ -2332,6 +2336,7 @@ export interface OverdueOrderRow {
   totalWeight: number
   totalWeightFulfilled?: number
   orderStatus: string
+  balance?: number
 }
 
 export interface WeightFulfillmentRow {
