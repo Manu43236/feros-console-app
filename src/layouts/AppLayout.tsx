@@ -13,7 +13,7 @@ import {
   LogOut, Building2, Globe,
   BadgeCheck, UserCog, Bell, AlertTriangle, FileMinus, ClipboardCheck,
   Boxes, Fuel, Gauge, ChevronDown, ChevronRight, CircleDot,
-  Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, DollarSign, MapPin, ScrollText,
+  Activity, Banknote, Package, Wrench, BarChart2, TrendingUp, Layers, DollarSign, MapPin, ScrollText,
   Construction, KeyRound, Cpu, Radio,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -94,6 +94,7 @@ const ADMIN_NAV: SectionedNav = {
         { to: '/reports/expenses',   label: 'Expense Reports',    icon: Wrench },
         { to: '/reports/staff',      label: 'Staff Performance',  icon: Users },
         { to: '/reports/pnl',        label: 'P&L',                icon: TrendingUp },
+        { to: '/reports/pnl-category', label: 'P&L by Category',  icon: Layers },
         { to: '/reports/inventory',  label: 'Inventory Reports',  icon: Boxes },
         { to: '/reports/tyres',      label: 'Tyre Reports',       icon: CircleDot },
         { to: '/reports/payroll',    label: 'Payroll Reports',    icon: DollarSign },
@@ -166,6 +167,7 @@ const OFFICE_STAFF_NAV: SectionedNav = {
         { to: '/reports/expenses',   label: 'Expense Reports',    icon: Wrench },
         { to: '/reports/staff',      label: 'Staff Performance',  icon: Users },
         { to: '/reports/pnl',        label: 'P&L',                icon: TrendingUp },
+        { to: '/reports/pnl-category', label: 'P&L by Category',  icon: Layers },
         { to: '/reports/inventory',  label: 'Inventory Reports',  icon: Boxes },
         { to: '/reports/tyres',      label: 'Tyre Reports',       icon: CircleDot },
         { to: '/reports/payroll',    label: 'Payroll Reports',    icon: DollarSign },

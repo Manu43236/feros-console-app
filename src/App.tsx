@@ -58,6 +58,7 @@ import InvoiceReportsPage   from '@/pages/reports/InvoiceReportsPage'
 import ExpenseReportsPage   from '@/pages/reports/ExpenseReportsPage'
 import StaffReportsPage     from '@/pages/reports/StaffReportsPage'
 import PnlReportsPage           from '@/pages/reports/PnlReportsPage'
+import CategoryPnlReportsPage   from '@/pages/reports/CategoryPnlReportsPage'
 import InventoryReportsPage    from '@/pages/reports/InventoryReportsPage'
 import TyreReportsPage         from '@/pages/reports/TyreReportsPage'
 import PayrollReportsPage      from '@/pages/reports/PayrollReportsPage'
@@ -189,6 +190,7 @@ export default function App() {
           <Route path="reports/expenses"  element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><ExpenseReportsPage /></ProtectedRoute>} />
           <Route path="reports/staff"    element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><StaffReportsPage /></ProtectedRoute>} />
           <Route path="reports/pnl"       element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PnlReportsPage /></ProtectedRoute>} />
+          <Route path="reports/pnl-category" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><CategoryPnlReportsPage /></ProtectedRoute>} />
           <Route path="reports/inventory" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><InventoryReportsPage /></ProtectedRoute>} />
           <Route path="reports/tyres"     element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><TyreReportsPage /></ProtectedRoute>} />
           <Route path="reports/payroll"   element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><PayrollReportsPage /></ProtectedRoute>} />

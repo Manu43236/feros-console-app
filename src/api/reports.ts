@@ -48,6 +48,7 @@ import type {
   RoutePnlRow,
   ClientVehiclePnlRow,
   TripPnlRow,
+  CategoryPnlRow,
   StockSummaryRow,
   StockInwardRow,
   StockOutwardRow,
@@ -609,6 +610,18 @@ export const reportsApi = {
       params: { startDate, endDate, format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `trip-pnl-${startDate}-${endDate}.${format}`)
+  },
+
+  getCategoryPnl: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<CategoryPnlRow[]>>('/reports/pnl/category', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  exportCategoryPnl: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/pnl/category/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `category-pnl-${startDate}-${endDate}.${format}`)
   },
 
   // ── Inventory Reports ─────────────────────────────────────────────────────────

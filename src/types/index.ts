@@ -2640,6 +2640,22 @@ export interface TripPnlRow {
   netPnl: number
 }
 
+export interface CategoryPnlRow {
+  tyreType: string
+  vehicleType: string
+  tyreCount: number | null
+  vehicleCount: number
+  revenue: number
+  diesel: number
+  salaries: number
+  spares: number
+  service: number
+  tripExpenses: number
+  others: number
+  totalExpenses: number
+  netPnl: number
+}
+
 // ─── Inventory Report rows ─────────────────────────────────────────────────────
 export interface StockSummaryRow {
   partId: number
