@@ -3,12 +3,12 @@ import { useState } from 'react'
 import { HScroll } from '@/components/ui/h-scroll'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, UserCheck, Users, Wrench, List, X } from 'lucide-react'
+import { Download, UserCheck, Users, Wrench, List, X, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { cn } from '@/lib/utils'
 import { reportsApi } from '@/api/reports'
-import type { DriverPerformanceRow, CleanerPerformanceRow, TechnicianPerformanceRow, StaffDirectoryRow } from '@/types'
+import type { DriverPerformanceRow, CleanerPerformanceRow, TechnicianPerformanceRow, StaffDirectoryRow, StaffRoleStatsResponse } from '@/types'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -27,6 +27,7 @@ const TABS = [
   { key: 'cleaners',  label: 'Cleaner Performance',  icon: Users },
   { key: 'mechanics', label: 'Technician Performance', icon: Wrench },
   { key: 'directory', label: 'Staff Directory',      icon: List },
+  { key: 'rolestats', label: 'Role Statistics',      icon: BarChart3 },
 ] as const
 type TabKey = typeof TABS[number]['key']
 type DatePreset = 'today' | 'this-week' | 'this-month' | 'custom'
@@ -136,6 +137,42 @@ function DirectoryTable({ rows, loading }: { rows: StaffDirectoryRow[]; loading:
   )
 }
 
+function RoleStatsView({ data, loading }: { data?: StaffRoleStatsResponse; loading: boolean }) {
+  const stats = data?.roleStats ?? []
+  const joiners = data?.newJoiners ?? []
+  const totals = stats.reduce((a, r) => ({
+    added: a.added + r.addedThisMonth,
+    deactivated: a.deactivated + r.deactivatedThisMonth,
+    prev: a.prev + r.totalPreviousMonth,
+  }), { added: 0, deactivated: 0, prev: 0 })
+
+  return (
+    <div className="space-y-6">
+      <ReportTable loading={loading}
+        headers={['Role', `Added (${data?.currentMonthLabel ?? ''})`, `Deactivated (${data?.currentMonthLabel ?? ''})`, `Total (${data?.previousMonthLabel ?? ''})`]}
+        rows={[
+          ...stats.map(r => [
+            <span className="font-medium text-feros-navy">{r.role}</span>,
+            <span className="text-green-700 font-medium">{r.addedThisMonth}</span>,
+            <span className="text-red-700 font-medium">{r.deactivatedThisMonth}</span>,
+            <span className="font-medium">{r.totalPreviousMonth}</span>,
+          ]),
+          ...(stats.length ? [[
+            <span className="font-bold text-gray-900">Total</span>,
+            <span className="font-bold text-green-700">{totals.added}</span>,
+            <span className="font-bold text-red-700">{totals.deactivated}</span>,
+            <span className="font-bold text-gray-900">{totals.prev}</span>,
+          ]] : []),
+        ]}
+      />
+      <div>
+        <h2 className="text-sm font-semibold text-gray-900 mb-2">New Joiners ({data?.currentMonthLabel ?? ''})</h2>
+        <DirectoryTable rows={joiners} loading={loading} />
+      </div>
+    </div>
+  )
+}
+
 export default function StaffReportsPage() {
   const [tab, setTab]         = useState<TabKey>('drivers')
   const [preset, setPreset]   = useState<DatePreset>('this-month')
@@ -173,11 +210,17 @@ export default function StaffReportsPage() {
     queryFn: () => reportsApi.getStaffDirectory(),
     enabled: tab === 'directory',
   })
+  const roleStatsQuery = useQuery({
+    queryKey: ['report-staff-role-stats'],
+    queryFn: () => reportsApi.getStaffRoleStats(),
+    enabled: tab === 'rolestats',
+  })
 
   const driverRows   = driverQuery.data?.data   ?? []
   const cleanerRows  = cleanerQuery.data?.data  ?? []
   const mechanicRows = mechanicQuery.data?.data ?? []
   const directoryRows = directoryQuery.data?.data ?? []
+  const roleStatsRows = roleStatsQuery.data?.data
 
   const roleOptions = [
     { value: 'all', label: 'All Roles' },
@@ -199,6 +242,7 @@ export default function StaffReportsPage() {
       if (tab === 'drivers')        await reportsApi.exportDriverPerformance(startDate, endDate, format)
       else if (tab === 'cleaners')  await reportsApi.exportCleanerPerformance(startDate, endDate, format)
       else if (tab === 'mechanics') await reportsApi.exportTechnicianPerformance(startDate, endDate, format)
+      else if (tab === 'rolestats') await reportsApi.exportStaffRoleStats(format)
       else                          await reportsApi.exportStaffDirectory(format)
     } catch { toast.error('Export failed') }
     finally  { setDownloading(false) }
@@ -247,6 +291,11 @@ export default function StaffReportsPage() {
               </Button>
             )}
           </>
+        ) : tab === 'rolestats' ? (
+          <div className="pb-1 text-xs text-gray-500">
+            Added & deactivated for <span className="font-medium">{roleStatsRows?.currentMonthLabel ?? '—'}</span>,
+            {' '}headcount as of <span className="font-medium">{roleStatsRows?.previousMonthLabel ?? '—'}</span>
+          </div>
         ) : (
           <>
             <div>
@@ -298,6 +347,7 @@ export default function StaffReportsPage() {
       {tab === 'cleaners'  && <CleanerTable  rows={cleanerRows}  loading={cleanerQuery.isLoading} />}
       {tab === 'mechanics' && <MechanicTable rows={mechanicRows} loading={mechanicQuery.isLoading} />}
       {tab === 'directory' && <DirectoryTable rows={filteredDirectoryRows} loading={directoryQuery.isLoading} />}
+      {tab === 'rolestats' && <RoleStatsView data={roleStatsRows} loading={roleStatsQuery.isLoading} />}
     </div>
   )
 }

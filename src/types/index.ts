@@ -2554,6 +2554,20 @@ export interface StaffDirectoryRow {
   joiningDate: string
 }
 
+export interface StaffRoleStatRow {
+  role: string
+  addedThisMonth: number
+  deactivatedThisMonth: number
+  totalPreviousMonth: number
+}
+
+export interface StaffRoleStatsResponse {
+  currentMonthLabel: string
+  previousMonthLabel: string
+  roleStats: StaffRoleStatRow[]
+  newJoiners: StaffDirectoryRow[]
+}
+
 export interface PnlSummaryRow {
   totalInvoiced: number
   totalCollected: number

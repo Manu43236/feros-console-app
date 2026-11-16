@@ -41,6 +41,7 @@ import type {
   CleanerPerformanceRow,
   TechnicianPerformanceRow,
   StaffDirectoryRow,
+  StaffRoleStatsResponse,
   PnlSummaryRow,
   ClientPnlRow,
   VehiclePnlRow,
@@ -526,6 +527,16 @@ export const reportsApi = {
       params: { format }, responseType: 'blob',
     })
     triggerDownload(res.data as Blob, `staff-directory.${format}`)
+  },
+
+  getStaffRoleStats: () =>
+    apiClient.get<ApiResponse<StaffRoleStatsResponse>>('/reports/staff/role-stats').then(r => r.data),
+
+  exportStaffRoleStats: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/staff/role-stats/export', {
+      params: { format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `staff-role-stats.${format}`)
   },
 
   getPnlSummary: (startDate: string, endDate: string) =>
