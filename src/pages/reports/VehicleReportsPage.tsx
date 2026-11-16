@@ -334,6 +334,7 @@ export default function VehicleReportsPage() {
   const [expiryTo, setExpiryTo] = useState('')
   const [downloading, setDownloading] = useState(false)
   const [fleetView, setFleetView] = useState<'detail' | 'summary'>('detail')
+  const [fleetDate, setFleetDate] = useState(todayStr())
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [scopeFilter, setScopeFilter] = useState('ALL')
   const [vehicleFilter, setVehicleFilter] = useState('ALL')
@@ -375,8 +376,8 @@ export default function VehicleReportsPage() {
   })
 
   const fleetQuery = useQuery({
-    queryKey: ['report-fleet-status'],
-    queryFn: () => reportsApi.getFleetStatus(todayStr()),
+    queryKey: ['report-fleet-status', fleetDate],
+    queryFn: () => reportsApi.getFleetStatus(fleetDate),
     enabled: tab === 'fleet-status',
   })
 const fuelQuery = useQuery({
@@ -439,10 +440,10 @@ const fuelQuery = useQuery({
             const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
             const a = document.createElement('a')
             a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
-            a.download = `fleet-status-summary-${todayStr()}.csv`
+            a.download = `fleet-status-summary-${fleetDate}.csv`
             a.click()
           } else {
-            await downloadFleetStatusSummaryPdf(summary, todayStr())
+            await downloadFleetStatusSummaryPdf(summary, fleetDate)
           }
         } else {
           const filtered = allRows.filter(r => {
@@ -458,10 +459,10 @@ const fuelQuery = useQuery({
             const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
             const a = document.createElement('a')
             a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
-            a.download = `fleet-status-${todayStr()}-${label.toLowerCase().replace(/ /g, '-')}.csv`
+            a.download = `fleet-status-${fleetDate}-${label.toLowerCase().replace(/ /g, '-')}.csv`
             a.click()
           } else {
-            await downloadFleetStatusPdf(filtered, label, todayStr())
+            await downloadFleetStatusPdf(filtered, label, fleetDate)
           }
         }
       }
@@ -629,7 +630,22 @@ const fuelQuery = useQuery({
                     </button>
                   ))}
                 </div>
+                <div className="flex gap-1 items-center">
+                  <span className="text-xs text-gray-500 mr-1">As on:</span>
+                  <Input type="date" value={fleetDate} max={todayStr()}
+                    onChange={e => setFleetDate(e.target.value || todayStr())} className="w-36" />
+                  {fleetDate !== todayStr() && (
+                    <button onClick={() => setFleetDate(todayStr())}
+                      className="text-xs text-feros-navy underline ml-1">Today</button>
+                  )}
+                </div>
               </div>
+              {fleetDate !== todayStr() && (
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
+                  Historical view — reconstructed from trips, leases, breakdowns &amp; services.
+                  Vehicles booked to an order but not yet started that day show as <b>Available</b>.
+                </div>
+              )}
               {/* Chip filter — only for detail view */}
               {fleetView === 'detail' && (
                 <div className="flex flex-wrap gap-2">
