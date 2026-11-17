@@ -14,6 +14,7 @@ import { SupervisorDashboardPage } from '@/pages/dashboard/SupervisorDashboardPa
 import { ClientsPage }    from '@/pages/clients/ClientsPage'
 import ClientAdvancesPage from '@/pages/clients/ClientAdvancesPage'
 import { VehiclesPage }        from '@/pages/vehicles/VehiclesPage'
+import { DocumentsPage }       from '@/pages/documents/DocumentsPage'
 import { VehicleDetailPage }   from '@/pages/vehicles/VehicleDetailPage'
 import VehicleServicesPage     from '@/pages/vehicles/VehicleServicesPage'
 import { ServicePdfPage }     from '@/pages/vehicles/ServicePdfPage'
@@ -147,6 +148,7 @@ export default function App() {
 
           {/* Vehicles — admin + office + supervisor + driver (read) */}
           <Route path="vehicles"            element={<VehiclesPage />} />
+          <Route path="documents"           element={<ProtectedRoute allowedRoles={['SUPER_ADMIN','ADMIN','OFFICE_STAFF']}><DocumentsPage /></ProtectedRoute>} />
           <Route path="vehicles/:vehicleId" element={<VehicleDetailPage />} />
           <Route path="vehicle-services"    element={<VehicleServicesPage />} />
           <Route path="service-manager"     element={<ProtectedRoute allowedRoles={['ADMIN','SERVICE_MANAGER']}><ServiceManagerPage /></ProtectedRoute>} />

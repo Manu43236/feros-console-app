@@ -60,6 +60,7 @@ const ADMIN_NAV: SectionedNav = {
       icon: Truck,
       items: [
         { to: '/vehicles',         label: 'Vehicles',       icon: Truck },
+        { to: '/documents',        label: 'Documents',      icon: FileText },
         { to: '/fuel-logs',        label: 'Fuel Logs',      icon: Fuel },
         { to: '/meter-readings',   label: 'Meter Readings', icon: Gauge },
         { to: '/gps/fleet',        label: 'Live Map',       icon: Radio },

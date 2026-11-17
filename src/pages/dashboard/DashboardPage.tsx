@@ -374,7 +374,7 @@ function VehicleAlertItem({ a }: { a: VehicleAlert }) {
   const s = alertRowStyle(a.daysLeft, a.expired)
   return (
     <div
-      onClick={() => navigate(`/vehicles/${a.vehicleId}?tab=Documents`)}
+      onClick={() => navigate(`/documents?entity=VEHICLE&q=${encodeURIComponent(a.registrationNumber)}`)}
       className={cn(
         'flex items-center gap-3 px-4 py-3 border-l-4 border-b border-b-gray-50 last:border-b-0 cursor-pointer transition-colors',
         s.border, s.row
@@ -401,7 +401,7 @@ function StaffAlertItem({ a }: { a: StaffDocumentAlert }) {
   const s = alertRowStyle(a.daysLeft, a.expired)
   return (
     <div
-      onClick={() => navigate(`/staff/${a.userId}?tab=docs`)}
+      onClick={() => navigate(`/documents?entity=STAFF&q=${encodeURIComponent(a.userName)}`)}
       className={cn(
         'flex items-center gap-3 px-4 py-3 border-l-4 border-b border-b-gray-50 last:border-b-0 cursor-pointer transition-colors',
         s.border, s.row
@@ -599,14 +599,12 @@ export function DashboardPage() {
           ) : (
             <div>
               {alerts.vehicleAlerts.slice(0, 8).map((a, i) => <VehicleAlertItem key={i} a={a} />)}
-              {alerts.vehicleAlerts.length > 8 && (
-                <button
-                  onClick={() => navigate('/vehicles')}
-                  className="w-full py-3 text-xs text-feros-navy font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-1"
-                >
-                  +{alerts.vehicleAlerts.length - 8} more <ArrowRight size={10} />
-                </button>
-              )}
+              <button
+                onClick={() => navigate('/documents?entity=VEHICLE')}
+                className="w-full py-3 text-xs text-feros-navy font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-1"
+              >
+                {alerts.vehicleAlerts.length > 8 ? `+${alerts.vehicleAlerts.length - 8} more · ` : ''}View all &amp; renew <ArrowRight size={10} />
+              </button>
             </div>
           )}
         </div>
@@ -639,14 +637,12 @@ export function DashboardPage() {
           ) : (
             <div>
               {alerts.staffDocumentAlerts.slice(0, 8).map((a, i) => <StaffAlertItem key={i} a={a} />)}
-              {alerts.staffDocumentAlerts.length > 8 && (
-                <button
-                  onClick={() => navigate('/staff')}
-                  className="w-full py-3 text-xs text-feros-navy font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-1"
-                >
-                  +{alerts.staffDocumentAlerts.length - 8} more <ArrowRight size={10} />
-                </button>
-              )}
+              <button
+                onClick={() => navigate('/documents?entity=STAFF')}
+                className="w-full py-3 text-xs text-feros-navy font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-1"
+              >
+                {alerts.staffDocumentAlerts.length > 8 ? `+${alerts.staffDocumentAlerts.length - 8} more · ` : ''}View all &amp; renew <ArrowRight size={10} />
+              </button>
             </div>
           )}
         </div>

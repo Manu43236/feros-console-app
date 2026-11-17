@@ -681,6 +681,25 @@ export interface VehicleImage {
   createdAt: string
 }
 
+// ── Documents management (tenant-wide) ────────────────────────────────────────
+export type DocEntityType = 'VEHICLE' | 'STAFF'
+export type DocStatus = 'EXPIRED' | 'EXPIRING' | 'ACTIVE'
+export interface DocumentListRow {
+  documentId: number
+  entityType: DocEntityType
+  ownerId: number
+  ownerName: string
+  ownerSubtitle?: string | null
+  documentTypeId: number
+  documentTypeName: string
+  documentNumber?: string | null
+  issueDate?: string | null
+  expiryDate?: string | null
+  fileUrl?: string | null
+  daysLeft?: number | null
+  status: DocStatus
+}
+
 // ─── Order ────────────────────────────────────────────────────────────────────
 export type OrderStatus = 'PENDING'|'PARTIALLY_ASSIGNED'|'FULLY_ASSIGNED'|'IN_TRANSIT'|'PARTIALLY_DELIVERED'|'DELIVERED'|'CANCELLED'|'COMPLETED'
 export type OrderPaymentStatus = 'UNPAID'|'ADVANCE_PAID'|'PARTIALLY_PAID'|'PAID'|'SETTLED'

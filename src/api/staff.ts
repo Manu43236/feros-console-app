@@ -26,6 +26,7 @@ export const staffApi = {
   upsert:         (userId: number, data: unknown) => apiClient.put<ApiResponse<StaffProfile>>(`/staff/profiles/${userId}`, data).then(r => r.data),
   getDocuments:   (userId: number) => apiClient.get<ApiResponse<StaffDocument[]>>(`/staff/${userId}/documents`).then(r => r.data),
   addDocument:    (userId: number, data: unknown) => apiClient.post<ApiResponse<StaffDocument>>(`/staff/${userId}/documents`, data).then(r => r.data),
+  updateDocument: (docId: number, data: unknown) => apiClient.put<ApiResponse<StaffDocument>>(`/staff/documents/${docId}`, data).then(r => r.data),
   verifyDocument: (docId: number, data: unknown) => apiClient.put<ApiResponse<StaffDocument>>(`/staff/documents/${docId}/verify`, data).then(r => r.data),
   uploadDocFile:  (file: File) => {
     const form = new FormData()
