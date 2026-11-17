@@ -227,15 +227,40 @@ export default function TyreReportsPage() {
 }
 
 // ── Current Inventory ─────────────────────────────────────────────────────────
+// Real-state stock bucket (mirrors TyreInventoryPage): ever-retreaded wins, then second-hand, else new.
+function conditionOf(r: TyreInventoryRow): 'NEW' | 'RETREADED' | 'SECOND_HAND' {
+  if ((r.retreadCount ?? 0) > 0 || r.purchaseCondition === 'RETREADED') return 'RETREADED'
+  if (r.purchaseCondition === 'SECOND_HAND') return 'SECOND_HAND'
+  return 'NEW'
+}
+const CONDITION_LABEL = { NEW: 'New', RETREADED: 'Retreaded', SECOND_HAND: 'Second Hand' } as const
+
 function TyreInventoryTab({ rows, loading }: { rows?: TyreInventoryRow[]; loading: boolean }) {
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [conditionFilter, setConditionFilter] = useState<'ALL' | 'NEW' | 'RETREADED' | 'SECOND_HAND'>('ALL')
   if (loading) return <div className="p-8 text-center text-gray-400"><Spinner /></div>
   if (!rows?.length) return <div className="p-8 text-center text-gray-400">No tyres found</div>
 
   const statuses = ['ALL', 'IN_STOCK', 'FITTED', 'RETREADING', 'SCRAPPED', 'DISPOSED']
   const counts: Record<string, number> = { ALL: rows.length }
   for (const s of statuses.slice(1)) counts[s] = rows.filter(r => r.status === s).length
-  const filtered = statusFilter === 'ALL' ? rows : rows.filter(r => r.status === statusFilter)
+
+  // condition counts within the selected status (so IN STOCK shows the 96 split by New/Retreaded/Second-Hand)
+  const inStatus = statusFilter === 'ALL' ? rows : rows.filter(r => r.status === statusFilter)
+  const condCounts = {
+    ALL:         inStatus.length,
+    NEW:         inStatus.filter(r => conditionOf(r) === 'NEW').length,
+    RETREADED:   inStatus.filter(r => conditionOf(r) === 'RETREADED').length,
+    SECOND_HAND: inStatus.filter(r => conditionOf(r) === 'SECOND_HAND').length,
+  }
+  const filtered = inStatus.filter(r => conditionFilter === 'ALL' || conditionOf(r) === conditionFilter)
+
+  const condChips = [
+    { key: 'ALL',         label: 'All Conditions', cls: 'border-gray-200' },
+    { key: 'NEW',         label: 'New',            cls: 'border-emerald-300' },
+    { key: 'RETREADED',   label: 'Retreaded',      cls: 'border-violet-300' },
+    { key: 'SECOND_HAND', label: 'Second Hand',    cls: 'border-amber-300' },
+  ] as const
 
   return (
     <div>
@@ -248,17 +273,30 @@ function TyreInventoryTab({ rows, loading }: { rows?: TyreInventoryRow[]; loadin
           </button>
         ))}
       </div>
+      {/* Condition segregation within the selected status */}
+      <div className="flex gap-2 px-3 py-2.5 border-b flex-wrap items-center bg-gray-50/60">
+        <span className="text-xs text-gray-400 mr-1">Condition:</span>
+        {condChips.map(c => (
+          <button key={c.key} onClick={() => setConditionFilter(c.key)}
+            className={cn('px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+              conditionFilter === c.key ? 'bg-feros-navy text-white border-feros-navy' : cn('bg-white text-gray-600 hover:border-gray-400', c.cls))}>
+            {c.label} ({condCounts[c.key]})
+          </button>
+        ))}
+      </div>
       <TableWrap>
         <thead>
           <tr>
             <Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th><Th>Ply</Th>
-            <Th>Purchase Date</Th><Th right>Cost (₹)</Th><Th>Status</Th>
+            <Th>Purchase Date</Th><Th right>Cost (₹)</Th><Th>Status</Th><Th>Condition</Th>
             <Th right>Lifetime KM</Th><Th right>Max KM</Th><Th>Life Used</Th>
             <Th right>Retreads</Th><Th>Expiry</Th><Th>Fitted On</Th><Th>Position</Th>
           </tr>
         </thead>
         <tbody>
-          {filtered.map(r => (
+          {filtered.map(r => {
+            const cond = conditionOf(r)
+            return (
             <tr key={r.tyreId} className="hover:bg-gray-50">
               <Td><span className="font-mono font-medium">{r.serialNumber}</span></Td>
               <Td>{r.brand}</Td>
@@ -268,6 +306,10 @@ function TyreInventoryTab({ rows, loading }: { rows?: TyreInventoryRow[]; loadin
               <Td muted>{fmtDate(r.purchaseDate)}</Td>
               <Td right>{r.purchaseCost != null ? `₹${fmt(r.purchaseCost)}` : '—'}</Td>
               <Td><TyreStatusBadge status={r.status} /></Td>
+              <Td><span className={cn('text-xs font-medium px-2 py-0.5 rounded-full border',
+                cond === 'RETREADED' ? 'bg-violet-50 text-violet-700 border-violet-200'
+                : cond === 'SECOND_HAND' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                : 'bg-emerald-50 text-emerald-700 border-emerald-200')}>{CONDITION_LABEL[cond]}</span></Td>
               <Td right>{fmtKm(r.totalLifetimeKm)}</Td>
               <Td right muted>{r.maxLifetimeKm ? fmtKm(r.maxLifetimeKm) : '—'}</Td>
               <Td><LifeBar pct={r.percentLifeUsed} /></Td>
@@ -276,7 +318,7 @@ function TyreInventoryTab({ rows, loading }: { rows?: TyreInventoryRow[]; loadin
               <Td>{r.fittedOnVehicle || '—'}</Td>
               <Td muted>{r.fittedPosition || '—'}</Td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </TableWrap>
     </div>

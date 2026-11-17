@@ -2748,6 +2748,7 @@ export interface TyreInventoryRow {
   expiryDate?: string
   fittedOnVehicle?: string
   fittedPosition?: string
+  purchaseCondition?: string // NEW / SECOND_HAND / RETREADED (bought-as)
 }
 
 export interface TyreFittingRow {
