@@ -372,7 +372,7 @@ function TyreLifeTab({ rows, loading }: { rows?: TyreLifeRow[]; loading: boolean
       <TableWrap>
         <thead>
           <tr>
-            <Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th>
+            <Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th><Th>Fitted On</Th>
             <Th right>Lifetime KM</Th><Th right>Max KM</Th><Th>Life Used</Th>
             <Th right>Retreads</Th><Th>Status</Th>
           </tr>
@@ -384,6 +384,9 @@ function TyreLifeTab({ rows, loading }: { rows?: TyreLifeRow[]; loading: boolean
               <Td>{r.brand}</Td>
               <Td muted>{r.size}</Td>
               <Td muted>{r.tyreType}</Td>
+              <Td>{r.fittedVehicleRegistration
+                ? <span className="font-mono text-xs">{r.fittedVehicleRegistration}{r.fittedPosition ? ` · ${r.fittedPosition}` : ''}</span>
+                : <span className="text-gray-400">— in stock</span>}</Td>
               <Td right>{fmtKm(r.totalLifetimeKm)}</Td>
               <Td right muted>{r.maxLifetimeKm ? fmtKm(r.maxLifetimeKm) : '—'}</Td>
               <Td><LifeBar pct={r.percentLifeUsed} /></Td>

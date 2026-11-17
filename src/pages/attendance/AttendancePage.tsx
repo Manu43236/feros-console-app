@@ -704,7 +704,6 @@ function PendingApprovalsTab() {
   const [search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
-  const roleOptions = useRoleFilterOptions()
 
   const { data, isLoading } = useQuery({
     queryKey: ['attendance-pending'],
@@ -713,6 +712,15 @@ function PendingApprovalsTab() {
   const records = [...(data?.data ?? [])].sort((a, b) =>
     new Date(b.markedAt ?? b.attendanceDate).getTime() - new Date(a.markedAt ?? a.attendanceDate).getTime()
   )
+  // Role filter options derived from the roles actually present in pending records,
+  // so every role with a pending item is selectable (incl. admin/office staff) and the
+  // option value matches r.roleName exactly — fixes "filter not showing all roles".
+  const roleOptions = [
+    { value: '', label: 'All Roles' },
+    ...Array.from(new Set(records.map(r => r.roleName).filter(Boolean)))
+      .sort()
+      .map(r => ({ value: r as string, label: roleLabel(r as string) })),
+  ]
   const filtered = records.filter(r =>
     (!search || r.userName?.toLowerCase().includes(search.toLowerCase()) || r.assignedVehicleNumber?.toLowerCase().includes(search.toLowerCase()) || r.assignedMachineNumber?.toLowerCase().includes(search.toLowerCase())) &&
     (!dateFilter || r.attendanceDate === dateFilter) &&

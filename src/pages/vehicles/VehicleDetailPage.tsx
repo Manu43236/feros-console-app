@@ -1326,6 +1326,8 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
   const [subTab, setSubTab]         = useState<'general' | 'breakdown'>('general')
   const [filter, setFilter]         = useState<'all' | 'open' | 'in_progress' | 'due_soon' | 'overdue' | 'completed'>('all')
   const [search, setSearch]         = useState('')
+  const [dateFrom, setDateFrom]     = useState('')
+  const [dateTo, setDateTo]         = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [createBreakdownId, setCreateBreakdownId] = useState<number | undefined>()
   const [completeService, setCompleteService]     = useState<VehicleServiceRecord | null>(null)
@@ -1394,6 +1396,9 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
     if (filter === 'completed'   && s.displayStatus !== 'COMPLETED')  return false
     if (search && !s.serviceNumber?.toLowerCase().includes(search.toLowerCase()) &&
         !s.notes?.toLowerCase().includes(search.toLowerCase())) return false
+    const d = (s.serviceDate ?? s.createdAt ?? '').slice(0, 10)
+    if (dateFrom && d && d < dateFrom) return false
+    if (dateTo   && d && d > dateTo)   return false
     return true
   })
 
@@ -1430,6 +1435,14 @@ function ServiceTabContent({ vehicleId, vehicleReg, currentOdometer }: { vehicle
               <Input placeholder="Search services…" className="pl-8 h-9"
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
+            <Input type="date" className="h-9 w-auto" title="From date"
+              value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            <Input type="date" className="h-9 w-auto" title="To date"
+              value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" className="h-9 text-xs text-gray-500"
+                onClick={() => { setDateFrom(''); setDateTo('') }}>Clear</Button>
+            )}
             {!isSupervisor && (
               <Button size="sm" onClick={() => { setCreateBreakdownId(undefined); setCreateOpen(true) }}
                 className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-1.5 h-9 text-xs">

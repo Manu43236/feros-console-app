@@ -2791,6 +2791,8 @@ export interface TyreLifeRow {
   percentLifeUsed: number
   retreadCount: number
   status: string
+  fittedVehicleRegistration?: string | null
+  fittedPosition?: string | null
 }
 
 export interface TyreRequestRow {
