@@ -11,7 +11,7 @@ import { globalMastersApi } from '@/api/masters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Spinner } from '@/components/ui/loader'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,16 @@ function fmtDate(d?: string | null) {
   if (!d) return '—'
   const parsed = parseISO(d)
   return isValid(parsed) ? format(parsed, 'dd MMM yyyy') : '—'
+}
+
+function statusOf(expiry?: string | null, withinDays = 30): DocStatus | null {
+  if (!expiry) return null
+  const d = parseISO(expiry)
+  if (!isValid(d)) return null
+  const days = Math.ceil((d.getTime() - Date.now()) / 86_400_000)
+  if (days < 0) return 'EXPIRED'
+  if (days <= withinDays) return 'EXPIRING'
+  return 'ACTIVE'
 }
 
 function StatusChip({ status, daysLeft }: { status: DocStatus; daysLeft?: number | null }) {
@@ -47,7 +57,11 @@ export function DocumentsPage() {
   const [entity, setEntity] = useState<'ALL' | DocEntityType>(initialEntity)
   const [status, setStatus] = useState<'ALL' | DocStatus>(initialStatus)
   const [q, setQ] = useState(params.get('q') ?? '')
-  const [uploadOpen, setUploadOpen] = useState(false)
+  const [drawer, setDrawer] = useState<{ entity: DocEntityType; ownerId: number | null; seq: number } | null>(null)
+
+  function openDrawer(e: DocEntityType, ownerId: number | null) {
+    setDrawer(d => ({ entity: e, ownerId, seq: (d?.seq ?? 0) + 1 }))
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['documents', entity, status, q],
@@ -74,7 +88,7 @@ export function DocumentsPage() {
             <p className="text-sm text-gray-500">Renew every vehicle &amp; staff document from one place</p>
           </div>
         </div>
-        <Button onClick={() => setUploadOpen(true)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
+        <Button onClick={() => openDrawer(entity === 'STAFF' ? 'STAFF' : 'VEHICLE', null)} className="bg-feros-navy hover:bg-feros-navy/90 text-white gap-2">
           <Upload size={16} /> Upload Documents
         </Button>
       </div>
@@ -126,7 +140,14 @@ export function DocumentsPage() {
             ) : rows.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-400">No documents match these filters</td></tr>
             ) : rows.map(r => (
-              <tr key={`${r.entityType}-${r.documentId}`} className="hover:bg-gray-50/60">
+              <tr
+                key={`${r.entityType}-${r.documentId}`}
+                onClick={() => openDrawer(r.entityType, r.ownerId)}
+                className={cn(
+                  'cursor-pointer border-l-4 hover:bg-gray-50',
+                  r.status === 'EXPIRED' ? 'border-l-red-500' : r.status === 'EXPIRING' ? 'border-l-amber-400' : 'border-l-transparent',
+                )}
+              >
                 <td className="px-4 py-3">
                   <div className="font-medium text-gray-900">{r.ownerName}</div>
                   {r.ownerSubtitle && <div className="text-xs text-gray-400">{r.ownerSubtitle}</div>}
@@ -137,7 +158,7 @@ export function DocumentsPage() {
                 <td className="px-4 py-3"><StatusChip status={r.status} daysLeft={r.daysLeft} /></td>
                 <td className="px-4 py-3 text-right">
                   {r.fileUrl
-                    ? <a href={r.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-feros-navy hover:underline"><ExternalLink size={14} /> View</a>
+                    ? <a href={r.fileUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-feros-navy hover:underline"><ExternalLink size={14} /> View</a>
                     : <span className="text-gray-300">—</span>}
                 </td>
               </tr>
@@ -146,11 +167,14 @@ export function DocumentsPage() {
         </table>
       </div>
 
-      <UploadDialog
-        open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        defaultEntity={entity === 'STAFF' ? 'STAFF' : 'VEHICLE'}
-      />
+      {drawer && (
+        <UploadDrawer
+          key={drawer.seq}
+          onClose={() => setDrawer(null)}
+          initialEntity={drawer.entity}
+          initialOwnerId={drawer.ownerId}
+        />
+      )}
     </div>
   )
 }
@@ -178,20 +202,20 @@ function Segmented({ value, onChange, options }: { value: string; onChange: (v: 
 type RowDraft = { documentNumber: string; expiryDate: string; issuerName: string; file: File | null }
 type ExistingDoc = { id: number; documentTypeId: number; documentNumber?: string | null; expiryDate?: string | null; fileUrl?: string | null }
 
-function UploadDialog({ open, onClose, defaultEntity }: { open: boolean; onClose: () => void; defaultEntity: DocEntityType }) {
+function UploadDrawer({ onClose, initialEntity, initialOwnerId }: { onClose: () => void; initialEntity: DocEntityType; initialOwnerId: number | null }) {
   const qc = useQueryClient()
-  const [entity, setEntity] = useState<DocEntityType>(defaultEntity)
-  const [ownerId, setOwnerId] = useState<number | null>(null)
+  const [entity, setEntity] = useState<DocEntityType>(initialEntity)
+  const [ownerId, setOwnerId] = useState<number | null>(initialOwnerId ?? null)
   const [drafts, setDrafts] = useState<Record<number, RowDraft>>({})
   const [saving, setSaving] = useState(false)
 
   const { data: docTypesRes } = useQuery({ queryKey: ['document-types'], queryFn: globalMastersApi.getDocumentTypes })
-  const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehiclesApi.getAll(), enabled: open && entity === 'VEHICLE' })
-  const { data: staffRes } = useQuery({ queryKey: ['staff-profiles'], queryFn: () => staffApi.getAll(), enabled: open && entity === 'STAFF' })
+  const { data: vehiclesRes } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehiclesApi.getAll(), enabled: entity === 'VEHICLE' })
+  const { data: staffRes } = useQuery({ queryKey: ['staff-profiles'], queryFn: () => staffApi.getAll(), enabled: entity === 'STAFF' })
 
   const { data: existingDocs } = useQuery({
     queryKey: ['owner-docs', entity, ownerId],
-    enabled: open && ownerId != null,
+    enabled: ownerId != null,
     queryFn: async (): Promise<ExistingDoc[]> => {
       const res = entity === 'VEHICLE' ? await vehiclesApi.getDocuments(ownerId!) : await staffApi.getDocuments(ownerId!)
       return (res.data ?? []).map(d => ({
@@ -274,15 +298,16 @@ function UploadDialog({ open, onClose, defaultEntity }: { open: boolean; onClose
   }
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && close()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Upload / Renew Documents</DialogTitle></DialogHeader>
+    <Sheet open onOpenChange={v => !v && close()}>
+      <SheetContent className="w-full sm:max-w-xl p-0">
+        <SheetHeader>
+          <SheetTitle>Upload / Renew Documents</SheetTitle>
+          <p className="text-sm text-gray-500">Renew the expired ones, attach files, then save all at once.</p>
+        </SheetHeader>
 
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center gap-2">
-            <Segmented value={entity} onChange={v => switchEntity(v as DocEntityType)}
-              options={[{ value: 'VEHICLE', label: 'Vehicle' }, { value: 'STAFF', label: 'Staff' }]} />
-          </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          <Segmented value={entity} onChange={v => switchEntity(v as DocEntityType)}
+            options={[{ value: 'VEHICLE', label: 'Vehicle' }, { value: 'STAFF', label: 'Staff' }]} />
 
           <div className="space-y-1.5">
             <Label>{entity === 'VEHICLE' ? 'Vehicle Number' : 'Staff Member'} *</Label>
@@ -301,12 +326,20 @@ function UploadDialog({ open, onClose, defaultEntity }: { open: boolean; onClose
                 const ex = existingByType.get(t.id)
                 const d = draftFor(t.id)
                 const isInsurance = t.name.toLowerCase().includes('insurance')
+                const rowStatus = statusOf(d.expiryDate || ex?.expiryDate)
                 return (
-                  <div key={t.id} className="p-3">
+                  <div key={t.id} className={cn(
+                    'p-3 border-l-4',
+                    rowStatus === 'EXPIRED' ? 'border-l-red-500' : rowStatus === 'EXPIRING' ? 'border-l-amber-400' : 'border-l-transparent',
+                  )}>
                     <div className="flex items-center justify-between gap-2">
-                      <div className="font-medium text-gray-800">{t.name}</div>
-                      <div className="flex items-center gap-2 text-xs">
-                        {ex?.expiryDate && <span className="text-gray-400">now: {fmtDate(ex.expiryDate)}</span>}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium text-gray-800 truncate">{t.name}</span>
+                        {rowStatus
+                          ? <StatusChip status={rowStatus} />
+                          : <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-400">No expiry</span>}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs shrink-0">
                         {ex?.fileUrl && (
                           <a href={ex.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-feros-navy hover:underline">
                             <ExternalLink size={12} /> current
@@ -315,6 +348,7 @@ function UploadDialog({ open, onClose, defaultEntity }: { open: boolean; onClose
                         {!ex && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-500">new</span>}
                       </div>
                     </div>
+                    {ex?.expiryDate && <div className="mt-0.5 text-xs text-gray-400">Current expiry: {fmtDate(ex.expiryDate)}</div>}
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                       <Input placeholder="Doc number" value={d.documentNumber} onChange={e => patch(t.id, { documentNumber: e.target.value })} />
                       <Input type="date" value={d.expiryDate} onChange={e => patch(t.id, { expiryDate: e.target.value })} />
@@ -336,15 +370,15 @@ function UploadDialog({ open, onClose, defaultEntity }: { open: boolean; onClose
               })}
             </div>
           )}
-
-          <div className="flex justify-end gap-3 pt-1">
-            <Button type="button" variant="outline" onClick={close} disabled={saving}>Cancel</Button>
-            <Button type="button" onClick={handleUpload} disabled={saving || ownerId == null} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
-              {saving ? 'Uploading…' : 'Upload'}
-            </Button>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        <div className="shrink-0 border-t px-6 py-4 flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={close} disabled={saving}>Cancel</Button>
+          <Button type="button" onClick={handleUpload} disabled={saving || ownerId == null} className="bg-feros-navy hover:bg-feros-navy/90 text-white">
+            {saving ? 'Uploading…' : 'Upload'}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
