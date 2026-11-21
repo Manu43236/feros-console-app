@@ -6,10 +6,11 @@ import { stockApi, sparePartsApi } from '@/api/inventory'
 import { globalMastersApi } from '@/api/masters'
 import type { SparePart, StockItem } from '@/types'
 import { toast } from 'sonner'
-import { Plus, Minus, Search, AlertTriangle, Boxes } from 'lucide-react'
+import { Plus, Minus, Search, AlertTriangle, Boxes, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useAuthStore } from '@/store/authStore'
@@ -322,20 +323,58 @@ function StockOutDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ── Adjust Stock Dialog (ADMIN only) ─────────────────────────────────────────────
-function AdjustStockDialog({ item, onClose }: { item: StockItem; onClose: () => void }) {
+// ── Stock Detail Drawer (view for all; edit for ADMIN) ────────────────────────────
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-sm font-medium text-gray-800">{value}</span>
+    </div>
+  )
+}
+
+function StockDetailDrawer({ item, isAdmin, onClose }: { item: StockItem; isAdmin: boolean; onClose: () => void }) {
   const qc = useQueryClient()
-  const [form, setForm] = useState({
+  const { data: unitData } = useQuery({ queryKey: ['units'], queryFn: globalMastersApi.getUnits })
+  const units = (unitData?.data ?? []).map((u: { name: string }) => u.name)
+
+  const [details, setDetails] = useState({
+    name: item.partName,
+    category: item.category ?? '',
+    unit: item.unit,
+    minStockLevel: String(item.minStockLevel),
+  })
+  const [adj, setAdj] = useState({
     newQuantity: String(item.quantity),
     unitCost: item.lastUnitCost != null ? String(item.lastUnitCost) : '',
     reason: '',
   })
 
-  const mutation = useMutation({
+  const onError = (e: unknown) => {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    toast.error(msg ?? 'Something went wrong')
+  }
+
+  const detailsMutation = useMutation({
+    mutationFn: () => sparePartsApi.update(item.sparePartId, {
+      name: details.name.trim(),
+      category: details.category || undefined,
+      unit: details.unit,
+      minStockLevel: Number(details.minStockLevel),
+    }),
+    onSuccess: () => {
+      toast.success('Part details updated')
+      qc.invalidateQueries({ queryKey: ['stock'] })
+      qc.invalidateQueries({ queryKey: ['spare-parts'] })
+    },
+    onError,
+  })
+
+  const adjustMutation = useMutation({
     mutationFn: () => stockApi.adjustStock(item.sparePartId, {
-      newQuantity: Number(form.newQuantity),
-      unitCost: form.unitCost ? Number(form.unitCost) : undefined,
-      reason: form.reason || undefined,
+      newQuantity: Number(adj.newQuantity),
+      unitCost: adj.unitCost ? Number(adj.unitCost) : undefined,
+      reason: adj.reason || undefined,
     }),
     onSuccess: () => {
       toast.success('Stock adjusted')
@@ -343,47 +382,105 @@ function AdjustStockDialog({ item, onClose }: { item: StockItem; onClose: () => 
       qc.invalidateQueries({ queryKey: ['inventory-transactions'] })
       onClose()
     },
-    onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? 'Failed to adjust stock')
-    },
+    onError,
   })
 
   return (
-    <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Adjust Stock — {item.partName}</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <p className="text-xs text-gray-500">
-            Current: <strong>{item.quantity} {item.unit}</strong>. The change is recorded as an audited adjustment.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label>New Quantity *</Label>
-              <Input type="number" min={0} value={form.newQuantity}
-                onChange={e => setForm(f => ({ ...f, newQuantity: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Unit Cost (₹)</Label>
-              <Input type="number" min={0} placeholder="Optional" value={form.unitCost}
-                onChange={e => setForm(f => ({ ...f, unitCost: e.target.value }))} />
-            </div>
-          </div>
+    <Sheet open onOpenChange={v => !v && onClose()}>
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetHeader><SheetTitle>{item.partName}</SheetTitle></SheetHeader>
+
+        {/* Summary */}
+        <div className="mt-4 rounded-xl border p-4 flex items-center justify-between">
           <div>
-            <Label>Reason</Label>
-            <Input value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
-              placeholder="e.g. Physical count correction" />
+            <p className="text-xs text-gray-500">Current Quantity</p>
+            <p className="text-3xl font-bold text-gray-900">{item.quantity} <span className="text-base font-medium text-gray-400">{item.unit}</span></p>
           </div>
+          {item.isLowStock
+            ? <span className="flex items-center gap-1 text-xs font-medium text-red-600"><AlertTriangle size={13} /> Low Stock</span>
+            : <span className="text-xs font-medium text-green-600">OK</span>}
         </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={mutation.isPending || form.newQuantity === ''}
-            onClick={() => mutation.mutate()}>
-            {mutation.isPending ? 'Saving…' : 'Save Adjustment'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+        {isAdmin ? (
+          <div className="mt-5 space-y-6">
+            {/* Edit part details */}
+            <section className="space-y-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Part Details</p>
+              <div>
+                <Label>Part Name *</Label>
+                <Input value={details.name} onChange={e => setDetails(d => ({ ...d, name: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Part No.</Label>
+                  <div className="h-9 flex items-center px-3 text-sm text-gray-500 bg-gray-50 border rounded-md">{item.partNumber ?? '—'}</div>
+                </div>
+                <div>
+                  <Label>Category</Label>
+                  <Input value={details.category} onChange={e => setDetails(d => ({ ...d, category: e.target.value }))} placeholder="Optional" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Unit *</Label>
+                  <select className="w-full border rounded-md px-3 py-2 text-sm"
+                    value={details.unit} onChange={e => setDetails(d => ({ ...d, unit: e.target.value }))}>
+                    {details.unit && !units.includes(details.unit) && <option value={details.unit}>{details.unit}</option>}
+                    {units.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label>Min Stock Level</Label>
+                  <Input type="number" min={0} value={details.minStockLevel}
+                    onChange={e => setDetails(d => ({ ...d, minStockLevel: e.target.value }))} />
+                </div>
+              </div>
+              <Button className="w-full" disabled={detailsMutation.isPending || !details.name.trim()}
+                onClick={() => detailsMutation.mutate()}>
+                {detailsMutation.isPending ? 'Saving…' : 'Save Details'}
+              </Button>
+            </section>
+
+            {/* Adjust quantity (audited) */}
+            <section className="space-y-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Adjust Quantity</p>
+              <p className="text-xs text-gray-500">Changing the quantity is recorded as an audited adjustment.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>New Quantity *</Label>
+                  <Input type="number" min={0} value={adj.newQuantity}
+                    onChange={e => setAdj(a => ({ ...a, newQuantity: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Unit Cost (₹)</Label>
+                  <Input type="number" min={0} placeholder="Optional" value={adj.unitCost}
+                    onChange={e => setAdj(a => ({ ...a, unitCost: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <Label>Reason</Label>
+                <Input value={adj.reason} onChange={e => setAdj(a => ({ ...a, reason: e.target.value }))}
+                  placeholder="e.g. Physical count correction" />
+              </div>
+              <Button variant="outline" className="w-full"
+                disabled={adjustMutation.isPending || adj.newQuantity === '' || Number(adj.newQuantity) === item.quantity}
+                onClick={() => adjustMutation.mutate()}>
+                {adjustMutation.isPending ? 'Saving…' : 'Save Adjustment'}
+              </Button>
+            </section>
+          </div>
+        ) : (
+          <div className="mt-5">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Details</p>
+            <DetailRow label="Part No." value={item.partNumber ?? '—'} />
+            <DetailRow label="Category" value={item.category ?? '—'} />
+            <DetailRow label="Unit" value={item.unit} />
+            <DetailRow label="Min Stock Level" value={item.minStockLevel} />
+            <DetailRow label="Last Unit Cost" value={item.lastUnitCost != null ? `₹${item.lastUnitCost}` : '—'} />
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -395,7 +492,7 @@ export default function StockPage() {
   const [search, setSearch] = useState('')
   const [showStockIn, setShowStockIn] = useState(false)
   const [showStockOut, setShowStockOut] = useState(false)
-  const [adjustItem, setAdjustItem] = useState<StockItem | null>(null)
+  const [detailItem, setDetailItem] = useState<StockItem | null>(null)
   const [filterLow, setFilterLow] = useState(false)
 
   const { data, isLoading } = useQuery({ queryKey: ['stock'], queryFn: stockApi.getStock })
@@ -481,12 +578,13 @@ export default function StockPage() {
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Quantity</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Min Level</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                {isAdmin && <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>}
+                <th className="w-10" />
               </tr>
             </thead>
             <tbody className="divide-y">
               {filtered.map(item => (
-                <tr key={item.inventoryId} className={`hover:bg-gray-50 ${item.isLowStock ? 'bg-red-50/30' : ''}`}>
+                <tr key={item.inventoryId} onClick={() => setDetailItem(item)}
+                  className={`cursor-pointer hover:bg-gray-50 ${item.isLowStock ? 'bg-red-50/30' : ''}`}>
                   <td className="px-4 py-3 font-medium text-gray-900">{item.partName}</td>
                   <td className="px-4 py-3 text-gray-600">{item.partNumber ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{item.category ?? '—'}</td>
@@ -502,14 +600,9 @@ export default function StockPage() {
                       <span className="text-xs font-medium text-green-600">OK</span>
                     )}
                   </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3 text-right">
-                      <button className="text-xs font-medium text-blue-600 hover:underline"
-                        onClick={() => setAdjustItem(item)}>
-                        Adjust
-                      </button>
-                    </td>
-                  )}
+                  <td className="px-2 py-3 text-right text-gray-300">
+                    <ChevronRight size={16} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -519,7 +612,7 @@ export default function StockPage() {
 
       {showStockIn  && <StockInDialog  onClose={() => setShowStockIn(false)}  />}
       {showStockOut && <StockOutDialog onClose={() => setShowStockOut(false)} />}
-      {adjustItem   && <AdjustStockDialog item={adjustItem} onClose={() => setAdjustItem(null)} />}
+      {detailItem   && <StockDetailDrawer item={detailItem} isAdmin={isAdmin} onClose={() => setDetailItem(null)} />}
     </div>
   )
 }
