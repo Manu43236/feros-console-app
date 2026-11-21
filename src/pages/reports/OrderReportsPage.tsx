@@ -119,7 +119,7 @@ const INVOICE_COLORS: Record<string, string> = {
 function OrderRegisterTable({ rows, loading }: { rows: OrderRegisterRow[]; loading: boolean }) {
   return <ReportTable loading={loading}
     headers={['Order No.', 'Date', 'Exp. Delivery', 'Duration', 'Client', 'Material', 'From', 'To',
-      'Total Wt', 'Delivered Qty', 'Rate', 'Freight Amt', 'Advance', 'Balance', 'Vehicles', 'Status', 'Payment', 'Invoice']}
+      'Total Wt', 'Delivered Qty', 'Rate', 'Freight Amt', 'Advance', 'Paid', 'Balance', 'Vehicles', 'Status', 'Payment', 'Invoice']}
     rows={rows.map(r => [
       <span className="font-medium text-feros-navy">{r.orderNumber}</span>,
       r.orderDate, dash(r.expectedDeliveryDate),
@@ -128,6 +128,7 @@ function OrderRegisterTable({ rows, loading }: { rows: OrderRegisterRow[]; loadi
       `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`,
       dash(r.totalWeight), dash(r.totalWeightFulfilled), dash(r.freightRate), dash(r.totalFreightAmount),
       dash(r.advanceReceived),
+      dash(r.paidAmount),
       <span className={cn('font-medium', (r.balance ?? 0) > 0 ? 'text-amber-600' : 'text-green-600')}>{dash(r.balance)}</span>,
       <span className="font-medium">{r.vehicleCount}</span>,
       <StatusBadge status={r.orderStatus} colorMap={STATUS_COLORS} />,
@@ -502,12 +503,12 @@ const clientSummaryQuery = useQuery({
     setDownloading(true)
     try {
       if (tab === 'register') {
-        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Duration', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Delivered Qty', 'Rate', 'Freight Amt', 'Advance', 'Balance', 'Vehicles', 'Status', 'Payment', 'Invoice']
+        const headers = ['Order No.', 'Date', 'Exp. Delivery', 'Duration', 'Client', 'Material', 'From', 'To', 'Total Wt', 'Delivered Qty', 'Rate', 'Freight Amt', 'Advance', 'Paid', 'Balance', 'Vehicles', 'Status', 'Payment', 'Invoice']
         const rows = registerRows.map(r => [
           r.orderNumber, r.orderDate, r.expectedDeliveryDate ?? '—', r.durationDays != null ? `${r.durationDays}d` : '—',
           r.clientName, r.materialType, `${r.fromCity}, ${r.fromState}`, `${r.toCity}, ${r.toState}`,
           String(r.totalWeight ?? '—'), String(r.totalWeightFulfilled ?? '—'), String(r.freightRate ?? '—'), String(r.totalFreightAmount ?? '—'),
-          String(r.advanceReceived ?? '—'), String(r.balance ?? '—'),
+          String(r.advanceReceived ?? '—'), String(r.paidAmount ?? '—'), String(r.balance ?? '—'),
           String(r.vehicleCount), r.orderStatus, r.orderPaymentStatus, (r.invoiceStatus ?? 'NOT_INVOICED').replace(/_/g, ' '),
         ])
         const clientSuffix = clientFilters.length > 0 ? ` · Clients: ${clientFilters.join(', ')}` : ''
