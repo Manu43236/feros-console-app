@@ -11,6 +11,16 @@ import type {
   MaintenanceServiceRow,
   OperatorAssignmentRow,
   MachineStaffCostRow,
+  EquipmentMasterRow,
+  EquipmentFleetStatusRow,
+  EquipmentFuelHmrRow,
+  EquipmentBreakdownRow,
+  EquipmentDocumentExpiryRow,
+  EquipmentMaintenanceRow,
+  WorkOrderRegisterRow,
+  WorkOrderUtilizationRow,
+  WorkOrderReceivableRow,
+  DailyMachineRegisterRow,
   AttendanceDailyRow,
   AttendanceSummaryRow,
   AttendanceRoleSummaryRow,
@@ -84,6 +94,102 @@ function triggerDownload(blob: Blob, filename: string) {
 }
 
 export const reportsApi = {
+  // ══ Equipment mirrors of the vehicle report set ════════════════════════════
+  getEquipmentMaster: () =>
+    apiClient.get<ApiResponse<EquipmentMasterRow[]>>('/reports/equipment/master').then(r => r.data),
+  exportEquipmentMaster: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/equipment/master/export', { params: { format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `equipment-master.${format}`)
+  },
+
+  getEquipmentFleetStatus: () =>
+    apiClient.get<ApiResponse<EquipmentFleetStatusRow[]>>('/reports/equipment/fleet-status').then(r => r.data),
+  exportEquipmentFleetStatus: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/equipment/fleet-status/export', { params: { format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `equipment-fleet-status.${format}`)
+  },
+
+  getEquipmentFuelHmr: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<EquipmentFuelHmrRow[]>>('/reports/equipment/fuel-hmr', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+  exportEquipmentFuelHmr: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/equipment/fuel-hmr/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `equipment-fuel-hmr-${startDate}-${endDate}.${format}`)
+  },
+
+  getEquipmentBreakdowns: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<EquipmentBreakdownRow[]>>('/reports/equipment/breakdowns', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+  exportEquipmentBreakdowns: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/equipment/breakdowns/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `equipment-breakdowns-${startDate}-${endDate}.${format}`)
+  },
+
+  getEquipmentDocumentExpiry: (days: number) =>
+    apiClient.get<ApiResponse<EquipmentDocumentExpiryRow[]>>('/reports/equipment/document-expiry', {
+      params: { days },
+    }).then(r => r.data),
+  exportEquipmentDocumentExpiry: async (days: number, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/equipment/document-expiry/export', {
+      params: { days, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `equipment-document-expiry.${format}`)
+  },
+
+  getEquipmentMaintenance: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<EquipmentMaintenanceRow[]>>('/reports/equipment/maintenance-service', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+  exportEquipmentMaintenance: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/equipment/maintenance-service/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `equipment-maintenance-${startDate}-${endDate}.${format}`)
+  },
+
+  // ══ Work-order POV reports ══════════════════════════════════════════════════
+  getWorkOrderRegister: () =>
+    apiClient.get<ApiResponse<WorkOrderRegisterRow[]>>('/reports/work-orders/register').then(r => r.data),
+  exportWorkOrderRegister: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/work-orders/register/export', { params: { format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `work-order-register.${format}`)
+  },
+
+  getWorkOrderUtilization: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<WorkOrderUtilizationRow[]>>('/reports/work-orders/utilization', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+  exportWorkOrderUtilization: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/work-orders/utilization/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `work-order-utilization-${startDate}-${endDate}.${format}`)
+  },
+
+  getWorkOrderReceivables: () =>
+    apiClient.get<ApiResponse<WorkOrderReceivableRow[]>>('/reports/work-orders/receivables').then(r => r.data),
+  exportWorkOrderReceivables: async (format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/work-orders/receivables/export', { params: { format }, responseType: 'blob' })
+    triggerDownload(res.data as Blob, `work-order-receivables.${format}`)
+  },
+
+  getDailyMachineRegister: (startDate: string, endDate: string) =>
+    apiClient.get<ApiResponse<DailyMachineRegisterRow[]>>('/reports/work-orders/daily-register', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+  exportDailyMachineRegister: async (startDate: string, endDate: string, format: 'csv' | 'pdf') => {
+    const res = await apiClient.get('/reports/work-orders/daily-register/export', {
+      params: { startDate, endDate, format }, responseType: 'blob',
+    })
+    triggerDownload(res.data as Blob, `daily-machine-register-${startDate}-${endDate}.${format}`)
+  },
+
   // ── Vehicle Master ────────────────────────────────────────────────────────
   getVehicleMaster: () =>
     apiClient.get<ApiResponse<VehicleMasterRow[]>>('/reports/vehicles/master').then(r => r.data),

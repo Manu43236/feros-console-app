@@ -2166,6 +2166,184 @@ export interface MaintenanceServiceRow {
   durationLabel: string | null
 }
 
+// ─── Equipment report rows (mirrors of the vehicle report set) ──────────────────
+export interface EquipmentMasterRow {
+  equipmentId: number
+  serialNumber: string | null
+  registrationNumber: string | null
+  make: string | null
+  model: string | null
+  equipmentType: string | null
+  fuelType: string | null
+  ownershipType: string | null
+  workStatus: string | null
+  meterType: string | null
+  currentMeterReading: number | null
+  manufactureYear: number | null
+  fuelTankCapacity: number | null
+  chassisNumber: string | null
+  engineNumber: string | null
+  isFinanced: boolean | null
+  financerName: string | null
+  financeFrom: string | null
+  financeTo: string | null
+  hiredFrom: string | null
+  hireStartDate: string | null
+  hireEndDate: string | null
+  hireRate: number | null
+  hireRateUnit: string | null
+}
+
+export interface EquipmentFleetStatusRow {
+  equipmentId: number
+  serialNumber: string | null
+  registrationNumber: string | null
+  equipmentType: string
+  make: string | null
+  model: string | null
+  workStatus: string
+  currentMeterReading: number | null
+  meterType: string | null
+  workOrderNumber: string | null
+  clientName: string | null
+  site: string | null
+}
+
+export interface EquipmentFuelHmrRow {
+  equipmentId: number
+  serialNumber: string | null
+  registrationNumber: string | null
+  equipmentType: string
+  meterType: string | null
+  fillCount: number
+  totalLitresFilled: number | null
+  totalFuelCost: number | null
+  openingHmr: number | null
+  closingHmr: number | null
+  totalHours: number | null
+  litresPerHour: number | null
+}
+
+export interface EquipmentBreakdownRow {
+  equipmentId: number
+  serialNumber: string | null
+  registrationNumber: string | null
+  equipmentType: string
+  breakdownDate: string | null
+  location: string | null
+  reason: string | null
+  status: string | null
+  daysLost: number | null
+  reportedBy: string | null
+  workOrderNumber: string | null
+}
+
+export interface EquipmentDocumentExpiryRow {
+  equipmentId: number
+  serialNumber: string | null
+  registrationNumber: string | null
+  equipmentType: string
+  documentType: string | null
+  documentNumber: string | null
+  issueDate: string | null
+  expiryDate: string | null
+  issuerName: string | null
+  cost: number | null
+  paidOn: string | null
+  daysLeft: number | null
+  expiryStatus: 'GREEN' | 'AMBER' | 'RED'
+}
+
+export interface EquipmentMaintenanceRow {
+  equipmentId: number
+  serialNumber: string | null
+  registrationNumber: string | null
+  equipmentType: string
+  serviceNumber: string | null
+  serviceDate: string | null
+  completedDate: string | null
+  serviceType: string | null
+  triggeredBy: string | null
+  reason: string | null
+  taskCount: number
+  totalCost: number | null
+  status: string | null
+  vendorName: string | null
+  hmrAtService: number | null
+  dueAtHmr: number | null
+  downtimeHours: number | null
+}
+
+// ─── Work-order POV report rows ─────────────────────────────────────────────────
+export interface WorkOrderRegisterRow {
+  woId: number
+  woNumber: string | null
+  clientName: string | null
+  site: string | null
+  workOrderType: string | null
+  status: string | null
+  startDate: string | null
+  endDate: string | null
+  machineCount: number | null
+  mobilizationCharge: number | null
+  demobilizationCharge: number | null
+  agreedJobAmount: number | null
+  gstPercent: number | null
+  retentionPercent: number | null
+  tdsPercent: number | null
+  billingCycleMonths: number | null
+  daysRemaining: number | null
+  overdue: boolean | null
+}
+
+export interface WorkOrderUtilizationRow {
+  woId: number
+  woNumber: string | null
+  clientName: string | null
+  daysLogged: number
+  workingHours: number | null
+  idleHours: number | null
+  standbyHours: number | null
+  breakdownHours: number | null
+  totalHours: number | null
+  utilizationPct: number | null
+  penaltyThresholdHours: number | null
+  penaltyBreached: boolean | null
+}
+
+export interface WorkOrderReceivableRow {
+  woId: number
+  woNumber: string | null
+  clientName: string | null
+  invoiceCount: number
+  grossBilled: number | null
+  totalReceived: number | null
+  retentionHeld: number | null
+  totalAdvances: number | null
+  balanceDue: number | null
+  oldestUnpaidDueDate: string | null
+  daysOverdue: number | null
+  agingBucket: string | null
+}
+
+export interface DailyMachineRegisterRow {
+  logDate: string | null
+  machine: string | null
+  equipmentType: string | null
+  woNumber: string | null
+  clientName: string | null
+  status: string | null
+  startHourMeter: number | null
+  endHourMeter: number | null
+  hoursWorked: number | null
+  workingHours: number | null
+  idleHours: number | null
+  standbyHours: number | null
+  breakdownHours: number | null
+  fuelConsumed: number | null
+  idleReason: string | null
+}
+
 // ─── Attendance Report rows ────────────────────────────────────────────────────
 export interface AttendanceDailyRow {
   employeeId: number
