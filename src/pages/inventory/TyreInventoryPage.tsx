@@ -1105,10 +1105,18 @@ export default function TyreInventoryPage() {
     { value: 'SECOND_HAND', label: 'Second Hand', color: 'bg-amber-50  border-amber-200'  },
   ]
 
-  const STAT_CARDS: { label: string; value: number; color: string; filter: ActiveFilter }[] = [
+  // New-vs-Retreaded split within a given status (second-hand tyres, if any, are counted in neither).
+  const condByStatus = (status: TyreStatus) => ({
+    neu:     tyres.filter(t => t.status === status && conditionOf(t) === 'NEW').length,
+    retread: tyres.filter(t => t.status === status && conditionOf(t) === 'RETREADED').length,
+  })
+  const inStockCond = condByStatus('IN_STOCK')
+  const fittedCond  = condByStatus('FITTED')
+
+  const STAT_CARDS: { label: string; value: number; color: string; filter: ActiveFilter; breakdown?: string }[] = [
     { label: 'Total',      value: stats.total,      color: 'bg-gray-50   border-gray-200',   filter: 'ALL'        },
-    { label: 'In Stock',   value: stats.inStock,    color: 'bg-green-50  border-green-200',  filter: 'IN_STOCK'   },
-    { label: 'Fitted',     value: stats.fitted,     color: 'bg-blue-50   border-blue-200',   filter: 'FITTED'     },
+    { label: 'In Stock',   value: stats.inStock,    color: 'bg-green-50  border-green-200',  filter: 'IN_STOCK',   breakdown: `New ${inStockCond.neu} · Retread ${inStockCond.retread}` },
+    { label: 'Fitted',     value: stats.fitted,     color: 'bg-blue-50   border-blue-200',   filter: 'FITTED',     breakdown: `New ${fittedCond.neu} · Retread ${fittedCond.retread}` },
     { label: 'Retreading', value: stats.retreading, color: 'bg-yellow-50 border-yellow-200', filter: 'RETREADING' },
     { label: 'Scrapped',   value: stats.scrapped,   color: 'bg-red-50    border-red-200',    filter: 'SCRAPPED'   },
   ]
@@ -1140,7 +1148,7 @@ export default function TyreInventoryPage() {
 
       {/* Stat cards — click to filter */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {STAT_CARDS.map(({ label, value, color, filter }) => (
+        {STAT_CARDS.map(({ label, value, color, filter, breakdown }) => (
           <button
             key={label}
             onClick={() => setStatusFilter(statusFilter === filter ? 'ALL' : filter)}
@@ -1148,6 +1156,7 @@ export default function TyreInventoryPage() {
           >
             <p className="text-xs text-gray-500 font-medium">{label}</p>
             <p className="text-2xl font-bold text-gray-800 mt-1">{value}</p>
+            {breakdown && <p className="text-[11px] text-gray-500 mt-0.5">{breakdown}</p>}
           </button>
         ))}
       </div>

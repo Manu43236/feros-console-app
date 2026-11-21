@@ -191,9 +191,8 @@ function DailyFleetTable({ report, filter, loading }: { report: DailyFleetAttend
   const rows = applyFleetFilter(report?.rows ?? [], filter)
   return <ReportTable
     loading={loading}
-    headers={['#', 'Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']}
-    rows={rows.map((r, i) => [
-      <span className="text-gray-400">{i + 1}</span>,
+    headers={['Vehicle No.', 'Scope', 'Type', 'Driver', 'Cleaner']}
+    rows={rows.map(r => [
       <span className="font-medium">
         {r.registrationNumber}
         {r.isLease && <span className="ml-1.5 px-1.5 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700">Lease</span>}
@@ -224,9 +223,8 @@ function DailyMachineTable({ report, filter, loading }: { report: DailyMachineAt
   const rows = applyMachineFilter(report?.rows ?? [], filter)
   return <ReportTable
     loading={loading}
-    headers={['#', 'Machine No.', 'Type', 'Operator', 'Cleaner']}
-    rows={rows.map((r, i) => [
-      <span className="text-gray-400">{i + 1}</span>,
+    headers={['Machine No.', 'Type', 'Operator', 'Cleaner']}
+    rows={rows.map(r => [
       <span className="font-medium">{r.registrationNumber}</span>,
       dash(r.equipmentType),
       r.operatorName === '—'
@@ -490,10 +488,10 @@ export default function AttendanceReportsPage() {
         if (report) {
           const filtered = applyMachineFilter(report.rows, machineFilter)
           const label = machineFilter !== 'all' ? machineFilter.charAt(0).toUpperCase() + machineFilter.slice(1) : ''
-          const headers = ['#', 'Machine No.', 'Type', 'Operator', 'Cleaner']
-          const csvRows = filtered.map((r, i) => [String(i + 1), r.registrationNumber, r.equipmentType, r.operatorName, r.cleanerName])
+          const headers = ['Machine No.', 'Type', 'Operator', 'Cleaner']
+          const csvRows = filtered.map(r => [r.registrationNumber, r.equipmentType, r.operatorName, r.cleanerName])
           if (format === 'csv') {
-            const content = [headers, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+            const content = [['S.No', ...headers], ...csvRows.map((row, i) => [i + 1, ...row])].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
             const a = document.createElement('a')
             a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
             a.download = `machine-attendance-${report.date}${label ? `-${label.toLowerCase()}` : ''}.csv`
