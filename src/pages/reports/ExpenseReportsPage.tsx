@@ -57,12 +57,12 @@ function ReportTable({ headers, rows, loading }: {
       <HScroll className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
-            <tr>{headers.map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>)}</tr>
+            <tr><th className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">S.No.</th>{headers.map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((row, i) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                {row.map((cell, j) => <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{cell}</td>)}
+                <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{i + 1}</td>{row.map((cell, j) => <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{cell}</td>)}
               </tr>
             ))}
           </tbody>
@@ -226,6 +226,7 @@ function SalaryExpenseTable({ rows, loading, vehicleLabel }: {
       <table className="min-w-full text-sm">
         <thead>
           <tr>
+            <th className="px-3 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">S.No.</th>
             {['Day', 'Date', 'Driver', 'Role', 'Daily Rate', 'Extra Pay', 'Driver Total',
               'Cleaner', 'Role', 'Daily Rate', 'Extra Pay', 'Cleaner Total', 'Day Total'].map(h => (
               <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>
@@ -237,6 +238,7 @@ function SalaryExpenseTable({ rows, loading, vehicleLabel }: {
             const noData = !r.driverName && !r.cleanerName
             return (
               <tr key={r.day} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                <td className="px-3 py-2 text-gray-500">{i + 1}</td>
                 <td className="px-3 py-2 font-medium text-gray-700">{r.day}</td>
                 <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{r.date}</td>
                 {noData ? (

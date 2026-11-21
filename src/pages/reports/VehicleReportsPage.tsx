@@ -81,6 +81,7 @@ function ReportTable({ headers, rows, loading }: {
         <table className="min-w-full text-sm">
           <thead>
             <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">S.No.</th>
               {headers.map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">
                   {h}
@@ -91,6 +92,7 @@ function ReportTable({ headers, rows, loading }: {
           <tbody>
             {rows.map((row, i) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{i + 1}</td>
                 {row.map((cell, j) => (
                   <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{cell}</td>
                 ))}
@@ -437,7 +439,7 @@ const fuelQuery = useQuery({
           if (format === 'csv') {
             const header = ['Vehicle Type', 'Body Type', 'Total', 'Available', 'Assigned', 'On Trip', 'On Lease', 'Breakdown', 'BDN In Repair', 'In Service', 'Utilization%']
             const csvRows = summary.map(s => [s.vehicleType, s.vehicleBodyType, s.total, s.available, s.assigned, s.onTrip, s.onLease, s.breakdown, s.breakdownInRepair, s.inService, `${s.utilization}%`])
-            const content = [header, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+            const content = [['S.No', ...header], ...csvRows.map((row, i) => [i + 1, ...row])].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
             const a = document.createElement('a')
             a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
             a.download = `fleet-status-summary-${fleetDate}.csv`
@@ -478,7 +480,7 @@ const fuelQuery = useQuery({
           docStatusLabel(docStatus(r.daysLeft)),
         ])
         if (format === 'csv') {
-          const content = [header, ...dataRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+          const content = [['S.No', ...header], ...dataRows.map((row, i) => [i + 1, ...row])].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
           const a = document.createElement('a')
           a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
           a.download = `document-expiry-${todayStr()}.csv`

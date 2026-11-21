@@ -74,6 +74,7 @@ function ReportTable({ headers, rows, loading }: {
         <table className="min-w-full text-sm">
           <thead>
             <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">S.No.</th>
               {headers.map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">
                   {h}
@@ -84,6 +85,7 @@ function ReportTable({ headers, rows, loading }: {
           <tbody>
             {rows.map((row, i) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{i + 1}</td>
                 {row.map((cell, j) => (
                   <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{cell}</td>
                 ))}
@@ -254,6 +256,7 @@ function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
       <table className="min-w-full text-sm">
         <thead>
           <tr>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">S.No.</th>
             {HEADERS.map(h => (
               <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">
                 {h}
@@ -264,6 +267,7 @@ function RoleSummaryTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.role} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+              <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{i + 1}</td>
               <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' ')}</td>
               <td className="px-4 py-3 text-gray-700 font-semibold">{r.staffCount}</td>
               <td className="px-4 py-3">
@@ -315,6 +319,7 @@ function OfficeStaffTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
       <table className="min-w-full text-sm">
         <thead>
           <tr>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">S.No.</th>
             {HEADERS.map(h => (
               <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">{h}</th>
             ))}
@@ -323,6 +328,7 @@ function OfficeStaffTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
         <tbody>
           {office.map((r, i) => (
             <tr key={r.role} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+              <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{i + 1}</td>
               <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{ROLE_LABELS[r.role] ?? r.role.replace(/_/g, ' ')}</td>
               <td className="px-4 py-3 text-gray-700 font-semibold">{r.staffCount}</td>
               <td className="px-4 py-3"><span className={r.present > 0 ? 'text-green-700 font-semibold' : 'text-gray-400'}>{r.present}</span></td>
@@ -331,6 +337,7 @@ function OfficeStaffTable({ rows, loading }: { rows: AttendanceRoleSummaryRow[];
             </tr>
           ))}
           <tr className="bg-feros-navy/5 border-t-2 border-feros-navy/20 font-bold">
+            <td className="px-4 py-3 text-gray-900" />
             <td className="px-4 py-3 text-gray-900">TOTAL</td>
             <td className="px-4 py-3 text-gray-900">{totals.staff}</td>
             <td className="px-4 py-3 text-green-700">{totals.present}</td>
@@ -415,7 +422,7 @@ export default function AttendanceReportsPage() {
           r.approvalStatus, r.leaveType ?? '—', r.remarks ?? '—',
         ])
         if (format === 'csv') {
-          const content = [headers, ...csvRows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+          const content = [['S.No', ...headers], ...csvRows.map((row, i) => [i + 1, ...row])].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
           const a = document.createElement('a')
           a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
           a.download = `equipment-attendance-${startDate}_${endDate}.csv`

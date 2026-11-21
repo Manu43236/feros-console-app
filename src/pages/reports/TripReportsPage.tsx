@@ -65,6 +65,7 @@ function ReportTable({ headers, rows, loading }: {
         <table className="min-w-full text-sm">
           <thead>
             <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">S.No.</th>
               {headers.map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white whitespace-nowrap bg-feros-navy">
                   {h}
@@ -75,6 +76,7 @@ function ReportTable({ headers, rows, loading }: {
           <tbody>
             {rows.map((row, i) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{i + 1}</td>
                 {row.map((cell, j) => (
                   <td key={j} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{cell}</td>
                 ))}
@@ -368,7 +370,7 @@ export default function TripReportsPage() {
   })
 
   function triggerCsvDownload(header: string[], rows: (string | number)[][], filename: string) {
-    const content = [header, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
+    const content = [['S.No', ...header], ...rows.map((row, i) => [i + 1, ...row])].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }))
     a.download = filename

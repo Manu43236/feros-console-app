@@ -213,10 +213,11 @@ function StockSummaryTab({ rows, loading }: { rows?: StockSummaryRow[]; loading:
         ))}
       </div>
       <TableWrap>
-        <thead><tr><Th>Part Name</Th><Th>Part No.</Th><Th>Category</Th><Th>Unit</Th><Th right>Qty On Hand</Th><Th right>Min Level</Th><Th>Status</Th></tr></thead>
+        <thead><tr><Th>S.No.</Th><Th>Part Name</Th><Th>Part No.</Th><Th>Category</Th><Th>Unit</Th><Th right>Qty On Hand</Th><Th right>Min Level</Th><Th>Status</Th></tr></thead>
         <tbody>
-          {filtered.map(r => (
+          {filtered.map((r, _i) => (
             <tr key={r.partId} className="hover:bg-gray-50">
+              <Td>{_i + 1}</Td>
               <Td>{r.partName}</Td>
               <Td muted>{r.partNumber || '—'}</Td>
               <Td muted>{r.category || '—'}</Td>
@@ -333,10 +334,11 @@ function OutwardTab({ rows, loading }: { rows?: StockOutwardRow[]; loading: bool
         {rows.length} transactions · Total value: <span className="font-semibold text-gray-800">₹{fmt(total)}</span>
       </div>
       <TableWrap>
-        <thead><tr><Th>Date & Time</Th><Th>Part</Th><Th>Category</Th><Th>Unit</Th><Th right>Qty</Th><Th right>Total Cost</Th><Th>Type</Th><Th>Vehicle</Th><Th>Requested By</Th><Th>Approved By</Th><Th>Notes</Th></tr></thead>
+        <thead><tr><Th>S.No.</Th><Th>Date & Time</Th><Th>Part</Th><Th>Category</Th><Th>Unit</Th><Th right>Qty</Th><Th right>Total Cost</Th><Th>Type</Th><Th>Vehicle</Th><Th>Requested By</Th><Th>Approved By</Th><Th>Notes</Th></tr></thead>
         <tbody>
-          {rows.map(r => (
+          {rows.map((r, _i) => (
             <tr key={r.transactionId} className="hover:bg-gray-50">
+              <Td>{_i + 1}</Td>
               <Td>{fmtDt(r.transactionDate)}</Td>
               <Td><div className="font-medium">{r.partName}</div>{r.partNumber && <div className="text-xs text-gray-400">{r.partNumber}</div>}</Td>
               <Td muted>{r.category || '—'}</Td>
@@ -374,10 +376,11 @@ function PartRequestsTab({ rows, loading }: { rows?: PartRequestRow[]; loading: 
         ))}
       </div>
       <TableWrap>
-        <thead><tr><Th>Service Date</Th><Th>Part</Th><Th>Category</Th><Th>Unit</Th><Th right>Qty Req.</Th><Th right>Qty Appr.</Th><Th>Vehicle</Th><Th>Requested By</Th><Th>Approved By</Th><Th>Status</Th></tr></thead>
+        <thead><tr><Th>S.No.</Th><Th>Service Date</Th><Th>Part</Th><Th>Category</Th><Th>Unit</Th><Th right>Qty Req.</Th><Th right>Qty Appr.</Th><Th>Vehicle</Th><Th>Requested By</Th><Th>Approved By</Th><Th>Status</Th></tr></thead>
         <tbody>
-          {filtered.map(r => (
+          {filtered.map((r, _i) => (
             <tr key={r.servicePartId} className="hover:bg-gray-50">
+              <Td>{_i + 1}</Td>
               <Td>{fmtDate(r.serviceDate)}</Td>
               <Td><div className="font-medium">{r.partName}</div>{r.partNumber && <div className="text-xs text-gray-400">{r.partNumber}</div>}</Td>
               <Td muted>{r.category || '—'}</Td>
@@ -411,6 +414,7 @@ function ConsumptionTab({ rows, loading }: { rows?: ConsumptionByVehicleRow[]; l
       <TableWrap>
         <thead>
           <tr>
+            <Th>S.No.</Th>
             <Th>Vehicle</Th>
             <Th>Vehicle Type</Th>
             <Th>Part Name</Th>
@@ -425,6 +429,7 @@ function ConsumptionTab({ rows, loading }: { rows?: ConsumptionByVehicleRow[]; l
             return (
               <tr key={`${r.vehicleId}-${r.partId}`}
                 className={cn('hover:bg-gray-50', isNewGroup && i > 0 && 'border-t-2 border-gray-200')}>
+                <Td>{i + 1}</Td>
                 <Td><span className="font-semibold">{r.registrationNumber}</span></Td>
                 <Td muted>{r.vehicleType}</Td>
                 <Td>{r.partName}</Td>

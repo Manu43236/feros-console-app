@@ -197,6 +197,7 @@ function FleetStatusSummaryDoc({ rows, date }: { rows: FleetSummaryRow[]; date: 
         </View>
         <View style={S.divider} />
         <View style={S.tableHeader}>
+          <Text style={[S.hCell, S.colNo]}>#</Text>
           <Text style={[S.hCell, SS.colVT]}>Vehicle Type</Text>
           <Text style={[S.hCell, SS.colBT]}>Body Type</Text>
           <Text style={[S.hCell, SS.colNum]}>Total</Text>
@@ -211,6 +212,7 @@ function FleetStatusSummaryDoc({ rows, date }: { rows: FleetSummaryRow[]; date: 
         </View>
         {rows.map((r, i) => (
           <View key={i} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
+            <Text style={[S.cell, S.colNo]}>{i + 1}</Text>
             <Text style={[S.cell, SS.colVT]}>{r.vehicleType}</Text>
             <Text style={[S.cell, SS.colBT]}>{r.vehicleBodyType}</Text>
             <Text style={[S.cell, SS.colNum, { fontWeight: 'bold' }]}>{r.total}</Text>
@@ -328,12 +330,14 @@ function GenericTableDoc({ title, subtitle, headers, rows }: {
         <Text style={{ fontSize: 7.5, textAlign: 'center', color: '#555', marginTop: 2 }}>{subtitle}</Text>
         <View style={{ borderBottom: `1.5pt solid ${NAVY}`, marginVertical: 6 }} />
         <View style={{ flexDirection: 'row', backgroundColor: NAVY, borderRadius: 2 }}>
+          <Text style={{ width: '5%', color: '#fff', fontWeight: 'bold', fontSize: 6, padding: '3 3' }}>S.No</Text>
           {headers.map((h, i) => (
             <Text key={i} style={{ flex: colFlex, color: '#fff', fontWeight: 'bold', fontSize: 6, padding: '3 3' }}>{h}</Text>
           ))}
         </View>
         {rows.map((row, ri) => (
           <View key={ri} style={{ flexDirection: 'row', backgroundColor: ri % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '0.5pt solid #e2e8f0' }}>
+            <Text style={{ width: '5%', fontSize: 6, padding: '2.5 3', color: '#374151' }}>{ri + 1}</Text>
             {row.map((cell, ci) => (
               <Text key={ci} style={{ flex: colFlex, fontSize: 6, padding: '2.5 3', color: '#374151' }}>{cell}</Text>
             ))}

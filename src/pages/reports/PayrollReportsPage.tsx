@@ -161,7 +161,7 @@ function SummaryTab() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <Th>Employee</Th><Th>Role</Th><Th>Designation</Th>
+              <Th>S.No.</Th><Th>Employee</Th><Th>Role</Th><Th>Designation</Th>
               <Th>Pay Cycle</Th>
               <Th right>Present</Th><Th right>Absent</Th>
               <Th right>Gross Pay</Th><Th right>Deductions</Th><Th right>Net Pay</Th>
@@ -174,8 +174,9 @@ function SummaryTab() {
               <tr><td colSpan={12} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={12} className="px-3 py-8 text-center text-sm text-gray-400">No payroll records found for this period.</td></tr>
-            ) : rows.map(r => (
+            ) : rows.map((r, _i) => (
               <tr key={r.payrollId} className="hover:bg-gray-50">
+                <Td>{_i + 1}</Td>
                 <Td><span className="font-medium">{r.employeeName}</span></Td>
                 <Td muted>{r.role}</Td>
                 <Td muted>{r.designation}</Td>
@@ -243,7 +244,7 @@ function SalaryRegisterTab() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <Th>Employee</Th><Th>Role</Th><Th>Pay Cycle</Th>
+              <Th>S.No.</Th><Th>Employee</Th><Th>Role</Th><Th>Pay Cycle</Th>
               <Th right>Days</Th><Th right>Daily Rate</Th>
               <Th right>Basic</Th><Th right>OT</Th><Th right>Bonus</Th><Th right>Extra</Th>
               <Th right>Gross</Th>
@@ -258,8 +259,9 @@ function SalaryRegisterTab() {
               <tr><td colSpan={16} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={16} className="px-3 py-8 text-center text-sm text-gray-400">No records found.</td></tr>
-            ) : rows.map(r => (
+            ) : rows.map((r, _i) => (
               <tr key={r.payrollId} className="hover:bg-gray-50">
+                <Td>{_i + 1}</Td>
                 <Td><span className="font-medium">{r.employeeName}</span></Td>
                 <Td muted>{r.role}</Td>
                 <Td muted><span className="text-xs">{r.payCycleStart} → {r.payCycleEnd}</span></Td>
@@ -331,7 +333,7 @@ function AdvancesTab() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <Th>Employee</Th><Th>Role</Th><Th>Date</Th>
+              <Th>S.No.</Th><Th>Employee</Th><Th>Role</Th><Th>Date</Th>
               <Th right>Amount</Th><Th right>Repaid</Th><Th right>Balance</Th>
               <Th>Status</Th><Th>Reason</Th><Th>Approved By</Th>
             </tr>
@@ -341,8 +343,9 @@ function AdvancesTab() {
               <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-gray-400">No advances found for this period.</td></tr>
-            ) : rows.map(r => (
+            ) : rows.map((r, _i) => (
               <tr key={r.advanceId} className="hover:bg-gray-50">
+                <Td>{_i + 1}</Td>
                 <Td><span className="font-medium">{r.employeeName}</span></Td>
                 <Td muted>{r.role}</Td>
                 <Td muted>{r.advanceDate}</Td>
@@ -417,6 +420,7 @@ function ByRoleTab() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <Th>S.No.</Th>
               <Th>Role</Th>
               <Th right>Employees</Th>
               <Th right>Total Gross</Th>
@@ -429,8 +433,9 @@ function ByRoleTab() {
               <tr><td colSpan={5} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={5} className="px-3 py-8 text-center text-sm text-gray-400">No data for this period.</td></tr>
-            ) : rows.map(r => (
+            ) : rows.map((r, _i) => (
               <tr key={r.role} className="hover:bg-gray-50">
+                <Td>{_i + 1}</Td>
                 <Td><span className="font-medium">{r.role}</span></Td>
                 <Td right>{r.employeeCount}</Td>
                 <Td right>{fmt(r.totalGrossPay)}</Td>
@@ -491,7 +496,7 @@ function YtdTab() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <Th>Employee</Th><Th>Role</Th><Th>Designation</Th>
+              <Th>S.No.</Th><Th>Employee</Th><Th>Role</Th><Th>Designation</Th>
               <Th right>Present Days</Th>
               <Th right>Total Gross</Th><Th right>Total Deductions</Th><Th right>Total Net Pay</Th>
               <Th>Bank Details</Th>
@@ -502,8 +507,9 @@ function YtdTab() {
               <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400"><Spinner /></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400">No payroll data for {year}.</td></tr>
-            ) : rows.map(r => (
+            ) : rows.map((r, _i) => (
               <tr key={r.employeeName} className="hover:bg-gray-50">
+                <Td>{_i + 1}</Td>
                 <Td><span className="font-medium">{r.employeeName}</span></Td>
                 <Td muted>{r.role}</Td>
                 <Td muted>{r.designation}</Td>
@@ -622,6 +628,7 @@ function VehicleCostTab() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <Th>S.No.</Th>
                 <Th>Date</Th>
                 <Th>Vehicle No.</Th>
                 <Th>Name</Th>
@@ -637,6 +644,7 @@ function VehicleCostTab() {
                 <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">No payroll records found for this vehicle and period.</td></tr>
               ) : rows.map((r, i) => (
                 <tr key={i} className="hover:bg-gray-50">
+                  <Td>{i + 1}</Td>
                   <Td>{r.date}</Td>
                   <Td><span className="font-medium">{r.vehicleNumber}</span></Td>
                   <Td>{r.staffName}</Td>
@@ -740,7 +748,7 @@ function DifferenceTab() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <Th>Employee</Th><Th>Role</Th>
+              <Th>S.No.</Th><Th>Employee</Th><Th>Role</Th>
               <Th right>Gross</Th><Th right>Vehicle Cost</Th><Th right>Difference</Th>
               <Th right>Trip Bonus</Th><Th right>Overtime</Th><Th right>Other</Th>
             </tr>
@@ -752,6 +760,7 @@ function DifferenceTab() {
               <tr><td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-400">No difference — By Role and Vehicle Cost reconcile fully for this period.</td></tr>
             ) : rows.map((r, i) => (
               <tr key={i} className="hover:bg-gray-50">
+                <Td>{i + 1}</Td>
                 <Td><span className="font-medium">{r.employeeName}</span></Td>
                 <Td muted>{r.role}</Td>
                 <Td right>{fmt(r.grossPay)}</Td>

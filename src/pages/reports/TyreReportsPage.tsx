@@ -287,17 +287,18 @@ function TyreInventoryTab({ rows, loading }: { rows?: TyreInventoryRow[]; loadin
       <TableWrap>
         <thead>
           <tr>
-            <Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th><Th>Ply</Th>
+            <Th>S.No.</Th><Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th><Th>Ply</Th>
             <Th>Purchase Date</Th><Th right>Cost (₹)</Th><Th>Status</Th><Th>Condition</Th>
             <Th right>Lifetime KM</Th><Th right>Max KM</Th><Th>Life Used</Th>
             <Th right>Retreads</Th><Th>Expiry</Th><Th>Fitted On</Th><Th>Position</Th>
           </tr>
         </thead>
         <tbody>
-          {filtered.map(r => {
+          {filtered.map((r, _i) => {
             const cond = conditionOf(r)
             return (
             <tr key={r.tyreId} className="hover:bg-gray-50">
+              <Td>{_i + 1}</Td>
               <Td><span className="font-mono font-medium">{r.serialNumber}</span></Td>
               <Td>{r.brand}</Td>
               <Td muted>{r.size}</Td>
@@ -335,14 +336,15 @@ function FittingsTab({ rows, loading }: { rows?: TyreFittingRow[]; loading: bool
       <TableWrap>
         <thead>
           <tr>
-            <Th>Fitted Date</Th><Th>Vehicle</Th><Th>Type</Th>
+            <Th>S.No.</Th><Th>Fitted Date</Th><Th>Vehicle</Th><Th>Type</Th>
             <Th>Tyre Serial</Th><Th>Brand</Th><Th>Size</Th><Th>Tyre Type</Th>
             <Th>Position</Th><Th right>Fitted At KM</Th><Th>Fitted By</Th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
+          {rows.map((r, _i) => (
             <tr key={r.fittingId} className="hover:bg-gray-50">
+              <Td>{_i + 1}</Td>
               <Td>{fmtDate(r.fittedDate)}</Td>
               <Td><span className="font-medium">{r.vehicleRegistration}</span></Td>
               <Td muted>{r.vehicleType}</Td>
@@ -371,15 +373,16 @@ function RemovalsTab({ rows, loading }: { rows?: TyreRemovalRow[]; loading: bool
       <TableWrap>
         <thead>
           <tr>
-            <Th>Removed Date</Th><Th>Vehicle</Th><Th>Type</Th>
+            <Th>S.No.</Th><Th>Removed Date</Th><Th>Vehicle</Th><Th>Type</Th>
             <Th>Tyre Serial</Th><Th>Brand</Th><Th>Size</Th><Th>Position</Th>
             <Th right>Fitted At KM</Th><Th right>Removed At KM</Th><Th right>KM Driven</Th>
             <Th>Reason</Th><Th>Removed By</Th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
+          {rows.map((r, _i) => (
             <tr key={r.fittingId} className="hover:bg-gray-50">
+              <Td>{_i + 1}</Td>
               <Td>{fmtDate(r.removedDate)}</Td>
               <Td><span className="font-medium">{r.vehicleRegistration}</span></Td>
               <Td muted>{r.vehicleType}</Td>
@@ -414,14 +417,15 @@ function TyreLifeTab({ rows, loading }: { rows?: TyreLifeRow[]; loading: boolean
       <TableWrap>
         <thead>
           <tr>
-            <Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th><Th>Fitted On</Th>
+            <Th>S.No.</Th><Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th><Th>Fitted On</Th>
             <Th right>Lifetime KM</Th><Th right>Max KM</Th><Th>Life Used</Th>
             <Th right>Retreads</Th><Th>Status</Th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
+          {rows.map((r, _i) => (
             <tr key={r.tyreId} className={cn('hover:bg-gray-50', r.percentLifeUsed >= 90 && 'bg-red-50/50')}>
+              <Td>{_i + 1}</Td>
               <Td><span className="font-mono font-medium">{r.serialNumber}</span></Td>
               <Td>{r.brand}</Td>
               <Td muted>{r.size}</Td>
@@ -459,14 +463,15 @@ function CostPerKmTab({ rows, loading }: { rows?: TyreCostPerKmRow[]; loading: b
       <TableWrap>
         <thead>
           <tr>
-            <Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th><Th>Status</Th>
+            <Th>S.No.</Th><Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Type</Th><Th>Status</Th>
             <Th right>Purchase</Th><Th right>Retread</Th><Th right>Repair</Th>
             <Th right>Effective Cost</Th><Th right>Billable KM</Th><Th right>Cost / KM</Th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
+          {rows.map((r, _i) => (
             <tr key={r.tyreId} className="hover:bg-gray-50">
+              <Td>{_i + 1}</Td>
               <Td><span className="font-mono font-medium">{r.serialNumber}</span></Td>
               <Td>{r.brand}</Td>
               <Td muted>{r.size}</Td>
@@ -505,14 +510,15 @@ function ReplacementTab({ rows, loading }: { rows?: TyreReplacementRow[]; loadin
       <TableWrap>
         <thead>
           <tr>
-            <Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Vehicle</Th><Th>Position</Th>
+            <Th>S.No.</Th><Th>Serial No.</Th><Th>Brand</Th><Th>Size</Th><Th>Vehicle</Th><Th>Position</Th>
             <Th>Fitted</Th><Th right>Lifetime KM</Th><Th right>Max KM</Th><Th right>Remaining</Th>
             <Th>Life Used</Th><Th>Urgency</Th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
+          {rows.map((r, _i) => (
             <tr key={r.tyreId} className={cn('hover:bg-gray-50', r.urgency === 'HIGH' && 'bg-red-50/50')}>
+              <Td>{_i + 1}</Td>
               <Td><span className="font-mono font-medium">{r.serialNumber}</span></Td>
               <Td>{r.brand}</Td>
               <Td muted>{r.size}</Td>
@@ -552,14 +558,15 @@ function RequestsTab({ rows, loading }: { rows?: TyreRequestRow[]; loading: bool
       <TableWrap>
         <thead>
           <tr>
-            <Th>Date</Th><Th>Vehicle</Th><Th>Type</Th><Th>Position</Th>
+            <Th>S.No.</Th><Th>Date</Th><Th>Vehicle</Th><Th>Type</Th><Th>Position</Th>
             <Th>Requested By</Th><Th>Approved By</Th>
             <Th>Issued Tyre</Th><Th right>Fitted At KM</Th><Th>Status</Th>
           </tr>
         </thead>
         <tbody>
-          {filtered.map(r => (
+          {filtered.map((r, _i) => (
             <tr key={r.requestId} className="hover:bg-gray-50">
+              <Td>{_i + 1}</Td>
               <Td>{fmtDt(r.createdAt)}</Td>
               <Td><span className="font-medium">{r.vehicleRegistration}</span></Td>
               <Td muted>{r.vehicleType}</Td>
@@ -601,14 +608,15 @@ function RotationsTab({ rows, loading }: { rows?: TyreRotationRow[]; loading: bo
       <TableWrap>
         <thead>
           <tr>
-            <Th>Date</Th><Th>Vehicle</Th><Th>Type</Th>
+            <Th>S.No.</Th><Th>Date</Th><Th>Vehicle</Th><Th>Type</Th>
             <Th right>Odometer KM</Th><Th right>Tyres Rotated</Th><Th>Performed By</Th><Th>Movements</Th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
+          {rows.map((r, _i) => (
             <>
               <tr key={r.rotationLogId} className="hover:bg-gray-50 cursor-pointer" onClick={() => toggle(r.rotationLogId)}>
+                <Td>{_i + 1}</Td>
                 <Td>{fmtDate(r.rotationDate)}</Td>
                 <Td><span className="font-medium">{r.vehicleRegistration}</span></Td>
                 <Td muted>{r.vehicleType}</Td>
@@ -623,7 +631,7 @@ function RotationsTab({ rows, loading }: { rows?: TyreRotationRow[]; loading: bo
               </tr>
               {expanded.has(r.rotationLogId) && r.movements.map((m, i) => (
                 <tr key={i} className="bg-blue-50/40">
-                  <td colSpan={2} />
+                  <td colSpan={3} />
                   <Td muted><span className="font-mono text-xs">{m.tyreSerial}</span></Td>
                   <Td muted>{m.tyreBrand}</Td>
                   <td colSpan={3} className="px-3 py-2 text-sm">
