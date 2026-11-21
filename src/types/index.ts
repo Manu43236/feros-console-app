@@ -2488,6 +2488,7 @@ export interface OrderRegisterRow {
   invoiceStatus?: string
   advanceReceived?: number
   paidAmount?: number
+  deductionAmount?: number
   balance?: number
   vehicleCount: number
   durationDays?: number

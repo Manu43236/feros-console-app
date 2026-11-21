@@ -107,8 +107,8 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
         invoicedInvoiceNumber: p.invoicedInvoiceNumber,
       }))
       setItems(mapped)
-      // auto-select every selectable (not already invoiced) vehicle; groups start collapsed
-      setChecked(new Set(mapped.filter(m => !m.alreadyInvoiced && m.assignmentId).map(m => m.assignmentId!)))
+      // default: nothing selected — user opts in via checkboxes or "Select all"; groups start collapsed
+      setChecked(new Set())
       setExpanded(new Set())
       setSubTab('available')
       setPrefillLoaded(true)
@@ -254,7 +254,16 @@ export function CreateLeaseInvoiceDrawer({ open, onClose }: Props) {
               </div>
 
               {subTab === 'available' && (
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-between">
+                  {availableCount > 0 ? (
+                    <button type="button"
+                      onClick={() => setChecked(selectedItems.length === availableCount
+                        ? new Set()
+                        : new Set(items.filter(i => !i.alreadyInvoiced && i.assignmentId).map(i => i.assignmentId!)))}
+                      className="text-xs font-medium text-feros-navy hover:underline">
+                      {selectedItems.length === availableCount ? 'Deselect all' : 'Select all'}
+                    </button>
+                  ) : <span />}
                   <span className="text-xs text-gray-400">{selectedItems.length} selected</span>
                 </div>
               )}
