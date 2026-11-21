@@ -199,8 +199,8 @@ function Segmented({ value, onChange, options }: { value: string; onChange: (v: 
 }
 
 // ── upload dialog: pick owner → renew any expired doc, all at once ──────────────
-type RowDraft = { documentNumber: string; expiryDate: string; issuerName: string; file: File | null }
-type ExistingDoc = { id: number; documentTypeId: number; documentNumber?: string | null; expiryDate?: string | null; fileUrl?: string | null }
+type RowDraft = { documentNumber: string; expiryDate: string; issuerName: string; cost: string; paidOn: string; file: File | null }
+type ExistingDoc = { id: number; documentTypeId: number; documentNumber?: string | null; expiryDate?: string | null; fileUrl?: string | null; cost?: number | null; paidOn?: string | null }
 
 function UploadDrawer({ onClose, initialEntity, initialOwnerId }: { onClose: () => void; initialEntity: DocEntityType; initialOwnerId: number | null }) {
   const qc = useQueryClient()
@@ -221,6 +221,7 @@ function UploadDrawer({ onClose, initialEntity, initialOwnerId }: { onClose: () 
       return (res.data ?? []).map(d => ({
         id: d.id, documentTypeId: d.documentTypeId,
         documentNumber: d.documentNumber, expiryDate: d.expiryDate, fileUrl: d.fileUrl,
+        cost: d.cost, paidOn: d.paidOn,
       }))
     },
   })
@@ -243,7 +244,10 @@ function UploadDrawer({ onClose, initialEntity, initialOwnerId }: { onClose: () 
   function draftFor(typeId: number): RowDraft {
     return drafts[typeId] ?? (() => {
       const ex = existingByType.get(typeId)
-      return { documentNumber: ex?.documentNumber ?? '', expiryDate: ex?.expiryDate ?? '', issuerName: '', file: null }
+      return {
+        documentNumber: ex?.documentNumber ?? '', expiryDate: ex?.expiryDate ?? '', issuerName: '',
+        cost: ex?.cost != null ? String(ex.cost) : '', paidOn: ex?.paidOn ?? '', file: null,
+      }
     })()
   }
   function patch(typeId: number, p: Partial<RowDraft>) {
@@ -258,7 +262,7 @@ function UploadDrawer({ onClose, initialEntity, initialOwnerId }: { onClose: () 
     if (ownerId == null) { toast.error(`Select a ${entity === 'VEHICLE' ? 'vehicle' : 'staff member'}`); return }
     const jobs = applicableTypes.filter(t => {
       const d = drafts[t.id]
-      return d && (d.file || d.expiryDate || d.documentNumber)
+      return d && (d.file || d.expiryDate || d.documentNumber || d.cost || d.paidOn)
     })
     if (jobs.length === 0) { toast.error('Nothing to upload — fill at least one document'); return }
 
@@ -276,6 +280,8 @@ function UploadDrawer({ onClose, initialEntity, initialOwnerId }: { onClose: () 
           documentNumber: d.documentNumber || undefined,
           expiryDate: d.expiryDate || undefined,
           ...(d.issuerName ? { issuerName: d.issuerName } : {}),
+          ...(d.cost ? { cost: Number(d.cost) } : {}),
+          ...(d.paidOn ? { paidOn: d.paidOn } : {}),
           ...(fileUrl ? { fileUrl } : {}),
         }
         const existing = existingByType.get(t.id)
@@ -365,6 +371,16 @@ function UploadDrawer({ onClose, initialEntity, initialOwnerId }: { onClose: () 
                     {isInsurance && (
                       <Input className="mt-2" placeholder="Insurance company" value={d.issuerName} onChange={e => patch(t.id, { issuerName: e.target.value })} />
                     )}
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div>
+                        <span className="text-xs text-gray-400">Renewal Cost (₹)</span>
+                        <Input type="number" min={0} placeholder="e.g. 5000" value={d.cost} onChange={e => patch(t.id, { cost: e.target.value })} />
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-400">Paid On</span>
+                        <Input type="date" value={d.paidOn} onChange={e => patch(t.id, { paidOn: e.target.value })} />
+                      </div>
+                    </div>
                   </div>
                 )
               })}

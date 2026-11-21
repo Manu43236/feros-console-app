@@ -962,6 +962,7 @@ export interface StaffDocument {
   id: number; userId: number; documentTypeId: number; documentTypeName: string
   documentNumber?: string; issueDate?: string; expiryDate?: string
   fileUrl?: string; isVerified: boolean; remarks?: string; isActive: boolean
+  cost?: number; paidOn?: string
 }
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
@@ -1834,6 +1835,7 @@ export interface SparePartsTransaction {
   unitCost?: number; totalCost?: number
   referenceType: StockReferenceType
   servicePartId?: number; serviceNumber?: string; vehicleRegistrationNumber?: string; equipmentName?: string
+  requestedByName?: string
   supplierName?: string; invoiceNo?: string; invoiceDate?: string; notes?: string
   createdById: number; createdByName: string; createdAt: string
 }

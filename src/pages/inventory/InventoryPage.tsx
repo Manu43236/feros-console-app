@@ -608,6 +608,8 @@ function TransactionsTab() {
                     <td className="px-4 py-3 text-right font-semibold">{t.quantity}</td>
                     <td className="px-4 py-3 text-gray-700">
                       {t.serviceNumber ? <div><p>{t.serviceNumber}</p><p className="text-xs text-gray-400">{t.vehicleRegistrationNumber ?? t.equipmentName}</p></div>
+                        : t.requestedByName ? <div><p>Req by {t.requestedByName}</p>{t.vehicleRegistrationNumber && <p className="text-xs text-gray-400">{t.vehicleRegistrationNumber}</p>}</div>
+                        : t.vehicleRegistrationNumber ? <div><p>{t.vehicleRegistrationNumber}</p></div>
                         : t.supplierName ? <div><p>{t.supplierName}</p>{t.invoiceNo && <p className="text-xs text-gray-400">Inv {t.invoiceNo}{t.invoiceDate ? ` · ${fmtDate(t.invoiceDate)}` : ''}</p>}</div>
                         : <span className="text-gray-400">—</span>}
                     </td>
