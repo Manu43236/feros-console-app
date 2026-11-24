@@ -75,7 +75,7 @@ function EquipmentApprovalDialog({ part, onClose }: { part: EquipmentServicePart
           {action === 'APPROVED' && (
             <div>
               <Label>Quantity to Approve *</Label>
-              <Input type="number" min={1} max={available} value={qtyApproved}
+              <Input type="number" min={0} step="any" max={available} value={qtyApproved}
                 onChange={e => setQtyApproved(Math.min(Number(e.target.value), available))} />
               <p className="text-xs text-gray-500 mt-1">Max: {available} {unit} in stock</p>
             </div>
@@ -172,7 +172,7 @@ function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => v
             <div>
               <Label>Quantity to Approve *</Label>
               <Input
-                type="number" min={1} max={available}
+                type="number" min={0} step="any" max={available}
                 value={qtyApproved}
                 onChange={e => setQtyApproved(Math.min(Number(e.target.value), available))}
               />

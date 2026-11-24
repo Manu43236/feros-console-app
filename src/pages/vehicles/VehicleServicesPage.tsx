@@ -127,7 +127,7 @@ function AddPartDialog({ serviceId, onClose }: { serviceId: number; onClose: () 
           <div>
             <Label>Quantity *</Label>
             <Input
-              className="mt-1" type="number" min={1}
+              className="mt-1" type="number" min={0} step="any"
               value={form.quantityRequested}
               onChange={e => setForm(f => ({ ...f, quantityRequested: Number(e.target.value) }))}
             />

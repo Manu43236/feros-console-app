@@ -448,7 +448,7 @@ function StockDetailDrawer({ item, isAdmin, onClose }: { item: StockItem; isAdmi
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>New Quantity *</Label>
-                  <Input type="number" min={0} value={adj.newQuantity}
+                  <Input type="number" min={0} step="any" value={adj.newQuantity}
                     onChange={e => setAdj(a => ({ ...a, newQuantity: e.target.value }))} />
                 </div>
                 <div>

@@ -96,7 +96,7 @@ function IssueDialog({ request, onClose }: { request: ConsumableRequestItem; onC
               <div>
                 <Label>Quantity *</Label>
                 <Input
-                  type="number"
+                  type="number" min={0} step="any"
                   value={quantity}
                   onChange={e => setQuantity(e.target.value)}
                   placeholder={selected ? `Available: ${selected.quantity} ${selected.unit}` : 'e.g. 10'}

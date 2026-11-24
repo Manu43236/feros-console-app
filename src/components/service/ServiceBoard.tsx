@@ -168,7 +168,7 @@ export function RequestPartDialog({ serviceId, taskId, taskName, cfg, onClose }:
           </div>
           <div>
             <Label className="mb-1.5 block">Quantity *</Label>
-            <Input type="number" min={1} value={qty} onChange={e => setQty(Number(e.target.value))} />
+            <Input type="number" min={0} step="any" value={qty} onChange={e => setQty(Number(e.target.value))} />
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-1">

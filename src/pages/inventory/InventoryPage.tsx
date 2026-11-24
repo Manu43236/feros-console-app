@@ -22,21 +22,23 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 type Tab = 'stock' | 'requests' | 'transactions' | 'catalog'
 
 // ─── Stock Invoice Dialog ─────────────────────────────────────────────────────
-type LineItem = { sparePartId: number; quantity: number; unitCost: string; itemNotes: string }
+type LineItem = { sparePartId: number; quantity: string; unitCost: string; itemNotes: string }
 
 function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const todayStr = new Date().toISOString().split('T')[0]
   const [header, setHeader] = useState({ supplierName: '', invoiceNo: '', invoiceDate: '', receivedDate: todayStr, notes: '' })
-  const [items, setItems] = useState<LineItem[]>([{ sparePartId: 0, quantity: 1, unitCost: '', itemNotes: '' }])
+  const [items, setItems] = useState<LineItem[]>([{ sparePartId: 0, quantity: '1', unitCost: '', itemNotes: '' }])
   const [result, setResult] = useState<BulkInvoiceStockInResponse | null>(null)
+  const [reviewing, setReviewing] = useState(false)
 
   const { data: partsData } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
   const parts = partsData?.data ?? []
   const partOptions = parts.map(p => ({ value: String(p.id), label: p.name }))
+  const partNameOf = (id: number) => parts.find(p => p.id === id)?.name ?? '—'
 
   function addRow() {
-    setItems(prev => [...prev, { sparePartId: 0, quantity: 1, unitCost: '', itemNotes: '' }])
+    setItems(prev => [...prev, { sparePartId: 0, quantity: '1', unitCost: '', itemNotes: '' }])
   }
 
   function removeRow(idx: number) {
@@ -56,7 +58,7 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
       notes: header.notes || undefined,
       items: items.map(it => ({
         sparePartId: it.sparePartId,
-        quantity: it.quantity,
+        quantity: Number(it.quantity),
         unitCost: it.unitCost ? Number(it.unitCost) : undefined,
         itemNotes: it.itemNotes || undefined,
       })),
@@ -76,7 +78,8 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
     },
   })
 
-  const canSubmit = items.length > 0 && items.every(it => it.sparePartId > 0 && it.quantity >= 1)
+  const canSubmit = items.length > 0 && items.every(it => it.sparePartId > 0 && Number(it.quantity) > 0)
+  const grandTotal = items.reduce((sum, it) => sum + (Number(it.quantity) || 0) * (Number(it.unitCost) || 0), 0)
 
   if (result) {
     return (
@@ -117,6 +120,67 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
     )
   }
 
+  if (reviewing) {
+    return (
+      <Dialog open onOpenChange={v => !v && onClose()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Review Before Saving</DialogTitle></DialogHeader>
+          <p className="text-xs text-gray-500 -mt-1">Check the details below. Nothing is saved until you confirm.</p>
+
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm bg-gray-50 rounded-lg p-3">
+            <span className="text-gray-500">Supplier</span><span className="font-medium text-right">{header.supplierName || '—'}</span>
+            <span className="text-gray-500">Invoice No.</span><span className="font-medium text-right">{header.invoiceNo || '—'}</span>
+            <span className="text-gray-500">Received Date</span><span className="font-medium text-right">{header.receivedDate || '—'}</span>
+            <span className="text-gray-500">Invoice Date</span><span className="font-medium text-right">{header.invoiceDate || '—'}</span>
+            {header.notes && (<><span className="text-gray-500">Notes</span><span className="font-medium text-right">{header.notes}</span></>)}
+          </div>
+
+          <div className="border rounded-lg overflow-hidden mt-2">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100 text-xs text-gray-500 uppercase tracking-wide">
+                <tr>
+                  <th className="px-3 py-2 text-left">Part</th>
+                  <th className="px-3 py-2 text-right">Qty</th>
+                  <th className="px-3 py-2 text-right">Unit Cost</th>
+                  <th className="px-3 py-2 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {items.map((it, idx) => {
+                  const amt = (Number(it.quantity) || 0) * (Number(it.unitCost) || 0)
+                  return (
+                    <tr key={idx}>
+                      <td className="px-3 py-2">
+                        {partNameOf(it.sparePartId)}
+                        {it.itemNotes && <span className="block text-xs text-gray-400">{it.itemNotes}</span>}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{Number(it.quantity).toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.unitCost ? `₹${Number(it.unitCost).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '—'}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{amt > 0 ? `₹${amt.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot className="bg-gray-50 font-semibold">
+                <tr>
+                  <td className="px-3 py-2" colSpan={3}>Total</td>
+                  <td className="px-3 py-2 text-right tabular-nums">₹{grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 pt-2 border-t mt-2">
+            <Button variant="outline" onClick={() => setReviewing(false)} disabled={mutation.isPending}>← Back to Edit</Button>
+            <Button disabled={mutation.isPending || !canSubmit} onClick={() => mutation.mutate()}>
+              {mutation.isPending ? 'Saving…' : 'Confirm & Save'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -148,11 +212,13 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
 
         {/* Line items */}
         <div className="mt-4 space-y-2">
-          <div className="grid grid-cols-[1fr_80px_100px_1fr_32px] gap-2 px-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
-            <span>Part *</span><span>Qty *</span><span>Unit Cost (₹)</span><span>Notes</span><span />
+          <div className="grid grid-cols-[1fr_80px_100px_90px_1fr_32px] gap-2 px-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <span>Part *</span><span>Qty *</span><span>Unit Cost (₹)</span><span className="text-right">Amount</span><span>Notes</span><span />
           </div>
-          {items.map((item, idx) => (
-            <div key={idx} className="grid grid-cols-[1fr_80px_100px_1fr_32px] gap-2 items-center">
+          {items.map((item, idx) => {
+            const lineAmount = (Number(item.quantity) || 0) * (Number(item.unitCost) || 0)
+            return (
+            <div key={idx} className="grid grid-cols-[1fr_80px_100px_90px_1fr_32px] gap-2 items-center">
               <SearchableSelect
                 placeholder="Select part…"
                 value={item.sparePartId ? String(item.sparePartId) : ''}
@@ -161,13 +227,16 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
                 className="min-w-0"
               />
               <Input
-                type="number" min={1} value={item.quantity}
-                onChange={e => updateItem(idx, { quantity: Number(e.target.value) })}
+                type="number" min={0} step="any" placeholder="0" value={item.quantity}
+                onChange={e => updateItem(idx, { quantity: e.target.value })}
               />
               <Input
-                type="number" min={0} placeholder="0.00" value={item.unitCost}
+                type="number" min={0} step="any" placeholder="0.00" value={item.unitCost}
                 onChange={e => updateItem(idx, { unitCost: e.target.value })}
               />
+              <span className="text-right text-sm tabular-nums text-gray-700 pr-1">
+                {lineAmount > 0 ? `₹${lineAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '—'}
+              </span>
               <Input
                 placeholder="Optional" value={item.itemNotes}
                 onChange={e => updateItem(idx, { itemNotes: e.target.value })}
@@ -180,7 +249,7 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
                 <Trash size={14} />
               </button>
             </div>
-          ))}
+          )})}
         </div>
 
         <button
@@ -190,11 +259,16 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
           <Plus size={15} /> Add Row
         </button>
 
-        <div className="flex justify-end gap-2 pt-2 border-t mt-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={mutation.isPending || !canSubmit} onClick={() => mutation.mutate()}>
-            {mutation.isPending ? 'Saving…' : `Save ${items.length} Item${items.length !== 1 ? 's' : ''}`}
-          </Button>
+        <div className="flex items-center justify-between gap-2 pt-2 border-t mt-2">
+          <span className="text-sm text-gray-600">
+            Total: <strong className="text-gray-900 tabular-nums">₹{grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button disabled={!canSubmit} onClick={() => setReviewing(true)}>
+              Review {items.length} Item{items.length !== 1 ? 's' : ''} →
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -250,7 +324,7 @@ function ApprovalDialog({ part, onClose }: { part: ServicePart; onClose: () => v
           {action === 'APPROVED' && (
             <div>
               <Label>Quantity to Approve *</Label>
-              <Input className="mt-1" type="number" min={1} max={part.quantityRequested} value={qtyApproved} onChange={e => setQtyApproved(Number(e.target.value))} />
+              <Input className="mt-1" type="number" min={0} step="any" max={part.quantityRequested} value={qtyApproved} onChange={e => setQtyApproved(Number(e.target.value))} />
             </div>
           )}
           {action === 'REJECTED' && (
