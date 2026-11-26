@@ -20,7 +20,7 @@ function SparePartDialog({ part, categories, units, onClose }: { part?: SparePar
     name: part?.name ?? '',
     partNumber: part?.partNumber ?? '',
     category: part?.category ?? '',
-    unit: part?.unit ?? 'Pieces',
+    unit: part?.unit ?? '',
     minStockLevel: part?.minStockLevel ?? 0,
   })
 
@@ -75,6 +75,7 @@ function SparePartDialog({ part, categories, units, onClose }: { part?: SparePar
                 value={form.unit}
                 onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
               >
+                <option value="">— Select unit —</option>
                 {form.unit && !units.includes(form.unit) && <option value={form.unit}>{form.unit}</option>}
                 {units.map(u => (
                   <option key={u} value={u}>{u}</option>
@@ -94,7 +95,7 @@ function SparePartDialog({ part, categories, units, onClose }: { part?: SparePar
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            disabled={mutation.isPending || !form.name.trim()}
+            disabled={mutation.isPending || !form.name.trim() || !form.unit}
             onClick={() => mutation.mutate(form)}
           >
             {mutation.isPending ? 'Saving…' : isEdit ? 'Update' : 'Create'}

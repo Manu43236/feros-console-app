@@ -36,6 +36,17 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
   const parts = partsData?.data ?? []
   const partOptions = parts.map(p => ({ value: String(p.id), label: p.name }))
   const partNameOf = (id: number) => parts.find(p => p.id === id)?.name ?? '—'
+  const unitOf = (id: number) => parts.find(p => p.id === id)?.unit ?? ''
+
+  const { data: unitData } = useQuery({ queryKey: ['units'], queryFn: globalMastersApi.getUnits })
+  const units = (unitData?.data ?? []).map((u: { name: string }) => u.name)
+  // Unit lives on the part (stock is summed in one unit). Picking it on a line writes back to the part.
+  const unitMut = useMutation({
+    mutationFn: ({ part, unit }: { part: SparePart; unit: string }) =>
+      sparePartsApi.update(part.id, { name: part.name, partNumber: part.partNumber, category: part.category, unit, minStockLevel: part.minStockLevel }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['spare-parts'] }),
+    onError: (e: unknown) => toast.error(getApiError(e, 'Failed to update unit') ?? 'Failed to update unit'),
+  })
 
   function addRow() {
     setItems(prev => [...prev, { sparePartId: 0, quantity: '1', unitCost: '', itemNotes: '' }])
@@ -154,7 +165,7 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
                         {partNameOf(it.sparePartId)}
                         {it.itemNotes && <span className="block text-xs text-gray-400">{it.itemNotes}</span>}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{Number(it.quantity).toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{Number(it.quantity).toLocaleString('en-IN', { maximumFractionDigits: 3 })}{unitOf(it.sparePartId) ? ` ${unitOf(it.sparePartId)}` : ''}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{it.unitCost ? `₹${Number(it.unitCost).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '—'}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{amt > 0 ? `₹${amt.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '—'}</td>
                     </tr>
@@ -212,13 +223,13 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
 
         {/* Line items */}
         <div className="mt-4 space-y-2">
-          <div className="grid grid-cols-[1fr_80px_100px_90px_1fr_32px] gap-2 px-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
-            <span>Part *</span><span>Qty *</span><span>Unit Cost (₹)</span><span className="text-right">Amount</span><span>Notes</span><span />
+          <div className="grid grid-cols-[1fr_64px_120px_96px_84px_1fr_28px] gap-2 px-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <span>Part *</span><span>Qty *</span><span>Unit *</span><span>Unit Cost (₹)</span><span className="text-right">Amount</span><span>Notes</span><span />
           </div>
           {items.map((item, idx) => {
             const lineAmount = (Number(item.quantity) || 0) * (Number(item.unitCost) || 0)
             return (
-            <div key={idx} className="grid grid-cols-[1fr_80px_100px_90px_1fr_32px] gap-2 items-center">
+            <div key={idx} className="grid grid-cols-[1fr_64px_120px_96px_84px_1fr_28px] gap-2 items-center">
               <SearchableSelect
                 placeholder="Select part…"
                 value={item.sparePartId ? String(item.sparePartId) : ''}
@@ -230,6 +241,17 @@ function StockInvoiceDialog({ onClose }: { onClose: () => void }) {
                 type="number" min={0} step="any" placeholder="0" value={item.quantity}
                 onChange={e => updateItem(idx, { quantity: e.target.value })}
               />
+              <select
+                className="w-full border rounded-md px-2 py-2 text-sm min-w-0 disabled:bg-gray-50 disabled:text-gray-400"
+                value={unitOf(item.sparePartId)}
+                disabled={!item.sparePartId || unitMut.isPending}
+                title={item.sparePartId ? 'Sets this part’s unit' : 'Select a part first'}
+                onChange={e => { const p = parts.find(pp => pp.id === item.sparePartId); if (p) unitMut.mutate({ part: p, unit: e.target.value }) }}
+              >
+                <option value="">{item.sparePartId ? '— Select unit —' : '—'}</option>
+                {unitOf(item.sparePartId) && !units.includes(unitOf(item.sparePartId)) && <option value={unitOf(item.sparePartId)}>{unitOf(item.sparePartId)}</option>}
+                {units.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
               <Input
                 type="number" min={0} step="any" placeholder="0.00" value={item.unitCost}
                 onChange={e => updateItem(idx, { unitCost: e.target.value })}
@@ -789,7 +811,7 @@ function PartCatalogTab() {
   const { locked } = useSubscription()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<SparePart | null>(null)
-  const [form, setForm] = useState({ name: '', category: '', unit: 'Pieces', minStockLevel: 0 })
+  const [form, setForm] = useState({ name: '', category: '', unit: '', minStockLevel: 0 })
   const [bulkOpen, setBulkOpen] = useState(false)
 
   const { data, isLoading } = useQuery({ queryKey: ['spare-parts'], queryFn: sparePartsApi.getAll })
@@ -811,7 +833,7 @@ function PartCatalogTab() {
     onError: () => toast.error('Failed to delete'),
   })
 
-  function openAdd() { setEditing(null); setForm({ name: '', category: '', unit: 'Pieces', minStockLevel: 0 }); setOpen(true) }
+  function openAdd() { setEditing(null); setForm({ name: '', category: '', unit: '', minStockLevel: 0 }); setOpen(true) }
   function openEdit(p: SparePart) { setEditing(p); setForm({ name: p.name, category: p.category ?? '', unit: p.unit, minStockLevel: p.minStockLevel }); setOpen(true) }
 
   return (
@@ -874,6 +896,7 @@ function PartCatalogTab() {
               <div>
                 <Label>Unit *</Label>
                 <select className="mt-1 w-full border rounded-md px-3 py-2 text-sm" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
+                  <option value="">— Select unit —</option>
                   {form.unit && !units.includes(form.unit) && <option value={form.unit}>{form.unit}</option>}
                   {units.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
@@ -886,7 +909,7 @@ function PartCatalogTab() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button disabled={save.isPending || !form.name.trim()} onClick={() => save.mutate()}>{save.isPending ? 'Saving…' : editing ? 'Update' : 'Add'}</Button>
+            <Button disabled={save.isPending || !form.name.trim() || !form.unit} onClick={() => save.mutate()}>{save.isPending ? 'Saving…' : editing ? 'Update' : 'Add'}</Button>
           </div>
         </DialogContent>
       </Dialog>

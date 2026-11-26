@@ -30,7 +30,7 @@ function QuickCreatePartDialog({
   const units = (unitData?.data ?? []).map((u: { name: string }) => u.name)
   const [form, setForm] = useState({
     name: defaultName,
-    unit: 'Pieces',
+    unit: '',
     category: '',
     minStockLevel: 0,
   })
@@ -69,6 +69,7 @@ function QuickCreatePartDialog({
                 value={form.unit}
                 onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
               >
+                <option value="">— Select unit —</option>
                 {form.unit && !units.includes(form.unit) && <option value={form.unit}>{form.unit}</option>}
                 {units.map(u => <option key={u} value={u}>{u}</option>)}
               </select>
@@ -94,7 +95,7 @@ function QuickCreatePartDialog({
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            disabled={mutation.isPending || !form.name.trim()}
+            disabled={mutation.isPending || !form.name.trim() || !form.unit}
             onClick={() => mutation.mutate()}
           >
             {mutation.isPending ? 'Creating…' : 'Add Part'}
@@ -425,6 +426,7 @@ function StockDetailDrawer({ item, isAdmin, onClose }: { item: StockItem; isAdmi
                   <Label>Unit *</Label>
                   <select className="w-full border rounded-md px-3 py-2 text-sm"
                     value={details.unit} onChange={e => setDetails(d => ({ ...d, unit: e.target.value }))}>
+                    <option value="">— Select unit —</option>
                     {details.unit && !units.includes(details.unit) && <option value={details.unit}>{details.unit}</option>}
                     {units.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
@@ -435,7 +437,7 @@ function StockDetailDrawer({ item, isAdmin, onClose }: { item: StockItem; isAdmi
                     onChange={e => setDetails(d => ({ ...d, minStockLevel: e.target.value }))} />
                 </div>
               </div>
-              <Button className="w-full" disabled={detailsMutation.isPending || !details.name.trim()}
+              <Button className="w-full" disabled={detailsMutation.isPending || !details.name.trim() || !details.unit}
                 onClick={() => detailsMutation.mutate()}>
                 {detailsMutation.isPending ? 'Saving…' : 'Save Details'}
               </Button>
