@@ -6,6 +6,7 @@ import {
   MapPin, Calendar, StickyNote, Store, IndianRupee, FileImage, X, Trash2, Eye, Upload, FileText,
 } from 'lucide-react'
 import { cn, realPartNumber } from '@/lib/utils'
+import { getApiError } from '@/lib/apiError'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -153,7 +154,7 @@ export function RequestPartDialog({ serviceId, taskId, taskName, cfg, onClose }:
   const mutation = useMutation({
     mutationFn: () => cfg.onRequestPart(serviceId, taskId, { sparePartId: sparePartId!, quantityRequested: qty }),
     onSuccess: () => { toast.success('Spare part request submitted'); cfg.onChanged(); onClose() },
-    onError: () => toast.error('Failed to submit request'),
+    onError: (e: unknown) => { const m = getApiError(e, 'Failed to submit request'); if (m) toast.error(m) },
   })
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
